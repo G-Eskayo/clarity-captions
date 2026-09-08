@@ -1,63 +1,67 @@
-# 0009 — TestFlight first, public App Store as the follow-on goal
+# 0009 — TestFlight as an internal step toward a hard App Store-live date
 
 ## Status
 
-Accepted (2026-09-08). Revises [[0001]]'s distribution decision.
+Accepted (2026-09-08). Revises [[0001]]'s distribution decision. Amended (2026-09-08, same day):
+the project owner confirmed 2026-10-25 means **live on the public App Store**, not TestFlight —
+correcting this ADR's original framing, which had treated TestFlight as the deadline milestone
+and public submission as a follow-on. That was wrong; recorded below for why it changed.
 
 ## Context
 
 [[0001]] chose personal install via the paid Apple Developer Program specifically to *avoid*
-App Store review risk against the 2026-10-25 deadline. Two things have changed since:
+App Store review risk against the 2026-10-25 deadline. Two things changed since:
 
-1. The project owner now explicitly wants a real public App Store release, not just a personal
-   install — this was never actually in tension with [[0007]]'s "free and non-commercial" or
-   [[0008]]'s "generalized, no per-user training" decisions; it's a natural extension of both.
+1. The project owner explicitly wants a real public App Store release, confirmed as the actual
+   2026-10-25 target, not just a personal install or a TestFlight build.
 2. He wants to test the app himself before anyone else does, and bring the intended recipient in
-   as a real tester in October — this is no longer a surprise-gift constraint, which removes the
-   biggest objection the earlier review raised against personal-install-only distribution (no
-   pre-release feedback loop).
-3. The review separately flagged that personal-install builds expire (~1 year, tied to a
-   registered device) with no update mechanism after handover — a real risk for a daily-use tool
-   nobody else can push a fix to.
+   as a real tester in October — removing the "no pre-release feedback loop" objection the
+   earlier design review raised against personal-install-only distribution.
 
 Apple's actual review mechanics (checked 2026-09-08): a new app's first public App Store
-submission typically takes 2-5 days from submission to decision, with rejection/resubmission
-cycles being the real timeline risk (each one can add days to weeks) — not the review itself.
-TestFlight has two tiers: **internal testing** (people added to your App Store Connect team, up
-to 100 testers) needs no review at all; **external testing** (a shareable link, up to 10,000
-testers) needs one light "beta app review," typically 24-48 hours the first time, usually not
-repeated for minor updates.
+submission typically takes 2-5 days from submission to decision. **The real timeline risk is a
+rejection/resubmission cycle, not the review itself** — each cycle can add days to weeks. A
+due-diligence pass (`docs/app-store-compliance.md`) identified the concrete, checkable
+requirements that most commonly cause first-submission rejections, so they can be designed in
+from the start rather than discovered at submission time. TestFlight (internal: no review;
+external: one ~24-48h beta review) remains valuable as a pre-submission testing step, not as a
+replacement for the actual deadline.
 
 ## Decision
 
-**Distribution happens in two stages, not one:**
+**Target: public App Store submission with enough buffer before 2026-10-25 to survive one
+rejection cycle**, not submission exactly on the deadline. Concretely, working backward from
+2026-10-25:
 
-1. **TestFlight** — internal testing for the project owner's own pre-release testing (no review
-   wait), then external TestFlight (one ~24-48h beta review) so the intended recipient can test in
-   October without needing to be added as an App Store Connect team member. This is also the
-   2026-10-25 milestone: a working, installable, updatable build via TestFlight, not necessarily
-   a live public App Store listing by that exact date.
-2. **Public App Store submission** follows once both the owner's own testing and her October
-   testing have gone well — treated as the next milestone after the birthday, not a hard
-   requirement to hit by it.
+1. **Own testing** (project owner) — as early as a working build exists, via internal TestFlight
+   (no review wait).
+2. **Her October testing** — via external TestFlight (one ~24-48h beta review), early enough in
+   October to leave real time to act on what her testing surfaces.
+3. **Public App Store submission — targeted with roughly 10-15 days of buffer before 2026-10-25**,
+   specifically to absorb one realistic rejection-and-resubmission cycle without missing the date.
+   This means the app needs to be feature-complete, tested by both the owner and her, and passing
+   the `docs/app-store-compliance.md` checklist well before the deadline itself — realistically
+   by early-to-mid October, not late October.
 
-This directly resolves the "how do I ship a fix in November" gap the earlier review raised:
-TestFlight builds can be updated over-the-air without physical device access, unlike a personal
-Xcode install.
+This is a materially tighter internal schedule than this ADR originally proposed, and tighter
+than the independent design review's scope-cut recommendations assumed a soft/flexible date.
+Given that, `docs/app-store-compliance.md`'s two items that convert from "should do" to "App Store
+compliance gate" — measured battery/thermal behavior, and Dynamic Type/contrast support across
+the app's own UI — must be treated as must-ship, not nice-to-have, since Guideline 2.1
+(performance) is the single largest rejection category and a rejection there directly threatens
+the hard date.
 
 ## Consequences
 
-- Requires the Apple Developer Program enrollment ([[0001]]) regardless — TestFlight and the App
-  Store both require it. Still the hard blocker on the critical path if not yet complete.
-- App Store Connect setup (privacy nutrition label, screenshots, app description, accessibility
-  metadata) becomes real work that needs to happen before either TestFlight external testing or
-  App Store submission — not previously scoped under the personal-install-only plan.
-- Realistic timeline risk is concentrated in the *full public* App Store submission, not
-  TestFlight — a rejection there (e.g. over privacy label accuracy, accessibility claims, or
-  metadata issues) could add real time, but by the time that submission happens, the app will
-  already be working and updatable for the intended recipient via TestFlight, so a review delay
-  no longer risks the birthday deadline itself.
-- Accessibility/health-adjacent category scrutiny ([[0001]]'s original App Store concern) still
-  applies to the eventual public submission — worth preparing accessibility-specific metadata and
-  privacy documentation (this app's zero-server, zero-data-collection design, per [[0001]] and
-  CONTEXT.md, is a genuine strength here, not a liability, if documented clearly).
+- Requires Apple Developer Program enrollment ([[0001]]) immediately — it blocks every stage
+  above, including the earliest internal TestFlight testing, not just the final submission.
+- App Store Connect setup (privacy policy hosted and linked, App Privacy questionnaire filled in
+  accurately, screenshots, description, accessibility metadata) is now critical-path work, needed
+  well before the public submission step, not something to defer.
+- The compressed schedule increases pressure on keeping scope cut tightly to what
+  `docs/research-existing-resources.md` and the independent design review already identified as
+  must-ship (speaker-turn labeling, live captioning, failure/silence handling, caption display
+  settings) — there is now less slack to add anything beyond that before the deadline.
+- If the 10-15 day buffer gets eaten by development running long, the fallback is *not* to submit
+  without buffer — it's to cut remaining scope further, since a rejection with no buffer left
+  means missing 2026-10-25 outright.
