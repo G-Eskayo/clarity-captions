@@ -68,6 +68,32 @@ display customization, which was already planned) from "nice to have" to **App S
 requirement**: onboarding/settings screens need Dynamic Type and real contrast, not just the
 caption text itself.
 
+## Self-testing plan (2026-09-08)
+
+The project owner has an iPhone 17 himself, separate from the intended recipient's — enabling
+direct measurement of the largest rejection category (Guideline 2.1) before submission, rather
+than hoping. Two things this does and doesn't cover:
+
+**Covered by device self-testing, with specific tools:**
+- Battery drain and thermal behavior under real, sustained (multi-hour) captioning sessions —
+  Xcode Instruments' Energy Log and Time Profiler, plus watching `ProcessInfo.thermalState`
+  directly. This is the concrete measurement the independent design review flagged as missing.
+- Crash-freeness, memory, and CPU use under sustained real use — Instruments' Allocations/Leaks.
+- Accessibility behavior — Dynamic Type, contrast, Dark Mode, VoiceOver — by toggling each
+  setting on-device and observing actual results, not assuming.
+- Audio-session interruption handling — lock screen mid-session, incoming call, Bluetooth/hearing-
+  aid route change — all directly reproducible and observable on real hardware.
+- **Test against the declared minimum spec specifically**: if the App Store listing declares
+  "iPhone 17 or later, iOS 26 or later" (matching what `SpeechAnalyzer`/FluidAudio actually
+  require), test on iPhone 17 running iOS 26 itself, not a later point release — closest match to
+  how a reviewer tests against a stated floor.
+
+**Not covered by device testing — needs a separate pass**: Apple reviewer judgment on metadata,
+description, and screenshot wording (e.g. whether copy reads as a health claim per the section
+above, whether the App Privacy label's wording is precise enough). This is a policy/copy review
+against the guideline text itself, done on the actual submission materials — no amount of device
+testing substitutes for it.
+
 ## What this changes about scope
 
 Two things move from "should probably do" to "must do before submission, or risk rejection":
