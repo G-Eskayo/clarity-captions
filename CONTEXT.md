@@ -18,6 +18,11 @@ Domain terms only. No implementation details beyond naming the frameworks involv
 - **Voice enrollment**: a one-time setup step where the primary user records themselves speaking
   so the app can build an on-device speaker profile to distinguish their voice from other
   speakers'. Only needed if own-voice filtering ships.
+- **Speaker embedding**: a numeric vector representation of a short stretch of speech, positioned
+  so that embeddings from the same speaker sit close together (by cosine similarity) and
+  embeddings from different speakers sit farther apart. What own-voice filtering is actually built
+  on: compare a live utterance's embedding to the stored enrollment embedding, threshold on
+  similarity — see [[0002]].
 
 ## Transcription engine
 
@@ -25,6 +30,13 @@ Domain terms only. No implementation details beyond naming the frameworks involv
   successor to the older `SFSpeechRecognizer`. Runs the whole transcription pipeline locally, no
   network call, no 1-minute session cap (the old API's dealbreaker for real conversations). The
   chosen transcription engine — see [[0001]].
+
+## Own-voice filtering engine
+
+- **FluidAudio**: the Apache-2.0, CoreML-native, Neural-Engine-optimized Swift library chosen to
+  extract speaker embeddings for own-voice filtering, rather than building an embedding model from
+  scratch — see [[0002]]. Provides embeddings/diarization primitives; the enroll-and-threshold
+  logic on top is this app's own code.
 
 ## People
 
