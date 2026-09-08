@@ -2,7 +2,12 @@
 
 ## Status
 
-Accepted (2026-09-08)
+**Superseded by [[0008]] (2026-09-08)** — own-voice filtering (the feature this update mechanism
+served) was replaced by speaker-turn labeling, which has no per-user profile to update or drift.
+Kept for its reasoning (including the review finding that this mechanism was unvalidatable within
+the project timeline regardless), not part of the build.
+
+Originally: Accepted (2026-09-08)
 
 ## Context
 

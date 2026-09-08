@@ -1,58 +1,42 @@
 # Clarity Captions — Context Glossary
 
 Domain terms only. No implementation details beyond naming the frameworks involved — see
-`docs/adr/` for decisions and rationale.
+`docs/adr/` for decisions and rationale. Superseded designs (own-voice filtering, voice
+enrollment) are documented in their original ADRs, not carried here — this file reflects current
+domain understanding only.
 
 ## Core concept
 
 - **Caption stream**: the live, scrolling transcript shown on screen as people speak nearby. The
   app's entire reason to exist.
-- **On-device only**: the whole captioning path — audio capture, transcription, and (if built)
-  own-voice filtering — runs locally on the phone. No network call anywhere in that path, ever.
-  This is a hard requirement, not a preference: the reference app (Otter) requires a live service
-  connection, and that's exactly the failure mode this app exists to avoid.
-- **Own-voice filtering**: showing only *other* speakers' words in the caption stream, suppressing
-  the primary user's own speech. Requires the user to have done a one-time in-app **voice
-  enrollment** first (see below) — there is no OS-level API that exposes an existing voice profile
-  to third-party apps (confirmed 2026-09-08, see [[0001]]).
-- **Voice enrollment**: a first-run setup step, part of onboarding (not optional/separate), where
-  the primary user reads a small set of **phonetically-balanced sentences** aloud so the app can
-  build an on-device speaker profile. Target: under 5 minutes total, including instructions and
-  permissions — not just reading time. Only needed if own-voice filtering ships.
-- **Phonetically-balanced sentences**: sentences chosen so that English phonemes appear at
-  roughly their natural frequency, giving a short recording broad coverage of how the speaker
-  sounds across different sounds rather than just a few. Concretely: the **Harvard Sentences**
-  (IEEE-standardized, public domain, 72 lists of 10) — see [[0003]].
-- **Speaker embedding**: a numeric vector representation of a short stretch of speech, positioned
-  so that embeddings from the same speaker sit close together (by cosine similarity) and
-  embeddings from different speakers sit farther apart. What own-voice filtering is actually built
-  on: compare a live utterance's embedding to the stored enrollment embedding, threshold on
-  similarity — see [[0002]].
+- **On-device only**: the whole captioning path — audio capture, transcription, and speaker-turn
+  labeling — runs locally on the phone, with no network call in that path at runtime. One
+  exception, stated precisely: `SpeechAnalyzer`'s language model asset is provisioned by the
+  system and may require a one-time network fetch before first use (see [[0001]]) — the guarantee
+  is zero network *after* that asset is installed, not literally zero network ever under any
+  circumstance. The reference app this project exists to improve on (Otter) requires an ongoing
+  live service connection to function at all; this app's failure mode is at most a one-time setup
+  dependency, not a permanent one.
+- **Generalized, no per-user training**: the app must behave identically for every install, out
+  of the box, with no enrollment, training, or per-user model state of any kind before it reaches
+  a device. Stated explicitly (2026-09-08) as a hard requirement, not just a nice-to-have — this
+  is what ruled out the original own-voice-filtering design (which required per-user voice
+  enrollment) in favor of speaker-turn labeling — see [[0008]].
+- **Speaker-turn labeling**: distinguishing *who is currently speaking* in the caption stream
+  (labeled generically, e.g. "Speaker 1" / "Speaker 2") without identifying *which specific
+  person* that is. Needs no enrollment or per-user data — the chosen replacement for own-voice
+  filtering, see [[0008]]. Speaker labels are not guaranteed stable across separate sessions.
 
 ## Transcription engine
 
 - **SpeechAnalyzer / SpeechTranscriber**: Apple's iOS 26 on-device speech-to-text framework,
   successor to the older `SFSpeechRecognizer`. Runs the whole transcription pipeline locally, no
-  network call, no 1-minute session cap (the old API's dealbreaker for real conversations). The
-  chosen transcription engine — see [[0001]].
-
-## Ongoing profile improvement
-
-- **Supplemental enrollment session**: an opt-in, user-initiated re-recording of Harvard Sentences
-  after initial setup, done any time the user chooses (e.g. in a different room, a noisier
-  environment, or a different emotional delivery — see below), specifically to add more reference
-  material to their voice profile. Distinct from the passive, automatic profile refinement that
-  happens from ordinary usage — this is a deliberate, occasional top-up the user does on purpose.
-- **Emotional-tone reference sample**: a supplemental enrollment recording where the user is
-  prompted to read the sentences in a specific emotional delivery (angry, sad, happy, exaggerated,
-  etc.) rather than neutrally. Exists because a person's voice characteristics shift meaningfully
-  across emotional states, and a profile built only from neutral-toned reading risks misclassifying
-  her own emotionally-inflected speech as "not her."
-- **Delight**: a product principle, not a feature — any moment the user interacts directly with
-  the app (enrollment, supplemental sessions especially) should feel playful and enjoyable rather
-  than clinical, via fun icons/colors/copy. Named explicitly because enrollment/voice-profile UI is
-  the kind of thing that easily defaults to feeling like a lab test if this isn't deliberately
-  designed against.
+  1-minute session cap (the old API's dealbreaker for real conversations). The chosen
+  transcription engine — see [[0001]].
+- **FluidAudio**: the Apache-2.0, CoreML-native, Neural-Engine-optimized Swift library used for
+  speaker diarization — identifying distinct speakers and their turns in live audio — which
+  speaker-turn labeling is built on directly ([[0008]]). No enrollment or reference-embedding
+  matching involved (that was the superseded own-voice-filtering design, [[0002]]).
 
 ## Caption display
 
@@ -62,14 +46,16 @@ Domain terms only. No implementation details beyond naming the frameworks involv
   person, and this app is meant to work for anyone with needs like the primary user's, not just her
   specifically.
 
-## Own-voice filtering engine
+## Product principles
 
-- **FluidAudio**: the Apache-2.0, CoreML-native, Neural-Engine-optimized Swift library chosen to
-  extract speaker embeddings for own-voice filtering, rather than building an embedding model from
-  scratch — see [[0002]]. Provides embeddings/diarization primitives; the enroll-and-threshold
-  logic on top is this app's own code.
+- **Delight**: any moment the user interacts directly with app setup/configuration should feel
+  playful and enjoyable rather than clinical, via fun icons/colors/copy — named explicitly because
+  this kind of UI easily defaults to feeling like a lab test if it isn't deliberately designed
+  against.
 
 ## People
 
-- **Primary user**: Gil's mother — deaf, the person this app is built for and will use it daily.
-  Already owns an iPhone 17.
+- **Primary user**: whoever has enrolled/set up a given install of the app as its owner — a role,
+  not a hardcoded identity. For this project's origin and first real installation, that's Gil's
+  mother (deaf, already owns an iPhone 17), but nothing in the app's design should assume it's
+  specifically her — see [[0007]]'s "built for everyone" decision.

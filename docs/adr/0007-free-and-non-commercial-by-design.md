@@ -7,9 +7,10 @@ Accepted (2026-09-08)
 ## Context
 
 This app started as a birthday gift for Gil's deaf mother, but is explicitly meant to be usable
-by anyone in a similar situation ([[0002]]'s "built for everyone" framing, resolved to
-single-user-per-install architecture without hardcoded assumptions about who the user is). That
-raises the obvious next question: what happens when someone other than her wants to use it?
+by anyone in a similar situation (stated directly by the project owner, 2026-09-08, resolved to
+single-user-per-install architecture without hardcoded assumptions about who the user is — now
+also reinforced by [[0008]]'s "generalized, no per-user training" requirement). That raises the
+obvious next question: what happens when someone other than her wants to use it?
 
 Stated reasoning (2026-09-08): if this app wouldn't be charged to his own mother — someone who
 didn't choose her hearing loss and can't change it — charging it to someone else in the same

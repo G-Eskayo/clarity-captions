@@ -2,7 +2,11 @@
 
 ## Status
 
-Accepted (2026-09-08)
+**Superseded by [[0008]] (2026-09-08)** — own-voice filtering (the feature this data model served)
+was replaced by speaker-turn labeling, which needs no reference embeddings at all. Kept for its
+reasoning, not part of the build.
+
+Originally: Accepted (2026-09-08)
 
 ## Context
 
