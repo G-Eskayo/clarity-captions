@@ -7,6 +7,13 @@ service connection (unlike cloud-based tools such as Otter).
 Working title. Target: production-ready, installed on the intended user's iPhone 17, by
 **2026-10-25**.
 
+## Why this exists
+
+Built as a birthday gift for a deaf mother. It's free and non-commercial by design — see
+[ADR 0007](docs/adr/0007-free-and-non-commercial-by-design.md): if this app couldn't be charged
+for when it's for family, charging it to anyone else in a similar situation, just because they
+aren't family, isn't something this project will do.
+
 ## Status
 
 Pre-implementation. See `CONTEXT.md` for domain terms and `docs/adr/` for the decisions made so
