@@ -15,9 +15,14 @@ Domain terms only. No implementation details beyond naming the frameworks involv
   the primary user's own speech. Requires the user to have done a one-time in-app **voice
   enrollment** first (see below) — there is no OS-level API that exposes an existing voice profile
   to third-party apps (confirmed 2026-09-08, see [[0001]]).
-- **Voice enrollment**: a one-time setup step where the primary user records themselves speaking
-  so the app can build an on-device speaker profile to distinguish their voice from other
-  speakers'. Only needed if own-voice filtering ships.
+- **Voice enrollment**: a first-run setup step, part of onboarding (not optional/separate), where
+  the primary user reads a small set of **phonetically-balanced sentences** aloud so the app can
+  build an on-device speaker profile. Target: under 5 minutes total, including instructions and
+  permissions — not just reading time. Only needed if own-voice filtering ships.
+- **Phonetically-balanced sentences**: sentences chosen so that English phonemes appear at
+  roughly their natural frequency, giving a short recording broad coverage of how the speaker
+  sounds across different sounds rather than just a few. Concretely: the **Harvard Sentences**
+  (IEEE-standardized, public domain, 72 lists of 10) — see [[0003]].
 - **Speaker embedding**: a numeric vector representation of a short stretch of speech, positioned
   so that embeddings from the same speaker sit close together (by cosine similarity) and
   embeddings from different speakers sit farther apart. What own-voice filtering is actually built
