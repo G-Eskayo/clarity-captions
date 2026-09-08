@@ -88,6 +88,17 @@ than hoping. Two things this does and doesn't cover:
   require), test on iPhone 17 running iOS 26 itself, not a later point release — closest match to
   how a reviewer tests against a stated floor.
 
+**OS-version coverage, at no extra engineering cost**: iOS 27's public release appears imminent
+(beta cadence as of 2026-09-08 suggests weeks, not months — plausibly before this app's own
+submission window) and may plausibly be the OS version Apple's reviewers are actually testing
+against by the time of submission, not just a future nice-to-have. The project owner is already
+running iOS 27 beta on his own device, separate from the iPhone 17 used for iOS-26-floor testing —
+so the same self-test plan above should be run on both: iOS 26 (the declared minimum) and iOS 27
+(the likely-imminent current version), using hardware already on hand. Nothing found in iOS 27's
+changes affects the Speech framework specifically as of this check; the real unknowns are
+behavioral, not documented API breaks, which is exactly what direct device testing (rather than
+reading release notes) resolves.
+
 **Not covered by device testing — needs a separate pass**: Apple reviewer judgment on metadata,
 description, and screenshot wording (e.g. whether copy reads as a health claim per the section
 above, whether the App Privacy label's wording is precise enough). This is a policy/copy review
