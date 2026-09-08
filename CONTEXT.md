@@ -36,6 +36,32 @@ Domain terms only. No implementation details beyond naming the frameworks involv
   network call, no 1-minute session cap (the old API's dealbreaker for real conversations). The
   chosen transcription engine — see [[0001]].
 
+## Ongoing profile improvement
+
+- **Supplemental enrollment session**: an opt-in, user-initiated re-recording of Harvard Sentences
+  after initial setup, done any time the user chooses (e.g. in a different room, a noisier
+  environment, or a different emotional delivery — see below), specifically to add more reference
+  material to their voice profile. Distinct from the passive, automatic profile refinement that
+  happens from ordinary usage — this is a deliberate, occasional top-up the user does on purpose.
+- **Emotional-tone reference sample**: a supplemental enrollment recording where the user is
+  prompted to read the sentences in a specific emotional delivery (angry, sad, happy, exaggerated,
+  etc.) rather than neutrally. Exists because a person's voice characteristics shift meaningfully
+  across emotional states, and a profile built only from neutral-toned reading risks misclassifying
+  her own emotionally-inflected speech as "not her."
+- **Delight**: a product principle, not a feature — any moment the user interacts directly with
+  the app (enrollment, supplemental sessions especially) should feel playful and enjoyable rather
+  than clinical, via fun icons/colors/copy. Named explicitly because enrollment/voice-profile UI is
+  the kind of thing that easily defaults to feeling like a lab test if this isn't deliberately
+  designed against.
+
+## Caption display
+
+- **Caption display settings**: user-controllable appearance of the live caption text —
+  background color, text size, text color, and font, independently adjustable. A core
+  accessibility requirement, not a cosmetic nice-to-have — visual needs vary a lot person to
+  person, and this app is meant to work for anyone with needs like the primary user's, not just her
+  specifically.
+
 ## Own-voice filtering engine
 
 - **FluidAudio**: the Apache-2.0, CoreML-native, Neural-Engine-optimized Swift library chosen to
