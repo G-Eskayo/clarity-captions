@@ -7,6 +7,7 @@ final class CaptionModel: ObservableObject {
     @Published var state: State = .idle
     @Published var stream = CaptionStream()
     @Published var lag: Double?
+    @Published var diag = ""
     private let engine = TranscriptionEngine()
     private var task: Task<Void, Never>?
 
@@ -23,6 +24,7 @@ final class CaptionModel: ObservableObject {
                 for try await u in updates {
                     stream.apply(text: u.text, isFinal: u.isFinal, speaker: u.speaker)
                     if let l = u.lagSeconds { lag = l }
+                    diag = u.diagnostics
                 }
                 state = .idle
             } catch {
@@ -45,6 +47,7 @@ struct ContentView: View {
         VStack(spacing: 16) {
             // A frozen screen must never look like a crashed app: state is always visible.
             Text(label).font(.headline).foregroundStyle(color)
+            if !model.diag.isEmpty { Text(model.diag).font(.caption2).foregroundStyle(.secondary) }
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
                     ForEach(model.stream.lines) { line in

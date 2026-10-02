@@ -11,6 +11,9 @@ final class LiveDiarizer: @unchecked Sendable {
     private var finalized: [SpeakerSegment] = []
     private var tentative: [SpeakerSegment] = []
     private var failure: Error?
+    private var updates = 0
+    private var speakersSeen = Set<Int>()
+    private var latestEnd = 0.0
 
     func prepare() async throws {
         let models = try await SortformerModels.loadFromHuggingFace(config: .default)
@@ -35,6 +38,14 @@ final class LiveDiarizer: @unchecked Sendable {
         return finalized + tentative
     }
 
+    /// One line for the spike UI: is the diarizer running, how many distinct speakers has it reported?
+    var diagnostics: String {
+        lock.lock(); defer { lock.unlock() }
+        let who = speakersSeen.sorted().map { String($0 + 1) }.joined(separator: ",")
+        let err = failure.map { " ERR \($0)" } ?? ""
+        return "diarizer: \(updates) updates · speakers [\(who)] · heard to \(String(format: "%.1f", latestEnd))s\(err)"
+    }
+
     var lastError: Error? { lock.lock(); defer { lock.unlock() }; return failure }
 
     func finish() { queue.sync { _ = try? diarizer.finalizeSession() } }
@@ -44,7 +55,9 @@ final class LiveDiarizer: @unchecked Sendable {
             SpeakerSegment(speaker: s.speakerIndex, start: Double(s.startTime), end: Double(s.endTime))
         }
         lock.lock(); defer { lock.unlock() }
+        updates += 1
         finalized += update.finalizedSegments.map(convert)
         tentative = update.tentativeSegments.map(convert)
+        for seg in finalized + tentative { speakersSeen.insert(seg.speaker); latestEnd = max(latestEnd, seg.end) }
     }
 }
