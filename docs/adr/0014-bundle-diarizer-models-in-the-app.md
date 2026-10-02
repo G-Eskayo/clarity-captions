@@ -30,3 +30,11 @@ network-dependent and contradict that promise.
 - A fresh clone must run the script once before generating the project.
 - Each platform app bundles its own copy ([[0010]]); the shared core only needs a URL.
 - If the model is missing at runtime the user sees a plain message, never a download attempt.
+
+## Measured (2026-10-02)
+
+- Release `.app` for iOS: **247 MB** with the fp16 model bundled (the model itself is ~241 MB).
+- Clean-audio test with `ModelHub.offlineMode` on and the model loaded from disk: two synthetic
+  voices separated correctly (speaker 1 at 0.0-5.0 s and 12.5-17.4 s, speaker 2 at 5.4-11.9 s and
+  18.0-24.4 s).
+- Not yet verified: first launch on a real phone with networking off.
