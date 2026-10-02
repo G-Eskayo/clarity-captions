@@ -30,3 +30,10 @@ targets:
         INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "Captions turn speech into on-screen text on this device."
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+schemes:
+  CaptionSpike:
+    build:
+      targets:
+        CaptionSpike: all
+    run:
+      config: Release   # latency must be judged on an optimized build, not Debug under the debugger

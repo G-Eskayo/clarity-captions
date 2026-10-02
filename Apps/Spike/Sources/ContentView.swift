@@ -6,6 +6,7 @@ final class CaptionModel: ObservableObject {
     enum State: Equatable { case idle, preparing, listening, failed(String) }
     @Published var state: State = .idle
     @Published var stream = CaptionStream()
+    @Published var lag: Double?
     private let engine = TranscriptionEngine()
     private var task: Task<Void, Never>?
 
@@ -19,7 +20,10 @@ final class CaptionModel: ObservableObject {
             do {
                 let updates = try await engine.start()
                 state = .listening
-                for try await u in updates { stream.apply(text: u.text, isFinal: u.isFinal) }
+                for try await u in updates {
+                    stream.apply(text: u.text, isFinal: u.isFinal)
+                    if let l = u.lagSeconds { lag = l }
+                }
                 state = .idle
             } catch {
                 state = .failed(String(describing: error))
@@ -58,7 +62,7 @@ struct ContentView: View {
         switch model.state {
         case .idle: "Not listening"
         case .preparing: "Getting ready…"
-        case .listening: "Listening"
+        case .listening: model.lag.map { "Listening · lag \(String(format: "%.1f", $0))s" } ?? "Listening"
         case .failed(let m): "Stopped: \(m)"
         }
     }

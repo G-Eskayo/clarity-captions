@@ -1,10 +1,22 @@
 import AVFoundation
+import CoreMedia
 import Foundation
 import Speech
 
 public struct CaptionUpdate: Sendable {
     public let text: String
     public let isFinal: Bool
+    /// Seconds of audio already fed in minus the audio time this result covers up to --
+    /// i.e. how far behind live speech this caption is. Nil if the result carried no time range.
+    public let lagSeconds: Double?
+}
+
+/// Audio seconds fed to the analyzer so far; written on the audio thread, read on the results task.
+final class FedAudioClock: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = 0.0
+    func add(_ seconds: Double) { lock.lock(); value += seconds; lock.unlock() }
+    var seconds: Double { lock.lock(); defer { lock.unlock() }; return value }
 }
 
 public enum TranscriptionError: Error {
@@ -28,8 +40,8 @@ public final class TranscriptionEngine {
         let transcriber = SpeechTranscriber(
             locale: locale,
             transcriptionOptions: [],
-            reportingOptions: [.volatileResults],
-            attributeOptions: []
+            reportingOptions: [.volatileResults, .fastResults],
+            attributeOptions: [.audioTimeRange]
         )
         try await ensureModelInstalled(for: transcriber)
 
@@ -38,6 +50,7 @@ public final class TranscriptionEngine {
         }
         let analyzer = SpeechAnalyzer(modules: [transcriber])
         self.analyzer = analyzer
+        let fed = FedAudioClock()
         let (sequence, builder) = AsyncStream.makeStream(of: AnalyzerInput.self)
         self.inputBuilder = builder
 
@@ -64,8 +77,13 @@ public final class TranscriptionEngine {
                 status.pointee = .haveData
                 return buffer
             }
-            if error == nil { builder.yield(AnalyzerInput(buffer: out)) }
+            if error == nil {
+                fed.add(Double(out.frameLength) / format.sampleRate)
+                builder.yield(AnalyzerInput(buffer: out))
+            }
         }
+        // Load the model before the first word, not on it.
+        try await analyzer.prepareToAnalyze(in: format)
         audioEngine.prepare()
         try audioEngine.start()
         try await analyzer.start(inputSequence: sequence)
@@ -74,7 +92,9 @@ public final class TranscriptionEngine {
             let task = Task {
                 do {
                     for try await result in transcriber.results {
-                        continuation.yield(CaptionUpdate(text: String(result.text.characters), isFinal: result.isFinal))
+                        let end = result.text.runs.compactMap { $0.audioTimeRange?.end.seconds }.max()
+                        let lag = end.map { max(0, fed.seconds - $0) }
+                        continuation.yield(CaptionUpdate(text: String(result.text.characters), isFinal: result.isFinal, lagSeconds: lag))
                     }
                     continuation.finish()
                 } catch {
