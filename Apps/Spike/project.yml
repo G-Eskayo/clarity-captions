@@ -1,0 +1,31 @@
+# XcodeGen spec -- the .xcodeproj is generated, not committed. Spike app: exists to
+# answer far-field mic accuracy on a real device, not to be the product.
+name: CaptionSpike
+options:
+  bundleIdPrefix: com.gileskayo
+  deploymentTarget:
+    iOS: "26.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    # Single source for the user-visible name (ADR 0011). Bundle ID is spike-only.
+    APP_DISPLAY_NAME: "Captions Dev"
+packages:
+  CaptionCore:
+    path: ../../Packages/CaptionCore
+targets:
+  CaptionSpike:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    dependencies:
+      - package: CaptionCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.gileskayo.captionspike
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: "$(APP_DISPLAY_NAME)"
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Captions need the microphone to show what people nearby are saying."
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "Captions turn speech into on-screen text on this device."
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
