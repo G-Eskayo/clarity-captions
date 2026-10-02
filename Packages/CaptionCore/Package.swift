@@ -16,6 +16,9 @@ let package = Package(
             dependencies: [.product(name: "FluidAudio", package: "FluidAudio")],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
-        .testTarget(name: "CaptionCoreTests", dependencies: ["CaptionCore"]),
+        .testTarget(
+            name: "CaptionCoreTests",
+            dependencies: ["CaptionCore", .product(name: "FluidAudio", package: "FluidAudio")]
+        ),
     ]
 )
