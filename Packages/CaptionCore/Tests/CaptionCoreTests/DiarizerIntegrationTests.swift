@@ -26,7 +26,11 @@ final class DiarizerIntegrationTests: XCTestCase {
         var audio: [Float] = []
         for _ in 0..<2 { audio += try synth(voice: "Samantha", text: a) + silence + (try synth(voice: "Daniel", text: b)) + silence }
 
-        let d = LiveDiarizer()
+        let repo = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let model = ProcessInfo.processInfo.environment["CAPTION_DIARIZER_MODEL"].map { URL(fileURLWithPath: $0) }
+            ?? repo.appendingPathComponent("Apps/Spike/Resources/Models/Sortformer_v2.1.mlmodelc")
+        let d = LiveDiarizer(modelURL: model)
         try await d.prepare()
         var i = 0
         while i < audio.count { d.feed(Array(audio[i..<min(i + 1600, audio.count)])); i += 1600 }

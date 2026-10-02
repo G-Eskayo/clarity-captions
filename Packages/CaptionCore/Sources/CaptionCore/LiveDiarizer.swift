@@ -1,10 +1,23 @@
+import CoreML
 import FluidAudio
 import Foundation
 
+public enum DiarizerError: Error, Equatable, CustomStringConvertible {
+    case modelMissing(URL)
+
+    public var description: String {
+        switch self {
+        case .modelMissing(let url):
+            "The speaker-labeling model is missing from the app (expected at \(url.lastPathComponent)). Run scripts/fetch-diarizer-models.sh and rebuild."
+        }
+    }
+}
+
 /// Streaming speaker diarization (ADR 0008) on FluidAudio's Sortformer: 16 kHz mono Float32 in,
-/// speaker segments out. Spike-grade: models are fetched on first use; bundling them so first
-/// launch makes no network call is a separate task.
+/// speaker segments out. The model is a pre-compiled folder shipped inside the app (ADR 0014);
+/// nothing is ever downloaded at runtime.
 final class LiveDiarizer: @unchecked Sendable {
+    private let modelURL: URL
     private let diarizer = SortformerDiarizer(config: .default)
     private let queue = DispatchQueue(label: "caption.diarizer")
     private let lock = NSLock()
@@ -15,9 +28,22 @@ final class LiveDiarizer: @unchecked Sendable {
     private var speakersSeen = Set<Int>()
     private var latestEnd = 0.0
 
+    init(modelURL: URL) {
+        self.modelURL = modelURL
+        // Any code path that still tries to download a model must throw, not reach the network.
+        ModelHub.offlineMode = true
+    }
+
+    /// `config` must match the shipped model variant and precision (fastV2_1, fp16): FluidAudio only
+    /// logs a warning on a mismatch and then diarizes wrongly and slowly.
     func prepare() async throws {
-        let models = try await SortformerModels.loadFromHuggingFace(config: .default)
-        diarizer.initialize(models: models)
+        guard FileManager.default.fileExists(atPath: modelURL.path) else {
+            throw DiarizerError.modelMissing(modelURL)
+        }
+        let configuration = MLModelConfiguration()
+        configuration.computeUnits = .all
+        let model = try await MLModel.load(contentsOf: modelURL, configuration: configuration)
+        diarizer.initialize(models: try SortformerModels(config: .default, main: model))
     }
 
     /// Never blocks the audio thread: inference runs on a serial queue.

@@ -9,7 +9,7 @@ final class CaptionModel: ObservableObject {
     @Published var lag: Double?
     @Published var diag = ""
     @Published var micMode: MicMode = .standard
-    private var engine = TranscriptionEngine()
+    private var engine: TranscriptionEngine?
     private var task: Task<Void, Never>?
 
     func perform(_ action: PrimaryControl.Action) {
@@ -22,7 +22,12 @@ final class CaptionModel: ObservableObject {
 
     private func start() {
         state = .preparing
-        engine = TranscriptionEngine(micMode: micMode)
+        guard let modelURL = Bundle.main.url(forResource: "Sortformer_v2.1", withExtension: "mlmodelc") else {
+            state = .failed("The speaker-labeling model is missing from this build.")
+            return
+        }
+        let engine = TranscriptionEngine(micMode: micMode, diarizerModelURL: modelURL)
+        self.engine = engine
         task = Task {
             do {
                 let updates = try await engine.start()
@@ -42,7 +47,7 @@ final class CaptionModel: ObservableObject {
 
     private func stop() {
         task?.cancel()
-        Task { await engine.stop(); state = .idle; task = nil }
+        Task { await engine?.stop(); state = .idle; task = nil }
     }
 }
 

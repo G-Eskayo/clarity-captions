@@ -47,11 +47,14 @@ public final class TranscriptionEngine {
     private var inputBuilder: AsyncStream<AnalyzerInput>.Continuation?
     private let locale: Locale
     private let micMode: MicMode
-    private let diarizer = LiveDiarizer()
+    private let diarizer: LiveDiarizer
 
-    public init(locale: Locale = Locale(identifier: "en-US"), micMode: MicMode = .standard) {
+    /// `diarizerModelURL` has no default on purpose: the app must say where its bundled speaker model
+    /// lives, so there is no accidental network path (ADR 0014).
+    public init(locale: Locale = Locale(identifier: "en-US"), micMode: MicMode = .standard, diarizerModelURL: URL) {
         self.locale = locale
         self.micMode = micMode
+        self.diarizer = LiveDiarizer(modelURL: diarizerModelURL)
     }
 
     public func start() async throws -> AsyncThrowingStream<CaptionUpdate, Error> {

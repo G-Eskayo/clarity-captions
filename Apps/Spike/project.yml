@@ -17,7 +17,13 @@ targets:
   CaptionSpike:
     type: application
     platform: iOS
-    sources: [Sources]
+    sources:
+      - Sources
+      # Pre-compiled speaker model, fetched by scripts/fetch-diarizer-models.sh (gitignored).
+      # Not optional: `xcodegen generate` fails if it is missing, so a model-less build can't happen quietly.
+      - path: Resources/Models/Sortformer_v2.1.mlmodelc
+        type: folder
+        buildPhase: resources
     dependencies:
       - package: CaptionCore
     settings:
