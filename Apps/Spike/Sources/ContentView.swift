@@ -4,8 +4,7 @@ import SwiftUI
 
 @MainActor
 final class CaptionModel: ObservableObject {
-    enum State: Equatable { case idle, preparing, listening, failed(String) }
-    @Published var state: State = .idle
+    @Published var state: CaptionState = .idle
     @Published var stream = CaptionStream()
     @Published var lag: Double?
     @Published var diag = ""
@@ -13,8 +12,12 @@ final class CaptionModel: ObservableObject {
     private var engine = TranscriptionEngine()
     private var task: Task<Void, Never>?
 
-    func toggle() {
-        if task != nil { stop() } else { start() }
+    func perform(_ action: PrimaryControl.Action) {
+        switch action {
+        case .start: start()
+        case .stop: stop()
+        case .none: break
+        }
     }
 
     private func start() {
@@ -45,24 +48,62 @@ final class CaptionModel: ObservableObject {
 
 struct ContentView: View {
     @StateObject private var model = CaptionModel()
+    /// Developer-only tools (mic mode, diagnostics). Long-press the status text to toggle; never shown by default.
+    @State private var developerTools = false
 
     var body: some View {
-        VStack(spacing: 16) {
-            // A frozen screen must never look like a crashed app: state is always visible.
-            Text(label).font(.headline).foregroundStyle(color)
-            if !model.diag.isEmpty { Text(model.diag).font(.caption2).foregroundStyle(.secondary) }
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 12) {
-                    ForEach(model.stream.lines) { line in
-                        VStack(alignment: .leading, spacing: 2) {
-                            if let sp = line.speaker {
-                                Text("Speaker \(sp + 1)").font(.caption.bold()).foregroundStyle(Self.color(for: sp))
-                            }
-                            Text(line.text).font(.title).opacity(line.isFinal ? 1 : 0.6)
-                        }
-                    }
-                }.frame(maxWidth: .infinity, alignment: .leading)
+        VStack(spacing: 20) {
+            status
+            captions
+            if developerTools { developerPanel }
+            primaryButton
+        }
+        .padding()
+    }
+
+    private var status: some View {
+        VStack(spacing: 4) {
+            Text(StatusWords.headline(for: model.state))
+                .font(.largeTitle.bold())
+                .foregroundStyle(statusColor)
+                .onLongPressGesture(minimumDuration: 1.5) { developerTools.toggle() }
+            if let detail = StatusWords.detail(for: model.state) {
+                Text(detail).font(.footnote).foregroundStyle(.secondary)
             }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var captions: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 16) {
+                ForEach(model.stream.lines) { line in
+                    VStack(alignment: .leading, spacing: 2) {
+                        if let sp = line.speaker {
+                            Text("Speaker \(sp + 1)").font(.headline).foregroundStyle(Self.color(for: sp))
+                        }
+                        Text(line.text).font(.title).opacity(line.isFinal ? 1 : 0.6)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var primaryButton: some View {
+        let control = PrimaryControl.for(model.state)
+        return Button { model.perform(control.action) } label: {
+            Text(control.title)
+                .font(.title.bold())
+                .frame(maxWidth: .infinity, minHeight: 72)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(control.action == .stop ? .red : .accentColor)
+        .disabled(!control.isEnabled)
+    }
+
+    private var developerPanel: some View {
+        VStack(alignment: .leading, spacing: 8) {
             Picker("Mic", selection: $model.micMode) {
                 Text("Raw").tag(MicMode.raw)
                 Text("Standard").tag(MicMode.standard)
@@ -74,23 +115,22 @@ struct ContentView: View {
                 Button("System mic modes (Voice Isolation)…") { AVCaptureDevice.showSystemUserInterface(.microphoneModes) }
                     .font(.footnote)
             }
-            Button(model.state == .idle || isFailed ? "Start" : "Stop") { model.toggle() }
-                .buttonStyle(.borderedProminent).controlSize(.large)
-        }.padding()
+            if let lag = model.lag { Text("lag \(String(format: "%.1f", lag))s").font(.caption2) }
+            if !model.diag.isEmpty { Text(model.diag).font(.caption2).foregroundStyle(.secondary) }
+        }
+        .padding(8)
+        .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private var statusColor: Color {
+        switch model.state {
+        case .failed: .red
+        case .listening: .green
+        default: .primary
+        }
     }
 
     private static func color(for speaker: Int) -> Color {
         [Color.blue, .orange, .purple, .teal][speaker % 4]
     }
-
-    private var isFailed: Bool { if case .failed = model.state { true } else { false } }
-    private var label: String {
-        switch model.state {
-        case .idle: "Not listening"
-        case .preparing: "Getting ready…"
-        case .listening: model.lag.map { "Listening · lag \(String(format: "%.1f", $0))s" } ?? "Listening"
-        case .failed(let m): "Stopped: \(m)"
-        }
-    }
-    private var color: Color { isFailed ? .red : (model.state == .listening ? .green : .secondary) }
 }
