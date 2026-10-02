@@ -11,10 +11,10 @@ final class BundledModelsTests: XCTestCase {
         do {
             try await diarizer.prepare()
             XCTFail("prepare() must throw when the bundled model is absent")
-        } catch let error as DiarizerError {
+        } catch let error as SpeakerModelError {
             XCTAssertEqual(error, .modelMissing(missing))
         } catch {
-            XCTFail("expected DiarizerError.modelMissing, got \(error)")
+            XCTFail("expected SpeakerModelError.modelMissing, got \(error)")
         }
     }
 
@@ -25,7 +25,7 @@ final class BundledModelsTests: XCTestCase {
     }
 
     func testErrorMessageNamesTheProblemInPlainWords() {
-        let e = DiarizerError.modelMissing(URL(fileURLWithPath: "/a/b.mlmodelc"))
+        let e = SpeakerModelError.modelMissing(URL(fileURLWithPath: "/a/b.mlmodelc"))
         XCTAssertTrue(e.description.lowercased().contains("speaker"))
     }
 }

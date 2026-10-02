@@ -2,7 +2,7 @@ import CoreML
 import FluidAudio
 import Foundation
 
-public enum DiarizerError: Error, Equatable, CustomStringConvertible {
+public enum SpeakerModelError: Error, Equatable, CustomStringConvertible {
     case modelMissing(URL)
 
     public var description: String {
@@ -38,7 +38,7 @@ final class LiveDiarizer: @unchecked Sendable {
     /// logs a warning on a mismatch and then diarizes wrongly and slowly.
     func prepare() async throws {
         guard FileManager.default.fileExists(atPath: modelURL.path) else {
-            throw DiarizerError.modelMissing(modelURL)
+            throw SpeakerModelError.modelMissing(modelURL)
         }
         let configuration = MLModelConfiguration()
         configuration.computeUnits = .all
