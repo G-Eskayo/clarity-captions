@@ -1,3 +1,4 @@
+import AVFoundation
 import CaptionCore
 import SwiftUI
 
@@ -8,7 +9,8 @@ final class CaptionModel: ObservableObject {
     @Published var stream = CaptionStream()
     @Published var lag: Double?
     @Published var diag = ""
-    private let engine = TranscriptionEngine()
+    @Published var micMode: MicMode = .standard
+    private var engine = TranscriptionEngine()
     private var task: Task<Void, Never>?
 
     func toggle() {
@@ -17,6 +19,7 @@ final class CaptionModel: ObservableObject {
 
     private func start() {
         state = .preparing
+        engine = TranscriptionEngine(micMode: micMode)
         task = Task {
             do {
                 let updates = try await engine.start()
@@ -59,6 +62,17 @@ struct ContentView: View {
                         }
                     }
                 }.frame(maxWidth: .infinity, alignment: .leading)
+            }
+            Picker("Mic", selection: $model.micMode) {
+                Text("Raw").tag(MicMode.raw)
+                Text("Standard").tag(MicMode.standard)
+                Text("Voice").tag(MicMode.voiceProcessing)
+            }
+            .pickerStyle(.segmented)
+            .disabled(model.state == .listening || model.state == .preparing)
+            if model.micMode == .voiceProcessing {
+                Button("System mic modes (Voice Isolation)…") { AVCaptureDevice.showSystemUserInterface(.microphoneModes) }
+                    .font(.footnote)
             }
             Button(model.state == .idle || isFailed ? "Start" : "Stop") { model.toggle() }
                 .buttonStyle(.borderedProminent).controlSize(.large)

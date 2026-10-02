@@ -23,6 +23,17 @@ final class FedAudioClock: @unchecked Sendable {
     var seconds: Double { lock.lock(); defer { lock.unlock() }; return value }
 }
 
+/// How the phone treats the microphone signal. Spike experiment: which one hears a person 5 ft away
+/// over room noise, and which gives the diarizer separable voices?
+public enum MicMode: String, CaseIterable, Sendable {
+    /// `.measurement`: the system turns OFF its noise/gain processing. Raw, quiet.
+    case raw
+    /// Default recording processing.
+    case standard
+    /// Voice-processing I/O: noise suppression, echo cancel, gain control. Enables the system Voice Isolation picker.
+    case voiceProcessing
+}
+
 public enum TranscriptionError: Error {
     case noCompatibleAudioFormat
     case converterUnavailable
@@ -35,10 +46,12 @@ public final class TranscriptionEngine {
     private var analyzer: SpeechAnalyzer?
     private var inputBuilder: AsyncStream<AnalyzerInput>.Continuation?
     private let locale: Locale
+    private let micMode: MicMode
     private let diarizer = LiveDiarizer()
 
-    public init(locale: Locale = Locale(identifier: "en-US")) {
+    public init(locale: Locale = Locale(identifier: "en-US"), micMode: MicMode = .standard) {
         self.locale = locale
+        self.micMode = micMode
     }
 
     public func start() async throws -> AsyncThrowingStream<CaptionUpdate, Error> {
@@ -63,9 +76,15 @@ public final class TranscriptionEngine {
 
         #if os(iOS)
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.record, mode: .measurement)
+        switch micMode {
+        case .raw: try session.setCategory(.record, mode: .measurement)
+        case .standard: try session.setCategory(.record, mode: .default)
+        case .voiceProcessing: try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
+        }
         try session.setActive(true)
         #endif
+        // Must happen before the tap format is read.
+        if micMode == .voiceProcessing { try audioEngine.inputNode.setVoiceProcessingEnabled(true) }
 
         let input = audioEngine.inputNode
         let inFormat = input.outputFormat(forBus: 0)
