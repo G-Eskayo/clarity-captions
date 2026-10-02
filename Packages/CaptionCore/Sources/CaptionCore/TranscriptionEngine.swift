@@ -9,6 +9,8 @@ public struct CaptionUpdate: Sendable {
     /// Seconds of audio already fed in minus the audio time this result covers up to --
     /// i.e. how far behind live speech this caption is. Nil if the result carried no time range.
     public let lagSeconds: Double?
+    /// 0-based speaker slot for this caption, nil if the diarizer has no overlap with it yet.
+    public let speaker: Int?
 }
 
 /// Audio seconds fed to the analyzer so far; written on the audio thread, read on the results task.
@@ -31,6 +33,7 @@ public final class TranscriptionEngine {
     private var analyzer: SpeechAnalyzer?
     private var inputBuilder: AsyncStream<AnalyzerInput>.Continuation?
     private let locale: Locale
+    private let diarizer = LiveDiarizer()
 
     public init(locale: Locale = Locale(identifier: "en-US")) {
         self.locale = locale
@@ -44,6 +47,8 @@ public final class TranscriptionEngine {
             attributeOptions: [.audioTimeRange]
         )
         try await ensureModelInstalled(for: transcriber)
+        // Ready before the first audio, so both clocks start at the same first sample.
+        try await diarizer.prepare()
 
         guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else {
             throw TranscriptionError.noCompatibleAudioFormat
@@ -62,9 +67,12 @@ public final class TranscriptionEngine {
 
         let input = audioEngine.inputNode
         let inFormat = input.outputFormat(forBus: 0)
-        guard let converter = AVAudioConverter(from: inFormat, to: format) else {
+        guard let converter = AVAudioConverter(from: inFormat, to: format),
+              let diarFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000, channels: 1, interleaved: false),
+              let diarConverter = AVAudioConverter(from: inFormat, to: diarFormat) else {
             throw TranscriptionError.converterUnavailable
         }
+        let diarizer = self.diarizer
         input.installTap(onBus: 0, bufferSize: 4096, format: inFormat) { buffer, _ in
             let ratio = format.sampleRate / inFormat.sampleRate
             let capacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio) + 1024
@@ -76,6 +84,21 @@ public final class TranscriptionEngine {
                 supplied = true
                 status.pointee = .haveData
                 return buffer
+            }
+            // Same tap buffer, second path: 16 kHz mono Float32 for the diarizer.
+            let dCap = AVAudioFrameCount(Double(buffer.frameLength) * 16_000 / inFormat.sampleRate) + 1024
+            if let dOut = AVAudioPCMBuffer(pcmFormat: diarFormat, frameCapacity: dCap) {
+                var dSupplied = false
+                var dError: NSError?
+                diarConverter.convert(to: dOut, error: &dError) { _, status in
+                    if dSupplied { status.pointee = .noDataNow; return nil }
+                    dSupplied = true
+                    status.pointee = .haveData
+                    return buffer
+                }
+                if dError == nil, let ch = dOut.floatChannelData {
+                    diarizer.feed(Array(UnsafeBufferPointer(start: ch[0], count: Int(dOut.frameLength))))
+                }
             }
             if error == nil {
                 fed.add(Double(out.frameLength) / format.sampleRate)
@@ -92,9 +115,13 @@ public final class TranscriptionEngine {
             let task = Task {
                 do {
                     for try await result in transcriber.results {
-                        let end = result.text.runs.compactMap { $0.audioTimeRange?.end.seconds }.max()
+                        let starts = result.text.runs.compactMap { $0.audioTimeRange?.start.seconds }
+                        let ends = result.text.runs.compactMap { $0.audioTimeRange?.end.seconds }
+                        let end = ends.max()
+                        let speaker = (starts.min().flatMap { st in end.map { (st, $0) } })
+                            .flatMap { SpeakerAligner.speaker(start: $0.0, end: $0.1, segments: diarizer.segments) }
                         let lag = end.map { max(0, fed.seconds - $0) }
-                        continuation.yield(CaptionUpdate(text: String(result.text.characters), isFinal: result.isFinal, lagSeconds: lag))
+                        continuation.yield(CaptionUpdate(text: String(result.text.characters), isFinal: result.isFinal, lagSeconds: lag, speaker: speaker))
                     }
                     continuation.finish()
                 } catch {
@@ -110,6 +137,7 @@ public final class TranscriptionEngine {
         audioEngine.stop()
         inputBuilder?.finish()
         try? await analyzer?.finalizeAndFinishThroughEndOfInput()
+        diarizer.finish()
         analyzer = nil
     }
 

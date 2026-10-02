@@ -6,6 +6,8 @@ public struct CaptionLine: Identifiable, Equatable, Sendable {
     public let id: Int
     public var text: String
     public var isFinal: Bool
+    /// 0-based speaker slot within this session, nil until the diarizer has attributed it.
+    public var speaker: Int?
 }
 
 /// The live caption transcript. Pure value type -- no audio, no UI, no platform
@@ -16,15 +18,16 @@ public struct CaptionStream: Sendable {
 
     public init() {}
 
-    public mutating func apply(text: String, isFinal: Bool) {
+    public mutating func apply(text: String, isFinal: Bool, speaker: Int? = nil) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         if var last = lines.last, !last.isFinal {
             last.text = trimmed
             last.isFinal = isFinal
+            last.speaker = speaker ?? last.speaker
             lines[lines.count - 1] = last
         } else {
-            lines.append(CaptionLine(id: nextID, text: trimmed, isFinal: isFinal))
+            lines.append(CaptionLine(id: nextID, text: trimmed, isFinal: isFinal, speaker: speaker))
             nextID += 1
         }
     }

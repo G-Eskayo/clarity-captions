@@ -21,7 +21,7 @@ final class CaptionModel: ObservableObject {
                 let updates = try await engine.start()
                 state = .listening
                 for try await u in updates {
-                    stream.apply(text: u.text, isFinal: u.isFinal)
+                    stream.apply(text: u.text, isFinal: u.isFinal, speaker: u.speaker)
                     if let l = u.lagSeconds { lag = l }
                 }
                 state = .idle
@@ -48,13 +48,22 @@ struct ContentView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
                     ForEach(model.stream.lines) { line in
-                        Text(line.text).font(.title).opacity(line.isFinal ? 1 : 0.6)
+                        VStack(alignment: .leading, spacing: 2) {
+                            if let sp = line.speaker {
+                                Text("Speaker \(sp + 1)").font(.caption.bold()).foregroundStyle(Self.color(for: sp))
+                            }
+                            Text(line.text).font(.title).opacity(line.isFinal ? 1 : 0.6)
+                        }
                     }
                 }.frame(maxWidth: .infinity, alignment: .leading)
             }
             Button(model.state == .idle || isFailed ? "Start" : "Stop") { model.toggle() }
                 .buttonStyle(.borderedProminent).controlSize(.large)
         }.padding()
+    }
+
+    private static func color(for speaker: Int) -> Color {
+        [Color.blue, .orange, .purple, .teal][speaker % 4]
     }
 
     private var isFailed: Bool { if case .failed = model.state { true } else { false } }
