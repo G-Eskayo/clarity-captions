@@ -53,6 +53,20 @@ domain understanding only.
   this kind of UI easily defaults to feeling like a lab test if it isn't deliberately designed
   against.
 
+- **Dim, don't dismiss**: speech the app judges to be background (far, quiet, low confidence) is
+  shown de-emphasized, never silently removed — a missed caption costs a deaf user far more than
+  an extra one. See [[0012]].
+- **Radical simplicity**: usable by an older person with no instructions — one obvious action,
+  minimal buttons, no technical choices exposed. A hard constraint on every screen, not polish.
+  See [[0013]].
+
+## Environments
+
+- **Primary environments**: restaurants, the dinner table, and any sit-down conversation —
+  phone on or near a table, a few people, steady room noise, turn-taking with some overlap. The
+  first user's actual use of her current tool. Far-field "across the room" is secondary. See
+  [[0012]].
+
 ## People
 
 - **Primary user**: whoever has enrolled/set up a given install of the app as its owner — a role,
