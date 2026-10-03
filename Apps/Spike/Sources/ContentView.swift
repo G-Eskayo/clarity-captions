@@ -10,6 +10,9 @@ final class CaptionModel: ObservableObject {
     @Published var diag = ""
     @Published var startup = ""
     @Published var micMode: MicMode = .standard
+    @Published var style: CaptionStyle = CaptionStyleStore().load() {
+        didSet { CaptionStyleStore().save(style) }
+    }
     private var engine: TranscriptionEngine?
     private var task: Task<Void, Never>?
 
@@ -57,15 +60,23 @@ struct ContentView: View {
     @StateObject private var model = CaptionModel()
     /// Developer-only tools (mic mode, diagnostics). Long-press the status text to toggle; never shown by default.
     @State private var developerTools = false
+    @State private var showingLook = false
 
     var body: some View {
         VStack(spacing: 20) {
+            HStack { Spacer(); lookButton }
             status
             captions
             if developerTools { developerPanel }
             primaryButton
         }
         .padding()
+        .sheet(isPresented: $showingLook) { LookSheet(style: $model.style) }
+    }
+
+    private var lookButton: some View {
+        Button { showingLook = true } label: { Label("Change look", systemImage: "textformat.size").font(.headline) }
+            .buttonStyle(.bordered)
     }
 
     private var status: some View {
@@ -89,12 +100,14 @@ struct ContentView: View {
                         if let sp = line.speaker {
                             Text("Speaker \(sp + 1)").font(.headline).foregroundStyle(Self.color(for: sp))
                         }
-                        Text(line.text).font(.title).opacity(line.isFinal ? 1 : 0.6)
+                        Text(line.text).font(model.style.font()).foregroundStyle(model.style.text.color).opacity(line.isFinal ? 1 : 0.6)
                     }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding()
         }
+        .background(model.style.background.color, in: RoundedRectangle(cornerRadius: 12))
     }
 
     private var primaryButton: some View {
