@@ -104,19 +104,21 @@ struct ContentView: View {
         }
     }
 
-    /// Landscape: captions take the wide left side; a narrow column on the right holds the controls.
+    /// Landscape: a thin top bar (state in the middle, Change look at the right), captions across everything
+    /// below it, and the stop / start control in the bottom-right corner, so text gets the most room.
     private var landscapeLayout: some View {
-        HStack(alignment: .top, spacing: 20) {
-            captions
-            VStack(alignment: .trailing, spacing: 14) {
-                if control.presentation == .compact { compactStop } else { largeButton }
-                lookButton
-                status(font: .title2)
-                Spacer(minLength: 0)
-                if developerTools { developerPanel }
+        ZStack(alignment: .bottomTrailing) {
+            VStack(spacing: 8) {
+                ZStack {
+                    status(font: .title3)
+                    HStack { Spacer(); lookButton }
+                }
+                // Leave the corner free so the control never sits on top of text.
+                captions.padding(.trailing, control.presentation == .compact ? PrimaryControl.compactDiameter + 16 : 236)
             }
-            .frame(width: 210)
+            if control.presentation == .compact { compactStop } else { largeButton.frame(width: 220) }
         }
+        .overlay(alignment: .bottomLeading) { if developerTools { developerPanel.frame(maxWidth: 360) } }
     }
 
     /// The small circle with an X that Stop becomes while captioning.
