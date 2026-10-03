@@ -38,7 +38,8 @@ final class CaptionModel: ObservableObject {
                 startup = engine.startupReport
                 state = .listening
                 for try await u in updates {
-                    stream.apply(text: u.text, isFinal: u.isFinal, speaker: u.speaker)
+                    let range = zip(u.startSeconds, u.endSeconds).map { $0 <= $1 ? $0...$1 : nil } ?? nil
+                    stream.apply(text: u.text, isFinal: u.isFinal, speaker: u.speaker, range: range)
                     if let l = u.lagSeconds { lag = l }
                     diag = u.diagnostics
                 }

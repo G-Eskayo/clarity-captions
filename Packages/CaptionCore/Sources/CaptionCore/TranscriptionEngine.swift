@@ -11,6 +11,9 @@ public struct CaptionUpdate: Sendable {
     public let lagSeconds: Double?
     /// 0-based speaker slot for this caption, nil if the diarizer has no overlap with it yet.
     public let speaker: Int?
+    /// Audio-time span this caption covers, in seconds; nil if the result carried no time range.
+    public let startSeconds: Double?
+    public let endSeconds: Double?
     /// Spike-only: live diarizer health line.
     public let diagnostics: String
 }
@@ -161,7 +164,7 @@ public final class TranscriptionEngine {
                         let speaker = (starts.min().flatMap { st in end.map { (st, $0) } })
                             .flatMap { SpeakerAligner.speaker(start: $0.0, end: $0.1, segments: diarizer.segments) }
                         let lag = end.map { max(0, fed.seconds - $0) }
-                        continuation.yield(CaptionUpdate(text: String(result.text.characters), isFinal: result.isFinal, lagSeconds: lag, speaker: speaker, diagnostics: diarizer.diagnostics))
+                        continuation.yield(CaptionUpdate(text: String(result.text.characters), isFinal: result.isFinal, lagSeconds: lag, speaker: speaker, startSeconds: starts.min(), endSeconds: end, diagnostics: diarizer.diagnostics))
                     }
                     continuation.finish()
                 } catch {
