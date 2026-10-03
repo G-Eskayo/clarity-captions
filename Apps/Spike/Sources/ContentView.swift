@@ -67,25 +67,68 @@ struct ContentView: View {
     @State private var following = true
     @State private var userDragging = false
 
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+
     private var style: CaptionStyle { model.style }
+    private var control: PrimaryControl { PrimaryControl.for(model.state) }
+    private var landscape: Bool { verticalSizeClass == .compact }
 
     var body: some View {
         ZStack {
             style.background.color.ignoresSafeArea()
-            VStack(spacing: 20) {
-                HStack { Spacer(); lookButton }
-                status
-                captions
-                if developerTools { developerPanel }
-                primaryButton
-            }
-            .padding()
+            Group { landscape ? AnyView(landscapeLayout) : AnyView(portraitLayout) }
+                .padding()
         }
         // One look for the whole app: background, text, controls and the system's own chrome all follow it.
         .foregroundStyle(style.text.color)
         .tint(style.text.color)
         .preferredColorScheme(style.background.isDark ? .dark : .light)
+        .animation(.snappy, value: control.presentation)
         .sheet(isPresented: $showingLook) { LookSheet(style: $model.style) }
+    }
+
+    /// Portrait: look and (while captioning) the small stop circle share the top row; the bottom button row
+    /// only exists when it is a big Start / Try again, so captions get the freed space.
+    private var portraitLayout: some View {
+        VStack(spacing: 20) {
+            HStack {
+                lookButton
+                Spacer()
+                if control.presentation == .compact { compactStop }
+            }
+            status(font: .largeTitle)
+            captions
+            if developerTools { developerPanel }
+            if control.presentation == .large { largeButton }
+        }
+    }
+
+    /// Landscape: captions take the wide left side; a narrow column on the right holds the controls.
+    private var landscapeLayout: some View {
+        HStack(alignment: .top, spacing: 20) {
+            captions
+            VStack(alignment: .trailing, spacing: 14) {
+                if control.presentation == .compact { compactStop } else { largeButton }
+                lookButton
+                status(font: .title2)
+                Spacer(minLength: 0)
+                if developerTools { developerPanel }
+            }
+            .frame(width: 210)
+        }
+    }
+
+    /// The small circle with an X that Stop becomes while captioning.
+    private var compactStop: some View {
+        Button { model.perform(.stop) } label: {
+            Image(systemName: "xmark")
+                .font(.title2.bold())
+                .foregroundStyle(.white)
+                .frame(width: PrimaryControl.compactDiameter, height: PrimaryControl.compactDiameter)
+                .background(Color(red: 0.80, green: 0.12, blue: 0.12), in: Circle())
+        }
+        .accessibilityLabel(control.accessibilityLabel)
+        .transition(.scale.combined(with: .opacity))
     }
 
     private var lookButton: some View {
@@ -93,10 +136,10 @@ struct ContentView: View {
             .buttonStyle(.bordered)
     }
 
-    private var status: some View {
+    private func status(font: Font) -> some View {
         VStack(spacing: 4) {
             Text(StatusWords.headline(for: model.state))
-                .font(.largeTitle.bold())
+                .font(font.bold())
                 .onLongPressGesture(minimumDuration: 1.5) { developerTools.toggle() }
             if let detail = StatusWords.detail(for: model.state) {
                 Text(detail).font(.footnote).opacity(0.7)
@@ -142,18 +185,17 @@ struct ContentView: View {
         }
     }
 
-    private var primaryButton: some View {
-        let control = PrimaryControl.for(model.state)
-        let stop = control.action == .stop
-        return Button { model.perform(control.action) } label: {
+    /// The big Start / Try again / Getting ready button (Stop is the compact circle while captioning).
+    private var largeButton: some View {
+        Button { model.perform(control.action) } label: {
             Text(control.title)
                 .font(.title.bold())
                 .frame(maxWidth: .infinity, minHeight: 72)
         }
         .buttonStyle(.borderedProminent)
-        // Filled in the text color with label in the background color keeps the 7:1 contrast of the look; Stop is red with white.
-        .tint(stop ? Color(red: 0.80, green: 0.12, blue: 0.12) : style.text.color)
-        .foregroundStyle(stop ? Color.white : style.background.color)
+        // Filled in the text color with the label in the background color keeps the look's 7:1 contrast.
+        .tint(style.text.color)
+        .foregroundStyle(style.background.color)
         .disabled(!control.isEnabled)
     }
 

@@ -82,15 +82,18 @@ final class FirstRunModel: ObservableObject {
 
 struct FirstRunView: View {
     @ObservedObject var model: FirstRunModel
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     var body: some View {
         let copy = FirstRunCopy.for(model.step)
-        VStack(spacing: 28) {
+        let compact = verticalSizeClass == .compact
+        // Scrolls when sideways (landscape is short), and fills the screen otherwise.
+        GeometryReader { geo in ScrollView { VStack(spacing: compact ? 14 : 28) {
             Spacer()
             Image(systemName: symbol)
-                .font(.system(size: 72))
+                .font(.system(size: compact ? 36 : 72))
                 .foregroundStyle(.white)
-                .frame(width: 150, height: 150)
+                .frame(width: compact ? 72 : 150, height: compact ? 72 : 150)
                 .background(LinearGradient(colors: [.blue, .teal], startPoint: .topLeading, endPoint: .bottomTrailing), in: Circle())
                 .symbolEffect(.pulse, isActive: model.step == .speechModel || model.step == .speakerModel)
                 .accessibilityHidden(true)
@@ -110,7 +113,9 @@ struct FirstRunView: View {
             }
             Spacer()
         }
-        .padding(24)
+        .frame(maxWidth: .infinity, minHeight: geo.size.height)
+        .padding(24) }
+        .scrollBounceBehavior(.basedOnSize) }
     }
 
     private func bigButton(_ title: String, action: @escaping () -> Void) -> some View {
