@@ -37,15 +37,19 @@ public struct CaptionStream: Sendable {
         guard !piece.isEmpty else { return }
 
         if var last = lines.last {
-            // A revision of the segment still being spoken replaces the tail.
-            if let tailRange = last.tailRange ?? (last.tail != nil ? range : nil),
-               last.tail != nil, range == nil || range!.lowerBound < tailRange.upperBound {
-                if isFinal { last.committed = Self.join(last.committed, piece); last.tail = nil; last.tailRange = nil }
-                else { last.tail = piece; last.tailRange = range ?? last.tailRange }
-                if let r = range { last.endTime = r.upperBound }
-                last.speaker = speaker ?? last.speaker
-                lines[lines.count - 1] = last
-                return
+            // A revision of the segment still being spoken replaces the tail. Without timing, any result
+            // arriving while a tail is open is a revision; with timing, it must start before the tail ends.
+            if last.tail != nil {
+                let revises: Bool
+                if let r = range, let tr = last.tailRange { revises = r.lowerBound < tr.upperBound } else { revises = true }
+                if revises {
+                    if isFinal { last.committed = Self.join(last.committed, piece); last.tail = nil; last.tailRange = nil }
+                    else { last.tail = piece; last.tailRange = range ?? last.tailRange }
+                    if let r = range { last.endTime = r.upperBound }
+                    last.speaker = speaker ?? last.speaker
+                    lines[lines.count - 1] = last
+                    return
+                }
             }
             if last.tail == nil, range == nil {
                 // No timing information: each finished result closes its line.
