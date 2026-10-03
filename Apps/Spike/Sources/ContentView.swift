@@ -61,16 +61,29 @@ struct ContentView: View {
     /// Developer-only tools (mic mode, diagnostics). Long-press the status text to toggle; never shown by default.
     @State private var developerTools = false
     @State private var showingLook = false
+    @State private var position = ScrollPosition(edge: .bottom)
+    /// Following the newest caption. Stops only when the user drags away; resumes at the bottom or via "Jump to latest".
+    @State private var following = true
+    @State private var userDragging = false
+
+    private var style: CaptionStyle { model.style }
 
     var body: some View {
-        VStack(spacing: 20) {
-            HStack { Spacer(); lookButton }
-            status
-            captions
-            if developerTools { developerPanel }
-            primaryButton
+        ZStack {
+            style.background.color.ignoresSafeArea()
+            VStack(spacing: 20) {
+                HStack { Spacer(); lookButton }
+                status
+                captions
+                if developerTools { developerPanel }
+                primaryButton
+            }
+            .padding()
         }
-        .padding()
+        // One look for the whole app: background, text, controls and the system's own chrome all follow it.
+        .foregroundStyle(style.text.color)
+        .tint(style.text.color)
+        .preferredColorScheme(style.background.isDark ? .dark : .light)
         .sheet(isPresented: $showingLook) { LookSheet(style: $model.style) }
     }
 
@@ -83,42 +96,63 @@ struct ContentView: View {
         VStack(spacing: 4) {
             Text(StatusWords.headline(for: model.state))
                 .font(.largeTitle.bold())
-                .foregroundStyle(statusColor)
                 .onLongPressGesture(minimumDuration: 1.5) { developerTools.toggle() }
             if let detail = StatusWords.detail(for: model.state) {
-                Text(detail).font(.footnote).foregroundStyle(.secondary)
+                Text(detail).font(.footnote).opacity(0.7)
             }
         }
         .accessibilityElement(children: .combine)
     }
 
     private var captions: some View {
-        ScrollView {
+        let palette = SpeakerPalette.colors(on: style.background, text: style.text).map(\.color)
+        return ScrollView {
             LazyVStack(alignment: .leading, spacing: 16) {
                 ForEach(model.stream.lines) { line in
                     VStack(alignment: .leading, spacing: 2) {
                         if let sp = line.speaker {
-                            Text("Speaker \(sp + 1)").font(.headline).foregroundStyle(Self.color(for: sp))
+                            Text("Speaker \(sp + 1)").font(.headline).foregroundStyle(palette[sp % palette.count])
                         }
-                        Text(line.text).font(model.style.font()).foregroundStyle(model.style.text.color).opacity(line.isFinal ? 1 : 0.6)
+                        Text(line.text).font(style.font()).opacity(line.isFinal ? 1 : 0.6)
                     }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding()
+            .padding(.vertical, 8)
         }
-        .background(model.style.background.color, in: RoundedRectangle(cornerRadius: 12))
+        .scrollPosition($position)
+        .onScrollPhaseChange { _, phase in userDragging = (phase == .interacting || phase == .decelerating) }
+        .onScrollGeometryChange(for: Bool.self) { g in
+            AutoScroll.shouldFollow(offsetY: g.contentOffset.y, viewportHeight: g.containerSize.height, contentHeight: g.contentSize.height)
+        } action: { _, atBottom in
+            if atBottom { following = true } else if userDragging { following = false }
+        }
+        .onChange(of: model.stream.lines) { if following { position.scrollTo(edge: .bottom) } }
+        .overlay(alignment: .bottom) {
+            if !following {
+                Button {
+                    following = true
+                    withAnimation { position.scrollTo(edge: .bottom) }
+                } label: { Label("Jump to latest", systemImage: "arrow.down.circle.fill").font(.title3.bold()).padding(.horizontal, 8).frame(minHeight: 48) }
+                    .buttonStyle(.borderedProminent)
+                    .foregroundStyle(style.background.color)
+                    .padding(.bottom, 8)
+            }
+        }
     }
 
     private var primaryButton: some View {
         let control = PrimaryControl.for(model.state)
+        let stop = control.action == .stop
         return Button { model.perform(control.action) } label: {
             Text(control.title)
                 .font(.title.bold())
                 .frame(maxWidth: .infinity, minHeight: 72)
         }
         .buttonStyle(.borderedProminent)
-        .tint(control.action == .stop ? .red : .accentColor)
+        // Filled in the text color with label in the background color keeps the 7:1 contrast of the look; Stop is red with white.
+        .tint(stop ? Color(red: 0.80, green: 0.12, blue: 0.12) : style.text.color)
+        .foregroundStyle(stop ? Color.white : style.background.color)
         .disabled(!control.isEnabled)
     }
 
@@ -137,21 +171,9 @@ struct ContentView: View {
             }
             if let lag = model.lag { Text("lag \(String(format: "%.1f", lag))s").font(.caption2) }
             if !model.startup.isEmpty { Text("startup: \(model.startup)").font(.caption2) }
-            if !model.diag.isEmpty { Text(model.diag).font(.caption2).foregroundStyle(.secondary) }
+            if !model.diag.isEmpty { Text(model.diag).font(.caption2).opacity(0.7) }
         }
         .padding(8)
         .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
-    }
-
-    private var statusColor: Color {
-        switch model.state {
-        case .failed: .red
-        case .listening: .green
-        default: .primary
-        }
-    }
-
-    private static func color(for speaker: Int) -> Color {
-        [Color.blue, .orange, .purple, .teal][speaker % 4]
     }
 }

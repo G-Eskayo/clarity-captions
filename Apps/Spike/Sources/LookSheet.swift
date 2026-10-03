@@ -32,11 +32,15 @@ struct LookSheet: View {
                     section("Lettering") { fontRow }
                 }
                 .padding()
+                .foregroundStyle(style.text.color)
             }
+            .containerBackground(style.background.color, for: .navigation)
             .navigationTitle("Change look")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.font(.headline) } }
         }
+        .tint(style.text.color)
+        .preferredColorScheme(style.background.isDark ? .dark : .light)
     }
 
     private var preview: some View {

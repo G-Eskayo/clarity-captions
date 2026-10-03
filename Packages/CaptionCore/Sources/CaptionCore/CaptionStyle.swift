@@ -15,6 +15,9 @@ public struct RGBA: Codable, Equatable, Sendable {
         return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
     }
 
+    /// True for dark backgrounds, so the whole app can switch its system controls to match.
+    public var isDark: Bool { luminance < 0.4 }
+
     /// WCAG contrast ratio, 1...21. 7 is the AAA bar for normal text.
     public static func contrast(_ a: RGBA, _ b: RGBA) -> Double {
         let (hi, lo) = (max(a.luminance, b.luminance), min(a.luminance, b.luminance))
@@ -96,5 +99,25 @@ public struct CaptionStyleStore {
 
     public func save(_ style: CaptionStyle) {
         if let data = try? JSONEncoder().encode(style) { defaults.set(data, forKey: Self.key) }
+    }
+}
+
+/// Speaker label colors that stay readable on whatever look is chosen. Dark backgrounds get light tints,
+/// light backgrounds get deep shades; any color that still falls short of 4.5:1 is replaced by the text color
+/// nudged toward the background, so the labels stay distinguishable by wording even then.
+public enum SpeakerPalette {
+    private static let onDark: [RGBA] = [RGBA(0.45, 0.70, 1.0), RGBA(1.0, 0.65, 0.30), RGBA(0.80, 0.60, 1.0), RGBA(0.35, 0.85, 0.80)]
+    private static let onLight: [RGBA] = [RGBA(0.05, 0.25, 0.65), RGBA(0.65, 0.25, 0.0), RGBA(0.40, 0.10, 0.60), RGBA(0.0, 0.40, 0.38)]
+
+    public static func colors(on background: RGBA, text: RGBA) -> [RGBA] {
+        let candidates = background.isDark ? onDark : onLight
+        return candidates.enumerated().map { i, c in
+            if RGBA.contrast(c, background) >= 4.5 { return c }
+            // Fallback keeps contrast by staying close to the (already high-contrast) text color.
+            let d = Double(i) * 0.02
+            return RGBA(min(1, max(0, text.r + (background.isDark ? -d : d))),
+                        min(1, max(0, text.g + (background.isDark ? -d : d))),
+                        min(1, max(0, text.b + (background.isDark ? -d : d))))
+        }
     }
 }

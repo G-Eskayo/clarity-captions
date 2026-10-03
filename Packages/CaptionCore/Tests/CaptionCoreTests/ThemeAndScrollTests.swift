@@ -4,9 +4,9 @@ import XCTest
 /// A look restyles the whole app, so everything drawn on it must stay readable on every look.
 final class ThemeTests: XCTestCase {
     func testDarkAndLightBackgroundsAreTold() {
-        XCTAssertTrue(CaptionPreset.all.first { $0.id == "classic" }!.background.isDark)
-        XCTAssertTrue(CaptionPreset.all.first { $0.id == "night" }!.background.isDark)
-        XCTAssertFalse(CaptionPreset.all.first { $0.id == "paper" }!.background.isDark)
+        XCTAssertTrue(CaptionPreset.all.first(where: { $0.id == "classic" })!.background.isDark)
+        XCTAssertTrue(CaptionPreset.all.first(where: { $0.id == "night" })!.background.isDark)
+        XCTAssertFalse(CaptionPreset.all.first(where: { $0.id == "paper" })!.background.isDark)
     }
 
     func testSpeakerColorsAreReadableOnEveryLook() {
