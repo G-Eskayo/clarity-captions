@@ -1,0 +1,147 @@
+import AVFoundation
+import CaptionCore
+import SwiftUI
+import UIKit
+
+@MainActor
+final class FirstRunModel: ObservableObject {
+    @Published var step: FirstRunStep = .welcome
+    @Published var progress = 0.0
+    @Published var problem: String?
+    /// True once there is nothing left to set up, and the main screen can take over.
+    @Published var finished = false
+    private var sawSetupScreen = false
+    private var working = false
+    private let store = FirstRunStore()
+
+    private var buildKey: String {
+        let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
+        return "\(ProcessInfo.processInfo.operatingSystemVersionString) / \(v)"
+    }
+
+    private var modelURL: URL? { Bundle.main.url(forResource: "Sortformer_v2.1", withExtension: "mlmodelc") }
+
+    /// Re-reads the facts and shows the right screen. Called on launch and whenever the app comes back to the front.
+    func refresh() async {
+        let mic: MicrophoneAccess = switch AVAudioApplication.shared.recordPermission {
+        case .granted: .granted
+        case .denied: .denied
+        default: .undetermined
+        }
+        let facts = FirstRunFacts(
+            hasSeenWelcome: store.hasSeenWelcome,
+            microphone: mic,
+            speechModelInstalled: await SpeechModelInstaller.isInstalled(),
+            speakerModelWarm: store.isSpeakerModelWarm(forBuild: buildKey))
+        let next = FirstRun.step(for: facts)
+        step = next
+        if next == .done && !sawSetupScreen { finished = true; return }
+        sawSetupScreen = true
+        await runAutomaticStep()
+    }
+
+    private func runAutomaticStep() async {
+        guard !working else { return }
+        switch step {
+        case .speechModel:
+            working = true; problem = nil; progress = 0
+            do { try await SpeechModelInstaller.install { p in Task { @MainActor in self.progress = p } } }
+            catch { problem = "I couldn't finish the download. Check that Wi-Fi is on, then try again." }
+            working = false
+            if problem == nil { await refresh() }
+        case .speakerModel:
+            working = true; problem = nil
+            do {
+                guard let url = modelURL else { throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc")) }
+                try await TranscriptionEngine.warmUp(diarizerModelURL: url)
+                store.markSpeakerModelWarm(forBuild: buildKey)
+            } catch { problem = "Something went wrong while getting ready. Please try again." }
+            working = false
+            if problem == nil { await refresh() }
+        default: break
+        }
+    }
+
+    func primaryTapped() {
+        switch step {
+        case .welcome:
+            store.markWelcomeSeen()
+            Task { await refresh() }
+        case .microphone:
+            Task { _ = await AVAudioApplication.requestRecordPermission(); await refresh() }
+        case .microphoneDenied:
+            if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+        case .done:
+            finished = true
+        default: break
+        }
+    }
+
+    func retry() { problem = nil; Task { await refresh() } }
+}
+
+struct FirstRunView: View {
+    @ObservedObject var model: FirstRunModel
+
+    var body: some View {
+        let copy = FirstRunCopy.for(model.step)
+        VStack(spacing: 28) {
+            Spacer()
+            Image(systemName: symbol)
+                .font(.system(size: 72))
+                .foregroundStyle(.white)
+                .frame(width: 150, height: 150)
+                .background(LinearGradient(colors: [.blue, .teal], startPoint: .topLeading, endPoint: .bottomTrailing), in: Circle())
+                .symbolEffect(.pulse, isActive: model.step == .speechModel || model.step == .speakerModel)
+                .accessibilityHidden(true)
+            Text(copy.title).font(.largeTitle.bold()).multilineTextAlignment(.center)
+            Text(copy.message).font(.title3).multilineTextAlignment(.center).foregroundStyle(.secondary)
+            if model.step == .speechModel && model.problem == nil {
+                ProgressView(value: model.progress).padding(.horizontal, 40)
+                Text("\(Int(model.progress * 100))%").font(.headline).monospacedDigit()
+            } else if model.step == .speakerModel && model.problem == nil {
+                ProgressView().controlSize(.large)
+            }
+            if let problem = model.problem {
+                Text(problem).font(.headline).foregroundStyle(.red).multilineTextAlignment(.center)
+                bigButton("Try again") { model.retry() }
+            } else if let button = copy.button {
+                bigButton(button) { model.primaryTapped() }
+            }
+            Spacer()
+        }
+        .padding(24)
+    }
+
+    private func bigButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) { Text(title).font(.title2.bold()).frame(maxWidth: .infinity, minHeight: 72) }
+            .buttonStyle(.borderedProminent)
+    }
+
+    private var symbol: String {
+        switch model.step {
+        case .welcome: "hand.wave.fill"
+        case .microphone: "mic.fill"
+        case .microphoneDenied: "mic.slash.fill"
+        case .speechModel: "character.bubble.fill"
+        case .speakerModel: "person.2.wave.2.fill"
+        case .done: "checkmark.circle.fill"
+        }
+    }
+}
+
+/// First run until there is nothing left to set up, then the main screen.
+struct RootView: View {
+    @StateObject private var firstRun = FirstRunModel()
+    @Environment(\.scenePhase) private var scenePhase
+
+    var body: some View {
+        Group {
+            if firstRun.finished { ContentView() } else { FirstRunView(model: firstRun) }
+        }
+        .task { await firstRun.refresh() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { await firstRun.refresh() } }
+        }
+    }
+}

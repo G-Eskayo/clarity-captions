@@ -183,10 +183,12 @@ public final class TranscriptionEngine {
 
     /// The one-time, system-provisioned model fetch noted in CONTEXT.md "On-device only".
     private func ensureModelInstalled(for transcriber: SpeechTranscriber) async throws {
-        let installed = await SpeechTranscriber.installedLocales
-        if installed.contains(where: { $0.identifier(.bcp47) == locale.identifier(.bcp47) }) { return }
-        if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
-            try await request.downloadAndInstall()
-        }
+        try await SpeechModelInstaller.install(locale: locale) { _ in }
+    }
+
+    /// Loads the speaker model once and discards it, so Core ML's one-time Neural Engine preparation
+    /// happens during first run instead of the first time someone taps Start.
+    public static func warmUp(diarizerModelURL: URL) async throws {
+        try await LiveDiarizer(modelURL: diarizerModelURL).prepare()
     }
 }
