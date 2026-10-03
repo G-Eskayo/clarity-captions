@@ -48,6 +48,8 @@ public final class TranscriptionEngine {
     private let locale: Locale
     private let micMode: MicMode
     private let diarizer: LiveDiarizer
+    /// Spike-only: how long each startup step took, for the developer panel. Measured, not guessed.
+    public private(set) var startupReport = ""
 
     /// `diarizerModelURL` has no default on purpose: the app must say where its bundled speaker model
     /// lives, so there is no accidental network path (ADR 0014).
@@ -58,6 +60,15 @@ public final class TranscriptionEngine {
     }
 
     public func start() async throws -> AsyncThrowingStream<CaptionUpdate, Error> {
+        let clock = ContinuousClock()
+        var mark = clock.now
+        var laps: [String] = []
+        func lap(_ name: String) {
+            let now = clock.now
+            let d = now - mark
+            laps.append("\(name) \(String(format: "%.1f", Double(d.components.seconds) + Double(d.components.attoseconds) / 1e18))s")
+            mark = now
+        }
         let transcriber = SpeechTranscriber(
             locale: locale,
             transcriptionOptions: [],
@@ -65,8 +76,10 @@ public final class TranscriptionEngine {
             attributeOptions: [.audioTimeRange]
         )
         try await ensureModelInstalled(for: transcriber)
+        lap("speech model")
         // Ready before the first audio, so both clocks start at the same first sample.
         try await diarizer.prepare()
+        lap("speaker model")
 
         guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else {
             throw TranscriptionError.noCompatibleAudioFormat
@@ -131,9 +144,12 @@ public final class TranscriptionEngine {
         }
         // Load the model before the first word, not on it.
         try await analyzer.prepareToAnalyze(in: format)
+        lap("analyzer")
         audioEngine.prepare()
         try audioEngine.start()
         try await analyzer.start(inputSequence: sequence)
+        lap("audio start")
+        startupReport = laps.joined(separator: " · ")
 
         return AsyncThrowingStream { continuation in
             let task = Task {

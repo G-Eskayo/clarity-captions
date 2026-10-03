@@ -8,6 +8,7 @@ final class CaptionModel: ObservableObject {
     @Published var stream = CaptionStream()
     @Published var lag: Double?
     @Published var diag = ""
+    @Published var startup = ""
     @Published var micMode: MicMode = .standard
     private var engine: TranscriptionEngine?
     private var task: Task<Void, Never>?
@@ -31,6 +32,7 @@ final class CaptionModel: ObservableObject {
         task = Task {
             do {
                 let updates = try await engine.start()
+                startup = engine.startupReport
                 state = .listening
                 for try await u in updates {
                     stream.apply(text: u.text, isFinal: u.isFinal, speaker: u.speaker)
@@ -121,6 +123,7 @@ struct ContentView: View {
                     .font(.footnote)
             }
             if let lag = model.lag { Text("lag \(String(format: "%.1f", lag))s").font(.caption2) }
+            if !model.startup.isEmpty { Text("startup: \(model.startup)").font(.caption2) }
             if !model.diag.isEmpty { Text(model.diag).font(.caption2).foregroundStyle(.secondary) }
         }
         .padding(8)
