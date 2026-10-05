@@ -88,17 +88,19 @@ struct ContentView: View {
         .sheet(isPresented: $showingLook) { LookSheet(style: $model.style) }
     }
 
-    /// Portrait: look and (while captioning) the small stop circle share the top row; the bottom button row
-    /// only exists when it is a big Start / Try again, so captions get the freed space.
+    /// Portrait: Change look sits in the top row; while captioning, Stop is a small circle at the bottom right,
+    /// and the bottom button row only exists when it is a big Start / Try again, so captions get the space.
     private var portraitLayout: some View {
         VStack(spacing: 20) {
             HStack {
                 lookButton
                 Spacer()
-                if control.presentation == .compact { compactStop }
             }
             status(font: .largeTitle)
-            captions
+            // Captions use the full height; the stop circle floats at the bottom right, and the scroll content
+            // keeps a margin below the newest line so it never sits under the circle.
+            captions(bottomReserve: control.presentation == .compact ? PrimaryControl.compactDiameter + 20 : 0)
+                .overlay(alignment: .bottomTrailing) { if control.presentation == .compact { compactStop } }
             if developerTools { developerPanel }
             if control.presentation == .large { largeButton }
         }
@@ -114,7 +116,7 @@ struct ContentView: View {
                     HStack { Spacer(); lookButton }
                 }
                 // Leave the corner free so the control never sits on top of text.
-                captions.padding(.trailing, control.presentation == .compact ? PrimaryControl.compactDiameter + 16 : 236)
+                captions().padding(.trailing, control.presentation == .compact ? PrimaryControl.compactDiameter + 16 : 236)
             }
             if control.presentation == .compact { compactStop } else { largeButton.frame(width: 220) }
         }
@@ -151,7 +153,7 @@ struct ContentView: View {
         .accessibilityElement(children: .combine)
     }
 
-    private var captions: some View {
+    private func captions(bottomReserve: CGFloat = 0) -> some View {
         let palette = SpeakerPalette.colors(on: style.background, text: style.text).map(\.color)
         return ScrollView {
             LazyVStack(alignment: .leading, spacing: 16) {
@@ -168,6 +170,7 @@ struct ContentView: View {
             .padding(.vertical, 8)
         }
         .scrollPosition($position)
+        .contentMargins(.bottom, bottomReserve, for: .scrollContent)
         .onScrollPhaseChange { _, phase in userDragging = (phase == .interacting || phase == .decelerating) }
         .onScrollGeometryChange(for: Bool.self) { g in
             AutoScroll.shouldFollow(offsetY: g.contentOffset.y, viewportHeight: g.containerSize.height, contentHeight: g.contentSize.height)
