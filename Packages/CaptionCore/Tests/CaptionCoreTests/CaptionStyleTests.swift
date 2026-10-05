@@ -21,22 +21,37 @@ final class CaptionStyleTests: XCTestCase {
 
     func testApplyingAPresetKeepsSizeAndFont() {
         var style = CaptionStyle.standard
-        style.size = .extraLarge
+        style.size = .largest
         style.font = .serif
         let changed = style.applying(CaptionPreset.all[1])
         XCTAssertEqual(changed.background, CaptionPreset.all[1].background)
         XCTAssertEqual(changed.text, CaptionPreset.all[1].text)
-        XCTAssertEqual(changed.size, .extraLarge)
+        XCTAssertEqual(changed.size, .largest)
         XCTAssertEqual(changed.font, .serif)
     }
 
     func testSizeStepsAreIncreasingAndClampAtTheEnds() {
-        let points = CaptionTextSize.allCases.map(\.points)
-        XCTAssertEqual(points, points.sorted())
-        XCTAssertEqual(Set(points).count, points.count)
-        XCTAssertEqual(CaptionTextSize.extraLarge.larger(), .extraLarge)
-        XCTAssertEqual(CaptionTextSize.small.smaller(), .small)
+        XCTAssertEqual(CaptionTextSize.largest.larger(), .largest)
+        XCTAssertEqual(CaptionTextSize.smallest.smaller(), .smallest)
         XCTAssertEqual(CaptionTextSize.medium.larger(), .large)
+        XCTAssertEqual(CaptionTextSize.medium.smaller(), .small)
+    }
+
+    func testMediumStepEqualsSystemDefaultAtLarge() {
+        let result = CaptionTextSize.medium.pointSize(for: .large)
+        XCTAssertEqual(result, 28, accuracy: 0.01)
+    }
+
+    func testSizeStepsAreMonotonicAcrossEveryCategory() {
+        for category in SystemTextSizeCategory.allCases {
+            let points = CaptionTextSize.allCases.map { size in size.pointSize(for: category) }
+            XCTAssertEqual(points, points.sorted(), "sizes not monotonic for category \(category)")
+            XCTAssertEqual(Set(points).count, points.count, "duplicate point sizes for category \(category)")
+        }
+    }
+
+    func testSystemTextSizeCategoryHasAllTwelveCategories() {
+        XCTAssertEqual(SystemTextSizeCategory.allCases.count, 12)
     }
 
     func testStyleRoundTripsThroughTheStore() {

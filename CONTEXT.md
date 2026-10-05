@@ -45,10 +45,10 @@ domain understanding only.
 ## Caption display
 
 - **Caption display settings**: user-controllable appearance of the live caption text —
-  background color, text size, text color, and font, independently adjustable. A core
-  accessibility requirement, not a cosmetic nice-to-have — visual needs vary a lot person to
-  person, and this app is meant to work for anyone with needs like the primary user's, not just her
-  specifically.
+  background color, text size (responsive to system Dynamic Type), text color, and font,
+  independently adjustable. A core accessibility requirement, not a cosmetic nice-to-have — visual
+  needs vary a lot person to person, and this app is meant to work for anyone with needs like the
+  primary user's, not just her specifically.
 
 ## Product principles
 
