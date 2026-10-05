@@ -14,3 +14,7 @@ See `docs/agents/triage-labels.md`.
 ### Domain docs
 
 Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### Pull requests
+
+Anything that changes how the app looks must include screenshots of the real running app, or say plainly that none could be captured. See `docs/agents/pr-requirements.md`.
