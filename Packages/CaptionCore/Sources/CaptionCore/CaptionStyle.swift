@@ -23,6 +23,19 @@ public struct RGBA: Codable, Equatable, Sendable {
         let (hi, lo) = (max(a.luminance, b.luminance), min(a.luminance, b.luminance))
         return (hi + 0.05) / (lo + 0.05)
     }
+
+    /// Alpha-composite this color over a background, returning the visible result.
+    public func composited(over background: RGBA) -> RGBA {
+        let outAlpha = a + background.a * (1 - a)
+        if outAlpha == 0 { return RGBA(0, 0, 0, 0) }
+        let inv = 1 / outAlpha
+        return RGBA(
+            (r * a + background.r * background.a * (1 - a)) * inv,
+            (g * a + background.g * background.a * (1 - a)) * inv,
+            (b * a + background.b * background.a * (1 - a)) * inv,
+            outAlpha
+        )
+    }
 }
 
 public enum CaptionFont: String, Codable, CaseIterable, Sendable {

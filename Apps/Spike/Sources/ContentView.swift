@@ -1,6 +1,7 @@
 import AVFoundation
 import CaptionCore
 import SwiftUI
+import UIKit
 
 @MainActor
 final class CaptionModel: ObservableObject {
@@ -86,6 +87,9 @@ struct ContentView: View {
         .preferredColorScheme(style.background.isDark ? .dark : .light)
         .animation(.snappy, value: control.presentation)
         .sheet(isPresented: $showingLook) { LookSheet(style: $model.style) }
+        .onChange(of: model.state) { _, newState in
+            UIAccessibility.post(notification: .announcement, argument: StatusWords.announcement(for: newState))
+        }
     }
 
     /// Portrait: Change look sits in the top row; while captioning, Stop is a small circle at the bottom right,
@@ -128,6 +132,7 @@ struct ContentView: View {
         Button { model.perform(.stop) } label: {
             Image(systemName: "xmark")
                 .font(.title2.bold())
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                 .foregroundStyle(.white)
                 .frame(width: PrimaryControl.compactDiameter, height: PrimaryControl.compactDiameter)
                 .background(Color(red: 0.80, green: 0.12, blue: 0.12), in: Circle())
@@ -164,6 +169,7 @@ struct ContentView: View {
                         }
                         Text(line.text).font(style.font()).opacity(line.isFinal ? 1 : 0.6)
                     }
+                    .accessibilityElement(children: .combine)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
