@@ -14,6 +14,7 @@ final class CaptionModel: ObservableObject {
     @Published var style: CaptionStyle = CaptionStyleStore().load() {
         didSet { CaptionStyleStore().save(style) }
     }
+    @Published var latencyReport: String?
     private var engine: TranscriptionEngine?
     private var task: Task<Void, Never>?
 
@@ -56,6 +57,48 @@ final class CaptionModel: ObservableObject {
     private func stop() {
         task?.cancel()
         Task { await engine?.stop(); state = .idle; task = nil }
+    }
+
+    func measureLatency() {
+        guard let modelURL = Bundle.main.url(forResource: "Sortformer_v2.1", withExtension: "mlmodelc"),
+              let fixtureURL = Bundle.main.url(forResource: "latency-fixture", withExtension: "wav") else {
+            latencyReport = "Fixture or model missing"
+            return
+        }
+        task = Task {
+            do {
+                // Warm up model once.
+                try await TranscriptionEngine.warmUp(diarizerModelURL: modelURL)
+
+                // Throwaway pass.
+                let warmupEngine = TranscriptionEngine(diarizerModelURL: modelURL)
+                for try await _ in try await warmupEngine.startReplaying(fileURL: fixtureURL) {}
+
+                // Measured pass.
+                let engine = TranscriptionEngine(diarizerModelURL: modelURL)
+                var lagSamples: [Double] = []
+                var firstCaptionTime: TimeInterval?
+                let startTime = Date()
+
+                for try await update in try await engine.startReplaying(fileURL: fixtureURL) {
+                    if firstCaptionTime == nil && !update.text.isEmpty {
+                        firstCaptionTime = Date().timeIntervalSince(startTime)
+                    }
+                    if let lag = update.lagSeconds {
+                        lagSamples.append(lag)
+                    }
+                }
+
+                let report = CaptionLatencyReport(lagSamples: lagSamples, timeToFirstCaption: firstCaptionTime)
+                latencyReport = String(format: "Median: %.3f s, P95: %.3f s, First: %.3f s",
+                                       report.medianLagSeconds,
+                                       report.p95LagSeconds,
+                                       report.timeToFirstCaptionSeconds ?? 0)
+            } catch {
+                latencyReport = "Error: \(error)"
+            }
+            task = nil
+        }
     }
 }
 
@@ -224,8 +267,12 @@ struct ContentView: View {
                 Button("System mic modes (Voice Isolation)…") { AVCaptureDevice.showSystemUserInterface(.microphoneModes) }
                     .font(.footnote)
             }
+            Button("Measure latency") { model.measureLatency() }
+                .font(.footnote)
+                .disabled(model.state == .listening || model.state == .preparing)
             if let lag = model.lag { Text("lag \(String(format: "%.1f", lag))s").font(.caption2) }
             if !model.startup.isEmpty { Text("startup: \(model.startup)").font(.caption2) }
+            if let report = model.latencyReport { Text("LATENCY \(report)").font(.caption2) }
             if !model.diag.isEmpty { Text(model.diag).font(.caption2).opacity(0.7) }
         }
         .padding(8)
