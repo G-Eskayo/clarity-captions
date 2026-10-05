@@ -18,6 +18,7 @@ final class CaptionModel: ObservableObject {
     private var engine: TranscriptionEngine?
     private var task: Task<Void, Never>?
 
+
     func perform(_ action: PrimaryControl.Action) {
         switch action {
         case .start: start()
@@ -113,6 +114,7 @@ struct ContentView: View {
     @State private var userDragging = false
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var style: CaptionStyle { model.style }
     private var control: PrimaryControl { PrimaryControl.for(model.state) }
@@ -203,6 +205,7 @@ struct ContentView: View {
 
     private func captions(bottomReserve: CGFloat = 0) -> some View {
         let palette = SpeakerPalette.colors(on: style.background, text: style.text).map(\.color)
+        let category = SystemTextSizeCategory(dynamicTypeSize)
         return ScrollView {
             LazyVStack(alignment: .leading, spacing: 16) {
                 ForEach(model.stream.lines) { line in
@@ -210,7 +213,7 @@ struct ContentView: View {
                         if let sp = line.speaker {
                             Text("Speaker \(sp + 1)").font(.headline).foregroundStyle(palette[sp % palette.count])
                         }
-                        Text(line.text).font(style.font()).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
+                        Text(line.text).font(style.font(category: category)).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
                     }
                     .accessibilityElement(children: .combine)
                 }

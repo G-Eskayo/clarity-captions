@@ -21,22 +21,37 @@ final class CaptionStyleTests: XCTestCase {
 
     func testApplyingAPresetKeepsSizeAndFont() {
         var style = CaptionStyle.standard
-        style.size = .extraLarge
+        style.size = .largest
         style.font = .serif
         let changed = style.applying(CaptionPreset.all[1])
         XCTAssertEqual(changed.background, CaptionPreset.all[1].background)
         XCTAssertEqual(changed.text, CaptionPreset.all[1].text)
-        XCTAssertEqual(changed.size, .extraLarge)
+        XCTAssertEqual(changed.size, .largest)
         XCTAssertEqual(changed.font, .serif)
     }
 
     func testSizeStepsAreIncreasingAndClampAtTheEnds() {
-        let points = CaptionTextSize.allCases.map(\.points)
-        XCTAssertEqual(points, points.sorted())
-        XCTAssertEqual(Set(points).count, points.count)
-        XCTAssertEqual(CaptionTextSize.extraLarge.larger(), .extraLarge)
-        XCTAssertEqual(CaptionTextSize.small.smaller(), .small)
+        // Verify all steps increase monotonically at a fixed category.
+        let fixedCategory = SystemTextSizeCategory.large
+        let sizes = CaptionTextSize.allCases.map { $0.pointSize(for: fixedCategory) }
+        XCTAssertEqual(sizes, sizes.sorted())
+        XCTAssertEqual(Set(sizes).count, sizes.count, "all sizes must be distinct")
+
+        // Verify clamping.
+        XCTAssertEqual(CaptionTextSize.largest.larger(), .largest)
+        XCTAssertEqual(CaptionTextSize.smallest.smaller(), .smallest)
         XCTAssertEqual(CaptionTextSize.medium.larger(), .large)
+
+        // Medium at system default (.large category) equals the base point size.
+        XCTAssertEqual(CaptionTextSize.medium.pointSize(for: .large), CaptionTextSize.basePointSize, accuracy: 0.01)
+    }
+
+    func testSizeIncreaseAcrossAllSystemCategories() {
+        // Each size step increases across all 12 system text categories.
+        for step in CaptionTextSize.allCases {
+            let sizes = SystemTextSizeCategory.allCases.map { step.pointSize(for: $0) }
+            XCTAssertEqual(sizes, sizes.sorted(), "step \(step) should scale monotonically across system categories")
+        }
     }
 
     func testStyleRoundTripsThroughTheStore() {

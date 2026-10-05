@@ -6,14 +6,14 @@ extension RGBA {
 }
 
 extension CaptionStyle {
-    func font(scaled: Double = 1) -> Font {
+    func font(category: SystemTextSizeCategory, scaled: Double = 1) -> Font {
         let design: Font.Design = switch font {
         case .system: .default
         case .rounded: .rounded
         case .serif: .serif
         case .monospaced: .monospaced
         }
-        return .system(size: size.points * scaled, weight: .regular, design: design)
+        return .system(size: size.pointSize(for: category) * scaled, weight: .regular, design: design)
     }
 }
 
@@ -21,6 +21,7 @@ extension CaptionStyle {
 struct SettingsSheet: View {
     @Binding var style: CaptionStyle
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         NavigationStack {
@@ -45,8 +46,9 @@ struct SettingsSheet: View {
     }
 
     private var preview: some View {
-        Text("Hello! This is how captions will look.")
-            .font(style.font())
+        let category = SystemTextSizeCategory(dynamicTypeSize)
+        return Text("Hello! This is how captions will look.")
+            .font(style.font(category: category))
             .foregroundStyle(style.text.color)
             .frame(maxWidth: .infinity, minHeight: 120, alignment: .leading)
             .padding()
@@ -82,18 +84,19 @@ struct SettingsSheet: View {
     private var sizeRow: some View {
         HStack(spacing: 16) {
             Button { style.size = style.size.smaller() } label: { Text("A−").font(.title2.bold()).frame(maxWidth: .infinity, minHeight: 56) }
-                .buttonStyle(.bordered).disabled(style.size == .small).accessibilityLabel("Smaller text")
+                .buttonStyle(.bordered).disabled(style.size == .smallest).accessibilityLabel("Smaller text")
             Button { style.size = style.size.larger() } label: { Text("A+").font(.title2.bold()).frame(maxWidth: .infinity, minHeight: 56) }
-                .buttonStyle(.bordered).disabled(style.size == .extraLarge).accessibilityLabel("Larger text")
+                .buttonStyle(.bordered).disabled(style.size == .largest).accessibilityLabel("Larger text")
         }
     }
 
     private var fontRow: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 12)], spacing: 12) {
+        let category = SystemTextSizeCategory(dynamicTypeSize)
+        return LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 12)], spacing: 12) {
             ForEach(CaptionFont.allCases, id: \.self) { f in
                 var sample = style; let _ = sample.font = f
                 Button { style.font = f } label: {
-                    Text(f.label).font(sample.font(scaled: 0.7)).frame(maxWidth: .infinity, minHeight: 56)
+                    Text(f.label).font(sample.font(category: category, scaled: 0.7)).frame(maxWidth: .infinity, minHeight: 56)
                 }
                 .buttonStyle(.bordered).tint(style.font == f ? .accentColor : .secondary)
             }

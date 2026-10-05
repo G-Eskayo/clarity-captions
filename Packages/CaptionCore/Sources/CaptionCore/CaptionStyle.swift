@@ -50,16 +50,62 @@ public enum CaptionFont: String, Codable, CaseIterable, Sendable {
     }
 }
 
-public enum CaptionTextSize: Int, Codable, CaseIterable, Sendable {
-    case small, medium, large, extraLarge
-    public var points: Double {
+/// System text size category mirroring DynamicTypeSize/UIContentSizeCategory.
+/// Each case carries the published `.body` point size for that category.
+public enum SystemTextSizeCategory: Int, CaseIterable, Codable, Sendable {
+    case extraSmall = 0, small, medium, large, extraLarge, extraExtraLarge, extraExtraExtraLarge
+    case accessibilityMedium, accessibilityLarge, accessibilityExtraLarge, accessibilityExtraExtraLarge, accessibilityExtraExtraExtraLarge
+
+    /// Apple's published .body point sizes for each category.
+    public var bodyPointSize: Double {
         switch self {
-        case .small: 22
-        case .medium: 28
-        case .large: 36
-        case .extraLarge: 46
+        case .extraSmall: 14
+        case .small: 15
+        case .medium: 16
+        case .large: 17
+        case .extraLarge: 19
+        case .extraExtraLarge: 21
+        case .extraExtraExtraLarge: 23
+        case .accessibilityMedium: 28
+        case .accessibilityLarge: 33
+        case .accessibilityExtraLarge: 40
+        case .accessibilityExtraExtraLarge: 47
+        case .accessibilityExtraExtraExtraLarge: 53
         }
     }
+
+    /// Relative scale: 1.0 at .large (system default), proportional elsewhere.
+    public var scale: Double {
+        let largeSize = SystemTextSizeCategory.large.bodyPointSize
+        return bodyPointSize / largeSize
+    }
+
+}
+
+/// Caption text size as a relative multiplier (1.0 = system default) with 5 steps.
+public enum CaptionTextSize: Int, Codable, CaseIterable, Sendable {
+    case smallest = 0, small, medium, large, largest
+
+    /// Base point size at system default (.large = 17pt category), used to compute absolute sizes.
+    public static let basePointSize = 28.0
+
+    /// Relative multiplier for this step (1.0 = system default).
+    public var relativeMultiplier: Double {
+        switch self {
+        case .smallest: 0.75
+        case .small: 0.875
+        case .medium: 1.0
+        case .large: 1.15
+        case .largest: 1.35
+        }
+    }
+
+    /// Absolute point size for a given system text size category.
+    /// The caption size scales with the system size: at .large (system default, 17pt) with multiplier 1.0, returns basePointSize (28pt).
+    public func pointSize(for category: SystemTextSizeCategory) -> Double {
+        return Self.basePointSize * relativeMultiplier * category.scale
+    }
+
     public func larger() -> CaptionTextSize { CaptionTextSize(rawValue: rawValue + 1) ?? self }
     public func smaller() -> CaptionTextSize { CaptionTextSize(rawValue: rawValue - 1) ?? self }
 }

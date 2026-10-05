@@ -54,8 +54,8 @@ Automated pass on the app's own UI (ContentView, FirstRunView, SettingsSheet, Sp
 
 - **Dynamic Type, contrast, Dark Mode, VoiceOver on-device pass:** `docs/app-store-compliance.md`, "Self-testing plan" — the owner's existing Accessibility Inspector + manual VoiceOver testing (running on iPhone 17 at iOS 26 and iOS 27) covers actual rendering and announcement behavior that can't be automated headlessly.
 - **ADR 0012 (dim, don't dismiss):** rationale for 0.6 opacity on non-final text.
-- **ADR 0013 (radical simplicity):** rationale for fixed preset sizes and the intentional exclusion of developer tools from accessibility scope.
-- **Caption text size control (CaptionTextSize):** intentionally separate from system Dynamic Type per ADR 0013 — users get a few presets (A−, A+) rather than free-form control.
+- **ADR 0013 (radical simplicity):** rationale for a few presets (not free-form) and the intentional exclusion of developer tools from accessibility scope.
+- **Caption text size control (CaptionTextSize):** responsive to system Dynamic Type (scales with the device's accessibility settings) while still offering a few presets (A−, A+) rather than free-form control, per ADR 0013.
 
 ## What was verified and what remains
 
