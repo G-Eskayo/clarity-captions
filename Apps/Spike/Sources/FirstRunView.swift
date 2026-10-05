@@ -45,17 +45,29 @@ final class FirstRunModel: ObservableObject {
         switch step {
         case .speechModel:
             working = true; problem = nil; progress = 0
+            let startTime = Date()
             do { try await SpeechModelInstaller.install { p in Task { @MainActor in self.progress = p } } }
             catch { problem = "I couldn't finish the download. Check that Wi-Fi is on, then try again." }
+            if problem == nil {
+                let elapsed = Date().timeIntervalSince(startTime)
+                let delay = LaunchAnimationGate.remainingDelay(elapsed: elapsed)
+                if delay > 0 { try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000)) }
+            }
             working = false
             if problem == nil { await refresh() }
         case .speakerModel:
             working = true; problem = nil
+            let startTime = Date()
             do {
                 guard let url = modelURL else { throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc")) }
                 try await TranscriptionEngine.warmUp(diarizerModelURL: url)
                 store.markSpeakerModelWarm(forBuild: buildKey)
             } catch { problem = "Something went wrong while getting ready. Please try again." }
+            if problem == nil {
+                let elapsed = Date().timeIntervalSince(startTime)
+                let delay = LaunchAnimationGate.remainingDelay(elapsed: elapsed)
+                if delay > 0 { try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000)) }
+            }
             working = false
             if problem == nil { await refresh() }
         default: break
@@ -90,13 +102,16 @@ struct FirstRunView: View {
         // Scrolls when sideways (landscape is short), and fills the screen otherwise.
         GeometryReader { geo in ScrollView { VStack(spacing: compact ? 14 : 28) {
             Spacer()
-            Image(systemName: symbol)
-                .font(.system(size: compact ? 36 : 72))
-                .foregroundStyle(.white)
-                .frame(width: compact ? 72 : 150, height: compact ? 72 : 150)
-                .background(LinearGradient(colors: [.blue, .teal], startPoint: .topLeading, endPoint: .bottomTrailing), in: Circle())
-                .symbolEffect(.pulse, isActive: model.step == .speechModel || model.step == .speakerModel)
-                .accessibilityHidden(true)
+            if model.step == .speechModel || model.step == .speakerModel {
+                LaunchAnimationView()
+            } else {
+                Image(systemName: symbol)
+                    .font(.system(size: compact ? 36 : 72))
+                    .foregroundStyle(.white)
+                    .frame(width: compact ? 72 : 150, height: compact ? 72 : 150)
+                    .background(Color("LaunchBackground"), in: Circle())
+                    .accessibilityHidden(true)
+            }
             Text(copy.title).font(.largeTitle.bold()).multilineTextAlignment(.center)
             Text(copy.message).font(.title3).multilineTextAlignment(.center).foregroundStyle(.secondary)
             if model.step == .speechModel && model.problem == nil {
@@ -132,8 +147,7 @@ struct FirstRunView: View {
         case .welcome: "hand.wave.fill"
         case .microphone: "mic.fill"
         case .microphoneDenied: "mic.slash.fill"
-        case .speechModel: "character.bubble.fill"
-        case .speakerModel: "person.2.wave.2.fill"
+        case .speechModel, .speakerModel: "" // Shown as LaunchAnimationView instead
         case .done: "checkmark.circle.fill"
         }
     }
