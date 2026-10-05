@@ -26,5 +26,13 @@ public struct ThirdPartyNotice: Identifiable, Equatable, Sendable {
             note: "Speech processing library, including bundled fastcluster (BSD) and VBx (Apache 2.0) components.",
             sourceURL: URL(string: "https://github.com/FluidInference/FluidAudio")
         ),
+        ThirdPartyNotice(
+            id: "nemotextprocessing",
+            name: "NeMo Text Processing",
+            licenseName: "Apache 2.0 / MIT",
+            licenseURL: URL(string: "https://www.apache.org/licenses/LICENSE-2.0")!,
+            note: "Text-normalization grammars from NVIDIA NeMo Text Processing, with the rustfst and flate2 libraries, linked in through FluidAudio.",
+            sourceURL: URL(string: "https://github.com/NVIDIA/NeMo-text-processing")
+        ),
     ]
 }
