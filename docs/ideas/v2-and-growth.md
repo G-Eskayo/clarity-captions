@@ -47,9 +47,8 @@ confirm the exact selection rules and the localization limit in App Store Connec
 
 ## Settings
 
-"Change look" becomes **Settings** (gear icon): colors, size and lettering today; language, sound-label and
-emphasis switches and credits later. One clearly labeled place fits ADR 0013. Do it after the open pull
-requests settle, to avoid merge conflicts in `SettingsSheet.swift`.
+**Done 2026-10-05:** "Change look" is now **Settings** (gear icon): colors, size, lettering and credits today;
+language, sound-label and emphasis switches later. One clearly labeled place fits ADR 0013.
 
 ## Landing page
 
