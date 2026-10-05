@@ -51,6 +51,8 @@ public final class TranscriptionEngine {
     private let locale: Locale
     private let micMode: MicMode
     private let diarizer: LiveDiarizer
+    private let soundLabeler = SoundLabeler()
+    private var soundLabelerStream: AsyncStream<SoundLabelKind>?
     /// Spike-only: how long each startup step took, for the developer panel. Measured, not guessed.
     public private(set) var startupReport = ""
 
@@ -83,6 +85,9 @@ public final class TranscriptionEngine {
         // Ready before the first audio, so both clocks start at the same first sample.
         try await diarizer.prepare()
         lap("speaker model")
+        try await soundLabelerAsync { try self.soundLabeler.prepare() }
+        lap("sound classifier")
+        soundLabelerStream = soundLabeler.stream()
 
         guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else {
             throw TranscriptionError.noCompatibleAudioFormat
@@ -138,6 +143,7 @@ public final class TranscriptionEngine {
         )
         try await ensureModelInstalled(for: transcriber)
         try await diarizer.prepare()
+        try await soundLabelerAsync { try self.soundLabeler.prepare() }
 
         guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else {
             throw TranscriptionError.noCompatibleAudioFormat
@@ -157,6 +163,7 @@ public final class TranscriptionEngine {
         }
 
         try await analyzer.prepareToAnalyze(in: format)
+        soundLabelerStream = soundLabeler.stream()
 
         return AsyncThrowingStream { (continuation: AsyncThrowingStream<CaptionUpdate, Error>.Continuation) in
             let task = Task {
@@ -223,7 +230,7 @@ public final class TranscriptionEngine {
             status.pointee = .haveData
             return buffer
         }
-        // Same tap buffer, second path: 16 kHz mono Float32 for the diarizer.
+        // Same tap buffer, second path: 16 kHz mono Float32 for the diarizer and sound labeler.
         let dCap = AVAudioFrameCount(Double(buffer.frameLength) * 16_000 / inFormat.sampleRate) + 1024
         if let dOut = AVAudioPCMBuffer(pcmFormat: diarFormat, frameCapacity: dCap) {
             var dSupplied = false
@@ -235,7 +242,9 @@ public final class TranscriptionEngine {
                 return buffer
             }
             if dError == nil, let ch = dOut.floatChannelData {
-                diarizer.feed(Array(UnsafeBufferPointer(start: ch[0], count: Int(dOut.frameLength))))
+                let samples = Array(UnsafeBufferPointer(start: ch[0], count: Int(dOut.frameLength)))
+                diarizer.feed(samples)
+                soundLabeler.feed(samples, atAudioTime: fed.seconds)
             }
         }
         if error == nil {
@@ -272,6 +281,7 @@ public final class TranscriptionEngine {
         inputBuilder?.finish()
         try? await analyzer?.finalizeAndFinishThroughEndOfInput()
         diarizer.finish()
+        soundLabeler.finish()
         analyzer = nil
     }
 
@@ -284,5 +294,15 @@ public final class TranscriptionEngine {
     /// happens during first run instead of the first time someone taps Start.
     public static func warmUp(diarizerModelURL: URL) async throws {
         try await LiveDiarizer(modelURL: diarizerModelURL).prepare()
+    }
+
+    /// Helper to run a throwing closure on a background task context.
+    private func soundLabelerAsync(_ body: @escaping () throws -> Void) async throws {
+        try await Task.detached(priority: .userInitiated) { try body() }.value
+    }
+
+    /// Returns the stream of recognized sound labels.
+    public func soundLabelsStream() -> AsyncStream<SoundLabelKind> {
+        soundLabelerStream ?? AsyncStream { $0.finish() }
     }
 }

@@ -26,6 +26,10 @@ domain understanding only.
   (labeled generically, e.g. "Speaker 1" / "Speaker 2") without identifying *which specific
   person* that is. Needs no enrollment or per-user data — the chosen replacement for own-voice
   filtering, see [[0008]]. Speaker labels are not guaranteed stable across separate sessions.
+- **Sound label**: a non-speech caption for a recognized ambient sound — a short, bracketed label
+  like "[Doorbell]" or "[Laughter]" — added to the stream independently of speech captions and
+  never replacing or hiding spoken text. Distinct from speaker-turn labeling (which identifies
+  *who* is speaking) and not a safety alert or notification. See [[0016]].
 
 ## Transcription engine
 
