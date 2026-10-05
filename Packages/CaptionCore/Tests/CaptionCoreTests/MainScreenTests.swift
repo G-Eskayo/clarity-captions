@@ -44,4 +44,10 @@ final class MainScreenTests: XCTestCase {
         XCTAssertEqual(StatusWords.detail(for: state), "converterUnavailable")
         XCTAssertNil(StatusWords.detail(for: .listening))
     }
+
+    func testAnnouncementCombinesHeadlineAndDetail() {
+        XCTAssertEqual(StatusWords.announcement(for: .listening), "Listening")
+        let failure = CaptionState.failed("network error")
+        XCTAssertEqual(StatusWords.announcement(for: failure), "Stopped. network error")
+    }
 }

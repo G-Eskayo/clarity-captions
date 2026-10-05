@@ -115,7 +115,11 @@ struct FirstRunView: View {
         }
         .frame(maxWidth: .infinity, minHeight: geo.size.height)
         .padding(24) }
-        .scrollBounceBehavior(.basedOnSize) }
+        .scrollBounceBehavior(.basedOnSize)
+        .onChange(of: model.step) { _, newStep in
+            UIAccessibility.post(notification: .screenChanged, argument: FirstRunCopy.for(newStep).title)
+        }
+        }
     }
 
     private func bigButton(_ title: String, action: @escaping () -> Void) -> some View {

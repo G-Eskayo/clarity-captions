@@ -47,4 +47,11 @@ public enum StatusWords {
         if case .failed(let reason) = state { return reason }
         return nil
     }
+
+    /// Combines headline and detail into a single accessible announcement.
+    public static func announcement(for state: CaptionState) -> String {
+        let head = headline(for: state)
+        if let det = detail(for: state) { return "\(head). \(det)" }
+        return head
+    }
 }

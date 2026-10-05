@@ -63,4 +63,13 @@ final class CaptionStyleTests: XCTestCase {
     func testStandardStyleIsReadable() {
         XCTAssertGreaterThanOrEqual(RGBA.contrast(CaptionStyle.standard.text, CaptionStyle.standard.background), 7)
     }
+
+    func testDimmedCaptionStaysHighContrast() {
+        let dimmedAlpha = 0.6
+        for p in CaptionPreset.all {
+            let dimmedText = p.text.composited(over: RGBA(p.background.r, p.background.g, p.background.b, dimmedAlpha))
+            let contrast = RGBA.contrast(dimmedText, p.background)
+            XCTAssertGreaterThanOrEqual(contrast, 4.5, "\(p.name) dimmed is not readable enough at opacity \(dimmedAlpha)")
+        }
+    }
 }
