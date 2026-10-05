@@ -3,6 +3,8 @@ import Foundation
 /// One caption line: a paragraph of finalized speech plus, while someone is still talking, a volatile tail
 /// that is revised in place. `id` stays stable throughout, so the UI doesn't flicker as text flows in.
 public struct CaptionLine: Identifiable, Equatable, Sendable {
+    /// How faded a line is while it is still being revised. The screen and the contrast test both use this, so they cannot drift apart.
+    public static let volatileOpacity: Double = 0.6
     public let id: Int
     /// 0-based speaker slot within this session, nil until the diarizer has attributed it.
     public var speaker: Int?

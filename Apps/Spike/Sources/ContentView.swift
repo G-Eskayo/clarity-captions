@@ -167,7 +167,7 @@ struct ContentView: View {
                         if let sp = line.speaker {
                             Text("Speaker \(sp + 1)").font(.headline).foregroundStyle(palette[sp % palette.count])
                         }
-                        Text(line.text).font(style.font()).opacity(line.isFinal ? 1 : 0.6)
+                        Text(line.text).font(style.font()).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
                     }
                     .accessibilityElement(children: .combine)
                 }

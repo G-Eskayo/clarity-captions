@@ -25,6 +25,9 @@ targets:
       - Sources
       # Pre-compiled speaker model, fetched by scripts/fetch-diarizer-models.sh (gitignored).
       # Not optional: `xcodegen generate` fails if it is missing, so a model-less build can't happen quietly.
+      # Third-party license text ships inside the app so the credits screen works offline.
+      - path: ../../NOTICE.md
+        buildPhase: resources
       - path: Resources/Models/Sortformer_v2.1.mlmodelc
         type: folder
         buildPhase: resources

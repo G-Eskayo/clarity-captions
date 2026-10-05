@@ -29,7 +29,7 @@ Under the following terms:
 
 **License:** [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
 
-**Copyright:** © 2024 FluidInference
+**Copyright:** see the FluidAudio project; its Apache 2.0 license file names no single holder.
 
 **Source:** [FluidAudio GitHub](https://github.com/fluidinference/fluidaudio)
 

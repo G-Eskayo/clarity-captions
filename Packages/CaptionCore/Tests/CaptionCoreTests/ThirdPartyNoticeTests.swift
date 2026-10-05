@@ -27,4 +27,11 @@ final class ThirdPartyNoticeTests: XCTestCase {
         XCTAssertEqual(fluidAudio?.licenseName, "Apache 2.0")
         XCTAssertEqual(fluidAudio?.licenseURL.absoluteString, "https://www.apache.org/licenses/LICENSE-2.0")
     }
+
+    func testEveryNoticeLinksToItsSource() {
+        for notice in ThirdPartyNotice.all {
+            XCTAssertNotNil(notice.sourceURL, "\(notice.name) should link to its source")
+        }
+        XCTAssertEqual(ThirdPartyNotice.all.first { $0.id == "sortformer" }?.sourceURL?.host, "huggingface.co")
+    }
 }
