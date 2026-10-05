@@ -10,9 +10,10 @@ final class FirstRunModel: ObservableObject {
     @Published var problem: String?
     /// True once there is nothing left to set up, and the main screen can take over.
     @Published var finished = false
-    private var sawSetupScreen = false
     private var working = false
     private let store = FirstRunStore()
+    private let gate = BrandAnimationGate()
+    private var setupStartedAt: Date?
 
     private var buildKey: String {
         let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
@@ -35,8 +36,14 @@ final class FirstRunModel: ObservableObject {
             speakerModelWarm: store.isSpeakerModelWarm(forBuild: buildKey))
         let next = FirstRun.step(for: facts)
         step = next
-        if next == .done && !sawSetupScreen { finished = true; return }
-        sawSetupScreen = true
+        if next == .done {
+            let elapsed = Date().timeIntervalSince(setupStartedAt ?? Date())
+            let delay = gate.remainingDelay(elapsed: elapsed)
+            if delay > 0 { try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000)) }
+            finished = true
+            return
+        }
+        if setupStartedAt == nil { setupStartedAt = Date() }
         await runAutomaticStep()
     }
 
@@ -71,8 +78,6 @@ final class FirstRunModel: ObservableObject {
             Task { _ = await AVAudioApplication.requestRecordPermission(); await refresh() }
         case .microphoneDenied:
             if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
-        case .done:
-            finished = true
         default: break
         }
     }
@@ -87,35 +92,48 @@ struct FirstRunView: View {
     var body: some View {
         let copy = FirstRunCopy.for(model.step)
         let compact = verticalSizeClass == .compact
-        // Scrolls when sideways (landscape is short), and fills the screen otherwise.
-        GeometryReader { geo in ScrollView { VStack(spacing: compact ? 14 : 28) {
-            Spacer()
-            Image(systemName: symbol)
-                .font(.system(size: compact ? 36 : 72))
-                .foregroundStyle(.white)
-                .frame(width: compact ? 72 : 150, height: compact ? 72 : 150)
-                .background(LinearGradient(colors: [.blue, .teal], startPoint: .topLeading, endPoint: .bottomTrailing), in: Circle())
-                .symbolEffect(.pulse, isActive: model.step == .speechModel || model.step == .speakerModel)
-                .accessibilityHidden(true)
-            Text(copy.title).font(.largeTitle.bold()).multilineTextAlignment(.center)
-            Text(copy.message).font(.title3).multilineTextAlignment(.center).foregroundStyle(.secondary)
-            if model.step == .speechModel && model.problem == nil {
-                ProgressView(value: model.progress).padding(.horizontal, 40)
-                Text("\(Int(model.progress * 100))%").font(.headline).monospacedDigit()
-            } else if model.step == .speakerModel && model.problem == nil {
-                ProgressView().controlSize(.large)
+        let isAutomaticStep = model.step == .speechModel || model.step == .speakerModel
+
+        if isAutomaticStep && model.problem == nil {
+            VStack(spacing: compact ? 14 : 28) {
+                Spacer()
+                BrandAnimationView()
+                    .frame(height: compact ? 150 : 300)
+                Text(copy.title).font(.largeTitle.bold()).multilineTextAlignment(.center)
+                Text(copy.message).font(.title3).multilineTextAlignment(.center).foregroundStyle(.secondary)
+                if model.step == .speechModel {
+                    ProgressView(value: model.progress).padding(.horizontal, 40)
+                    Text("\(Int(model.progress * 100))%").font(.headline).monospacedDigit()
+                } else if model.step == .speakerModel {
+                    ProgressView().controlSize(.large)
+                }
+                Spacer()
             }
-            if let problem = model.problem {
-                Text(problem).font(.headline).foregroundStyle(.red).multilineTextAlignment(.center)
-                bigButton("Try again") { model.retry() }
-            } else if let button = copy.button {
-                bigButton(button) { model.primaryTapped() }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(24)
+        } else {
+            GeometryReader { geo in ScrollView { VStack(spacing: compact ? 14 : 28) {
+                Spacer()
+                Image(systemName: symbol)
+                    .font(.system(size: compact ? 36 : 72))
+                    .foregroundStyle(.white)
+                    .frame(width: compact ? 72 : 150, height: compact ? 72 : 150)
+                    .background(LinearGradient(colors: [.blue, .teal], startPoint: .topLeading, endPoint: .bottomTrailing), in: Circle())
+                    .accessibilityHidden(true)
+                Text(copy.title).font(.largeTitle.bold()).multilineTextAlignment(.center)
+                Text(copy.message).font(.title3).multilineTextAlignment(.center).foregroundStyle(.secondary)
+                if let problem = model.problem {
+                    Text(problem).font(.headline).foregroundStyle(.red).multilineTextAlignment(.center)
+                    bigButton("Try again") { model.retry() }
+                } else if let button = copy.button {
+                    bigButton(button) { model.primaryTapped() }
+                }
+                Spacer()
             }
-            Spacer()
+            .frame(maxWidth: .infinity, minHeight: geo.size.height)
+            .padding(24) }
+            .scrollBounceBehavior(.basedOnSize) }
         }
-        .frame(maxWidth: .infinity, minHeight: geo.size.height)
-        .padding(24) }
-        .scrollBounceBehavior(.basedOnSize) }
     }
 
     private func bigButton(_ title: String, action: @escaping () -> Void) -> some View {

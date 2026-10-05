@@ -15,6 +15,8 @@ final class CaptionModel: ObservableObject {
     }
     private var engine: TranscriptionEngine?
     private var task: Task<Void, Never>?
+    private let gate = BrandAnimationGate()
+    private var preparingStartedAt: Date?
 
     func perform(_ action: PrimaryControl.Action) {
         switch action {
@@ -26,6 +28,7 @@ final class CaptionModel: ObservableObject {
 
     private func start() {
         state = .preparing
+        preparingStartedAt = Date()
         guard let modelURL = Bundle.main.url(forResource: "Sortformer_v2.1", withExtension: "mlmodelc") else {
             state = .failed("The speaker-labeling model is missing from this build.")
             return
@@ -35,6 +38,9 @@ final class CaptionModel: ObservableObject {
         task = Task {
             do {
                 let updates = try await engine.start()
+                let elapsed = Date().timeIntervalSince(preparingStartedAt ?? Date())
+                let delay = gate.remainingDelay(elapsed: elapsed)
+                if delay > 0 { try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000)) }
                 startup = engine.startupReport
                 state = .listening
                 for try await u in updates {
@@ -77,8 +83,19 @@ struct ContentView: View {
     var body: some View {
         ZStack {
             style.background.color.ignoresSafeArea()
-            Group { landscape ? AnyView(landscapeLayout) : AnyView(portraitLayout) }
+            if model.state == .preparing {
+                VStack {
+                    Spacer()
+                    BrandAnimationView()
+                        .frame(height: 300)
+                    Text("Getting ready…").font(.largeTitle.bold())
+                    Spacer()
+                }
                 .padding()
+            } else {
+                Group { landscape ? AnyView(landscapeLayout) : AnyView(portraitLayout) }
+                    .padding()
+            }
         }
         // One look for the whole app: background, text, controls and the system's own chrome all follow it.
         .foregroundStyle(style.text.color)
