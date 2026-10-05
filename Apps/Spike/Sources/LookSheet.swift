@@ -30,6 +30,7 @@ struct LookSheet: View {
                     section("Colors") { presetRow }
                     section("Size") { sizeRow }
                     section("Lettering") { fontRow }
+                    section("About") { aboutRow }
                 }
                 .padding()
                 .foregroundStyle(style.text.color)
@@ -97,5 +98,20 @@ struct LookSheet: View {
                 .buttonStyle(.bordered).tint(style.font == f ? .accentColor : .secondary)
             }
         }
+    }
+
+    private var aboutRow: some View {
+        NavigationLink(destination: AboutCreditsView()) {
+            HStack {
+                Label("Third-party credits", systemImage: "info.circle")
+                Spacer()
+                Image(systemName: "chevron.forward")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, minHeight: 56)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.bordered)
     }
 }
