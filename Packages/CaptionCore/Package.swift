@@ -18,7 +18,8 @@ let package = Package(
         ),
         .testTarget(
             name: "CaptionCoreTests",
-            dependencies: ["CaptionCore", .product(name: "FluidAudio", package: "FluidAudio")]
+            dependencies: ["CaptionCore", .product(name: "FluidAudio", package: "FluidAudio")],
+            resources: [.copy("Fixtures")]
         ),
     ]
 )

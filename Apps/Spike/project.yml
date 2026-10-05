@@ -31,6 +31,9 @@ targets:
       - path: Resources/Models/Sortformer_v2.1.mlmodelc
         type: folder
         buildPhase: resources
+      # Latency fixture: committed test audio for on-device measurement.
+      - path: ../../Packages/CaptionCore/Tests/CaptionCoreTests/Fixtures/latency-fixture.wav
+        buildPhase: resources
     dependencies:
       - package: CaptionCore
     settings:

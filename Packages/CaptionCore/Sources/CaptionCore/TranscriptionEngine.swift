@@ -112,38 +112,8 @@ public final class TranscriptionEngine {
               let diarConverter = AVAudioConverter(from: inFormat, to: diarFormat) else {
             throw TranscriptionError.converterUnavailable
         }
-        let diarizer = self.diarizer
         input.installTap(onBus: 0, bufferSize: 4096, format: inFormat) { buffer, _ in
-            let ratio = format.sampleRate / inFormat.sampleRate
-            let capacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio) + 1024
-            guard let out = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: capacity) else { return }
-            var supplied = false
-            var error: NSError?
-            converter.convert(to: out, error: &error) { _, status in
-                if supplied { status.pointee = .noDataNow; return nil }
-                supplied = true
-                status.pointee = .haveData
-                return buffer
-            }
-            // Same tap buffer, second path: 16 kHz mono Float32 for the diarizer.
-            let dCap = AVAudioFrameCount(Double(buffer.frameLength) * 16_000 / inFormat.sampleRate) + 1024
-            if let dOut = AVAudioPCMBuffer(pcmFormat: diarFormat, frameCapacity: dCap) {
-                var dSupplied = false
-                var dError: NSError?
-                diarConverter.convert(to: dOut, error: &dError) { _, status in
-                    if dSupplied { status.pointee = .noDataNow; return nil }
-                    dSupplied = true
-                    status.pointee = .haveData
-                    return buffer
-                }
-                if dError == nil, let ch = dOut.floatChannelData {
-                    diarizer.feed(Array(UnsafeBufferPointer(start: ch[0], count: Int(dOut.frameLength))))
-                }
-            }
-            if error == nil {
-                fed.add(Double(out.frameLength) / format.sampleRate)
-                builder.yield(AnalyzerInput(buffer: out))
-            }
+            self.processBuffer(buffer, inFormat: inFormat, converter: converter, diarConverter: diarConverter, format: format, diarFormat: diarFormat, fed: fed, builder: builder)
         }
         // Load the model before the first word, not on it.
         try await analyzer.prepareToAnalyze(in: format)
@@ -154,7 +124,128 @@ public final class TranscriptionEngine {
         lap("audio start")
         startupReport = laps.joined(separator: " · ")
 
-        return AsyncThrowingStream { continuation in
+        return makeResultStream(transcriber: transcriber, fed: fed)
+    }
+
+    /// Replays audio from a file at real-time pace for latency measurement.
+    /// The same processing pipeline as live mic input: same resamplers, analyzers, diarizer, lag calculation.
+    public func startReplaying(fileURL: URL) async throws -> AsyncThrowingStream<CaptionUpdate, Error> {
+        let transcriber = SpeechTranscriber(
+            locale: locale,
+            transcriptionOptions: [],
+            reportingOptions: [.volatileResults, .fastResults],
+            attributeOptions: [.audioTimeRange]
+        )
+        try await ensureModelInstalled(for: transcriber)
+        try await diarizer.prepare()
+
+        guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else {
+            throw TranscriptionError.noCompatibleAudioFormat
+        }
+        let analyzer = SpeechAnalyzer(modules: [transcriber])
+        self.analyzer = analyzer
+        let fed = FedAudioClock()
+        let (sequence, builder) = AsyncStream.makeStream(of: AnalyzerInput.self)
+        self.inputBuilder = builder
+
+        let audioFile = try AVAudioFile(forReading: fileURL)
+        let inFormat = audioFile.processingFormat
+        guard let converter = AVAudioConverter(from: inFormat, to: format),
+              let diarFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000, channels: 1, interleaved: false),
+              let diarConverter = AVAudioConverter(from: inFormat, to: diarFormat) else {
+            throw TranscriptionError.converterUnavailable
+        }
+
+        try await analyzer.prepareToAnalyze(in: format)
+
+        return AsyncThrowingStream { (continuation: AsyncThrowingStream<CaptionUpdate, Error>.Continuation) in
+            let task = Task {
+                do {
+                    // Read file in 4096-frame chunks at the input format's sample rate.
+                    let bufferSize = AVAudioFrameCount(4096)
+                    var position: AVAudioFramePosition = 0
+                    let startWallTime = Date()
+
+                    // Start the result stream task in the background.
+                    let resultTask = Task {
+                        for try await result in transcriber.results {
+                            let starts = result.text.runs.compactMap { $0.audioTimeRange?.start.seconds }
+                            let ends = result.text.runs.compactMap { $0.audioTimeRange?.end.seconds }
+                            let end = ends.max()
+                            let speaker = (starts.min().flatMap { st in end.map { (st, $0) } })
+                                .flatMap { SpeakerAligner.speaker(start: $0.0, end: $0.1, segments: self.diarizer.segments) }
+                            let lag = end.map { max(0, fed.seconds - $0) }
+                            continuation.yield(CaptionUpdate(text: String(result.text.characters), isFinal: result.isFinal, lagSeconds: lag, speaker: speaker, startSeconds: starts.min(), endSeconds: end, diagnostics: self.diarizer.diagnostics))
+                        }
+                    }
+
+                    // Feed audio from the file at real-time pace.
+                    try await analyzer.start(inputSequence: sequence)
+                    audioFile.framePosition = position
+                    while position < audioFile.length {
+                        let buffer = AVAudioPCMBuffer(pcmFormat: inFormat, frameCapacity: bufferSize)!
+                        try audioFile.read(into: buffer)
+                        if buffer.frameLength == 0 { break }
+
+                        self.processBuffer(buffer, inFormat: inFormat, converter: converter, diarConverter: diarConverter, format: format, diarFormat: diarFormat, fed: fed, builder: builder)
+
+                        // Sleep to maintain real-time pace: fed time vs. wall clock time.
+                        let elapsedWall = Date().timeIntervalSince(startWallTime)
+                        let targetWall = fed.seconds
+                        if targetWall > elapsedWall {
+                            try await Task.sleep(nanoseconds: UInt64((targetWall - elapsedWall) * 1e9))
+                        }
+
+                        position += Int64(buffer.frameLength)
+                    }
+
+                    builder.finish()
+                    try await analyzer.finalizeAndFinishThroughEndOfInput()
+                    _ = try await resultTask.value
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    private func processBuffer(_ buffer: AVAudioPCMBuffer, inFormat: AVAudioFormat, converter: AVAudioConverter, diarConverter: AVAudioConverter, format: AVAudioFormat, diarFormat: AVAudioFormat, fed: FedAudioClock, builder: AsyncStream<AnalyzerInput>.Continuation) {
+        let ratio = format.sampleRate / inFormat.sampleRate
+        let capacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio) + 1024
+        guard let out = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: capacity) else { return }
+        var supplied = false
+        var error: NSError?
+        converter.convert(to: out, error: &error) { _, status in
+            if supplied { status.pointee = .noDataNow; return nil }
+            supplied = true
+            status.pointee = .haveData
+            return buffer
+        }
+        // Same tap buffer, second path: 16 kHz mono Float32 for the diarizer.
+        let dCap = AVAudioFrameCount(Double(buffer.frameLength) * 16_000 / inFormat.sampleRate) + 1024
+        if let dOut = AVAudioPCMBuffer(pcmFormat: diarFormat, frameCapacity: dCap) {
+            var dSupplied = false
+            var dError: NSError?
+            diarConverter.convert(to: dOut, error: &dError) { _, status in
+                if dSupplied { status.pointee = .noDataNow; return nil }
+                dSupplied = true
+                status.pointee = .haveData
+                return buffer
+            }
+            if dError == nil, let ch = dOut.floatChannelData {
+                diarizer.feed(Array(UnsafeBufferPointer(start: ch[0], count: Int(dOut.frameLength))))
+            }
+        }
+        if error == nil {
+            fed.add(Double(out.frameLength) / format.sampleRate)
+            builder.yield(AnalyzerInput(buffer: out))
+        }
+    }
+
+    private func makeResultStream(transcriber: SpeechTranscriber, fed: FedAudioClock) -> AsyncThrowingStream<CaptionUpdate, Error> {
+        return AsyncThrowingStream { [weak self] continuation in
             let task = Task {
                 do {
                     for try await result in transcriber.results {
@@ -162,9 +253,9 @@ public final class TranscriptionEngine {
                         let ends = result.text.runs.compactMap { $0.audioTimeRange?.end.seconds }
                         let end = ends.max()
                         let speaker = (starts.min().flatMap { st in end.map { (st, $0) } })
-                            .flatMap { SpeakerAligner.speaker(start: $0.0, end: $0.1, segments: diarizer.segments) }
+                            .flatMap { SpeakerAligner.speaker(start: $0.0, end: $0.1, segments: self?.diarizer.segments ?? []) }
                         let lag = end.map { max(0, fed.seconds - $0) }
-                        continuation.yield(CaptionUpdate(text: String(result.text.characters), isFinal: result.isFinal, lagSeconds: lag, speaker: speaker, startSeconds: starts.min(), endSeconds: end, diagnostics: diarizer.diagnostics))
+                        continuation.yield(CaptionUpdate(text: String(result.text.characters), isFinal: result.isFinal, lagSeconds: lag, speaker: speaker, startSeconds: starts.min(), endSeconds: end, diagnostics: self?.diarizer.diagnostics ?? ""))
                     }
                     continuation.finish()
                 } catch {
