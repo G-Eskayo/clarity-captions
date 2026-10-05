@@ -39,6 +39,9 @@ targets:
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "Captions need the microphone to show what people nearby are saying."
         INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "Captions turn speech into on-screen text on this device."
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        # Launch screen is the icon's teal (a darker teal in Dark Mode), so there is no mismatched flash.
+        INFOPLIST_KEY_UILaunchScreen_BackgroundColor: LaunchBackground
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
 schemes:
   CaptionSpike:
