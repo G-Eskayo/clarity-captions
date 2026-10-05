@@ -111,6 +111,10 @@ struct ContentView: View {
     /// Following the newest caption. Stops only when the user drags away; resumes at the bottom or via "Jump to latest".
     @State private var following = true
     @State private var userDragging = false
+    /// Tracks when the preparing state began, for the animation minimum-duration overlay.
+    @State private var preparingStartTime: Date?
+    /// Controls the animation overlay visibility after leaving the preparing state.
+    @State private var showPreparingAnimation = false
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
@@ -123,6 +127,13 @@ struct ContentView: View {
             style.background.color.ignoresSafeArea()
             Group { landscape ? AnyView(landscapeLayout) : AnyView(portraitLayout) }
                 .padding()
+            if showPreparingAnimation {
+                ZStack {
+                    style.background.color.ignoresSafeArea()
+                    LaunchAnimationView()
+                }
+                .transition(.opacity)
+            }
         }
         // One look for the whole app: background, text, controls and the system's own chrome all follow it.
         .foregroundStyle(style.text.color)
@@ -132,6 +143,32 @@ struct ContentView: View {
         .sheet(isPresented: $showingSettings) { SettingsSheet(style: $model.style) }
         .onChange(of: model.state) { _, newState in
             UIAccessibility.post(notification: .announcement, argument: StatusWords.announcement(for: newState))
+            handleStateChange(newState)
+        }
+    }
+
+    private func handleStateChange(_ newState: CaptionState) {
+        switch newState {
+        case .preparing:
+            preparingStartTime = Date()
+            showPreparingAnimation = true
+        case .listening:
+            if let startTime = preparingStartTime {
+                let elapsed = Date().timeIntervalSince(startTime)
+                let delay = LaunchAnimationGate.remainingDelay(elapsed: elapsed)
+                if delay > 0 {
+                    Task {
+                        try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                        withAnimation { showPreparingAnimation = false }
+                    }
+                } else {
+                    showPreparingAnimation = false
+                }
+            }
+            preparingStartTime = nil
+        case .idle, .failed:
+            showPreparingAnimation = false
+            preparingStartTime = nil
         }
     }
 
