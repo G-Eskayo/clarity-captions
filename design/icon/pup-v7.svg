@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Two colors only: BG #0E4D64 and FG #F6EFE0. Full-bleed square; iOS applies the rounded mask.
+       Pose after a reference photo: a chubby pup lying back, head raised, one flipper waving. -->
+  <rect width="1024" height="1024" fill="#0E4D64"/>
+  <g transform="translate(26 6) scale(0.88)">
+    <g fill="#F6EFE0">
+      <!-- chubby bean body, rising to the right -->
+      <ellipse cx="440" cy="670" rx="322" ry="200" transform="rotate(-22 440 670)"/>
+      <!-- neck bridging body and head -->
+      <ellipse cx="640" cy="495" rx="150" ry="120" transform="rotate(-20 640 495)"/>
+      <ellipse cx="705" cy="520" rx="105" ry="85"/>
+      <!-- round pup head -->
+      <circle cx="705" cy="388" r="178"/>
+      <!-- small blunt muzzle -->
+      <ellipse cx="840" cy="420" rx="76" ry="58" transform="rotate(8 840 420)"/>
+      <!-- lower jaw, a little open -->
+      <ellipse cx="838" cy="490" rx="64" ry="32" transform="rotate(6 838 490)"/>
+    </g>
+    <!-- small open mouth with a tongue -->
+    <path fill="#0E4D64" d="M 806 458 C 831 450, 876 450, 894 460 C 898 484, 874 494, 848 490 C 824 486, 810 474, 806 458 Z"/>
+    <ellipse cx="858" cy="480" rx="21" ry="10" fill="#F6EFE0" transform="rotate(-6 858 480)"/>
+    <!-- hind flippers, bottom left, each set off by a BG outline -->
+    <ellipse cx="205" cy="845" rx="78" ry="40" transform="rotate(38 205 845)" fill="#F6EFE0" stroke="#0E4D64" stroke-width="12"/>
+    <ellipse cx="290" cy="895" rx="68" ry="36" transform="rotate(18 290 895)" fill="#F6EFE0" stroke="#0E4D64" stroke-width="12"/>
+    <!-- tucked front flipper -->
+    <path fill="#F6EFE0" stroke="#0E4D64" stroke-width="13" stroke-linejoin="round"
+          d="M 585 640 C 650 650, 700 720, 690 800 C 655 810, 600 770, 575 715 C 562 685, 566 650, 585 640 Z"/>
+    <!-- raised, waving flipper -->
+    <path fill="#F6EFE0" stroke="#0E4D64" stroke-width="13" stroke-linejoin="round"
+          d="M 600 500 C 575 420, 520 340, 462 292 C 424 262, 388 304, 418 342 C 455 392, 480 460, 500 535 Z"/>
+    <ellipse cx="548" cy="508" rx="78" ry="52" transform="rotate(-24 548 508)" fill="#F6EFE0"/>
+    <g stroke="#0E4D64" stroke-width="7" stroke-linecap="round" fill="none">
+      <path d="M 436 318 L 452 336"/><path d="M 458 305 L 470 326"/>
+    </g>
+    <!-- pup spots on the belly -->
+    <g fill="#0E4D64"><circle cx="355" cy="700" r="11"/><circle cx="410" cy="745" r="9"/><circle cx="330" cy="760" r="8"/></g>
+    <!-- big eye with a shine, nose, whisker dots -->
+    <circle cx="742" cy="355" r="48" fill="#0E4D64"/>
+    <circle cx="758" cy="338" r="16" fill="#F6EFE0"/>
+    <ellipse cx="888" cy="406" rx="23" ry="17" fill="#0E4D64"/>
+    <g fill="#0E4D64"><circle cx="846" cy="426" r="6"/><circle cx="864" cy="440" r="6"/><circle cx="830" cy="440" r="6"/></g>
+    <!-- three bark lines from the mouth -->
+    <g fill="none" stroke="#F6EFE0" stroke-width="30" stroke-linecap="round">
+      <path d="M 944 424 A 60 60 0 0 1 944 502"/>
+      <path d="M 978 395 A 105 105 0 0 1 978 531"/>
+      <path d="M 1013 367 A 150 150 0 0 1 1013 559"/>
+    </g>
+  </g>
+</svg>
