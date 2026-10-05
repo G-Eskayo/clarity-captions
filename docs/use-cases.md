@@ -24,7 +24,7 @@ nothing is lost. Decisions live in `docs/adr/`; vocabulary in `CONTEXT.md`.
 
 > Include a font size setting somewhere and a close button.
 
-- Font size: built (Change look, size A-/A+). He may expect it reachable faster; revisit after use.
+- Font size: built (Settings, size A-/A+). He may expect it reachable faster; revisit after use.
 - "Close button": unclear whether he means stop captioning, close a screen, or quit the app. iOS has
   no in-app quit. Today there is a Stop control. Ask him before building anything.
 

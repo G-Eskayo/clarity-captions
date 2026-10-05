@@ -106,7 +106,7 @@ struct ContentView: View {
     @StateObject private var model = CaptionModel()
     /// Developer-only tools (mic mode, diagnostics). Long-press the status text to toggle; never shown by default.
     @State private var developerTools = false
-    @State private var showingLook = false
+    @State private var showingSettings = false
     @State private var position = ScrollPosition(edge: .bottom)
     /// Following the newest caption. Stops only when the user drags away; resumes at the bottom or via "Jump to latest".
     @State private var following = true
@@ -129,18 +129,18 @@ struct ContentView: View {
         .tint(style.text.color)
         .preferredColorScheme(style.background.isDark ? .dark : .light)
         .animation(.snappy, value: control.presentation)
-        .sheet(isPresented: $showingLook) { LookSheet(style: $model.style) }
+        .sheet(isPresented: $showingSettings) { SettingsSheet(style: $model.style) }
         .onChange(of: model.state) { _, newState in
             UIAccessibility.post(notification: .announcement, argument: StatusWords.announcement(for: newState))
         }
     }
 
-    /// Portrait: Change look sits in the top row; while captioning, Stop is a small circle at the bottom right,
+    /// Portrait: Settings sits in the top row; while captioning, Stop is a small circle at the bottom right,
     /// and the bottom button row only exists when it is a big Start / Try again, so captions get the space.
     private var portraitLayout: some View {
         VStack(spacing: 20) {
             HStack {
-                lookButton
+                settingsButton
                 Spacer()
             }
             status(font: .largeTitle)
@@ -153,14 +153,14 @@ struct ContentView: View {
         }
     }
 
-    /// Landscape: a thin top bar (state in the middle, Change look at the right), captions across everything
+    /// Landscape: a thin top bar (state in the middle, Settings at the right), captions across everything
     /// below it, and the stop / start control in the bottom-right corner, so text gets the most room.
     private var landscapeLayout: some View {
         ZStack(alignment: .bottomTrailing) {
             VStack(spacing: 8) {
                 ZStack {
                     status(font: .title3)
-                    HStack { Spacer(); lookButton }
+                    HStack { Spacer(); settingsButton }
                 }
                 // Leave the corner free so the control never sits on top of text.
                 captions().padding(.trailing, control.presentation == .compact ? PrimaryControl.compactDiameter + 16 : 236)
@@ -184,8 +184,8 @@ struct ContentView: View {
         .transition(.scale.combined(with: .opacity))
     }
 
-    private var lookButton: some View {
-        Button { showingLook = true } label: { Label("Change look", systemImage: "textformat.size").font(.headline) }
+    private var settingsButton: some View {
+        Button { showingSettings = true } label: { Label("Settings", systemImage: "gearshape").font(.headline) }
             .buttonStyle(.bordered)
     }
 

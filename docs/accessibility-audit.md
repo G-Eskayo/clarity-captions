@@ -1,10 +1,10 @@
 # Accessibility Audit (2026-10-05)
 
-Automated pass on the app's own UI (ContentView, FirstRunView, LookSheet, SpikeApp/RootView), covering Dynamic Type, contrast, Dark Mode, and VoiceOver. This audit complements the existing on-device Accessibility Inspector and VoiceOver testing plan documented in `docs/app-store-compliance.md`.
+Automated pass on the app's own UI (ContentView, FirstRunView, SettingsSheet, SpikeApp/RootView), covering Dynamic Type, contrast, Dark Mode, and VoiceOver. This audit complements the existing on-device Accessibility Inspector and VoiceOver testing plan documented in `docs/app-store-compliance.md`.
 
 ## Scope
 
-- App screens: portrait and landscape layouts of the main captioning screen (ContentView), first-run onboarding (FirstRunView), look/style picker (LookSheet).
+- App screens: portrait and landscape layouts of the main captioning screen (ContentView), first-run onboarding (FirstRunView), look/style picker (SettingsSheet).
 - Excluded intentionally: `developerPanel` (dev-only, explicitly non-product per ADR 0013); caption text size control (CaptionTextSize presets A−/A+) and preset-driven color scheme (existing deliberate design per ADR 0013).
 - Tool coverage: code review, pure CaptionCore tests; not on-device VoiceOver or Dynamic Type rendering (see "Untested" below).
 
@@ -18,7 +18,7 @@ Automated pass on the app's own UI (ContentView, FirstRunView, LookSheet, SpikeA
 
 **Code change:** ContentView.swift, `compactStop` computed property.
 
-**Intentional non-issue:** `LookSheet`'s "Aa" swatches and font-preview text use fixed point sizes as previews of a chosen caption style, not body text — intentional and working as designed.
+**Intentional non-issue:** `SettingsSheet`'s "Aa" swatches and font-preview text use fixed point sizes as previews of a chosen caption style, not body text — intentional and working as designed.
 
 ### AC2 — Contrast in light and dark
 
@@ -30,11 +30,11 @@ Automated pass on the app's own UI (ContentView, FirstRunView, LookSheet, SpikeA
 
 **Flagged, not auto-fixed:** FirstRunView's error text uses plain `.red` (UIColor). Real contrast against the system background can't be measured headlessly; it's listed here as a specific item for the owner's existing on-device Accessibility Inspector pass rather than guessing a replacement color blind.
 
-**Intentional non-issue:** Dark Mode: `.preferredColorScheme` already follows the chosen caption preset (not the system setting) in both ContentView and LookSheet — intentional existing behavior, documented in the code, not a regression.
+**Intentional non-issue:** Dark Mode: `.preferredColorScheme` already follows the chosen caption preset (not the system setting) in both ContentView and SettingsSheet — intentional existing behavior, documented in the code, not a regression.
 
 ### AC3 — VoiceOver operates every control and reads state changes
 
-**Existing coverage:** Every interactive control already has an accessible label (`compactStop`, `largeButton`, `lookButton`, "Jump to latest", LookSheet preset/size/font buttons). No additional labels needed.
+**Existing coverage:** Every interactive control already has an accessible label (`compactStop`, `largeButton`, `settingsButton`, "Jump to latest", SettingsSheet preset/size/font buttons). No additional labels needed.
 
 **Finding:** State changes are never announced. SwiftUI doesn't auto-speak text changes unless the element has VoiceOver focus. Concretely:
 - `CaptionState` changes (Ready → Listening → Stopped) in ContentView — no announcement today.

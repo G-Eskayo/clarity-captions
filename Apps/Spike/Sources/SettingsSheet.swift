@@ -18,7 +18,7 @@ extension CaptionStyle {
 }
 
 /// One screen, three questions: which colors, how big, which lettering. A live preview sits on top.
-struct LookSheet: View {
+struct SettingsSheet: View {
     @Binding var style: CaptionStyle
     @Environment(\.dismiss) private var dismiss
 
@@ -36,7 +36,7 @@ struct LookSheet: View {
                 .foregroundStyle(style.text.color)
             }
             .containerBackground(style.background.color, for: .navigation)
-            .navigationTitle("Change look")
+            .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.font(.headline) } }
         }
