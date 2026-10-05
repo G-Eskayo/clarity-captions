@@ -38,3 +38,22 @@ network-dependent and contradict that promise.
   voices separated correctly (speaker 1 at 0.0-5.0 s and 12.5-17.4 s, speaker 2 at 5.4-11.9 s and
   18.0-24.4 s).
 - Not yet verified: first launch on a real phone with networking off.
+
+## License re-check (2026-10-05)
+
+### FluidAudio
+
+- **Pinned revision:** `0b1f46289fe27d95b5e66ad8be46e64f5ee02ae7` (v0.17.5), stored in `Packages/CaptionCore/Package.resolved`.
+- **License:** Apache 2.0 — verified by reading its `LICENSE` file in `.build/checkouts/FluidAudio/LICENSE`.
+- **Bundled dependencies:** The library compiles fastcluster (BSD-style, © Daniel Müllner / Google) and VBx (Apache 2.0, © BUT Speech@FIT) as native code linked into the binary; both are now documented in the repo's `NOTICE.md`.
+
+### Sortformer (via FluidAudio)
+
+- **Base model identifier:** `nvidia/diar_streaming_sortformer_4spk-v2.1` (Hugging Face).
+- **License:** CC BY 4.0 — as stated in the issue description.
+- **Conversion:** Converted to CoreML format by FluidInference.
+- **Note:** Did not independently re-fetch the model card from Hugging Face this session (no network access in this environment), so the `cc-by-4.0` license is accepted on the issue's authority. The open-source Sortformer base model is documented in `NOTICE.md`.
+
+### Subsequent work
+
+- `scripts/fetch-diarizer-models.sh` currently pulls from Hugging Face's `main` branch, not a pinned commit. Because this environment has no network access, a fixed commit SHA could not be verified. A follow-up task for a future session with network access: pin the model fetch to a specific known revision (by commit SHA) in the script so that the exact artifact being used is permanently recordable.
