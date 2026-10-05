@@ -8,6 +8,8 @@ public struct CaptionLine: Identifiable, Equatable, Sendable {
     public let id: Int
     /// 0-based speaker slot within this session, nil until the diarizer has attributed it.
     public var speaker: Int?
+    /// Sound label for non-speech lines (laughter, applause, etc.); nil for ordinary speech lines.
+    public var soundLabel: SoundLabelKind?
     var committed: String
     var tail: String?
     var tailRange: ClosedRange<Double>?
@@ -15,6 +17,7 @@ public struct CaptionLine: Identifiable, Equatable, Sendable {
 
     public var text: String { [committed, tail ?? ""].filter { !$0.isEmpty }.joined(separator: " ") }
     public var isFinal: Bool { tail == nil }
+    public var isSoundLabel: Bool { soundLabel != nil }
 }
 
 /// The live caption transcript. Pure value type -- no audio, no UI, no platform APIs -- so it is tested
@@ -39,6 +42,21 @@ public struct CaptionStream: Sendable {
         guard !piece.isEmpty else { return }
 
         if var last = lines.last {
+            // Never merge speech into a line marked as a sound label.
+            guard !last.isSoundLabel else {
+                // Breaking away: close whatever was still open on the previous line (should already be final for sound labels).
+                if let stale = last.tail {
+                    last.committed = Self.join(last.committed, stale); last.tail = nil; last.tailRange = nil
+                    lines[lines.count - 1] = last
+                }
+                lines.append(CaptionLine(
+                    id: nextID, speaker: speaker,
+                    committed: isFinal ? piece : "", tail: isFinal ? nil : piece,
+                    tailRange: isFinal ? nil : range, endTime: range?.upperBound))
+                nextID += 1
+                return
+            }
+
             // A revision of the segment still being spoken replaces the tail. Without timing, any result
             // arriving while a tail is open is a revision; with timing, it must start before the tail ends.
             if last.tail != nil {
@@ -78,6 +96,22 @@ public struct CaptionStream: Sendable {
             id: nextID, speaker: speaker,
             committed: isFinal ? piece : "", tail: isFinal ? nil : piece,
             tailRange: isFinal ? nil : range, endTime: range?.upperBound))
+        nextID += 1
+    }
+
+    /// Closes any open volatile tail on the last line and appends a new, already-final sound label line.
+    public mutating func insertSoundLabel(_ label: SoundLabelKind) {
+        if var last = lines.last {
+            if let stale = last.tail {
+                last.committed = Self.join(last.committed, stale); last.tail = nil; last.tailRange = nil
+                lines[lines.count - 1] = last
+            }
+        }
+
+        lines.append(CaptionLine(
+            id: nextID, speaker: nil, soundLabel: label,
+            committed: SoundLabelFormatter.caption(for: label),
+            tail: nil, tailRange: nil, endTime: nil))
         nextID += 1
     }
 

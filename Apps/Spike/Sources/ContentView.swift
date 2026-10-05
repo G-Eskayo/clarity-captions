@@ -39,13 +39,27 @@ final class CaptionModel: ObservableObject {
                 let updates = try await engine.start()
                 startup = engine.startupReport
                 state = .listening
-                for try await u in updates {
-                    var range: ClosedRange<Double>?
-                    if let a = u.startSeconds, let b = u.endSeconds, a <= b { range = a...b }
-                    stream.apply(text: u.text, isFinal: u.isFinal, speaker: u.speaker, range: range)
-                    if let l = u.lagSeconds { lag = l }
-                    diag = u.diagnostics
+
+                let transcriptionTask = Task {
+                    for try await u in updates {
+                        var range: ClosedRange<Double>?
+                        if let a = u.startSeconds, let b = u.endSeconds, a <= b { range = a...b }
+                        stream.apply(text: u.text, isFinal: u.isFinal, speaker: u.speaker, range: range)
+                        if let l = u.lagSeconds { lag = l }
+                        diag = u.diagnostics
+                    }
                 }
+
+                // Consume sound labels on a separate concurrent task, independent of speech results.
+                let soundLabelsTask = Task {
+                    let soundStream = engine.soundLabelsStream()
+                    for await label in soundStream {
+                        stream.insertSoundLabel(label)
+                    }
+                }
+
+                async let _ = transcriptionTask.value
+                async let _ = soundLabelsTask.value
                 state = .idle
             } catch {
                 state = .failed(String(describing: error))
@@ -247,7 +261,12 @@ struct ContentView: View {
                         if let sp = line.speaker {
                             Text("Speaker \(sp + 1)").font(.headline).foregroundStyle(palette[sp % palette.count])
                         }
-                        Text(line.text).font(style.font()).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
+                        if line.isSoundLabel {
+                            Text(line.text).font(style.font().italic()).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
+                                .accessibilityLabel(line.soundLabel.map { soundLabelA11yLabel(for: $0) } ?? "")
+                        } else {
+                            Text(line.text).font(style.font()).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
+                        }
                     }
                     .accessibilityElement(children: .combine)
                 }
@@ -274,6 +293,16 @@ struct ContentView: View {
                     .foregroundStyle(style.background.color)
                     .padding(.bottom, 8)
             }
+        }
+    }
+
+    private func soundLabelA11yLabel(for label: SoundLabelKind) -> String {
+        switch label {
+        case .laughter: "Laughter sound"
+        case .applause: "Applause sound"
+        case .doorbell: "Doorbell sound"
+        case .phoneRinging: "Phone ringing sound"
+        case .knock: "Knock sound"
         }
     }
 
