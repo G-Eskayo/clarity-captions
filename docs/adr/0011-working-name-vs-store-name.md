@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-10-02).
+Accepted (2026-10-02). Amended 2026-10-05: the store name is chosen, see "Chosen name" below.
 
 ## Context
 
@@ -26,3 +26,20 @@ display name later is easy; changing the bundle ID is not.
    domain). "Seal" in particular is a crowded word and must be checked, not assumed free.
 4. **Docs use the terms deliberately**: "Clarity Captions" = current working title,
    "Seal" = nickname, "store name" = whatever ships.
+
+## Chosen name (2026-10-05)
+
+The project owner chose **Seal** as the store name; his partner likes and supports it. It began as
+the nickname, a spin on Otter, the tool that inspired the app.
+
+- A search of the US App Store on 2026-10-05 found no app named exactly "Seal" in the top 25 results
+  (near misses: "Seal - Instant Video Repost", "Seal Island"). That is a hint, not a guarantee:
+  the real availability check is reserving the name in App Store Connect, which needs the paid
+  membership. Trademark and domain checks are still to do.
+- **Discoverability:** "Seal" says nothing about captions, so the subtitle and keywords must carry
+  that ("Live captions" style wording; no health or medical claims, see
+  `docs/app-store-compliance.md`). Wording is decided when the store listing is written.
+- **Fallback if the name is taken:** "Clarity Captions" was checked the same way and found free.
+- **Bundle ID is still undecided** and is the one permanent choice. Keep it neutral rather than
+  derived from the name, so a later rename costs nothing.
+- Avoid names derived from "Otter", which is a competitor's trademark.

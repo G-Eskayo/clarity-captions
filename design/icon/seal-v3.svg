@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Two colors only: BG #0E4D64 and FG #F6EFE0. Full-bleed square; iOS applies the rounded mask. -->
+  <rect width="1024" height="1024" fill="#0E4D64"/>
+  <g transform="translate(10 10) scale(0.88)">
+    <g fill="#F6EFE0">
+      <!-- body: long, leaning torpedo, widest low, flowing up into the neck -->
+      <ellipse cx="430" cy="745" rx="170" ry="285" transform="rotate(24 430 745)"/>
+      <!-- tail flipper, curled up at the lower left -->
+      <path d="M 285 975 C 215 1010, 135 990, 85 925 C 140 930, 190 915, 235 880 C 255 925, 270 950, 285 975 Z"/>
+      <!-- nape: bridges head and body so there is no notch -->
+      <ellipse cx="478" cy="500" rx="135" ry="125" transform="rotate(-10 478 500)"/>
+      <!-- head -->
+      <ellipse cx="570" cy="395" rx="170" ry="152" transform="rotate(-18 570 395)"/>
+      <!-- upper muzzle, tilted up -->
+      <ellipse cx="722" cy="318" rx="108" ry="64" transform="rotate(-27 722 318)"/>
+      <!-- lower jaw, dropped open and attached to the head -->
+      <ellipse cx="682" cy="430" rx="92" ry="44" transform="rotate(10 682 430)"/>
+    </g>
+    <!-- mouth: open gap between the jaws -->
+    <path fill="#0E4D64" d="M 690 378 L 845 332 L 822 410 Z"/>
+    <!-- front flipper, set off from the body by a BG outline -->
+    <path fill="#F6EFE0" stroke="#0E4D64" stroke-width="14" stroke-linejoin="round"
+          d="M 575 595 C 655 612, 710 695, 692 790 C 668 768, 612 735, 572 682 C 546 650, 548 612, 575 595 Z"/>
+    <!-- eye, nostril, whisker dots -->
+    <circle cx="610" cy="352" r="23" fill="#0E4D64"/>
+    <circle cx="812" cy="280" r="13" fill="#0E4D64"/>
+    <g fill="#0E4D64"><circle cx="752" cy="316" r="7"/><circle cx="773" cy="331" r="7"/><circle cx="731" cy="334" r="7"/></g>
+    <!-- three bark lines from the mouth -->
+    <g fill="none" stroke="#F6EFE0" stroke-width="32" stroke-linecap="round">
+      <path d="M 915 318 A 75 75 0 0 1 915 408"/>
+      <path d="M 955 283 A 135 135 0 0 1 955 443"/>
+      <path d="M 995 248 A 195 195 0 0 1 995 478"/>
+    </g>
+  </g>
+</svg>

@@ -13,7 +13,7 @@ settings:
     # so regenerating the project never loses signing and no personal team ID is committed.
     DEVELOPMENT_TEAM: "${DEVELOPMENT_TEAM}"
     # Single source for the user-visible name (ADR 0011). Bundle ID is spike-only.
-    APP_DISPLAY_NAME: "Captions Dev"
+    APP_DISPLAY_NAME: "Seal"
 packages:
   CaptionCore:
     path: ../../Packages/CaptionCore

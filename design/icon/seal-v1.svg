@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Two colors only: BG and FG. Full-bleed square; iOS applies the rounded mask. -->
+  <rect width="1024" height="1024" fill="#0E4D64"/>
+  <g transform="translate(-30 60) scale(0.92)">
+    <!-- seal: body, neck, head with raised snout -->
+    <path fill="#F6EFE0" d="
+      M 140 900
+      C 230 840, 310 720, 335 580
+      C 350 490, 365 410, 420 350
+      C 475 292, 570 262, 650 292
+      C 705 312, 760 300, 815 262
+      C 842 245, 862 262, 855 290
+      C 848 322, 800 352, 750 372
+      C 705 392, 685 430, 700 480
+      C 722 560, 760 650, 735 760
+      C 722 820, 690 865, 660 900
+      Z"/>
+    <!-- open mouth: a wedge cut out between snout and chin -->
+    <path fill="#0E4D64" d="M 700 340 L 880 285 L 868 392 Z"/>
+    <!-- eye and nostril -->
+    <circle cx="615" cy="352" r="22" fill="#0E4D64"/>
+    <circle cx="812" cy="278" r="9" fill="#0E4D64"/>
+    <!-- front flipper -->
+    <path fill="#0E4D64" d="M 590 650 C 640 690, 650 760, 620 810 C 600 770, 575 720, 590 650 Z" opacity="0"/>
+    <!-- three bark lines from the mouth -->
+    <g fill="none" stroke="#F6EFE0" stroke-width="30" stroke-linecap="round">
+      <path d="M 905 290 A 70 70 0 0 1 905 380"/>
+      <path d="M 945 255 A 130 130 0 0 1 945 415"/>
+      <path d="M 985 220 A 190 190 0 0 1 985 450"/>
+    </g>
+  </g>
+</svg>
