@@ -24,6 +24,15 @@ claims (see `docs/app-store-compliance.md`).
 - **For proximity**, a calibration moment ("say hello from where you usually sit") could set a
   loudness baseline per person, but any speech works for that, not a phonetic script.
 
+## Decisions so far (2026-10-05)
+
+- **Approved to build:** sound labels and emphasis effects, both held to a **latency budget: caption speed must
+  stay within 10% of the recorded baseline** (see the latency-baseline issue).
+- **Correction:** what exists today fades a caption line while it is still being revised (not yet final). That is
+  not the same as fading individual *words* by the recognizer's confidence; per-word confidence dimming is
+  **not built**, and neither is the per-line background dimming (#6).
+- Everything else below is still an idea.
+
 ## What does fit, and why (verified in the iOS 27 SDK where noted)
 
 | Idea | Origin | Fits our decisions? | Notes |
