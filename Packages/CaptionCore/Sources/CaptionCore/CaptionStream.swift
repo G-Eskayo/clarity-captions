@@ -1,5 +1,10 @@
 import Foundation
 
+public struct CaptionWord: Equatable, Sendable {
+    public let text: String
+    public let emphasis: EmphasisLevel
+}
+
 /// One caption line: a paragraph of finalized speech plus, while someone is still talking, a volatile tail
 /// that is revised in place. `id` stays stable throughout, so the UI doesn't flicker as text flows in.
 public struct CaptionLine: Identifiable, Equatable, Sendable {
@@ -10,13 +15,19 @@ public struct CaptionLine: Identifiable, Equatable, Sendable {
     public var speaker: Int?
     /// Sound label for non-speech lines (laughter, applause, etc.); nil for ordinary speech lines.
     public var soundLabel: SoundLabelKind?
-    var committed: String
+    var committed: [CaptionWord]
     var tail: String?
     var tailRange: ClosedRange<Double>?
     var startTime: Double?
     var endTime: Double?
 
-    public var text: String { [committed, tail ?? ""].filter { !$0.isEmpty }.joined(separator: " ") }
+    public var text: String {
+        let committedText = committed.map(\.text).joined(separator: " ")
+        return [committedText, tail ?? ""].filter { !$0.isEmpty }.joined(separator: " ")
+    }
+    public var styledWords: [(text: String, emphasis: EmphasisLevel)] {
+        committed.map { (text: $0.text, emphasis: $0.emphasis) }
+    }
     public var isFinal: Bool { tail == nil }
     public var isSoundLabel: Bool { soundLabel != nil }
 }
@@ -38,21 +49,30 @@ public struct CaptionStream: Sendable {
         self.pauseSeconds = pauseSeconds
     }
 
-    public mutating func apply(text: String, isFinal: Bool, speaker: Int? = nil, range: ClosedRange<Double>? = nil) {
+    private static func captionWords(from text: String, emphasis: [EmphasisLevel]) -> [CaptionWord] {
+        let words = text.components(separatedBy: CharacterSet.whitespacesAndNewlines).filter { !$0.isEmpty }
+        return words.enumerated().map { (i, word) in
+            let wordEmphasis = i < emphasis.count ? emphasis[i] : .normal
+            return CaptionWord(text: word, emphasis: wordEmphasis)
+        }
+    }
+
+    public mutating func apply(text: String, isFinal: Bool, speaker: Int? = nil, range: ClosedRange<Double>? = nil, wordEmphasis: [EmphasisLevel] = []) {
         let piece = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !piece.isEmpty else { return }
 
+        let words = Self.captionWords(from: piece, emphasis: wordEmphasis)
         if var last = lines.last {
             // Never merge speech into a line marked as a sound label.
             guard !last.isSoundLabel else {
                 // Breaking away: close whatever was still open on the previous line (should already be final for sound labels).
                 if let stale = last.tail {
-                    last.committed = Self.join(last.committed, stale); last.tail = nil; last.tailRange = nil
+                    last.committed = Self.joinWords(last.committed, stale); last.tail = nil; last.tailRange = nil
                     lines[lines.count - 1] = last
                 }
                 lines.append(CaptionLine(
                     id: nextID, speaker: speaker,
-                    committed: isFinal ? piece : "", tail: isFinal ? nil : piece,
+                    committed: isFinal ? words : [], tail: isFinal ? nil : piece,
                     tailRange: isFinal ? nil : range, startTime: range?.lowerBound, endTime: range?.upperBound))
                 nextID += 1
                 return
@@ -64,7 +84,7 @@ public struct CaptionStream: Sendable {
                 let revises: Bool
                 if let r = range, let tr = last.tailRange { revises = r.lowerBound < tr.upperBound } else { revises = true }
                 if revises {
-                    if isFinal { last.committed = Self.join(last.committed, piece); last.tail = nil; last.tailRange = nil }
+                    if isFinal { last.committed = Self.joinWords(last.committed, piece); last.tail = nil; last.tailRange = nil }
                     else { last.tail = piece; last.tailRange = range ?? last.tailRange }
                     if let r = range { last.endTime = r.upperBound }
                     last.speaker = speaker ?? last.speaker
@@ -77,8 +97,8 @@ public struct CaptionStream: Sendable {
             } else if let r = range, let end = last.endTime ?? last.tailRange?.upperBound {
                 let changed = speaker != nil && last.speaker != nil && speaker != last.speaker
                 if r.lowerBound - end < pauseSeconds && !changed {
-                    if let stale = last.tail { last.committed = Self.join(last.committed, stale); last.tail = nil; last.tailRange = nil }
-                    if isFinal { last.committed = Self.join(last.committed, piece) }
+                    if let stale = last.tail { last.committed = Self.joinWords(last.committed, stale); last.tail = nil; last.tailRange = nil }
+                    if isFinal { last.committed = Self.joinWords(last.committed, piece) }
                     else { last.tail = piece; last.tailRange = r }
                     last.endTime = r.upperBound
                     last.speaker = speaker ?? last.speaker
@@ -88,14 +108,14 @@ public struct CaptionStream: Sendable {
             }
             // Breaking away: close whatever was still open on the previous line.
             if let stale = last.tail {
-                last.committed = Self.join(last.committed, stale); last.tail = nil; last.tailRange = nil
+                last.committed = Self.joinWords(last.committed, stale); last.tail = nil; last.tailRange = nil
                 lines[lines.count - 1] = last
             }
         }
 
         lines.append(CaptionLine(
             id: nextID, speaker: speaker,
-            committed: isFinal ? piece : "", tail: isFinal ? nil : piece,
+            committed: isFinal ? words : [], tail: isFinal ? nil : piece,
             tailRange: isFinal ? nil : range, startTime: range?.lowerBound, endTime: range?.upperBound))
         nextID += 1
     }
@@ -104,16 +124,23 @@ public struct CaptionStream: Sendable {
     public mutating func insertSoundLabel(_ label: SoundLabelKind) {
         if var last = lines.last {
             if let stale = last.tail {
-                last.committed = Self.join(last.committed, stale); last.tail = nil; last.tailRange = nil
+                last.committed = Self.joinWords(last.committed, stale); last.tail = nil; last.tailRange = nil
                 lines[lines.count - 1] = last
             }
         }
 
+        let labelText = SoundLabelFormatter.caption(for: label)
+        let labelWords = Self.captionWords(from: labelText, emphasis: [])
         lines.append(CaptionLine(
             id: nextID, speaker: nil, soundLabel: label,
-            committed: SoundLabelFormatter.caption(for: label),
+            committed: labelWords,
             tail: nil, tailRange: nil, startTime: nil, endTime: nil))
         nextID += 1
+    }
+
+    private static func joinWords(_ a: [CaptionWord], _ b: String) -> [CaptionWord] {
+        let bWords = captionWords(from: b, emphasis: [])
+        return a.isEmpty ? bWords : a + bWords
     }
 
     private static func join(_ a: String, _ b: String) -> String { a.isEmpty ? b : a + " " + b }

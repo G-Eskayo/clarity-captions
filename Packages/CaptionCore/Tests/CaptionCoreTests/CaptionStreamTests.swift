@@ -141,4 +141,36 @@ final class CaptionStreamTests: XCTestCase {
         s.insertSoundLabel(.laughter)
         XCTAssertNil(s.lines[0].startTime)
     }
+
+    // MARK: - Emphasis
+
+    func testCommittedWordsCarryEmphasis() {
+        var s = CaptionStream()
+        s.apply(text: "hello world", isFinal: true, wordEmphasis: [.normal, .loud])
+        XCTAssertEqual(s.lines[0].styledWords.count, 2)
+        XCTAssertEqual(s.lines[0].styledWords[0].text, "hello")
+        XCTAssertEqual(s.lines[0].styledWords[0].emphasis, .normal)
+        XCTAssertEqual(s.lines[0].styledWords[1].text, "world")
+        XCTAssertEqual(s.lines[0].styledWords[1].emphasis, .loud)
+    }
+
+    func testVolatileTailHasNoEmphasis() {
+        var s = CaptionStream()
+        s.apply(text: "hello", isFinal: false, wordEmphasis: [.loud])
+        XCTAssertEqual(s.lines[0].styledWords.count, 0, "volatile tail should not create committed words")
+        XCTAssertEqual(s.lines[0].tail, "hello")
+    }
+
+    func testMismatchedEmphasisCountDefaultsToNormal() {
+        var s = CaptionStream()
+        s.apply(text: "hello world", isFinal: true, wordEmphasis: [.loud])
+        XCTAssertEqual(s.lines[0].styledWords[0].emphasis, .loud)
+        XCTAssertEqual(s.lines[0].styledWords[1].emphasis, .normal, "missing emphasis defaults to normal")
+    }
+
+    func testSoundLabelWordsDefaultToNormal() {
+        var s = CaptionStream()
+        s.insertSoundLabel(.laughter)
+        XCTAssertTrue(s.lines[0].styledWords.allSatisfy { $0.emphasis == .normal })
+    }
 }

@@ -16,6 +16,8 @@ public struct CaptionUpdate: Sendable {
     public let endSeconds: Double?
     /// Spike-only: live diarizer health line.
     public let diagnostics: String
+    /// Emphasis level per word in the text (split on whitespace), empty if unavailable.
+    public let wordEmphasis: [EmphasisLevel]
 }
 
 /// Audio seconds fed to the analyzer so far; written on the audio thread, read on the results task.
@@ -73,6 +75,10 @@ public final class TranscriptionEngine {
     private let contextualStrings: [String]
     /// Spike-only: how long each startup step took, for the developer panel. Measured, not guessed.
     public private(set) var startupReport = ""
+    private var loudnessTracker = LoudnessWordTracker()
+    private var loudnessBaseline = LoudnessBaseline()
+    private var loudnessTimeSeries: [(audioTime: Double, level: Double)] = []
+    private let loudnessLock = NSLock()
 
     /// `diarizerModelURL` has no default on purpose: the app must say where its bundled speaker model
     /// lives, so there is no accidental network path (ADR 0014).
@@ -218,7 +224,8 @@ public final class TranscriptionEngine {
                             let speaker = (starts.min().flatMap { st in end.map { (st, $0) } })
                                 .flatMap { SpeakerAligner.speaker(start: $0.0, end: $0.1, segments: self.diarizer.segments) }
                             let lag = wallTime.elapsedSinceStart().flatMap { elapsed in lagTracker.sample(elapsed: elapsed, audioEnds: ends) }
-                            continuation.yield(CaptionUpdate(text: String(result.text.characters), isFinal: result.isFinal, lagSeconds: lag, speaker: speaker, startSeconds: starts.min(), endSeconds: end, diagnostics: self.diarizer.diagnostics))
+                            let wordEmphasis = self.wordEmphasisFromResultText(result.text)
+                            continuation.yield(CaptionUpdate(text: String(result.text.characters), isFinal: result.isFinal, lagSeconds: lag, speaker: speaker, startSeconds: starts.min(), endSeconds: end, diagnostics: self.diarizer.diagnostics, wordEmphasis: wordEmphasis))
                         }
                     }
 
@@ -283,6 +290,7 @@ public final class TranscriptionEngine {
                 let samples = Array(UnsafeBufferPointer(start: ch[0], count: Int(dOut.frameLength)))
                 diarizer.feed(samples)
                 soundLabeler.feed(samples, atAudioTime: fed.seconds)
+                recordLoudness(samples: samples, atAudioTime: fed.seconds)
             }
         }
         if error == nil {
@@ -303,7 +311,8 @@ public final class TranscriptionEngine {
                         let speaker = (starts.min().flatMap { st in end.map { (st, $0) } })
                             .flatMap { SpeakerAligner.speaker(start: $0.0, end: $0.1, segments: self?.diarizer.segments ?? []) }
                         let lag = wallTime.elapsedSinceStart().flatMap { elapsed in lagTracker.sample(elapsed: elapsed, audioEnds: ends) }
-                        continuation.yield(CaptionUpdate(text: String(result.text.characters), isFinal: result.isFinal, lagSeconds: lag, speaker: speaker, startSeconds: starts.min(), endSeconds: end, diagnostics: self?.diarizer.diagnostics ?? ""))
+                        let wordEmphasis = self?.wordEmphasisFromResultText(result.text) ?? []
+                        continuation.yield(CaptionUpdate(text: String(result.text.characters), isFinal: result.isFinal, lagSeconds: lag, speaker: speaker, startSeconds: starts.min(), endSeconds: end, diagnostics: self?.diarizer.diagnostics ?? "", wordEmphasis: wordEmphasis))
                     }
                     continuation.finish()
                 } catch {
@@ -312,6 +321,46 @@ public final class TranscriptionEngine {
             }
             continuation.onTermination = { _ in task.cancel() }
         }
+    }
+
+    /// Records the loudness level for a buffer of audio samples at a given audio time.
+    private func recordLoudness(samples: [Float], atAudioTime audioTime: Double) {
+        let level = AudioLevel.rmsDBFS(samples)
+        loudnessLock.lock(); defer { loudnessLock.unlock() }
+        loudnessTimeSeries.append((audioTime: audioTime, level: level))
+        loudnessBaseline.update(level)
+    }
+
+    /// Computes the average loudness for a word's audio time range.
+    /// Returns nil if no measurements exist for that range.
+    private func averageLoudness(for range: ClosedRange<Double>) -> Double? {
+        loudnessLock.lock(); defer { loudnessLock.unlock() }
+        let overlapping = loudnessTimeSeries.filter { $0.audioTime >= range.lowerBound && $0.audioTime <= range.upperBound }
+        guard !overlapping.isEmpty else { return nil }
+        return overlapping.map(\.level).reduce(0, +) / Double(overlapping.count)
+    }
+
+    /// Helper to compute word emphasis from a finalized result's runs.
+    private func wordEmphasisFromResultText(_ resultText: AttributedString) -> [EmphasisLevel] {
+        var result: [EmphasisLevel] = []
+        loudnessLock.lock(); let baseline = loudnessBaseline.median; loudnessLock.unlock()
+
+        for run in resultText.runs {
+            let substr = resultText[run.range]
+            let text = String(describing: substr)
+            let words = text.components(separatedBy: CharacterSet.whitespacesAndNewlines).filter { !$0.isEmpty }
+
+            guard let timeRange = run.audioTimeRange else {
+                result.append(contentsOf: Array(repeating: .normal, count: words.count))
+                continue
+            }
+
+            let audioRange = timeRange.start.seconds...timeRange.end.seconds
+            let loudness = averageLoudness(for: audioRange) ?? (loudnessTimeSeries.last?.level ?? -60)
+            let emphasis = EmphasisMapper.level(wordDBFS: loudness, baseline: baseline)
+            result.append(contentsOf: Array(repeating: emphasis, count: words.count))
+        }
+        return result
     }
 
     /// Releases the microphone, the speech analyzer and the helpers. Safe to call more than once.

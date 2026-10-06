@@ -121,9 +121,10 @@ public struct CaptionStyle: Codable, Equatable, Sendable {
     public var text: RGBA
     public var size: CaptionTextSize
     public var font: CaptionFont
+    public var emphasisEffectsEnabled: Bool = true
 
     public static let standard = CaptionStyle(
-        background: CaptionPreset.all[0].background, text: CaptionPreset.all[0].text, size: .medium, font: .system)
+        background: CaptionPreset.all[0].background, text: CaptionPreset.all[0].text, size: .medium, font: .system, emphasisEffectsEnabled: true)
 
     /// A preset changes the two colors only; the user's size and font choices stay.
     public func applying(_ preset: CaptionPreset) -> CaptionStyle {
