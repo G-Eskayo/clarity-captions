@@ -31,6 +31,7 @@ struct SettingsSheet: View {
                     section("Colors") { presetRow }
                     section("Size") { sizeRow }
                     section("Lettering") { fontRow }
+                    section("Speaker labels") { speakerExplanationRow }
                     section("About") { aboutRow }
                 }
                 .padding()
@@ -99,6 +100,14 @@ struct SettingsSheet: View {
                 .buttonStyle(.bordered).tint(style.font == f ? .accentColor : .secondary)
             }
         }
+    }
+
+    private var speakerExplanationRow: some View {
+        Text(SpeakerExplanation.sentence)
+            .font(.callout)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding()
+            .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
     }
 
     private var aboutRow: some View {

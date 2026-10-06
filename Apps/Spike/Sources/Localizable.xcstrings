@@ -254,6 +254,17 @@
         }
       }
     },
+    "Got it" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Got it"
+          }
+        }
+      }
+    },
     "Hello! This is how captions will look." : {
       "extractionState": "manual",
       "localizations": {
@@ -562,6 +573,17 @@
         }
       }
     },
+    "Seal tells voices apart as people talk." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seal tells voices apart as people talk."
+          }
+        }
+      }
+    },
     "Settings" : {
       "extractionState": "manual",
       "localizations": {
@@ -602,6 +624,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "Speaker %d"
+          }
+        }
+      }
+    },
+    "Speaker" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speaker"
+          }
+        }
+      }
+    },
+    "Speaker labels" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speaker labels"
+          }
+        }
+      }
+    },
+    "Speaker unknown" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speaker unknown"
           }
         }
       }

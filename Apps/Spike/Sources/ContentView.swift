@@ -107,9 +107,12 @@ struct ContentView: View {
     /// Bumped on every state change so a pending "show the animation" can tell it has been overtaken.
     @State private var preparingToken = 0
     @State private var animationShownAt: Date?
+    /// Show the one-time speaker explanation banner.
+    @State private var showingSpeakerBanner = false
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var style: CaptionStyle { model.style }
     private var control: PrimaryControl { PrimaryControl.for(model.state) }
@@ -236,45 +239,97 @@ struct ContentView: View {
 
     private func captions(bottomReserve: CGFloat = 0) -> some View {
         let palette = SpeakerPalette.colors(on: style.background, text: style.text).map(\.color)
-        return ScrollView {
-            LazyVStack(alignment: .leading, spacing: 16) {
-                ForEach(model.stream.lines) { line in
-                    VStack(alignment: .leading, spacing: 2) {
-                        if let sp = line.speaker {
-                            Text(String(localized: "Speaker \(sp + 1)")).font(.headline).foregroundStyle(palette[sp % palette.count])
+        let placeholderColor = SpeakerPalette.placeholderColor(on: style.background, text: style.text).color
+        return ZStack(alignment: .top) {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 16) {
+                    ForEach(model.stream.lines) { line in
+                        VStack(alignment: .leading, spacing: 2) {
+                            let labelState = SpeakerLabeling.state(for: line)
+                            if labelState != .none {
+                                speakerLabelRow(for: labelState, speaker: line.speaker, palette: palette, placeholderColor: placeholderColor)
+                                    .onAppear {
+                                        if labelState == .pending && !showingSpeakerBanner && !SpeakerExplanationStore().hasSeen {
+                                            showingSpeakerBanner = true
+                                        }
+                                    }
+                            }
+                            if line.isSoundLabel {
+                                Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize)).italic()).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
+                                    .accessibilityLabel(line.soundLabel.map { soundLabelA11yLabel(for: $0) } ?? "")
+                            } else {
+                                Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize))).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
+                            }
                         }
-                        if line.isSoundLabel {
-                            Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize)).italic()).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
-                                .accessibilityLabel(line.soundLabel.map { soundLabelA11yLabel(for: $0) } ?? "")
-                        } else {
-                            Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize))).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
-                        }
+                        .accessibilityElement(children: .combine)
                     }
-                    .accessibilityElement(children: .combine)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 8)
+            }
+            .scrollPosition($position)
+            .contentMargins(.bottom, bottomReserve, for: .scrollContent)
+            .onScrollPhaseChange { _, phase in userDragging = (phase == .interacting || phase == .decelerating) }
+            .onScrollGeometryChange(for: Bool.self) { g in
+                AutoScroll.shouldFollow(offsetY: g.contentOffset.y, viewportHeight: g.containerSize.height, contentHeight: g.contentSize.height)
+            } action: { _, atBottom in
+                if atBottom { following = true } else if userDragging { following = false }
+            }
+            .onChange(of: model.stream.lines) { if following { position.scrollTo(edge: .bottom) } }
+            .overlay(alignment: .bottom) {
+                if !following {
+                    Button {
+                        following = true
+                        withAnimation { position.scrollTo(edge: .bottom) }
+                    } label: { Label("Jump to latest", systemImage: "arrow.down.circle.fill").font(.title3.bold()).padding(.horizontal, 8).frame(minHeight: 48) }
+                        .buttonStyle(.borderedProminent)
+                        .foregroundStyle(style.background.color)
+                        .padding(.bottom, 8)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 8)
-        }
-        .scrollPosition($position)
-        .contentMargins(.bottom, bottomReserve, for: .scrollContent)
-        .onScrollPhaseChange { _, phase in userDragging = (phase == .interacting || phase == .decelerating) }
-        .onScrollGeometryChange(for: Bool.self) { g in
-            AutoScroll.shouldFollow(offsetY: g.contentOffset.y, viewportHeight: g.containerSize.height, contentHeight: g.contentSize.height)
-        } action: { _, atBottom in
-            if atBottom { following = true } else if userDragging { following = false }
-        }
-        .onChange(of: model.stream.lines) { if following { position.scrollTo(edge: .bottom) } }
-        .overlay(alignment: .bottom) {
-            if !following {
-                Button {
-                    following = true
-                    withAnimation { position.scrollTo(edge: .bottom) }
-                } label: { Label("Jump to latest", systemImage: "arrow.down.circle.fill").font(.title3.bold()).padding(.horizontal, 8).frame(minHeight: 48) }
-                    .buttonStyle(.borderedProminent)
-                    .foregroundStyle(style.background.color)
-                    .padding(.bottom, 8)
+
+            if showingSpeakerBanner {
+                VStack(spacing: 12) {
+                    Text(SpeakerExplanation.sentence)
+                        .font(.callout)
+                    HStack {
+                        Button("Got it") {
+                            SpeakerExplanationStore().markSeen()
+                            showingSpeakerBanner = false
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+                .padding()
+                .background(style.text.color.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+                .padding()
+                .transition(.move(edge: .top).combined(with: .opacity))
             }
+        }
+    }
+
+    private func speakerLabelRow(for state: SpeakerLabelState, speaker: Int?, palette: [Color], placeholderColor: Color) -> some View {
+        switch state {
+        case .none:
+            return AnyView(EmptyView())
+        case .pending:
+            return AnyView(
+                Text(String(localized: "Speaker"))
+                    .font(.headline)
+                    .foregroundStyle(placeholderColor)
+            )
+        case .resolved(let sp):
+            return AnyView(
+                Text(String(localized: "Speaker \(sp + 1)"))
+                    .font(.headline)
+                    .foregroundStyle(palette[sp % palette.count])
+            )
+        case .unknown:
+            return AnyView(
+                Text(String(localized: "Speaker unknown"))
+                    .font(.headline)
+                    .foregroundStyle(placeholderColor)
+            )
         }
     }
 

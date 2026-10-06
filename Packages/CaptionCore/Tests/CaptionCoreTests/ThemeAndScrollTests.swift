@@ -25,6 +25,20 @@ final class ThemeTests: XCTestCase {
             XCTAssertEqual(Set(colors.map { "\($0.r),\($0.g),\($0.b)" }).count, 4, "\(p.name) repeats a speaker color")
         }
     }
+
+    func testPlaceholderColorMeetsMinimumContrastAndIsQuieterThanResolvedColor() {
+        for p in CaptionPreset.all {
+            let placeholder = SpeakerPalette.placeholderColor(on: p.background, text: p.text)
+            let placeholderContrast = RGBA.contrast(placeholder, p.background)
+            XCTAssertGreaterThanOrEqual(placeholderContrast, 3.0, "\(p.name): placeholder color too faint")
+
+            let resolvedColors = SpeakerPalette.colors(on: p.background, text: p.text)
+            for resolved in resolvedColors {
+                let resolvedContrast = RGBA.contrast(resolved, p.background)
+                XCTAssertLessThan(placeholderContrast, resolvedContrast, "\(p.name): placeholder should be quieter than resolved speaker color")
+            }
+        }
+    }
 }
 
 final class AutoScrollTests: XCTestCase {

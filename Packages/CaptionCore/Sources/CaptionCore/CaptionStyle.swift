@@ -169,4 +169,37 @@ public enum SpeakerPalette {
                         min(1, max(0, text.b + (background.isDark ? -d : d))))
         }
     }
+
+    /// A quieter placeholder color for pending/unknown speaker labels. Aims for ~3.0:1 contrast on the given
+    /// background, readable but noticeably muted compared to resolved speaker colors (which maintain 4.5:1+).
+    public static func placeholderColor(on background: RGBA, text: RGBA) -> RGBA {
+        // Start with a muted tone: blend text toward background, roughly halfway.
+        let midpoint = RGBA(
+            (text.r + background.r) / 2,
+            (text.g + background.g) / 2,
+            (text.b + background.b) / 2
+        )
+        let midContrast = RGBA.contrast(midpoint, background)
+        if midContrast >= 3.0 { return midpoint }
+
+        // If midpoint is too faint, nudge toward text to reach 3.0:1 target.
+        var result = midpoint
+        let step = 0.01
+        while RGBA.contrast(result, background) < 3.0 {
+            if background.isDark {
+                result = RGBA(
+                    min(1, result.r + step),
+                    min(1, result.g + step),
+                    min(1, result.b + step)
+                )
+            } else {
+                result = RGBA(
+                    max(0, result.r - step),
+                    max(0, result.g - step),
+                    max(0, result.b - step)
+                )
+            }
+        }
+        return result
+    }
 }
