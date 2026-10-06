@@ -41,6 +41,10 @@ domain understanding only.
   speaker diarization — identifying distinct speakers and their turns in live audio — which
   speaker-turn labeling is built on directly ([[0008]]). No enrollment or reference-embedding
   matching involved (that was the superseded own-voice-filtering design, [[0002]]).
+- **Sortformer**: the bundled speaker-diarization model (v2.1, fp16, 241 MB, CC BY 4.0 license).
+  Handles 2–4 distinct speakers reliably; maxes out at 4 due to architecture. Higher-capacity
+  alternatives (LS-EEND) are available but not bundled pending real-world measurements on resource
+  budgets and latency — see [[0017]].
 
 ## Caption display
 
