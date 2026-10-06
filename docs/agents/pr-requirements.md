@@ -19,3 +19,10 @@ environment, not from reading the code.
 - The iOS app must build with the change. State whether the build was run and its result.
 - Tests must pass; say how many ran and how many passed.
 - Do not claim something is verified unless it was.
+
+## Changes to the live captioning path (starting, running, stopping)
+
+Anything that touches how captioning starts, runs or stops must keep the lifecycle tests passing
+(`CaptionSessionControllerTests`) and must add one for any new behavior. Say in the pull request how it was
+exercised: pressing Start, Stop and Start again, and a failed start, on a simulator or device. Tests with a
+fake engine are required; they are not a substitute for one real run, and the PR must say whether a real run was done.
