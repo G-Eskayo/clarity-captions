@@ -144,6 +144,11 @@ struct ContentView: View {
         .preferredColorScheme(style.background.isDark ? .dark : .light)
         .animation(.snappy, value: control.presentation)
         .sheet(isPresented: $showingSettings) { SettingsSheet(style: $model.style, stream: model.stream, speakerNames: model.speakerNames) }
+        .task {
+            guard DemoMode.isOn else { return }
+            model.runDemo()
+            if DemoMode.opensSettings { showingSettings = true }
+        }
         .onChange(of: model.state) { _, newState in
             UIAccessibility.post(notification: .announcement, argument: StatusWords.announcement(for: newState))
             handleStateChange(newState)
