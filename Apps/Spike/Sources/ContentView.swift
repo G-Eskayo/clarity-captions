@@ -260,7 +260,7 @@ struct ContentView: View {
                 ForEach(model.stream.lines) { line in
                     VStack(alignment: .leading, spacing: 2) {
                         if let sp = line.speaker {
-                            Text("Speaker \(sp + 1)").font(.headline).foregroundStyle(palette[sp % palette.count])
+                            Text(String(localized: "Speaker \(sp + 1)")).font(.headline).foregroundStyle(palette[sp % palette.count])
                         }
                         if line.isSoundLabel {
                             Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize)).italic()).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
