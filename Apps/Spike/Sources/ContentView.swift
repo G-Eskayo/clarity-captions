@@ -131,6 +131,7 @@ struct ContentView: View {
     @State private var showPreparingAnimation = false
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var style: CaptionStyle { model.style }
     private var control: PrimaryControl { PrimaryControl.for(model.state) }
@@ -262,10 +263,10 @@ struct ContentView: View {
                             Text("Speaker \(sp + 1)").font(.headline).foregroundStyle(palette[sp % palette.count])
                         }
                         if line.isSoundLabel {
-                            Text(line.text).font(style.font().italic()).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
+                            Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize)).italic()).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
                                 .accessibilityLabel(line.soundLabel.map { soundLabelA11yLabel(for: $0) } ?? "")
                         } else {
-                            Text(line.text).font(style.font()).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
+                            Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize))).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
                         }
                     }
                     .accessibilityElement(children: .combine)

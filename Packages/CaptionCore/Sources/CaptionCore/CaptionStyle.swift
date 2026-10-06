@@ -50,16 +50,52 @@ public enum CaptionFont: String, Codable, CaseIterable, Sendable {
     }
 }
 
-public enum CaptionTextSize: Int, Codable, CaseIterable, Sendable {
-    case small, medium, large, extraLarge
-    public var points: Double {
+/// System text size category, mirroring DynamicTypeSize / UIContentSizeCategory, with published point sizes from Apple for `.body`.
+public enum SystemTextSizeCategory: Int, Codable, CaseIterable, Equatable, Sendable {
+    case extraSmall, small, medium, large, extraLarge, extraExtraLarge, extraExtraExtraLarge
+    case accessibilityMedium, accessibilityLarge, accessibilityExtraLarge, accessibilityExtraExtraLarge, accessibilityExtraExtraExtraLarge
+
+    /// The `.body` point size for this category, per Apple's published typography metrics.
+    public var bodyPointSize: Double {
         switch self {
-        case .small: 22
-        case .medium: 28
-        case .large: 36
-        case .extraLarge: 46
+        case .extraSmall: 14
+        case .small: 15
+        case .medium: 16
+        case .large: 17
+        case .extraLarge: 19
+        case .extraExtraLarge: 21
+        case .extraExtraExtraLarge: 23
+        case .accessibilityMedium: 28
+        case .accessibilityLarge: 33
+        case .accessibilityExtraLarge: 40
+        case .accessibilityExtraExtraLarge: 47
+        case .accessibilityExtraExtraExtraLarge: 53
         }
     }
+
+    /// Scale relative to `.large` (the system default), to let caption sizes track system Dynamic Type.
+    public var scale: Double {
+        let largeSize = SystemTextSizeCategory.large.bodyPointSize
+        return bodyPointSize / largeSize
+    }
+}
+
+public enum CaptionTextSize: Int, Codable, CaseIterable, Sendable {
+    case smallest, small, medium, large, largest
+    private static let basePointSize = 28.0
+
+    /// Point size for this caption text step at a given system Dynamic Type category.
+    public func pointSize(for category: SystemTextSizeCategory) -> Double {
+        let relativeMultiplier: Double = switch self {
+        case .smallest: 0.75
+        case .small: 0.875
+        case .medium: 1.0
+        case .large: 1.15
+        case .largest: 1.35
+        }
+        return Self.basePointSize * relativeMultiplier * category.scale
+    }
+
     public func larger() -> CaptionTextSize { CaptionTextSize(rawValue: rawValue + 1) ?? self }
     public func smaller() -> CaptionTextSize { CaptionTextSize(rawValue: rawValue - 1) ?? self }
 }
