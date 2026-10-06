@@ -16,6 +16,19 @@ public struct CaptionUpdate: Sendable {
     public let endSeconds: Double?
     /// Spike-only: live diarizer health line.
     public let diagnostics: String
+    /// Caption chunks with emphasis information; mirrors text when emphasis is not tracked.
+    public let chunks: [CaptionChunk]
+
+    public init(text: String, isFinal: Bool, lagSeconds: Double? = nil, speaker: Int? = nil, startSeconds: Double? = nil, endSeconds: Double? = nil, diagnostics: String = "", chunks: [CaptionChunk] = []) {
+        self.text = text
+        self.isFinal = isFinal
+        self.lagSeconds = lagSeconds
+        self.speaker = speaker
+        self.startSeconds = startSeconds
+        self.endSeconds = endSeconds
+        self.diagnostics = diagnostics
+        self.chunks = chunks.isEmpty ? [CaptionChunk(text: text)] : chunks
+    }
 }
 
 /// Audio seconds fed to the analyzer so far; written on the audio thread, read on the results task.
@@ -72,6 +85,9 @@ public final class TranscriptionEngine {
     private var soundLabelerStream: AsyncStream<SoundLabelKind>?
     /// Spike-only: how long each startup step took, for the developer panel. Measured, not guessed.
     public private(set) var startupReport = ""
+    private let loudnessLock = NSLock()
+    private var loudnessTimeline = LoudnessTimeline()
+    private var loudnessBaseline = LoudnessBaseline()
 
     /// `diarizerModelURL` has no default on purpose: the app must say where its bundled speaker model
     /// lives, so there is no accidental network path (ADR 0014).
@@ -204,6 +220,7 @@ public final class TranscriptionEngine {
                     // Start the result stream task in the background.
                     let resultTask = Task {
                         var lagTracker = WordLagTracker()
+                        let classifier = EmphasisClassifier()
                         for try await result in transcriber.results {
                             let starts = result.text.runs.compactMap { $0.audioTimeRange?.start.seconds }
                             let ends = result.text.runs.compactMap { $0.audioTimeRange?.end.seconds }
@@ -211,7 +228,9 @@ public final class TranscriptionEngine {
                             let speaker = (starts.min().flatMap { st in end.map { (st, $0) } })
                                 .flatMap { SpeakerAligner.speaker(start: $0.0, end: $0.1, segments: self.diarizer.segments) }
                             let lag = wallTime.elapsedSinceStart().flatMap { elapsed in lagTracker.sample(elapsed: elapsed, audioEnds: ends) }
-                            continuation.yield(CaptionUpdate(text: String(result.text.characters), isFinal: result.isFinal, lagSeconds: lag, speaker: speaker, startSeconds: starts.min(), endSeconds: end, diagnostics: self.diarizer.diagnostics))
+
+                            let chunks = self.buildChunks(from: result.text.runs, classifier: classifier)
+                            continuation.yield(CaptionUpdate(text: String(result.text.characters), isFinal: result.isFinal, lagSeconds: lag, speaker: speaker, startSeconds: starts.min(), endSeconds: end, diagnostics: self.diarizer.diagnostics, chunks: chunks))
                         }
                     }
 
@@ -276,6 +295,14 @@ public final class TranscriptionEngine {
                 let samples = Array(UnsafeBufferPointer(start: ch[0], count: Int(dOut.frameLength)))
                 diarizer.feed(samples)
                 soundLabeler.feed(samples, atAudioTime: fed.seconds)
+
+                let startTime = fed.seconds
+                let dBFS = AudioLevel.dBFS(samples: samples)
+                let endTime = startTime + Double(dOut.frameLength) / diarFormat.sampleRate
+                loudnessLock.lock()
+                loudnessTimeline.append(timeRange: startTime...endTime, dBFS: dBFS)
+                loudnessBaseline.feed(dBFS)
+                loudnessLock.unlock()
             }
         }
         if error == nil {
@@ -289,6 +316,7 @@ public final class TranscriptionEngine {
             let task = Task {
                 do {
                     var lagTracker = WordLagTracker()
+                    let classifier = EmphasisClassifier()
                     for try await result in transcriber.results {
                         let starts = result.text.runs.compactMap { $0.audioTimeRange?.start.seconds }
                         let ends = result.text.runs.compactMap { $0.audioTimeRange?.end.seconds }
@@ -296,7 +324,9 @@ public final class TranscriptionEngine {
                         let speaker = (starts.min().flatMap { st in end.map { (st, $0) } })
                             .flatMap { SpeakerAligner.speaker(start: $0.0, end: $0.1, segments: self?.diarizer.segments ?? []) }
                         let lag = wallTime.elapsedSinceStart().flatMap { elapsed in lagTracker.sample(elapsed: elapsed, audioEnds: ends) }
-                        continuation.yield(CaptionUpdate(text: String(result.text.characters), isFinal: result.isFinal, lagSeconds: lag, speaker: speaker, startSeconds: starts.min(), endSeconds: end, diagnostics: self?.diarizer.diagnostics ?? ""))
+
+                        let chunks = self?.buildChunks(from: result.text.runs, classifier: classifier) ?? []
+                        continuation.yield(CaptionUpdate(text: String(result.text.characters), isFinal: result.isFinal, lagSeconds: lag, speaker: speaker, startSeconds: starts.min(), endSeconds: end, diagnostics: self?.diarizer.diagnostics ?? "", chunks: chunks))
                     }
                     continuation.finish()
                 } catch {
@@ -341,5 +371,33 @@ public final class TranscriptionEngine {
     /// Returns the stream of recognized sound labels.
     public func soundLabelsStream() -> AsyncStream<SoundLabelKind> {
         soundLabelerStream ?? AsyncStream { $0.finish() }
+    }
+
+    /// Build chunks from transcription runs, classifying emphasis based on loudness.
+    private func buildChunks(from runs: [AttributedStringKey.Text], classifier: EmphasisClassifier) -> [CaptionChunk] {
+        loudnessLock.lock()
+        defer { loudnessLock.unlock() }
+
+        var chunks: [CaptionChunk] = []
+        for run in runs {
+            let text = String(run.characters)
+            guard !text.trimmingCharacters(in: .whitespaces).isEmpty else { continue }
+
+            let emphasis: EmphasisLevel
+            if let timeRange = run.audioTimeRange {
+                let start = timeRange.start.seconds
+                let end = timeRange.end.seconds
+                if let level = loudnessTimeline.averageLevel(in: start...end) {
+                    emphasis = classifier.classify(level: level, baseline: loudnessBaseline)
+                } else {
+                    emphasis = .none
+                }
+            } else {
+                emphasis = .none
+            }
+
+            chunks.append(CaptionChunk(text: text, emphasis: emphasis))
+        }
+        return chunks
     }
 }

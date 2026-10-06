@@ -88,4 +88,22 @@ final class CaptionStyleTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(contrast, 4.5, "\(p.name) dimmed is not readable enough at opacity \(dimmedAlpha)")
         }
     }
+
+    func testOldSavedStyleWithoutEffsEnabledDecodesWithDefaultTrue() {
+        let defaults = UserDefaults(suiteName: "caption-style-test-compat-\(UUID())")!
+        let store = CaptionStyleStore(defaults: defaults)
+
+        // Manually create old-format JSON without effectsEnabled
+        let oldStyle = CaptionStyle.standard
+        if let encoder = try? JSONEncoder(),
+           let data = try? encoder.encode(oldStyle),
+           var dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            dict.removeValue(forKey: "effectsEnabled")
+            if let newData = try? JSONSerialization.data(withJSONObject: dict) {
+                defaults.set(newData, forKey: CaptionStyleStore.key)
+                let loaded = store.load()
+                XCTAssertTrue(loaded.effectsEnabled, "effectsEnabled should default to true for old saved data")
+            }
+        }
+    }
 }

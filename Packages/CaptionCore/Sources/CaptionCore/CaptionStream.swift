@@ -1,5 +1,16 @@
 import Foundation
 
+/// A span of text with an emphasis level.
+public struct CaptionChunk: Equatable, Sendable {
+    public let text: String
+    public let emphasis: EmphasisLevel
+
+    public init(text: String, emphasis: EmphasisLevel = .none) {
+        self.text = text
+        self.emphasis = emphasis
+    }
+}
+
 /// One caption line: a paragraph of finalized speech plus, while someone is still talking, a volatile tail
 /// that is revised in place. `id` stays stable throughout, so the UI doesn't flicker as text flows in.
 public struct CaptionLine: Identifiable, Equatable, Sendable {
@@ -13,12 +24,18 @@ public struct CaptionLine: Identifiable, Equatable, Sendable {
     var committed: String
     var tail: String?
     var tailRange: ClosedRange<Double>?
+    var committedChunks: [CaptionChunk] = []
+    var tailChunks: [CaptionChunk] = []
     var startTime: Double?
     var endTime: Double?
 
     public var text: String { [committed, tail ?? ""].filter { !$0.isEmpty }.joined(separator: " ") }
     public var isFinal: Bool { tail == nil }
     public var isSoundLabel: Bool { soundLabel != nil }
+    public var chunks: [CaptionChunk] {
+        let allChunks = committedChunks + tailChunks
+        return allChunks.isEmpty ? [CaptionChunk(text: text)] : allChunks
+    }
 }
 
 /// The live caption transcript. Pure value type -- no audio, no UI, no platform APIs -- so it is tested
@@ -38,22 +55,37 @@ public struct CaptionStream: Sendable {
         self.pauseSeconds = pauseSeconds
     }
 
+    public mutating func apply(chunks: [CaptionChunk], isFinal: Bool, speaker: Int? = nil, range: ClosedRange<Double>? = nil) {
+        let text = chunks.map(\.text).joined()
+        let piece = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !piece.isEmpty else { return }
+        applyWithChunks(chunks: chunks, text: piece, isFinal: isFinal, speaker: speaker, range: range)
+    }
+
     public mutating func apply(text: String, isFinal: Bool, speaker: Int? = nil, range: ClosedRange<Double>? = nil) {
         let piece = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !piece.isEmpty else { return }
+        let chunks = [CaptionChunk(text: piece, emphasis: .none)]
+        applyWithChunks(chunks: chunks, text: piece, isFinal: isFinal, speaker: speaker, range: range)
+    }
 
+    private mutating func applyWithChunks(chunks: [CaptionChunk], text piece: String, isFinal: Bool, speaker: Int? = nil, range: ClosedRange<Double>? = nil) {
         if var last = lines.last {
             // Never merge speech into a line marked as a sound label.
             guard !last.isSoundLabel else {
                 // Breaking away: close whatever was still open on the previous line (should already be final for sound labels).
                 if let stale = last.tail {
                     last.committed = Self.join(last.committed, stale); last.tail = nil; last.tailRange = nil
+                    last.committedChunks.append(contentsOf: last.tailChunks); last.tailChunks = []
                     lines[lines.count - 1] = last
                 }
                 lines.append(CaptionLine(
                     id: nextID, speaker: speaker,
                     committed: isFinal ? piece : "", tail: isFinal ? nil : piece,
-                    tailRange: isFinal ? nil : range, startTime: range?.lowerBound, endTime: range?.upperBound))
+                    tailRange: isFinal ? nil : range,
+                    committedChunks: isFinal ? chunks : [],
+                    tailChunks: isFinal ? [] : chunks,
+                    startTime: range?.lowerBound, endTime: range?.upperBound))
                 nextID += 1
                 return
             }
@@ -64,8 +96,17 @@ public struct CaptionStream: Sendable {
                 let revises: Bool
                 if let r = range, let tr = last.tailRange { revises = r.lowerBound < tr.upperBound } else { revises = true }
                 if revises {
-                    if isFinal { last.committed = Self.join(last.committed, piece); last.tail = nil; last.tailRange = nil }
-                    else { last.tail = piece; last.tailRange = range ?? last.tailRange }
+                    if isFinal {
+                        last.committed = Self.join(last.committed, piece)
+                        last.committedChunks.append(contentsOf: chunks)
+                        last.tail = nil
+                        last.tailRange = nil
+                        last.tailChunks = []
+                    } else {
+                        last.tail = piece
+                        last.tailRange = range ?? last.tailRange
+                        last.tailChunks = chunks
+                    }
                     if let r = range { last.endTime = r.upperBound }
                     last.speaker = speaker ?? last.speaker
                     lines[lines.count - 1] = last
@@ -77,9 +118,21 @@ public struct CaptionStream: Sendable {
             } else if let r = range, let end = last.endTime ?? last.tailRange?.upperBound {
                 let changed = speaker != nil && last.speaker != nil && speaker != last.speaker
                 if r.lowerBound - end < pauseSeconds && !changed {
-                    if let stale = last.tail { last.committed = Self.join(last.committed, stale); last.tail = nil; last.tailRange = nil }
-                    if isFinal { last.committed = Self.join(last.committed, piece) }
-                    else { last.tail = piece; last.tailRange = r }
+                    if let stale = last.tail {
+                        last.committed = Self.join(last.committed, stale)
+                        last.committedChunks.append(contentsOf: last.tailChunks)
+                        last.tail = nil
+                        last.tailRange = nil
+                        last.tailChunks = []
+                    }
+                    if isFinal {
+                        last.committed = Self.join(last.committed, piece)
+                        last.committedChunks.append(contentsOf: chunks)
+                    } else {
+                        last.tail = piece
+                        last.tailRange = r
+                        last.tailChunks = chunks
+                    }
                     last.endTime = r.upperBound
                     last.speaker = speaker ?? last.speaker
                     lines[lines.count - 1] = last
@@ -88,7 +141,11 @@ public struct CaptionStream: Sendable {
             }
             // Breaking away: close whatever was still open on the previous line.
             if let stale = last.tail {
-                last.committed = Self.join(last.committed, stale); last.tail = nil; last.tailRange = nil
+                last.committed = Self.join(last.committed, stale)
+                last.committedChunks.append(contentsOf: last.tailChunks)
+                last.tail = nil
+                last.tailRange = nil
+                last.tailChunks = []
                 lines[lines.count - 1] = last
             }
         }
@@ -96,7 +153,10 @@ public struct CaptionStream: Sendable {
         lines.append(CaptionLine(
             id: nextID, speaker: speaker,
             committed: isFinal ? piece : "", tail: isFinal ? nil : piece,
-            tailRange: isFinal ? nil : range, startTime: range?.lowerBound, endTime: range?.upperBound))
+            tailRange: isFinal ? nil : range,
+            committedChunks: isFinal ? chunks : [],
+            tailChunks: isFinal ? [] : chunks,
+            startTime: range?.lowerBound, endTime: range?.upperBound))
         nextID += 1
     }
 

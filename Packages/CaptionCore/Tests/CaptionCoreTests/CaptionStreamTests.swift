@@ -141,4 +141,48 @@ final class CaptionStreamTests: XCTestCase {
         s.insertSoundLabel(.laughter)
         XCTAssertNil(s.lines[0].startTime)
     }
+
+    // MARK: - Emphasis chunks
+
+    func testChunksSimplePath() {
+        var s = CaptionStream()
+        let chunks = [CaptionChunk(text: "hello", emphasis: .raised)]
+        s.apply(chunks: chunks, isFinal: true)
+        XCTAssertEqual(s.lines[0].committedChunks, chunks)
+        XCTAssertEqual(s.lines[0].tailChunks, [])
+    }
+
+    func testChunksTailRevision() {
+        var s = CaptionStream()
+        let chunk1 = [CaptionChunk(text: "hel", emphasis: .none)]
+        let chunk2 = [CaptionChunk(text: "hello", emphasis: .raised)]
+        s.apply(chunks: chunk1, isFinal: false)
+        XCTAssertEqual(s.lines[0].tailChunks, chunk1)
+        s.apply(chunks: chunk2, isFinal: false)
+        XCTAssertEqual(s.lines[0].tailChunks, chunk2)
+    }
+
+    func testChunksFinalizeMovesToCommitted() {
+        var s = CaptionStream()
+        let chunk = [CaptionChunk(text: "hello", emphasis: .loud)]
+        s.apply(chunks: chunk, isFinal: false)
+        s.apply(chunks: chunk, isFinal: true)
+        XCTAssertEqual(s.lines[0].committedChunks, chunk)
+        XCTAssertEqual(s.lines[0].tailChunks, [])
+    }
+
+    func testChunksPreservedThroughTextProperty() {
+        var s = CaptionStream()
+        let chunks = [CaptionChunk(text: "hello", emphasis: .raised), CaptionChunk(text: "world", emphasis: .loud)]
+        s.apply(chunks: chunks, isFinal: true)
+        XCTAssertEqual(chunks.map(\.text).joined(), s.lines[0].text)
+    }
+
+    func testPlainTextApplyCreatesNoneChunks() {
+        var s = CaptionStream()
+        s.apply(text: "hello", isFinal: true)
+        XCTAssertEqual(s.lines[0].committedChunks.count, 1)
+        XCTAssertEqual(s.lines[0].committedChunks[0].emphasis, .none)
+        XCTAssertEqual(s.lines[0].committedChunks[0].text, "hello")
+    }
 }

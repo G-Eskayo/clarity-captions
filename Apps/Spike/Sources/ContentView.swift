@@ -34,7 +34,7 @@ final class CaptionModel: ObservableObject {
             guard let self else { return }
             var range: ClosedRange<Double>?
             if let a = u.startSeconds, let b = u.endSeconds, a <= b { range = a...b }
-            self.stream.apply(text: u.text, isFinal: u.isFinal, speaker: u.speaker, range: range)
+            self.stream.apply(chunks: u.chunks, isFinal: u.isFinal, speaker: u.speaker, range: range)
             if let l = u.lagSeconds { self.lag = l }
             self.diag = u.diagnostics
         }
@@ -258,7 +258,8 @@ struct ContentView: View {
                                 Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize)).italic()).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
                                     .accessibilityLabel(line.soundLabel.map { soundLabelA11yLabel(for: $0) } ?? "")
                             } else {
-                                Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize))).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
+                                buildCaptionText(from: line.chunks, style: style, dynamicTypeSize: dynamicTypeSize, isFinal: line.isFinal)
+                                    .animation(reduceMotion ? nil : .default, value: line.chunks)
                                     .textSelection(.enabled)
                             }
                         }
@@ -342,6 +343,33 @@ struct ContentView: View {
         case .phoneRinging: "Phone ringing sound"
         case .knock: "Knock sound"
         }
+    }
+
+    private func buildCaptionText(from chunks: [CaptionChunk], style: CaptionStyle, dynamicTypeSize: DynamicTypeSize, isFinal: Bool) -> Text {
+        let baseFont = style.font(for: SystemTextSizeCategory(dynamicTypeSize))
+        let opacity = isFinal ? 1.0 : CaptionLine.volatileOpacity
+        var result: Text?
+
+        for chunk in chunks {
+            let chunkText: Text
+            if style.effectsEnabled && chunk.emphasis != .none {
+                let emphasis = EmphasisStyle.style(for: chunk.emphasis, background: style.background, text: style.text)
+                let sizeMultiplier = min(emphasis.sizeMultiplier, 1.3)
+                let weight = emphasis.fontWeight == 700 ? Font.Weight.bold : emphasis.fontWeight == 600 ? Font.Weight.semibold : Font.Weight.regular
+                let font = baseFont.weight(weight).size(baseFont.pointSize * sizeMultiplier)
+                chunkText = Text(chunk.text).font(font).foregroundStyle(emphasis.accentColor.color)
+            } else {
+                chunkText = Text(chunk.text).font(baseFont).foregroundStyle(style.text.color)
+            }
+
+            if result == nil {
+                result = chunkText
+            } else {
+                result = result! + Text(" ") + chunkText
+            }
+        }
+
+        return (result ?? Text("")).opacity(opacity)
     }
 
     private var developerPanel: some View {

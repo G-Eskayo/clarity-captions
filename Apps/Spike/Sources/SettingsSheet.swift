@@ -32,6 +32,7 @@ struct SettingsSheet: View {
                     section("Colors") { presetRow }
                     section("Size") { sizeRow }
                     section("Lettering") { fontRow }
+                    section("Effects") { effectsRow }
                     section("Speaker labels") { speakerExplanationRow }
                     section("Conversation") { conversationRow }
                     section("About") { aboutRow }
@@ -102,6 +103,11 @@ struct SettingsSheet: View {
                 .buttonStyle(.bordered).tint(style.font == f ? .accentColor : .secondary)
             }
         }
+    }
+
+    private var effectsRow: some View {
+        Toggle(String(localized: "Word emphasis effects"), isOn: $style.effectsEnabled)
+            .frame(minHeight: 56)
     }
 
     private var speakerExplanationRow: some View {

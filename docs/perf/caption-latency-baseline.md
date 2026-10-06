@@ -6,7 +6,7 @@ Record the measured latency metrics here. These numbers define the 10% regressio
 
 | Code | Median lag | P95 lag | Time to first caption | Device | OS | Date |
 |---|---|---|---|---|---|---|
-| After wall-clock latency fix (G-Eskayo/clarity-captions#54) | TBD | TBD | TBD | MacBook Pro (Apple M1, 16 GB) | macOS 27.0.1 | 2026-10-05 |
+| After emphasis effects (#27 loudness implementation) | TBD | TBD | TBD | MacBook Pro (Apple M1, 16 GB) | macOS 27.0.1 | 2026-10-05 |
 
 **To fill in the above:** run the following on a Mac with the bundled Sortformer model:
 ```

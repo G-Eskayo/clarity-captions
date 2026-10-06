@@ -116,14 +116,23 @@ public struct CaptionPreset: Identifiable, Equatable, Sendable {
     ]
 }
 
-public struct CaptionStyle: Codable, Equatable, Sendable {
+public struct CaptionStyle: Equatable, Sendable {
     public var background: RGBA
     public var text: RGBA
     public var size: CaptionTextSize
     public var font: CaptionFont
+    public var effectsEnabled: Bool
+
+    public init(background: RGBA, text: RGBA, size: CaptionTextSize, font: CaptionFont, effectsEnabled: Bool = true) {
+        self.background = background
+        self.text = text
+        self.size = size
+        self.font = font
+        self.effectsEnabled = effectsEnabled
+    }
 
     public static let standard = CaptionStyle(
-        background: CaptionPreset.all[0].background, text: CaptionPreset.all[0].text, size: .medium, font: .system)
+        background: CaptionPreset.all[0].background, text: CaptionPreset.all[0].text, size: .medium, font: .system, effectsEnabled: true)
 
     /// A preset changes the two colors only; the user's size and font choices stay.
     public func applying(_ preset: CaptionPreset) -> CaptionStyle {
@@ -131,6 +140,30 @@ public struct CaptionStyle: Codable, Equatable, Sendable {
         s.background = preset.background
         s.text = preset.text
         return s
+    }
+}
+
+extension CaptionStyle: Codable {
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(background, forKey: .background)
+        try container.encode(text, forKey: .text)
+        try container.encode(size, forKey: .size)
+        try container.encode(font, forKey: .font)
+        try container.encode(effectsEnabled, forKey: .effectsEnabled)
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        background = try container.decode(RGBA.self, forKey: .background)
+        text = try container.decode(RGBA.self, forKey: .text)
+        size = try container.decode(CaptionTextSize.self, forKey: .size)
+        font = try container.decode(CaptionFont.self, forKey: .font)
+        effectsEnabled = try container.decodeIfPresent(Bool.self, forKey: .effectsEnabled) ?? true
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case background, text, size, font, effectsEnabled
     }
 }
 
