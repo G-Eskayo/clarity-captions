@@ -64,7 +64,16 @@ public final class TranscriptionEngine {
         self.diarizer = LiveDiarizer(modelURL: diarizerModelURL)
     }
 
+    /// Starts live captioning. If anything fails part-way, everything already opened is released before the
+    /// error is thrown, so a failed start can never leave a speech recognizer or the microphone held.
     public func start() async throws -> AsyncThrowingStream<CaptionUpdate, Error> {
+        do { return try await startSession() } catch {
+            await stop()
+            throw error
+        }
+    }
+
+    private func startSession() async throws -> AsyncThrowingStream<CaptionUpdate, Error> {
         let clock = ContinuousClock()
         var mark = clock.now
         var laps: [String] = []
@@ -275,14 +284,19 @@ public final class TranscriptionEngine {
         }
     }
 
+    /// Releases the microphone, the speech analyzer and the helpers. Safe to call more than once.
     public func stop() async {
         audioEngine.inputNode.removeTap(onBus: 0)
         audioEngine.stop()
         inputBuilder?.finish()
-        try? await analyzer?.finalizeAndFinishThroughEndOfInput()
+        inputBuilder = nil
+        if let analyzer {
+            self.analyzer = nil
+            do { try await analyzer.finalizeAndFinishThroughEndOfInput() }
+            catch { await analyzer.cancelAndFinishNow() }   // never leave a recognizer allocated
+        }
         diarizer.finish()
         soundLabeler.finish()
-        analyzer = nil
     }
 
     /// The one-time, system-provisioned model fetch noted in CONTEXT.md "On-device only".

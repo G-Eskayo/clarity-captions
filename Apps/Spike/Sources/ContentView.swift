@@ -15,62 +15,37 @@ final class CaptionModel: ObservableObject {
         didSet { CaptionStyleStore().save(style) }
     }
     @Published var latencyReport: String?
-    private var engine: TranscriptionEngine?
+    /// Only used by the developer latency measurement below.
     private var task: Task<Void, Never>?
+    private var controller: CaptionSessionController!
+
+    init() {
+        controller = CaptionSessionController(makeEngine: { [weak self] in
+            guard let self else { throw CancellationError() }
+            guard let url = Bundle.main.url(forResource: "Sortformer_v2.1", withExtension: "mlmodelc") else {
+                throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc"))
+            }
+            return TranscriptionEngine(micMode: self.micMode, diarizerModelURL: url)
+        })
+        controller.onStateChange = { [weak self] in self?.state = $0 }
+        controller.onStartup = { [weak self] in self?.startup = $0 }
+        controller.onSoundLabel = { [weak self] in self?.stream.insertSoundLabel($0) }
+        controller.onUpdate = { [weak self] u in
+            guard let self else { return }
+            var range: ClosedRange<Double>?
+            if let a = u.startSeconds, let b = u.endSeconds, a <= b { range = a...b }
+            self.stream.apply(text: u.text, isFinal: u.isFinal, speaker: u.speaker, range: range)
+            if let l = u.lagSeconds { self.lag = l }
+            self.diag = u.diagnostics
+        }
+    }
 
     func perform(_ action: PrimaryControl.Action) {
         switch action {
-        case .start: start()
-        case .stop: stop()
+        case .start: controller.start()
+        case .stop: controller.stop()
         case .none: break
         }
-    }
-
-    private func start() {
-        state = .preparing
-        guard let modelURL = Bundle.main.url(forResource: "Sortformer_v2.1", withExtension: "mlmodelc") else {
-            state = .failed("The speaker-labeling model is missing from this build.")
-            return
-        }
-        let engine = TranscriptionEngine(micMode: micMode, diarizerModelURL: modelURL)
-        self.engine = engine
-        task = Task {
-            do {
-                let updates = try await engine.start()
-                startup = engine.startupReport
-                state = .listening
-
-                let transcriptionTask = Task {
-                    for try await u in updates {
-                        var range: ClosedRange<Double>?
-                        if let a = u.startSeconds, let b = u.endSeconds, a <= b { range = a...b }
-                        stream.apply(text: u.text, isFinal: u.isFinal, speaker: u.speaker, range: range)
-                        if let l = u.lagSeconds { lag = l }
-                        diag = u.diagnostics
-                    }
-                }
-
-                // Consume sound labels on a separate concurrent task, independent of speech results.
-                let soundLabelsTask = Task {
-                    let soundStream = engine.soundLabelsStream()
-                    for await label in soundStream {
-                        stream.insertSoundLabel(label)
-                    }
-                }
-
-                async let _ = transcriptionTask.value
-                async let _ = soundLabelsTask.value
-                state = .idle
-            } catch {
-                state = .failed(String(describing: error))
-            }
-            task = nil
-        }
-    }
-
-    private func stop() {
-        task?.cancel()
-        Task { await engine?.stop(); state = .idle; task = nil }
     }
 
     func measureLatency() {
