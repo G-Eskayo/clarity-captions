@@ -1,0 +1,55 @@
+name: CI
+
+# Runs on every PR and on main. This is the same check the MARVIN pipeline and merge gate run locally
+# (see config/projects/clarity-captions.json): CaptionCore's unit tests, and the app building for the iOS Simulator.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  caption-core:
+    name: CaptionCore unit tests
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: swift --version && xcodebuild -version
+      - name: Cache SwiftPM build
+        uses: actions/cache@v4
+        with:
+          path: Packages/CaptionCore/.build
+          key: spm-${{ runner.os }}-${{ hashFiles('Packages/CaptionCore/Package.resolved') }}
+          restore-keys: spm-${{ runner.os }}-
+      - name: swift test
+        working-directory: Packages/CaptionCore
+        run: swift test
+
+  spike-app:
+    name: App builds (iOS Simulator)
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache the speaker model (about 240 MB, gitignored)
+        id: model
+        uses: actions/cache@v4
+        with:
+          path: Apps/Spike/Resources/Models
+          key: diarizer-model-${{ hashFiles('scripts/fetch-diarizer-models.sh') }}
+      - name: Fetch the speaker model
+        if: steps.model.outputs.cache-hit != 'true'
+        run: sh scripts/fetch-diarizer-models.sh
+      - name: Install xcodegen
+        run: brew install xcodegen
+      - name: Generate the project and build (signing off)
+        working-directory: Apps/Spike
+        run: |
+          xcodegen generate
+          xcodebuild -project CaptionSpike.xcodeproj -scheme CaptionSpike \
+            -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
