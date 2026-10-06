@@ -105,4 +105,40 @@ final class CaptionStreamTests: XCTestCase {
         XCTAssertFalse(s.lines[0].isSoundLabel)
         XCTAssertTrue(s.lines[1].isSoundLabel)
     }
+
+    // MARK: - Start time tracking for export
+
+    func testStartTimeSetFromRangeLowerBound() {
+        var s = CaptionStream()
+        s.apply(text: "hello", isFinal: true, range: 1.5...2.5)
+        XCTAssertEqual(s.lines[0].startTime, 1.5)
+    }
+
+    func testStartTimeNilWhenNoRange() {
+        var s = CaptionStream()
+        s.apply(text: "hello", isFinal: true)
+        XCTAssertNil(s.lines[0].startTime)
+    }
+
+    func testStartTimePreservedAcrossTailRevisions() {
+        var s = CaptionStream()
+        s.apply(text: "hel", isFinal: false, range: 1.0...1.5)
+        let originalStartTime = s.lines[0].startTime
+        s.apply(text: "hello", isFinal: false, range: 1.0...2.0)
+        XCTAssertEqual(s.lines[0].startTime, originalStartTime)
+    }
+
+    func testStartTimePreservedAfterCommit() {
+        var s = CaptionStream()
+        s.apply(text: "hel", isFinal: false, range: 1.0...1.5)
+        s.apply(text: "hello", isFinal: true, range: 1.0...2.0)
+        XCTAssertEqual(s.lines[0].startTime, 1.0)
+        XCTAssertTrue(s.lines[0].isFinal)
+    }
+
+    func testSoundLabelStartTimeNil() {
+        var s = CaptionStream()
+        s.insertSoundLabel(.laughter)
+        XCTAssertNil(s.lines[0].startTime)
+    }
 }

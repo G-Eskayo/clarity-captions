@@ -155,6 +155,28 @@
         }
       }
     },
+    "Conversation" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conversation"
+          }
+        }
+      }
+    },
+    "Copy all text" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy all text"
+          }
+        }
+      }
+    },
     "Credits" : {
       "extractionState": "manual",
       "localizations": {
@@ -591,6 +613,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Settings"
+          }
+        }
+      }
+    },
+    "Share as SRT file" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share as SRT file"
+          }
+        }
+      }
+    },
+    "Share as text" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share as text"
           }
         }
       }

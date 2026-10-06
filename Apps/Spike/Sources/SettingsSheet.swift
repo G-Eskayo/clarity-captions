@@ -20,6 +20,7 @@ extension CaptionStyle {
 /// One screen, three questions: which colors, how big, which lettering. A live preview sits on top.
 struct SettingsSheet: View {
     @Binding var style: CaptionStyle
+    let stream: CaptionStream
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -32,6 +33,7 @@ struct SettingsSheet: View {
                     section("Size") { sizeRow }
                     section("Lettering") { fontRow }
                     section("Speaker labels") { speakerExplanationRow }
+                    section("Conversation") { conversationRow }
                     section("About") { aboutRow }
                 }
                 .padding()
@@ -108,6 +110,57 @@ struct SettingsSheet: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
             .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private var conversationRow: some View {
+        VStack(spacing: 12) {
+            Button { copyPlainText() } label: {
+                HStack {
+                    Label(String(localized: "Copy all text"), systemImage: "doc.on.doc")
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity, minHeight: 56)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.bordered)
+            .disabled(stream.lines.isEmpty)
+
+            ShareLink(
+                item: TranscriptFormatter.plainText(lines: stream.lines),
+                subject: Text(String(localized: "Conversation")),
+                label: { Label(String(localized: "Share as text"), systemImage: "square.and.arrow.up") }
+            )
+            .frame(maxWidth: .infinity, minHeight: 56)
+            .buttonStyle(.bordered)
+            .disabled(stream.lines.isEmpty)
+
+            if let srtURL = createSRTFile() {
+                ShareLink(
+                    item: srtURL,
+                    subject: Text(String(localized: "Conversation")),
+                    label: { Label(String(localized: "Share as SRT file"), systemImage: "square.and.arrow.up") }
+                )
+                .frame(maxWidth: .infinity, minHeight: 56)
+                .buttonStyle(.bordered)
+            }
+        }
+    }
+
+    private func copyPlainText() {
+        UIPasteboard.general.string = TranscriptFormatter.plainText(lines: stream.lines)
+    }
+
+    private func createSRTFile() -> URL? {
+        let srtText = TranscriptFormatter.srt(lines: stream.lines)
+        guard !srtText.isEmpty else { return nil }
+
+        let tmpURL = FileManager.default.temporaryDirectory.appendingPathComponent("Conversation.srt")
+        do {
+            try srtText.write(to: tmpURL, atomically: true, encoding: .utf8)
+            return tmpURL
+        } catch {
+            return nil
+        }
     }
 
     private var aboutRow: some View {

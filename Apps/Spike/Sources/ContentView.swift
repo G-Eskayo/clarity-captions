@@ -136,7 +136,7 @@ struct ContentView: View {
         .tint(style.text.color)
         .preferredColorScheme(style.background.isDark ? .dark : .light)
         .animation(.snappy, value: control.presentation)
-        .sheet(isPresented: $showingSettings) { SettingsSheet(style: $model.style) }
+        .sheet(isPresented: $showingSettings) { SettingsSheet(style: $model.style, stream: model.stream) }
         .onChange(of: model.state) { _, newState in
             UIAccessibility.post(notification: .announcement, argument: StatusWords.announcement(for: newState))
             handleStateChange(newState)
@@ -259,6 +259,7 @@ struct ContentView: View {
                                     .accessibilityLabel(line.soundLabel.map { soundLabelA11yLabel(for: $0) } ?? "")
                             } else {
                                 Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize))).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
+                                    .textSelection(.enabled)
                             }
                         }
                         .accessibilityElement(children: .combine)

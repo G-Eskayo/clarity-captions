@@ -13,6 +13,7 @@ public struct CaptionLine: Identifiable, Equatable, Sendable {
     var committed: String
     var tail: String?
     var tailRange: ClosedRange<Double>?
+    var startTime: Double?
     var endTime: Double?
 
     public var text: String { [committed, tail ?? ""].filter { !$0.isEmpty }.joined(separator: " ") }
@@ -52,7 +53,7 @@ public struct CaptionStream: Sendable {
                 lines.append(CaptionLine(
                     id: nextID, speaker: speaker,
                     committed: isFinal ? piece : "", tail: isFinal ? nil : piece,
-                    tailRange: isFinal ? nil : range, endTime: range?.upperBound))
+                    tailRange: isFinal ? nil : range, startTime: range?.lowerBound, endTime: range?.upperBound))
                 nextID += 1
                 return
             }
@@ -95,7 +96,7 @@ public struct CaptionStream: Sendable {
         lines.append(CaptionLine(
             id: nextID, speaker: speaker,
             committed: isFinal ? piece : "", tail: isFinal ? nil : piece,
-            tailRange: isFinal ? nil : range, endTime: range?.upperBound))
+            tailRange: isFinal ? nil : range, startTime: range?.lowerBound, endTime: range?.upperBound))
         nextID += 1
     }
 
@@ -111,7 +112,7 @@ public struct CaptionStream: Sendable {
         lines.append(CaptionLine(
             id: nextID, speaker: nil, soundLabel: label,
             committed: SoundLabelFormatter.caption(for: label),
-            tail: nil, tailRange: nil, endTime: nil))
+            tail: nil, tailRange: nil, startTime: nil, endTime: nil))
         nextID += 1
     }
 
