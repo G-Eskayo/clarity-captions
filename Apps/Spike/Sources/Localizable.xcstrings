@@ -111,6 +111,17 @@
         }
       }
     },
+    "Cancel" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        }
+      }
+    },
     "Captions need the microphone. Tap the button, then switch Microphone on." : {
       "extractionState": "manual",
       "localizations": {
@@ -129,6 +140,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Classic"
+          }
+        }
+      }
+    },
+    "Clear Name" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear Name"
           }
         }
       }
@@ -217,6 +239,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Done"
+          }
+        }
+      }
+    },
+    "Double tap to name this speaker" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Double tap to name this speaker"
+          }
+        }
+      }
+    },
+    "Enter a custom name for this speaker" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter a custom name for this speaker"
           }
         }
       }
@@ -463,6 +507,17 @@
         }
       }
     },
+    "Name this speaker" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name this speaker"
+          }
+        }
+      }
+    },
     "Mic" : {
       "extractionState": "manual",
       "localizations": {
@@ -595,6 +650,17 @@
         }
       }
     },
+    "Save" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save"
+          }
+        }
+      }
+    },
     "Seal tells voices apart as people talk." : {
       "extractionState": "manual",
       "localizations": {
@@ -690,6 +756,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Speaker labels"
+          }
+        }
+      }
+    },
+    "Speaker name" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speaker name"
           }
         }
       }
