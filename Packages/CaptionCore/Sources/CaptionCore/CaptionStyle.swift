@@ -42,10 +42,10 @@ public enum CaptionFont: String, Codable, CaseIterable, Sendable {
     case system, rounded, serif, monospaced
     public var label: String {
         switch self {
-        case .system: "Standard"
-        case .rounded: "Rounded"
-        case .serif: "Serif"
-        case .monospaced: "Typewriter"
+        case .system: String(localized: "Standard")
+        case .rounded: String(localized: "Rounded")
+        case .serif: String(localized: "Serif")
+        case .monospaced: String(localized: "Typewriter")
         }
     }
 }
@@ -109,10 +109,10 @@ public struct CaptionPreset: Identifiable, Equatable, Sendable {
 
     /// Every preset must stay at AAA contrast (7:1); a test enforces it.
     public static let all: [CaptionPreset] = [
-        CaptionPreset(id: "classic", name: "Classic", background: .black, text: .white),
-        CaptionPreset(id: "bright", name: "Bright", background: .black, text: RGBA(1.0, 0.9, 0.2)),
-        CaptionPreset(id: "paper", name: "Paper", background: RGBA(0.98, 0.96, 0.90), text: RGBA(0.08, 0.08, 0.10)),
-        CaptionPreset(id: "night", name: "Night", background: RGBA(0.05, 0.07, 0.15), text: RGBA(0.85, 0.90, 1.0)),
+        CaptionPreset(id: "classic", name: String(localized: "Classic"), background: .black, text: .white),
+        CaptionPreset(id: "bright", name: String(localized: "Bright"), background: .black, text: RGBA(1.0, 0.9, 0.2)),
+        CaptionPreset(id: "paper", name: String(localized: "Paper"), background: RGBA(0.98, 0.96, 0.90), text: RGBA(0.08, 0.08, 0.10)),
+        CaptionPreset(id: "night", name: String(localized: "Night"), background: RGBA(0.05, 0.07, 0.15), text: RGBA(0.85, 0.90, 1.0)),
     ]
 }
 

@@ -25,11 +25,11 @@ public enum SoundLabelKind: Equatable, Sendable {
     /// Display text for the user: "Laughter", "Applause", etc. (for broadcast-caption-style brackets).
     public var displayText: String {
         switch self {
-        case .laughter: "Laughter"
-        case .applause: "Applause"
-        case .doorbell: "Doorbell"
-        case .phoneRinging: "Phone ringing"
-        case .knock: "Knocking"
+        case .laughter: String(localized: "Laughter")
+        case .applause: String(localized: "Applause")
+        case .doorbell: String(localized: "Doorbell")
+        case .phoneRinging: String(localized: "Phone ringing")
+        case .knock: String(localized: "Knocking")
         }
     }
 }

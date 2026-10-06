@@ -19,14 +19,14 @@ public struct PrimaryControl: Equatable, Sendable {
     public var presentation: Presentation = .large
 
     /// What VoiceOver says; the compact circle shows only an X, so it needs a real name.
-    public var accessibilityLabel: String { presentation == .compact ? "Stop captions" : title }
+    public var accessibilityLabel: String { presentation == .compact ? String(localized: "Stop captions") : title }
 
     public static func `for`(_ state: CaptionState) -> PrimaryControl {
         switch state {
-        case .idle: PrimaryControl(title: "Start captions", action: .start, isEnabled: true)
-        case .preparing: PrimaryControl(title: "Getting ready…", action: .none, isEnabled: false)
-        case .listening: PrimaryControl(title: "Stop", action: .stop, isEnabled: true, presentation: .compact)
-        case .failed: PrimaryControl(title: "Try again", action: .start, isEnabled: true)
+        case .idle: PrimaryControl(title: String(localized: "Start captions"), action: .start, isEnabled: true)
+        case .preparing: PrimaryControl(title: String(localized: "Getting ready…"), action: .none, isEnabled: false)
+        case .listening: PrimaryControl(title: String(localized: "Stop"), action: .stop, isEnabled: true, presentation: .compact)
+        case .failed: PrimaryControl(title: String(localized: "Try again"), action: .start, isEnabled: true)
         }
     }
 }
@@ -36,10 +36,10 @@ public struct PrimaryControl: Equatable, Sendable {
 public enum StatusWords {
     public static func headline(for state: CaptionState) -> String {
         switch state {
-        case .idle: "Ready"
-        case .preparing: "Getting ready…"
-        case .listening: "Listening"
-        case .failed: "Stopped"
+        case .idle: String(localized: "Ready")
+        case .preparing: String(localized: "Getting ready…")
+        case .listening: String(localized: "Listening")
+        case .failed: String(localized: "Stopped")
         }
     }
 

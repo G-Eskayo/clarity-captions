@@ -47,29 +47,29 @@ public struct FirstRunCopy: Equatable, Sendable {
     public static func `for`(_ step: FirstRunStep) -> FirstRunCopy {
         switch step {
         case .welcome:
-            FirstRunCopy(title: "Hi! Let's get you set up.",
-                         message: "I'll help you follow conversations by showing what people say. This takes about a minute.",
-                         button: "Let's go")
+            FirstRunCopy(title: String(localized: "Hi! Let's get you set up."),
+                         message: String(localized: "I'll help you follow conversations by showing what people say. This takes about a minute."),
+                         button: String(localized: "Let's go"))
         case .microphone:
-            FirstRunCopy(title: "I need to hear the room",
-                         message: "On the next screen, tap Allow so I can turn speech into words. Everything stays on your phone.",
-                         button: "Continue")
+            FirstRunCopy(title: String(localized: "I need to hear the room"),
+                         message: String(localized: "On the next screen, tap Allow so I can turn speech into words. Everything stays on your phone."),
+                         button: String(localized: "Continue"))
         case .microphoneDenied:
-            FirstRunCopy(title: "I can't hear yet",
-                         message: "Captions need the microphone. Tap the button, then switch Microphone on.",
-                         button: "Open Settings")
+            FirstRunCopy(title: String(localized: "I can't hear yet"),
+                         message: String(localized: "Captions need the microphone. Tap the button, then switch Microphone on."),
+                         button: String(localized: "Open Settings"))
         case .speechModel:
-            FirstRunCopy(title: "Learning English",
-                         message: "A one-time download. Please keep Wi-Fi on. It only happens once.",
+            FirstRunCopy(title: String(localized: "Learning English"),
+                         message: String(localized: "A one-time download. Please keep Wi-Fi on. It only happens once."),
                          button: nil)
         case .speakerModel:
-            FirstRunCopy(title: "Getting ready to tell voices apart",
-                         message: "Almost there! This is a one-time warm-up so you never wait later.",
+            FirstRunCopy(title: String(localized: "Getting ready to tell voices apart"),
+                         message: String(localized: "Almost there! This is a one-time warm-up so you never wait later."),
                          button: nil)
         case .done:
-            FirstRunCopy(title: "All set!",
-                         message: "Tap the big button any time you want captions.",
-                         button: "Start captioning")
+            FirstRunCopy(title: String(localized: "All set!"),
+                         message: String(localized: "Tap the big button any time you want captions."),
+                         button: String(localized: "Start captioning"))
         }
     }
 }
