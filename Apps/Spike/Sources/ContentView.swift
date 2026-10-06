@@ -15,6 +15,7 @@ final class CaptionModel: ObservableObject {
         didSet { CaptionStyleStore().save(style) }
     }
     @Published var latencyReport: String?
+    @Published var speakerNames = SpeakerNames()
     /// Only used by the developer latency measurement below.
     private var task: Task<Void, Never>?
     private var controller: CaptionSessionController!
@@ -109,6 +110,10 @@ struct ContentView: View {
     @State private var animationShownAt: Date?
     /// Show the one-time speaker explanation banner.
     @State private var showingSpeakerBanner = false
+    /// Speaker index currently being renamed, or nil if no rename dialog is open.
+    @State private var renamingSpeaker: Int?
+    /// Draft name being edited in the rename dialog.
+    @State private var nameDraft: String = ""
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -136,7 +141,7 @@ struct ContentView: View {
         .tint(style.text.color)
         .preferredColorScheme(style.background.isDark ? .dark : .light)
         .animation(.snappy, value: control.presentation)
-        .sheet(isPresented: $showingSettings) { SettingsSheet(style: $model.style, stream: model.stream) }
+        .sheet(isPresented: $showingSettings) { SettingsSheet(style: $model.style, stream: model.stream, speakerNames: model.speakerNames) }
         .onChange(of: model.state) { _, newState in
             UIAccessibility.post(notification: .announcement, argument: StatusWords.announcement(for: newState))
             handleStateChange(newState)
@@ -262,11 +267,11 @@ struct ContentView: View {
                                     .textSelection(.enabled)
                             }
                         }
-                        .accessibilityElement(children: .combine)
+                        .accessibilityElement(children: .contain)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.vertical, 8)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 8)
             }
             .scrollPosition($position)
             .contentMargins(.bottom, bottomReserve, for: .scrollContent)
@@ -307,6 +312,32 @@ struct ContentView: View {
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
+        .alert(String(localized: "Name this speaker"), isPresented: Binding(
+            get: { renamingSpeaker != nil },
+            set: { if !$0 { renamingSpeaker = nil; nameDraft = "" } }
+        )) {
+            TextField(String(localized: "Speaker name"), text: $nameDraft)
+            Button(String(localized: "Save")) {
+                if let sp = renamingSpeaker {
+                    model.speakerNames.apply(nameDraft, to: sp)
+                    renamingSpeaker = nil
+                    nameDraft = ""
+                }
+            }
+            Button(String(localized: "Clear Name")) {
+                if let sp = renamingSpeaker {
+                    model.speakerNames.clear(speaker: sp)
+                    renamingSpeaker = nil
+                    nameDraft = ""
+                }
+            }
+            Button(String(localized: "Cancel"), role: .cancel) {
+                renamingSpeaker = nil
+                nameDraft = ""
+            }
+        } message: {
+            Text(String(localized: "Enter a custom name for this speaker"))
+        }
     }
 
     private func speakerLabelRow(for state: SpeakerLabelState, speaker: Int?, palette: [Color], placeholderColor: Color) -> some View {
@@ -320,10 +351,19 @@ struct ContentView: View {
                     .foregroundStyle(placeholderColor)
             )
         case .resolved(let sp):
+            let displayText = model.speakerNames.name(for: sp) ?? String(localized: "Speaker \(sp + 1)")
             return AnyView(
-                Text(String(localized: "Speaker \(sp + 1)"))
+                Text(displayText)
                     .font(.headline)
                     .foregroundStyle(palette[sp % palette.count])
+                    .onTapGesture {
+                        renamingSpeaker = sp
+                        nameDraft = model.speakerNames.name(for: sp) ?? ""
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(displayText)
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityHint(String(localized: "Double tap to name this speaker"))
             )
         case .unknown:
             return AnyView(

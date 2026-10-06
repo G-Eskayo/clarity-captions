@@ -123,4 +123,50 @@ final class TranscriptExportTests: XCTestCase {
         XCTAssertTrue(srt.contains("1") && srt.contains("0:00:00,000 --> 0:00:01,000"))
         XCTAssertTrue(srt.contains("2") && srt.contains("0:00:01,000 --> 0:00:01,500"))  // 1s + 0.5s minimum duration
     }
+
+    // MARK: - Speaker names
+
+    func testPlainTextWithNamedSpeaker() {
+        var s = CaptionStream()
+        s.apply(text: "hello", isFinal: true, speaker: 0)
+        s.apply(text: "hi", isFinal: true, speaker: 1)
+        var names = SpeakerNames()
+        names.apply("Mom", to: 0)
+        let text = TranscriptFormatter.plainText(lines: s.lines, speakerNames: names)
+        XCTAssertEqual(text, "Mom: hello\nSpeaker 2: hi")
+    }
+
+    func testPlainTextWithAllNamedSpeakers() {
+        var s = CaptionStream()
+        s.apply(text: "hello", isFinal: true, speaker: 0)
+        s.apply(text: "hi", isFinal: true, speaker: 1)
+        var names = SpeakerNames()
+        names.apply("Mom", to: 0)
+        names.apply("Gil", to: 1)
+        let text = TranscriptFormatter.plainText(lines: s.lines, speakerNames: names)
+        XCTAssertEqual(text, "Mom: hello\nGil: hi")
+    }
+
+    func testSRTWithNamedSpeaker() {
+        var s = CaptionStream()
+        s.apply(text: "hello", isFinal: true, speaker: 0, range: 0...1)
+        s.apply(text: "hi", isFinal: true, speaker: 1, range: 2...3)
+        var names = SpeakerNames()
+        names.apply("Mom", to: 0)
+        let srt = TranscriptFormatter.srt(lines: s.lines, speakerNames: names)
+        XCTAssertTrue(srt.contains("Mom: hello"))
+        XCTAssertTrue(srt.contains("Speaker 2: hi"))
+    }
+
+    func testSRTWithAllNamedSpeakers() {
+        var s = CaptionStream()
+        s.apply(text: "hello", isFinal: true, speaker: 0, range: 0...1)
+        s.apply(text: "hi", isFinal: true, speaker: 1, range: 2...3)
+        var names = SpeakerNames()
+        names.apply("Mom", to: 0)
+        names.apply("Gil", to: 1)
+        let srt = TranscriptFormatter.srt(lines: s.lines, speakerNames: names)
+        XCTAssertTrue(srt.contains("Mom: hello"))
+        XCTAssertTrue(srt.contains("Gil: hi"))
+    }
 }

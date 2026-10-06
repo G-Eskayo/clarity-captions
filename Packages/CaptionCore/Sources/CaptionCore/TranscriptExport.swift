@@ -5,16 +5,25 @@ public enum TranscriptFormatter {
     private static let minimumLineDuration: Double = 0.5
 
     /// Format lines as plain text, one line per caption, with speaker labels when available.
-    public static func plainText(lines: [CaptionLine]) -> String {
+    public static func plainText(lines: [CaptionLine], speakerNames: SpeakerNames = SpeakerNames()) -> String {
         lines.map { line in
-            let speaker = line.speaker.map { "Speaker \($0 + 1): " } ?? ""
+            let speaker: String
+            if let sp = line.speaker {
+                if let name = speakerNames.name(for: sp) {
+                    speaker = "\(name): "
+                } else {
+                    speaker = "Speaker \(sp + 1): "
+                }
+            } else {
+                speaker = ""
+            }
             return speaker + line.text
         }.joined(separator: "\n")
     }
 
     /// Format lines as SubRip SRT: numbered blocks with HH:MM:SS,mmm timestamps.
     /// Lines missing timing get synthetic timestamps chained from the previous line's end.
-    public static func srt(lines: [CaptionLine]) -> String {
+    public static func srt(lines: [CaptionLine], speakerNames: SpeakerNames = SpeakerNames()) -> String {
         guard !lines.isEmpty else { return "" }
 
         var result: [String] = []
@@ -29,7 +38,16 @@ public enum TranscriptFormatter {
             let startTimestamp = formatTimestamp(startTime)
             let endTimestamp = formatTimestamp(endTime)
 
-            let speaker = line.speaker.map { "Speaker \($0 + 1): " } ?? ""
+            let speaker: String
+            if let sp = line.speaker {
+                if let name = speakerNames.name(for: sp) {
+                    speaker = "\(name): "
+                } else {
+                    speaker = "Speaker \(sp + 1): "
+                }
+            } else {
+                speaker = ""
+            }
             let text = speaker + line.text
 
             result.append("\(blockNumber)")

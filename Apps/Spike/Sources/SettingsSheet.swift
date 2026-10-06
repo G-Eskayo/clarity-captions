@@ -21,6 +21,7 @@ extension CaptionStyle {
 struct SettingsSheet: View {
     @Binding var style: CaptionStyle
     let stream: CaptionStream
+    let speakerNames: SpeakerNames
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -126,7 +127,7 @@ struct SettingsSheet: View {
             .disabled(stream.lines.isEmpty)
 
             ShareLink(
-                item: TranscriptFormatter.plainText(lines: stream.lines),
+                item: TranscriptFormatter.plainText(lines: stream.lines, speakerNames: speakerNames),
                 subject: Text(String(localized: "Conversation")),
                 label: { Label(String(localized: "Share as text"), systemImage: "square.and.arrow.up") }
             )
@@ -147,11 +148,11 @@ struct SettingsSheet: View {
     }
 
     private func copyPlainText() {
-        UIPasteboard.general.string = TranscriptFormatter.plainText(lines: stream.lines)
+        UIPasteboard.general.string = TranscriptFormatter.plainText(lines: stream.lines, speakerNames: speakerNames)
     }
 
     private func createSRTFile() -> URL? {
-        let srtText = TranscriptFormatter.srt(lines: stream.lines)
+        let srtText = TranscriptFormatter.srt(lines: stream.lines, speakerNames: speakerNames)
         guard !srtText.isEmpty else { return nil }
 
         let tmpURL = FileManager.default.temporaryDirectory.appendingPathComponent("Conversation.srt")
