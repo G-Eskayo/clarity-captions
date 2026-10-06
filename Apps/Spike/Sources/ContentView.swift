@@ -25,7 +25,8 @@ final class CaptionModel: ObservableObject {
             guard let url = Bundle.main.url(forResource: "Sortformer_v2.1", withExtension: "mlmodelc") else {
                 throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc"))
             }
-            return TranscriptionEngine(micMode: self.micMode, diarizerModelURL: url)
+            let words = VocabularyList(rawText: VocabularyStore().loadRawText()).entries
+            return TranscriptionEngine(micMode: self.micMode, diarizerModelURL: url, contextualStrings: words)
         })
         controller.onStateChange = { [weak self] in self?.state = $0 }
         controller.onStartup = { [weak self] in self?.startup = $0 }

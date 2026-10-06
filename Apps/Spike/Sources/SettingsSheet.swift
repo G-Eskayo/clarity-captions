@@ -20,6 +20,7 @@ extension CaptionStyle {
 /// One screen, three questions: which colors, how big, which lettering. A live preview sits on top.
 struct SettingsSheet: View {
     @Binding var style: CaptionStyle
+    @State private var vocabularyText: String = ""
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -31,6 +32,7 @@ struct SettingsSheet: View {
                     section("Colors") { presetRow }
                     section("Size") { sizeRow }
                     section("Lettering") { fontRow }
+                    section("Words and names") { vocabularyRow }
                     section("Speaker labels") { speakerExplanationRow }
                     section("About") { aboutRow }
                 }
@@ -44,6 +46,7 @@ struct SettingsSheet: View {
         }
         .tint(style.text.color)
         .preferredColorScheme(style.background.isDark ? .dark : .light)
+        .onAppear { vocabularyText = VocabularyStore().loadRawText() }
     }
 
     private var preview: some View {
@@ -108,6 +111,20 @@ struct SettingsSheet: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
             .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private var vocabularyRow: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(String(localized: "One word or name per line"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            TextEditor(text: $vocabularyText)
+                .font(.system(.body, design: .monospaced))
+                .frame(minHeight: 120)
+                .padding(8)
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+                .onChange(of: vocabularyText) { VocabularyStore().save(rawText: $1) }
+        }
     }
 
     private var aboutRow: some View {

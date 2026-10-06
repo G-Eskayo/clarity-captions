@@ -485,6 +485,17 @@
         }
       }
     },
+    "One word or name per line" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One word or name per line"
+          }
+        }
+      }
+    },
     "Paper" : {
       "extractionState": "manual",
       "localizations": {

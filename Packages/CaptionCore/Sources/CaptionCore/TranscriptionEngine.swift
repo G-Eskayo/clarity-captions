@@ -53,15 +53,17 @@ public final class TranscriptionEngine {
     private let diarizer: LiveDiarizer
     private let soundLabeler = SoundLabeler()
     private var soundLabelerStream: AsyncStream<SoundLabelKind>?
+    private let contextualStrings: [String]
     /// Spike-only: how long each startup step took, for the developer panel. Measured, not guessed.
     public private(set) var startupReport = ""
 
     /// `diarizerModelURL` has no default on purpose: the app must say where its bundled speaker model
     /// lives, so there is no accidental network path (ADR 0014).
-    public init(locale: Locale = Locale(identifier: "en-US"), micMode: MicMode = .standard, diarizerModelURL: URL) {
+    public init(locale: Locale = Locale(identifier: "en-US"), micMode: MicMode = .standard, diarizerModelURL: URL, contextualStrings: [String] = []) {
         self.locale = locale
         self.micMode = micMode
         self.diarizer = LiveDiarizer(modelURL: diarizerModelURL)
+        self.contextualStrings = contextualStrings
     }
 
     /// Starts live captioning. If anything fails part-way, everything already opened is released before the
@@ -132,6 +134,11 @@ public final class TranscriptionEngine {
         // Load the model before the first word, not on it.
         try await analyzer.prepareToAnalyze(in: format)
         lap("analyzer")
+        if !contextualStrings.isEmpty {
+            let context = AnalysisContext()
+            context.contextualStrings[.general] = contextualStrings
+            try await analyzer.setContext(context)
+        }
         audioEngine.prepare()
         try audioEngine.start()
         try await analyzer.start(inputSequence: sequence)
