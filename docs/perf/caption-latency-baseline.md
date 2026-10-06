@@ -4,26 +4,24 @@ Record the measured latency metrics here. These numbers define the 10% regressio
 
 ## Measurement
 
-Measured 2026-10-05 on the MacBook Pro (Apple M1, 16 GB), macOS 27.0.1, release build, two alternating runs each
-(`CAPTION_LATENCY=1 swift test -c release --filter CaptionLatencyBenchmark`).
+| Code | Median lag | P95 lag | Time to first caption | Device | OS | Date |
+|---|---|---|---|---|---|---|
+| After wall-clock latency fix (G-Eskayo/clarity-captions#54) | TBD | TBD | TBD | MacBook Pro (Apple M1, 16 GB) | macOS 27.0.1 | 2026-10-05 |
 
-| Code | Median lag | P95 lag | Time to first caption |
-|---|---|---|---|
-| Before sound labels (`0add730`) | **not valid (see below)** | **not valid** | 1.216 s and 1.225 s (avg 1.221 s) |
-| With sound labels, launch animation and text size (`54251b2`) | **not valid** | **not valid** | 1.241 s and 1.254 s (avg 1.248 s, +2.2%) |
+**To fill in the above:** run the following on a Mac with the bundled Sortformer model:
+```
+CAPTION_LATENCY=1 swift test -c release --filter CaptionLatencyBenchmark
+```
 
-**Only the time-to-first-caption figure is trustworthy today.** The median and 95th-percentile lag read exactly
-0.000 s in every run. A diagnostic run showed 100 lag samples and all 100 were 0.0, so the lag measure (the audio
-the fed clock has passed minus the end of each result's audio range, floored at zero) is not capturing real delay
-in replay mode. Until it is fixed, the 10% check on median and P95 passes trivially and proves nothing. The fix is
-tracked as its own issue. The earlier table here said "TBD" and named a different machine (an M1 Mac mini on
-macOS Sonoma); it was never filled in.
+**Previous (invalid) measurements:** Before the wall-clock fix, all measurements read exactly 0.000 s for median and P95 lag because the lag formula measured how far the result's audio position trailed the feed pointer (near-zero by design of a low-latency recognizer), not wall-clock time. The fix (G-Eskayo/clarity-captions#54) replaces this with `WordLagTracker`, which measures actual elapsed wall-clock time between when audio ends (per the recognizer's timestamp) and when that end time arrives in a result.
+
+The earlier measurements from commit 54251b2 (time-to-first-caption ~1.24 s) remain valid; only the median/P95 figures were nonsense. After the fix, the median and P95 should read ~0.4–0.9 s depending on model load and system load.
 
 ## On-device verification
 
 The same measurement should be repeatable on a real iPhone via the hidden dev-panel action in Spike (long-press the debug button on the app's main screen). Results are printed to the debug console; they should be within the same range as the Mac measurement (accounting for device CPU and OS scheduling differences).
 
-**Status:** Mac baseline recorded below; iPhone verification pending.
+**Status:** Mac baseline awaiting measurement post-fix; iPhone verification pending (AC6).
 
 ## Notes
 
