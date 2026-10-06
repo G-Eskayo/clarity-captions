@@ -104,6 +104,9 @@ struct ContentView: View {
     @State private var preparingStartTime: Date?
     /// Controls the animation overlay visibility after leaving the preparing state.
     @State private var showPreparingAnimation = false
+    /// Bumped on every state change so a pending "show the animation" can tell it has been overtaken.
+    @State private var preparingToken = 0
+    @State private var animationShownAt: Date?
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -137,28 +140,30 @@ struct ContentView: View {
         }
     }
 
+    /// The branded animation only appears if getting ready is genuinely slow (a cold start, a download); a quick
+    /// start is just the control morphing, so there is no flash. Once shown it never flickers.
     private func handleStateChange(_ newState: CaptionState) {
+        preparingToken += 1
+        let token = preparingToken
         switch newState {
         case .preparing:
             preparingStartTime = Date()
-            showPreparingAnimation = true
-        case .listening:
-            if let startTime = preparingStartTime {
-                let elapsed = Date().timeIntervalSince(startTime)
-                let delay = LaunchAnimationGate.remainingDelay(elapsed: elapsed)
-                if delay > 0 {
-                    Task {
-                        try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-                        withAnimation { showPreparingAnimation = false }
-                    }
-                } else {
-                    showPreparingAnimation = false
-                }
+            Task {
+                try? await Task.sleep(nanoseconds: UInt64(LaunchAnimationGate.showDelay * 1_000_000_000))
+                guard token == preparingToken, model.state == .preparing else { return }   // it started fast: never show it
+                animationShownAt = Date()
+                withAnimation(.easeInOut(duration: 0.25)) { showPreparingAnimation = true }
             }
+        case .listening, .idle, .failed:
             preparingStartTime = nil
-        case .idle, .failed:
-            showPreparingAnimation = false
-            preparingStartTime = nil
+            guard showPreparingAnimation else { return }
+            let shown = animationShownAt.map { Date().timeIntervalSince($0) } ?? LaunchAnimationGate.minimumDuration
+            let wait = LaunchAnimationGate.remainingDelay(elapsed: shown)
+            Task {
+                if wait > 0 { try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000)) }
+                withAnimation(.easeInOut(duration: 0.25)) { showPreparingAnimation = false }
+                animationShownAt = nil
+            }
         }
     }
 
@@ -171,13 +176,12 @@ struct ContentView: View {
                 Spacer()
             }
             status(font: .largeTitle)
-            // Captions use the full height; the stop circle floats at the bottom right, and the scroll content
-            // keeps a margin below the newest line so it never sits under the circle.
-            captions(bottomReserve: control.presentation == .compact ? PrimaryControl.compactDiameter + 20 : 0)
-                .overlay(alignment: .bottomTrailing) { if control.presentation == .compact { compactStop } }
             if developerTools { developerPanel }
-            if control.presentation == .large { largeButton }
+            // Captions use the full height. The one morphing control floats over the bottom edge, and the scroll
+            // content keeps a margin below the newest line so it never sits under the control.
+            captions(bottomReserve: 72 + 24)
         }
+        .overlay(alignment: .bottom) { controlBar(pillWidth: nil) }
     }
 
     /// Landscape: a thin top bar (state in the middle, Settings at the right), captions across everything
@@ -192,23 +196,25 @@ struct ContentView: View {
                 // Leave the corner free so the control never sits on top of text.
                 captions().padding(.trailing, control.presentation == .compact ? PrimaryControl.compactDiameter + 16 : 236)
             }
-            if control.presentation == .compact { compactStop } else { largeButton.frame(width: 220) }
+            controlBar(pillWidth: 220)
         }
         .overlay(alignment: .bottomLeading) { if developerTools { developerPanel.frame(maxWidth: 360) } }
     }
 
-    /// The small circle with an X that Stop becomes while captioning.
-    private var compactStop: some View {
-        Button { model.perform(.stop) } label: {
-            Image(systemName: "xmark")
-                .font(.title2.bold())
-                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                .foregroundStyle(.white)
-                .frame(width: PrimaryControl.compactDiameter, height: PrimaryControl.compactDiameter)
-                .background(Color(red: 0.80, green: 0.12, blue: 0.12), in: Circle())
+    /// The single bottom control, right-aligned so it shrinks toward the bottom-right corner and grows back out.
+    /// `pillWidth` nil means the full row (portrait).
+    private func controlBar(pillWidth: CGFloat?) -> some View {
+        GeometryReader { geo in
+            HStack(spacing: 0) {
+                Spacer(minLength: 0)
+                MorphingControl(control: control, fullWidth: pillWidth ?? geo.size.width,
+                                fill: style.text.color, label: style.background.color) {
+                    model.perform(control.action)
+                }
+            }
+            .frame(maxHeight: .infinity, alignment: .bottom)
         }
-        .accessibilityLabel(control.accessibilityLabel)
-        .transition(.scale.combined(with: .opacity))
+        .frame(height: 72)
     }
 
     private var settingsButton: some View {
@@ -280,20 +286,6 @@ struct ContentView: View {
         case .phoneRinging: "Phone ringing sound"
         case .knock: "Knock sound"
         }
-    }
-
-    /// The big Start / Try again / Getting ready button (Stop is the compact circle while captioning).
-    private var largeButton: some View {
-        Button { model.perform(control.action) } label: {
-            Text(control.title)
-                .font(.title.bold())
-                .frame(maxWidth: .infinity, minHeight: 72)
-        }
-        .buttonStyle(.borderedProminent)
-        // Filled in the text color with the label in the background color keeps the look's 7:1 contrast.
-        .tint(style.text.color)
-        .foregroundStyle(style.background.color)
-        .disabled(!control.isEnabled)
     }
 
     private var developerPanel: some View {
