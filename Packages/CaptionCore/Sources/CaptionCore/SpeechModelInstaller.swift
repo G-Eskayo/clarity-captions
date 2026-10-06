@@ -11,6 +11,19 @@ public enum SpeechModelInstaller {
         await SpeechTranscriber.installedLocales.contains { $0.identifier(.bcp47) == locale.identifier(.bcp47) }
     }
 
+    public static func supportedLocaleIdentifiers() async -> [String] {
+        await SpeechTranscriber.supportedLocales.map { $0.identifier(.bcp47) }
+    }
+
+    public static func pendingDownloadSize(locale: Locale) async throws -> Int64? {
+        if await isInstalled(locale: locale) { return 0 }
+        guard let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber(locale)]) else {
+            return nil
+        }
+        let totalBytes = request.progress.totalUnitCount
+        return totalBytes > 0 ? totalBytes : nil
+    }
+
     /// Downloads and installs if needed, reporting 0...1 progress. Safe to call when already installed.
     public static func install(locale: Locale = Locale(identifier: "en-US"),
                                onProgress: @escaping @Sendable (Double) -> Void) async throws {

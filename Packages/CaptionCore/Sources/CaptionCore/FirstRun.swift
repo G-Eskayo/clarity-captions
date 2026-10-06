@@ -3,18 +3,20 @@ import Foundation
 public enum MicrophoneAccess: Equatable, Sendable { case undetermined, granted, denied }
 
 public enum FirstRunStep: Equatable, Sendable, CaseIterable {
-    case welcome, microphone, microphoneDenied, speechModel, speakerModel, done
+    case welcome, microphone, microphoneDenied, language, speechModel, speakerModel, done
 }
 
 /// Everything the first-run flow needs to know, as plain facts.
 public struct FirstRunFacts: Equatable, Sendable {
     public var hasSeenWelcome: Bool
     public var microphone: MicrophoneAccess
+    public var languageChosen: Bool
     public var speechModelInstalled: Bool
     public var speakerModelWarm: Bool
-    public init(hasSeenWelcome: Bool, microphone: MicrophoneAccess, speechModelInstalled: Bool, speakerModelWarm: Bool) {
+    public init(hasSeenWelcome: Bool, microphone: MicrophoneAccess, languageChosen: Bool, speechModelInstalled: Bool, speakerModelWarm: Bool) {
         self.hasSeenWelcome = hasSeenWelcome
         self.microphone = microphone
+        self.languageChosen = languageChosen
         self.speechModelInstalled = speechModelInstalled
         self.speakerModelWarm = speakerModelWarm
     }
@@ -31,6 +33,7 @@ public enum FirstRun {
         case .denied: return .microphoneDenied
         case .granted: break
         }
+        if !f.languageChosen { return .language }
         if !f.speechModelInstalled { return .speechModel }
         if !f.speakerModelWarm { return .speakerModel }
         return .done
@@ -58,8 +61,12 @@ public struct FirstRunCopy: Equatable, Sendable {
             FirstRunCopy(title: String(localized: "I can't hear yet"),
                          message: String(localized: "Captions need the microphone. Tap the button, then switch Microphone on."),
                          button: String(localized: "Open Settings"))
+        case .language:
+            FirstRunCopy(title: String(localized: "Which language?"),
+                         message: String(localized: "Pick the language you mostly hear around you. You can change it any time."),
+                         button: nil)
         case .speechModel:
-            FirstRunCopy(title: String(localized: "Learning English"),
+            FirstRunCopy(title: String(localized: "Getting the voice-to-text ready"),
                          message: String(localized: "A one-time download. Please keep Wi-Fi on. It only happens once."),
                          button: nil)
         case .speakerModel:

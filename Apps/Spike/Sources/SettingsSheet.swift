@@ -22,12 +22,14 @@ struct SettingsSheet: View {
     @Binding var style: CaptionStyle
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var showingLanguagePicker = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     preview
+                    section("Language") { languageRow }
                     section("Colors") { presetRow }
                     section("Size") { sizeRow }
                     section("Lettering") { fontRow }
@@ -40,6 +42,12 @@ struct SettingsSheet: View {
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.font(.headline) } }
+            .sheet(isPresented: $showingLanguagePicker) {
+                LanguagePickerView { locale in
+                    let store = LanguageStore()
+                    store.setSelectedLocaleIdentifier(locale)
+                }
+            }
         }
         .tint(style.text.color)
         .preferredColorScheme(style.background.isDark ? .dark : .light)
@@ -99,6 +107,21 @@ struct SettingsSheet: View {
                 .buttonStyle(.bordered).tint(style.font == f ? .accentColor : .secondary)
             }
         }
+    }
+
+    private var languageRow: some View {
+        Button(action: { showingLanguagePicker = true }) {
+            HStack {
+                Label("Language", systemImage: "globe")
+                Spacer()
+                Image(systemName: "chevron.forward")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, minHeight: 56)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.bordered)
     }
 
     private var aboutRow: some View {

@@ -13,6 +13,7 @@ final class FirstRunModel: ObservableObject {
     private var sawSetupScreen = false
     private var working = false
     private let store = FirstRunStore()
+    private let languageStore = LanguageStore()
 
     private var buildKey: String {
         let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
@@ -23,15 +24,29 @@ final class FirstRunModel: ObservableObject {
 
     /// Re-reads the facts and shows the right screen. Called on launch and whenever the app comes back to the front.
     func refresh() async {
+        // Auto-select default language on first run if device language is unambiguous
+        if languageStore.selectedLocaleIdentifier == nil {
+            let supported = await SpeechModelInstaller.supportedLocaleIdentifiers()
+            if let defaultLocale = LanguageSelection.defaultLocale(
+                deviceLocaleIdentifier: Locale.current.identifier(.bcp47),
+                supportedLocaleIdentifiers: supported
+            ) {
+                languageStore.setSelectedLocaleIdentifier(defaultLocale)
+            }
+        }
+
         let mic: MicrophoneAccess = switch AVAudioApplication.shared.recordPermission {
         case .granted: .granted
         case .denied: .denied
         default: .undetermined
         }
+        let selectedLocaleIdentifier = languageStore.selectedLocaleIdentifier ?? "en-US"
+        let locale = Locale(identifier: selectedLocaleIdentifier)
         let facts = FirstRunFacts(
             hasSeenWelcome: store.hasSeenWelcome,
             microphone: mic,
-            speechModelInstalled: await SpeechModelInstaller.isInstalled(),
+            languageChosen: languageStore.selectedLocaleIdentifier != nil,
+            speechModelInstalled: await SpeechModelInstaller.isInstalled(locale: locale),
             speakerModelWarm: store.isSpeakerModelWarm(forBuild: buildKey))
         let next = FirstRun.step(for: facts)
         step = next
@@ -42,11 +57,13 @@ final class FirstRunModel: ObservableObject {
 
     private func runAutomaticStep() async {
         guard !working else { return }
+        let selectedLocaleIdentifier = languageStore.selectedLocaleIdentifier ?? "en-US"
+        let locale = Locale(identifier: selectedLocaleIdentifier)
         switch step {
         case .speechModel:
             working = true; problem = nil; progress = 0
             let startTime = Date()
-            do { try await SpeechModelInstaller.install { p in Task { @MainActor in self.progress = p } } }
+            do { try await SpeechModelInstaller.install(locale: locale) { p in Task { @MainActor in self.progress = p } } }
             catch { problem = "I couldn't finish the download. Check that Wi-Fi is on, then try again." }
             if problem == nil {
                 let elapsed = Date().timeIntervalSince(startTime)
@@ -97,43 +114,51 @@ struct FirstRunView: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     var body: some View {
-        let copy = FirstRunCopy.for(model.step)
-        let compact = verticalSizeClass == .compact
-        // Scrolls when sideways (landscape is short), and fills the screen otherwise.
-        GeometryReader { geo in ScrollView { VStack(spacing: compact ? 14 : 28) {
-            Spacer()
-            if model.step == .speechModel || model.step == .speakerModel {
-                LaunchAnimationView()
-            } else {
-                Image(systemName: symbol)
-                    .font(.system(size: compact ? 36 : 72))
-                    .foregroundStyle(.white)
-                    .frame(width: compact ? 72 : 150, height: compact ? 72 : 150)
-                    .background(Color("LaunchBackground"), in: Circle())
-                    .accessibilityHidden(true)
+        if model.step == .language {
+            LanguagePickerView { locale in
+                let store = LanguageStore()
+                store.setSelectedLocaleIdentifier(locale)
+                Task { await model.refresh() }
             }
-            Text(copy.title).font(.largeTitle.bold()).multilineTextAlignment(.center)
-            Text(copy.message).font(.title3).multilineTextAlignment(.center).foregroundStyle(.secondary)
-            if model.step == .speechModel && model.problem == nil {
-                ProgressView(value: model.progress).padding(.horizontal, 40)
-                Text("\(Int(model.progress * 100))%").font(.headline).monospacedDigit()
-            } else if model.step == .speakerModel && model.problem == nil {
-                ProgressView().controlSize(.large)
+        } else {
+            let copy = FirstRunCopy.for(model.step)
+            let compact = verticalSizeClass == .compact
+            // Scrolls when sideways (landscape is short), and fills the screen otherwise.
+            GeometryReader { geo in ScrollView { VStack(spacing: compact ? 14 : 28) {
+                Spacer()
+                if model.step == .speechModel || model.step == .speakerModel {
+                    LaunchAnimationView()
+                } else {
+                    Image(systemName: symbol)
+                        .font(.system(size: compact ? 36 : 72))
+                        .foregroundStyle(.white)
+                        .frame(width: compact ? 72 : 150, height: compact ? 72 : 150)
+                        .background(Color("LaunchBackground"), in: Circle())
+                        .accessibilityHidden(true)
+                }
+                Text(copy.title).font(.largeTitle.bold()).multilineTextAlignment(.center)
+                Text(copy.message).font(.title3).multilineTextAlignment(.center).foregroundStyle(.secondary)
+                if model.step == .speechModel && model.problem == nil {
+                    ProgressView(value: model.progress).padding(.horizontal, 40)
+                    Text("\(Int(model.progress * 100))%").font(.headline).monospacedDigit()
+                } else if model.step == .speakerModel && model.problem == nil {
+                    ProgressView().controlSize(.large)
+                }
+                if let problem = model.problem {
+                    Text(problem).font(.headline).foregroundStyle(.red).multilineTextAlignment(.center)
+                    bigButton("Try again") { model.retry() }
+                } else if let button = copy.button {
+                    bigButton(button) { model.primaryTapped() }
+                }
+                Spacer()
             }
-            if let problem = model.problem {
-                Text(problem).font(.headline).foregroundStyle(.red).multilineTextAlignment(.center)
-                bigButton("Try again") { model.retry() }
-            } else if let button = copy.button {
-                bigButton(button) { model.primaryTapped() }
+            .frame(maxWidth: .infinity, minHeight: geo.size.height)
+            .padding(24) }
+            .scrollBounceBehavior(.basedOnSize)
+            .onChange(of: model.step) { _, newStep in
+                UIAccessibility.post(notification: .screenChanged, argument: FirstRunCopy.for(newStep).title)
             }
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, minHeight: geo.size.height)
-        .padding(24) }
-        .scrollBounceBehavior(.basedOnSize)
-        .onChange(of: model.step) { _, newStep in
-            UIAccessibility.post(notification: .screenChanged, argument: FirstRunCopy.for(newStep).title)
-        }
+            }
         }
     }
 
@@ -147,6 +172,7 @@ struct FirstRunView: View {
         case .welcome: "hand.wave.fill"
         case .microphone: "mic.fill"
         case .microphoneDenied: "mic.slash.fill"
+        case .language: "globe"
         case .speechModel, .speakerModel: "" // Shown as LaunchAnimationView instead
         case .done: "checkmark.circle.fill"
         }

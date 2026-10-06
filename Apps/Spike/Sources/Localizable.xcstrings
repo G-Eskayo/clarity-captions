@@ -144,6 +144,28 @@
         }
       }
     },
+    "Choose Language" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose Language"
+          }
+        }
+      }
+    },
+    "Could not download the language model. Check your connection and try again." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not download the language model. Check your connection and try again."
+          }
+        }
+      }
+    },
     "Continue" : {
       "extractionState": "manual",
       "localizations": {
@@ -254,6 +276,17 @@
         }
       }
     },
+    "Getting the voice-to-text ready" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Getting the voice-to-text ready"
+          }
+        }
+      }
+    },
     "Hello! This is how captions will look." : {
       "extractionState": "manual",
       "localizations": {
@@ -327,6 +360,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Knock sound"
+          }
+        }
+      }
+    },
+    "Language" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Language"
           }
         }
       }
@@ -452,6 +496,28 @@
         }
       }
     },
+    "No languages available" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No languages available"
+          }
+        }
+      }
+    },
+    "Not fully translated" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not fully translated"
+          }
+        }
+      }
+    },
     "On the next screen, tap Allow so I can turn speech into words. Everything stays on your phone." : {
       "extractionState": "manual",
       "localizations": {
@@ -481,6 +547,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Paper"
+          }
+        }
+      }
+    },
+    "Pick the language you mostly hear around you. You can change it any time." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pick the language you mostly hear around you. You can change it any time."
           }
         }
       }
@@ -558,6 +635,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Serif"
+          }
+        }
+      }
+    },
+    "Search languages" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search languages"
           }
         }
       }
@@ -793,6 +881,17 @@
         }
       }
     },
+    "Which language?" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Which language?"
+          }
+        }
+      }
+    },
     "Jump to latest" : {
       "extractionState": "manual",
       "localizations": {
@@ -800,6 +899,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Jump to latest"
+          }
+        }
+      }
+    },
+    "Already downloaded" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Already downloaded"
+          }
+        }
+      }
+    },
+    "Size unknown" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Size unknown"
           }
         }
       }

@@ -6,8 +6,8 @@ import XCTest
 /// resumes in the right place and a later mic revocation brings back the right screen.
 final class FirstRunTests: XCTestCase {
     private func facts(welcome: Bool = true, mic: MicrophoneAccess = .granted,
-                       speech: Bool = true, speaker: Bool = true) -> FirstRunFacts {
-        FirstRunFacts(hasSeenWelcome: welcome, microphone: mic, speechModelInstalled: speech, speakerModelWarm: speaker)
+                       language: Bool = true, speech: Bool = true, speaker: Bool = true) -> FirstRunFacts {
+        FirstRunFacts(hasSeenWelcome: welcome, microphone: mic, languageChosen: language, speechModelInstalled: speech, speakerModelWarm: speaker)
     }
 
     func testFreshInstallStartsWithWelcome() {
@@ -15,11 +15,15 @@ final class FirstRunTests: XCTestCase {
     }
 
     func testThenAsksForTheMicrophone() {
-        XCTAssertEqual(FirstRun.step(for: facts(mic: .undetermined, speech: false, speaker: false)), .microphone)
+        XCTAssertEqual(FirstRun.step(for: facts(mic: .undetermined, language: false, speech: false, speaker: false)), .microphone)
     }
 
     func testDeniedMicrophoneExplainsHowToFixItBeforeAnythingElse() {
-        XCTAssertEqual(FirstRun.step(for: facts(mic: .denied, speech: false, speaker: false)), .microphoneDenied)
+        XCTAssertEqual(FirstRun.step(for: facts(mic: .denied, language: false, speech: false, speaker: false)), .microphoneDenied)
+    }
+
+    func testThenAsksForTheLanguage() {
+        XCTAssertEqual(FirstRun.step(for: facts(language: false, speech: false, speaker: false)), .language)
     }
 
     func testThenFetchesTheSpeechModel() {
@@ -58,7 +62,7 @@ final class FirstRunTests: XCTestCase {
         for step in [FirstRunStep.welcome, .microphone, .microphoneDenied, .done] {
             XCTAssertNotNil(FirstRunCopy.for(step).button, "\(step) needs one button")
         }
-        for step in [FirstRunStep.speechModel, .speakerModel] {
+        for step in [FirstRunStep.language, .speechModel, .speakerModel] {
             XCTAssertNil(FirstRunCopy.for(step).button, "\(step) runs by itself")
         }
     }
