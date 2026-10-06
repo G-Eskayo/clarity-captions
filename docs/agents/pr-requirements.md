@@ -26,3 +26,9 @@ Anything that touches how captioning starts, runs or stops must keep the lifecyc
 (`CaptionSessionControllerTests`) and must add one for any new behavior. Say in the pull request how it was
 exercised: pressing Start, Stop and Start again, and a failed start, on a simulator or device. Tests with a
 fake engine are required; they are not a substitute for one real run, and the PR must say whether a real run was done.
+
+## Commits name the ticket they advance
+
+Any commit that implements or advances a ticket ends its message with `Refs #N` (or `Closes #N` when it finishes it).
+The dashboard's "does work already exist?" check can only see work whose commits cite a ticket number, so work done
+by hand without one looks like nothing happened and tickets that are really done stay open and blocked.
