@@ -87,6 +87,9 @@ final class CaptionLatencyBenchmarkTests: XCTestCase {
             }
         }
 
+        XCTAssertFalse(lagSamples.isEmpty, "No lag samples collected")
+        XCTAssertFalse(lagSamples.allSatisfy { $0 == 0 }, "All \(lagSamples.count) lag samples are exactly 0.0 s")
+
         let report = CaptionLatencyReport(lagSamples: lagSamples, timeToFirstCaption: firstCaptionTime)
         print(String(format: "LATENCY-RESULT median: %.3f s, p95: %.3f s, time-to-first: %.3f s",
                      report.medianLagSeconds,

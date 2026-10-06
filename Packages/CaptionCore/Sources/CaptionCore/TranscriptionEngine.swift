@@ -26,6 +26,23 @@ final class FedAudioClock: @unchecked Sendable {
     var seconds: Double { lock.lock(); defer { lock.unlock() }; return value }
 }
 
+/// Wall-clock reference for latency measurement. Set once when feeding begins;
+/// provides elapsed wall-clock time since that moment.
+final class FedWallTime: @unchecked Sendable {
+    private let lock = NSLock()
+    private var startTime: Date?
+
+    func set(_ time: Date) {
+        lock.lock(); defer { lock.unlock() }
+        if startTime == nil { startTime = time }
+    }
+
+    func elapsedSinceStart() -> Double? {
+        lock.lock(); defer { lock.unlock() }
+        return startTime.map { Date().timeIntervalSince($0) }
+    }
+}
+
 /// How the phone treats the microphone signal. Spike experiment: which one hears a person 5 ft away
 /// over room noise, and which gives the diarizer separable voices?
 public enum MicMode: String, CaseIterable, Sendable {
@@ -133,12 +150,14 @@ public final class TranscriptionEngine {
         try await analyzer.prepareToAnalyze(in: format)
         lap("analyzer")
         audioEngine.prepare()
+        let wallTime = FedWallTime()
         try audioEngine.start()
+        wallTime.set(Date())
         try await analyzer.start(inputSequence: sequence)
         lap("audio start")
         startupReport = laps.joined(separator: " · ")
 
-        return makeResultStream(transcriber: transcriber, fed: fed)
+        return makeResultStream(transcriber: transcriber, fed: fed, wallTime: wallTime)
     }
 
     /// Replays audio from a file at real-time pace for latency measurement.
@@ -180,23 +199,25 @@ public final class TranscriptionEngine {
                     // Read file in 4096-frame chunks at the input format's sample rate.
                     let bufferSize = AVAudioFrameCount(4096)
                     var position: AVAudioFramePosition = 0
-                    let startWallTime = Date()
+                    let wallTime = FedWallTime()
 
                     // Start the result stream task in the background.
                     let resultTask = Task {
+                        var lagTracker = WordLagTracker()
                         for try await result in transcriber.results {
                             let starts = result.text.runs.compactMap { $0.audioTimeRange?.start.seconds }
                             let ends = result.text.runs.compactMap { $0.audioTimeRange?.end.seconds }
                             let end = ends.max()
                             let speaker = (starts.min().flatMap { st in end.map { (st, $0) } })
                                 .flatMap { SpeakerAligner.speaker(start: $0.0, end: $0.1, segments: self.diarizer.segments) }
-                            let lag = end.map { max(0, fed.seconds - $0) }
+                            let lag = wallTime.elapsedSinceStart().flatMap { elapsed in lagTracker.sample(elapsed: elapsed, audioEnds: ends) }
                             continuation.yield(CaptionUpdate(text: String(result.text.characters), isFinal: result.isFinal, lagSeconds: lag, speaker: speaker, startSeconds: starts.min(), endSeconds: end, diagnostics: self.diarizer.diagnostics))
                         }
                     }
 
                     // Feed audio from the file at real-time pace.
                     try await analyzer.start(inputSequence: sequence)
+                    wallTime.set(Date())
                     audioFile.framePosition = position
                     while position < audioFile.length {
                         let buffer = AVAudioPCMBuffer(pcmFormat: inFormat, frameCapacity: bufferSize)!
@@ -206,10 +227,11 @@ public final class TranscriptionEngine {
                         self.processBuffer(buffer, inFormat: inFormat, converter: converter, diarConverter: diarConverter, format: format, diarFormat: diarFormat, fed: fed, builder: builder)
 
                         // Sleep to maintain real-time pace: fed time vs. wall clock time.
-                        let elapsedWall = Date().timeIntervalSince(startWallTime)
-                        let targetWall = fed.seconds
-                        if targetWall > elapsedWall {
-                            try await Task.sleep(nanoseconds: UInt64((targetWall - elapsedWall) * 1e9))
+                        if let elapsedWall = wallTime.elapsedSinceStart() {
+                            let targetWall = fed.seconds
+                            if targetWall > elapsedWall {
+                                try await Task.sleep(nanoseconds: UInt64((targetWall - elapsedWall) * 1e9))
+                            }
                         }
 
                         position += Int64(buffer.frameLength)
@@ -262,17 +284,18 @@ public final class TranscriptionEngine {
         }
     }
 
-    private func makeResultStream(transcriber: SpeechTranscriber, fed: FedAudioClock) -> AsyncThrowingStream<CaptionUpdate, Error> {
+    private func makeResultStream(transcriber: SpeechTranscriber, fed: FedAudioClock, wallTime: FedWallTime) -> AsyncThrowingStream<CaptionUpdate, Error> {
         return AsyncThrowingStream { [weak self] continuation in
             let task = Task {
                 do {
+                    var lagTracker = WordLagTracker()
                     for try await result in transcriber.results {
                         let starts = result.text.runs.compactMap { $0.audioTimeRange?.start.seconds }
                         let ends = result.text.runs.compactMap { $0.audioTimeRange?.end.seconds }
                         let end = ends.max()
                         let speaker = (starts.min().flatMap { st in end.map { (st, $0) } })
                             .flatMap { SpeakerAligner.speaker(start: $0.0, end: $0.1, segments: self?.diarizer.segments ?? []) }
-                        let lag = end.map { max(0, fed.seconds - $0) }
+                        let lag = wallTime.elapsedSinceStart().flatMap { elapsed in lagTracker.sample(elapsed: elapsed, audioEnds: ends) }
                         continuation.yield(CaptionUpdate(text: String(result.text.characters), isFinal: result.isFinal, lagSeconds: lag, speaker: speaker, startSeconds: starts.min(), endSeconds: end, diagnostics: self?.diarizer.diagnostics ?? ""))
                     }
                     continuation.finish()
