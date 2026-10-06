@@ -24,6 +24,7 @@ struct SettingsSheet: View {
     let speakerNames: SpeakerNames
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var vocabularyText = ""
 
     var body: some View {
         NavigationStack {
@@ -33,6 +34,7 @@ struct SettingsSheet: View {
                     section("Colors") { presetRow }
                     section("Size") { sizeRow }
                     section("Lettering") { fontRow }
+                    section("Words and names") { vocabularyRow }
                     section("Speaker labels") { speakerExplanationRow }
                     section("Conversation") { conversationRow }
                     section("About") { aboutRow }
@@ -103,6 +105,20 @@ struct SettingsSheet: View {
                 .buttonStyle(.bordered).tint(style.font == f ? .accentColor : .secondary)
             }
         }
+    }
+
+    private var vocabularyRow: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            TextEditor(text: $vocabularyText)
+                .font(.body.monospaced())
+                .frame(minHeight: 120)
+                .border(Color.secondary.opacity(0.3), width: 1)
+            Text(String(localized: "One word or name per line"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .onAppear { vocabularyText = VocabularyStore().loadRawText() }
+        .onChange(of: vocabularyText) { _, newValue in VocabularyStore().save(rawText: newValue) }
     }
 
     private var speakerExplanationRow: some View {
