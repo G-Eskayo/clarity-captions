@@ -160,7 +160,8 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if firstRun.finished { ContentView() } else { FirstRunView(model: firstRun) }
+            // Demo mode (debug builds, launch flag only) goes straight to the caption screen.
+            if firstRun.finished || DemoMode.isOn { ContentView() } else { FirstRunView(model: firstRun) }
         }
         .task { await firstRun.refresh() }
         .onChange(of: scenePhase) { _, phase in
