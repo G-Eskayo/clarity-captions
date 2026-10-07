@@ -131,6 +131,19 @@ struct SettingsSheet: View {
 
     private var conversationRow: some View {
         VStack(spacing: 12) {
+            NavigationLink(destination: SavedConversationsView()) {
+                HStack {
+                    Label(String(localized: "Saved conversations"), systemImage: "archivebox")
+                    Spacer()
+                    Image(systemName: "chevron.forward")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, minHeight: 56)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.bordered)
+
             Button { copyPlainText() } label: {
                 HStack {
                     Label(String(localized: "Copy all text"), systemImage: "doc.on.doc")

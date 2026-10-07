@@ -19,6 +19,8 @@ final class CaptionModel: ObservableObject {
     /// Only used by the developer latency measurement below.
     private var task: Task<Void, Never>?
     private var controller: CaptionSessionController!
+    /// Index of the first line in the current session. Set when preparing starts.
+    private var sessionStartLineIndex = 0
 
     init() {
         controller = CaptionSessionController(makeEngine: { [weak self] in
@@ -30,7 +32,18 @@ final class CaptionModel: ObservableObject {
             let vocabulary = VocabularyList(rawText: rawText).entries
             return TranscriptionEngine(micMode: self.micMode, diarizerModelURL: url, contextualStrings: vocabulary)
         })
-        controller.onStateChange = { [weak self] in self?.state = $0 }
+        controller.onStateChange = { [weak self] newState in
+            guard let self else { return }
+            self.state = newState
+            switch newState {
+            case .preparing:
+                self.sessionStartLineIndex = self.stream.lines.count
+            case .idle:
+                self.autoSaveSession()
+            default:
+                break
+            }
+        }
         controller.onStartup = { [weak self] in self?.startup = $0 }
         controller.onSoundLabel = { [weak self] in self?.stream.insertSoundLabel($0) }
         controller.onUpdate = { [weak self] u in
@@ -48,6 +61,18 @@ final class CaptionModel: ObservableObject {
         case .start: controller.start()
         case .stop: controller.stop()
         case .none: break
+        }
+    }
+
+    private func autoSaveSession() {
+        let sessionLines = Array(stream.lines.dropFirst(sessionStartLineIndex))
+        guard let conversation = SavedConversationBuilder.build(lines: sessionLines, speakerNames: speakerNames, endedAt: Date()) else {
+            return
+        }
+        do {
+            try SavedConversationStore().save(conversation)
+        } catch {
+            print("Failed to save conversation: \(error)")
         }
     }
 
