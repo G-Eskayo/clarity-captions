@@ -116,10 +116,12 @@ struct ContentView: View {
     @State private var renamingSpeaker: Int?
     /// Draft name being edited in the rename dialog.
     @State private var nameDraft: String = ""
+    @State private var previousScenePhase: ScenePhase = .active
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
     private var style: CaptionStyle { model.style }
     private var control: PrimaryControl { PrimaryControl.for(model.state) }
@@ -149,9 +151,25 @@ struct ContentView: View {
             model.runDemo()
             if DemoMode.opensSettings { showingSettings = true }
         }
-        .onChange(of: model.state) { _, newState in
+        .onChange(of: model.state) { oldState, newState in
             UIAccessibility.post(notification: .announcement, argument: StatusWords.announcement(for: newState))
+            // Insert marker when transitioning from paused to listening (gap in transcript).
+            if case .paused = oldState, case .listening = newState {
+                model.stream.insertMarker(text: "— captions were paused —")
+            }
             handleStateChange(newState)
+        }
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            // Insert marker when backgrounded while actively captioning (ADR 0020).
+            if oldPhase != .background && newPhase == .background && model.state.isSessionActive {
+                model.stream.insertMarker(text: "— while you were away —")
+            }
+            // On return from background, follow the newest caption (ADR 0020).
+            if oldPhase == .background && newPhase == .active {
+                following = true
+                position.scrollTo(edge: .bottom)
+            }
+            previousScenePhase = newPhase
         }
     }
 
@@ -169,7 +187,7 @@ struct ContentView: View {
                 animationShownAt = Date()
                 withAnimation(.easeInOut(duration: 0.25)) { showPreparingAnimation = true }
             }
-        case .listening, .idle, .failed:
+        case .listening, .paused, .idle, .failed:
             preparingStartTime = nil
             guard showPreparingAnimation else { return }
             let shown = animationShownAt.map { Date().timeIntervalSince($0) } ?? LaunchAnimationGate.minimumDuration
@@ -266,7 +284,11 @@ struct ContentView: View {
                                         }
                                     }
                             }
-                            if line.isSoundLabel {
+                            if line.isMarker {
+                                Text(line.text).font(.footnote.italic()).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    .accessibilityLabel("Transcript marker: \(line.text)")
+                            } else if line.isSoundLabel {
                                 Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize)).italic()).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
                                     .accessibilityLabel(line.soundLabel.map { soundLabelA11yLabel(for: $0) } ?? "")
                             } else {
@@ -399,14 +421,14 @@ struct ContentView: View {
                 Text("Voice").tag(MicMode.voiceProcessing)
             }
             .pickerStyle(.segmented)
-            .disabled(model.state == .listening || model.state == .preparing)
+            .disabled(model.state == .preparing || model.state.isSessionActive)
             if model.micMode == .voiceProcessing {
                 Button("System mic modes (Voice Isolation)…") { AVCaptureDevice.showSystemUserInterface(.microphoneModes) }
                     .font(.footnote)
             }
             Button("Measure latency") { model.measureLatency() }
                 .font(.footnote)
-                .disabled(model.state == .listening || model.state == .preparing)
+                .disabled(model.state == .preparing || model.state.isSessionActive)
             if let lag = model.lag { Text("lag \(String(format: "%.1f", lag))s").font(.caption2) }
             if !model.startup.isEmpty { Text("startup: \(model.startup)").font(.caption2) }
             if let report = model.latencyReport { Text("LATENCY \(report)").font(.caption2) }

@@ -173,4 +173,63 @@ final class CaptionStreamTests: XCTestCase {
         s.insertSoundLabel(.laughter)
         XCTAssertTrue(s.lines[0].styledWords.allSatisfy { $0.emphasis == .normal })
     }
+
+    // MARK: - Markers
+
+    func testInsertMarkerAddsNewLine() {
+        var s = CaptionStream()
+        s.insertMarker(text: "— while you were away —")
+        XCTAssertEqual(s.lines.count, 1)
+        XCTAssertEqual(s.lines[0].markerText, "— while you were away —")
+        XCTAssertEqual(s.lines[0].text, "— while you were away —")
+    }
+
+    func testInsertMarkerIsAlwaysFinal() {
+        var s = CaptionStream()
+        s.insertMarker(text: "— paused —")
+        XCTAssertTrue(s.lines[0].isFinal)
+        XCTAssertNil(s.lines[0].tail)
+    }
+
+    func testInsertMarkerClosesOpenTail() {
+        var s = CaptionStream()
+        s.apply(text: "hello", isFinal: false)
+        XCTAssertTrue(s.lines[0].tail != nil)
+        s.insertMarker(text: "— gap —")
+        XCTAssertEqual(s.lines.count, 2)
+        XCTAssertTrue(s.lines[0].isFinal)
+        XCTAssertEqual(s.lines[0].text, "hello")
+        XCTAssertEqual(s.lines[1].markerText, "— gap —")
+    }
+
+    func testSpeechAfterMarkerStartsNewLine() {
+        var s = CaptionStream()
+        s.insertMarker(text: "— paused —")
+        s.apply(text: "hello", isFinal: false)
+        XCTAssertEqual(s.lines.count, 2)
+        XCTAssertEqual(s.lines[0].markerText, "— paused —")
+        XCTAssertNil(s.lines[1].markerText)
+        XCTAssertEqual(s.lines[1].text, "hello")
+    }
+
+    func testSpeechNeverMergesIntoMarker() {
+        var s = CaptionStream()
+        s.insertMarker(text: "— gap —")
+        s.apply(text: "hello", isFinal: true)
+        s.apply(text: "world", isFinal: false)
+        XCTAssertEqual(s.lines.count, 3)
+        XCTAssertEqual(s.lines[0].markerText, "— gap —")
+        XCTAssertEqual(s.lines[1].text, "hello")
+        XCTAssertEqual(s.lines[2].text, "world")
+    }
+
+    func testIsMarkerProperty() {
+        var s = CaptionStream()
+        s.apply(text: "hello", isFinal: true)
+        s.insertMarker(text: "— gap —")
+        s.insertSoundLabel(.knock)
+        XCTAssertFalse(s.lines[0].isMarker)
+        XCTAssertTrue(s.lines[1].isMarker)
+        XCTAssertFalse(s.lines[2].isMarker)
+    }
 }

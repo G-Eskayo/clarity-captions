@@ -6,6 +6,7 @@ public protocol CaptioningEngine: AnyObject {
     var startupReport: String { get }
     func start() async throws -> AsyncThrowingStream<CaptionUpdate, Error>
     func soundLabelsStream() -> AsyncStream<SoundLabelKind>
+    func interruptionEvents() -> AsyncStream<InterruptionEvent>
     /// Must be safe to call more than once, and safe to call after a failed start.
     func stop() async
 }
@@ -71,12 +72,25 @@ public final class CaptionSessionController {
             if stopRequested { await engine.stop(); state = .idle; return }
             state = .listening
             let labels = engine.soundLabelsStream()
+            let interruptions = engine.interruptionEvents()
             try await withThrowingTaskGroup(of: Void.self) { group in
                 group.addTask { @MainActor [weak self] in
                     for try await u in updates { self?.onUpdate(u) }
                 }
                 group.addTask { @MainActor [weak self] in
                     for await l in labels { self?.onSoundLabel(l) }
+                }
+                group.addTask { @MainActor [weak self] in
+                    for await event in interruptions {
+                        switch event {
+                        case .began(let reason):
+                            self?.state = .paused(reason)
+                        case .ended:
+                            if case .paused = self?.state {
+                                self?.state = .listening
+                            }
+                        }
+                    }
                 }
                 try await group.waitForAll()
             }

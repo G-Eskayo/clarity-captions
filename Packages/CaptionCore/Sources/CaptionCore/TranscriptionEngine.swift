@@ -61,6 +61,10 @@ public enum TranscriptionError: Error {
     case converterUnavailable
 }
 
+struct MicrophoneNotRestored: Error, CustomStringConvertible {
+    let description = "Microphone was not restored after interruption"
+}
+
 /// Live microphone -> on-device SpeechAnalyzer/SpeechTranscriber (ADR 0001).
 /// Spike-grade: no diarization yet, no interruption/route-change handling yet.
 public final class TranscriptionEngine {
@@ -79,6 +83,20 @@ public final class TranscriptionEngine {
     private var loudnessBaseline = LoudnessBaseline()
     private var loudnessTimeSeries: [(audioTime: Double, level: Double)] = []
     private let loudnessLock = NSLock()
+    private var interruptionCont: AsyncStream<InterruptionEvent>.Continuation?
+    private var interruptionStream: AsyncStream<InterruptionEvent>?
+    private var resultContinuation: AsyncThrowingStream<CaptionUpdate, Error>.Continuation?
+    private var interruptionObserverTask: Task<Void, Never>?
+    // Tap state for reinstalling on engine configuration changes (ADR 0021).
+    private var tapState: TapState?
+
+    private struct TapState {
+        let inFormat: AVAudioFormat
+        let format: AVAudioFormat
+        let diarFormat: AVAudioFormat
+        let fed: FedAudioClock
+        let builder: AsyncStream<AnalyzerInput>.Continuation
+    }
 
     /// `diarizerModelURL` has no default on purpose: the app must say where its bundled speaker model
     /// lives, so there is no accidental network path (ADR 0014).
@@ -140,6 +158,101 @@ public final class TranscriptionEngine {
         case .voiceProcessing: try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
         }
         try session.setActive(true)
+
+        // Set the built-in mic as the preferred input (ADR 0021).
+        if let inputs = session.availableInputs,
+           let builtInMic = inputs.first(where: { $0.portType == .builtInMic }) {
+            try session.setPreferredInput(builtInMic)
+        }
+
+        // Set up interruption event stream for ADR 0020/0021.
+        let (istream, icont) = AsyncStream.makeStream(of: InterruptionEvent.self)
+        interruptionStream = istream
+        interruptionCont = icont
+
+        // Observe AVAudioSession interruptions (ADR 0021).
+        interruptionObserverTask = Task { [weak self] in
+            let notificationCenter = NotificationCenter.default
+            var currentWatchdog: InterruptionWatchdog?
+
+            for await notification in notificationCenter.notifications(named: AVAudioSession.interruptionNotification) {
+                guard let self else { break }
+                guard let dict = notification.userInfo else { continue }
+                guard let rawType = dict[AVAudioSession.interruptionTypeKey] as? UInt,
+                      let type = AVAudioSession.InterruptionType(rawValue: rawType) else { continue }
+
+                switch type {
+                case .began:
+                    icont.yield(.began(reason: "Something else is using the microphone"))
+                    // Start a watchdog to enforce the 30-second timeout (ADR 0021).
+                    let watchdog = InterruptionWatchdog(timeoutSeconds: 30)
+                    currentWatchdog = watchdog
+                    Task { [weak self] in
+                        let result = await watchdog.wait()
+                        // If the watchdog times out, finish the results stream with an error.
+                        if result == .timedOut {
+                            self?.resultContinuation?.finish(throwing: MicrophoneNotRestored())
+                        }
+                    }
+
+                case .ended:
+                    // Attempt to restore the microphone (ADR 0021).
+                    let shouldResume = Self.shouldResumeAfterInterruption(
+                        optionsRawValue: dict[AVAudioSession.interruptionOptionKey] as? UInt
+                    )
+
+                    if shouldResume {
+                        do {
+                            try session.setActive(true)
+                            // Re-assert the built-in mic on every route change (ADR 0021).
+                            if let inputs = session.availableInputs,
+                               let builtInMic = inputs.first(where: { $0.portType == .builtInMic }) {
+                                try session.setPreferredInput(builtInMic)
+                            }
+                            audioEngine.prepare()
+                            try audioEngine.start()
+                            // Signal the watchdog that we resumed successfully.
+                            if let watchdog = currentWatchdog {
+                                _ = await watchdog.resume()
+                            }
+                            icont.yield(.ended)
+                        } catch {
+                            // If we can't restore, let the watchdog timeout handle it.
+                        }
+                    }
+                    currentWatchdog = nil
+
+                @unknown default:
+                    break
+                }
+            }
+        }
+
+        // Observe AVAudioSession route changes to re-assert the built-in mic (ADR 0021).
+        Task { [weak self] in
+            let notificationCenter = NotificationCenter.default
+            for await _ in notificationCenter.notifications(named: AVAudioSession.routeChangeNotification) {
+                guard let self else { break }
+                do {
+                    if let inputs = session.availableInputs,
+                       let builtInMic = inputs.first(where: { $0.portType == .builtInMic }) {
+                        try session.setPreferredInput(builtInMic)
+                    }
+                } catch {
+                    // Route change handling is best-effort; continue if it fails.
+                }
+            }
+        }
+
+        // Observe AVAudioEngine configuration changes (e.g., Bluetooth device connect/disconnect)
+        // to reinstall the tap with the potentially new input format (ADR 0021).
+        Task { [weak self] in
+            let notificationCenter = NotificationCenter.default
+            for await _ in notificationCenter.notifications(named: AVAudioEngine.configurationChangeNotification) {
+                guard let self else { break }
+                self.reinstallTap()
+            }
+        }
         #endif
         // Must happen before the tap format is read.
         if micMode == .voiceProcessing { try audioEngine.inputNode.setVoiceProcessingEnabled(true) }
@@ -151,6 +264,8 @@ public final class TranscriptionEngine {
               let diarConverter = AVAudioConverter(from: inFormat, to: diarFormat) else {
             throw TranscriptionError.converterUnavailable
         }
+        // Save tap state for reinstalling on engine configuration changes (ADR 0021).
+        self.tapState = TapState(inFormat: inFormat, format: format, diarFormat: diarFormat, fed: fed, builder: builder)
         input.installTap(onBus: 0, bufferSize: 4096, format: inFormat) { buffer, _ in
             self.processBuffer(buffer, inFormat: inFormat, converter: converter, diarConverter: diarConverter, format: format, diarFormat: diarFormat, fed: fed, builder: builder)
         }
@@ -301,6 +416,7 @@ public final class TranscriptionEngine {
 
     private func makeResultStream(transcriber: SpeechTranscriber, fed: FedAudioClock, wallTime: FedWallTime) -> AsyncThrowingStream<CaptionUpdate, Error> {
         return AsyncThrowingStream { [weak self] continuation in
+            self?.resultContinuation = continuation
             let task = Task {
                 do {
                     var lagTracker = WordLagTracker()
@@ -363,12 +479,77 @@ public final class TranscriptionEngine {
         return result
     }
 
+    /// Reinstalls the audio tap with the current input format when engine configuration changes.
+    /// Handles format changes from Bluetooth device connect/disconnect, etc. (ADR 0021).
+    private func reinstallTap() {
+        guard let state = tapState else { return }
+        let input = audioEngine.inputNode
+
+        // Remove the old tap.
+        input.removeTap(onBus: 0)
+
+        // Get the current input format (may have changed).
+        let newInFormat = input.outputFormat(forBus: 0)
+
+        // Check if format changed; if not, reinstalling with the same format is safe.
+        // If format changed, we need new converters.
+        let formatChanged = newInFormat != state.inFormat
+
+        let inFormatToUse = newInFormat
+        var converterToUse: AVAudioConverter?
+        var diarConverterToUse: AVAudioConverter?
+
+        // Create new converters if format changed.
+        if formatChanged {
+            guard let converter = AVAudioConverter(from: newInFormat, to: state.format),
+                  let diarConverter = AVAudioConverter(from: newInFormat, to: state.diarFormat) else {
+                // If we can't create converters, tap remains removed; audio stops until stop() or
+                // another configuration change that allows reconversion.
+                return
+            }
+            converterToUse = converter
+            diarConverterToUse = diarConverter
+            // Update saved state with the new format.
+            self.tapState = TapState(inFormat: newInFormat, format: state.format, diarFormat: state.diarFormat, fed: state.fed, builder: state.builder)
+        } else {
+            // Format is the same, we can't reuse the old converters (they were captured in the old closure),
+            // so create new ones with the same formats.
+            guard let converter = AVAudioConverter(from: inFormatToUse, to: state.format),
+                  let diarConverter = AVAudioConverter(from: inFormatToUse, to: state.diarFormat) else {
+                return
+            }
+            converterToUse = converter
+            diarConverterToUse = diarConverter
+        }
+
+        // Install the new tap with the converters.
+        guard let converter = converterToUse, let diarConverter = diarConverterToUse else { return }
+        input.installTap(onBus: 0, bufferSize: 4096, format: inFormatToUse) { buffer, _ in
+            self.processBuffer(
+                buffer,
+                inFormat: inFormatToUse,
+                converter: converter,
+                diarConverter: diarConverter,
+                format: state.format,
+                diarFormat: state.diarFormat,
+                fed: state.fed,
+                builder: state.builder
+            )
+        }
+    }
+
     /// Releases the microphone, the speech analyzer and the helpers. Safe to call more than once.
     public func stop() async {
         audioEngine.inputNode.removeTap(onBus: 0)
         audioEngine.stop()
         inputBuilder?.finish()
         inputBuilder = nil
+        interruptionCont?.finish()
+        interruptionCont = nil
+        resultContinuation = nil
+        interruptionObserverTask?.cancel()
+        interruptionObserverTask = nil
+        tapState = nil
         if let analyzer {
             self.analyzer = nil
             do { try await analyzer.finalizeAndFinishThroughEndOfInput() }
@@ -398,4 +579,23 @@ public final class TranscriptionEngine {
     public func soundLabelsStream() -> AsyncStream<SoundLabelKind> {
         soundLabelerStream ?? AsyncStream { $0.finish() }
     }
+
+    /// Returns the stream of interruption events (began/ended).
+    public func interruptionEvents() -> AsyncStream<InterruptionEvent> {
+        interruptionStream ?? AsyncStream { $0.finish() }
+    }
+
+    /// Decodes the AVAudioSession interruption options raw value to determine if we should resume.
+    /// Pure function for testability (ADR 0021).
+    #if os(iOS)
+    static func shouldResumeAfterInterruption(optionsRawValue: UInt?) -> Bool {
+        guard let rawValue = optionsRawValue else { return false }
+        let options = AVAudioSession.InterruptionOptions(rawValue: rawValue)
+        return options.contains(.shouldResume)
+    }
+    #else
+    static func shouldResumeAfterInterruption(optionsRawValue: UInt?) -> Bool {
+        return false
+    }
+    #endif
 }

@@ -24,6 +24,14 @@ final class MainScreenTests: XCTestCase {
         XCTAssertTrue(c.isEnabled)
     }
 
+    func testPausedOffersStop() {
+        let c = PrimaryControl.for(.paused("Something else is using the microphone"))
+        XCTAssertEqual(c.title, "Stop")
+        XCTAssertEqual(c.action, .stop)
+        XCTAssertTrue(c.isEnabled)
+        XCTAssertEqual(c.presentation, .compact)
+    }
+
     func testAfterAFailureTheControlIsOneTapBack() {
         let c = PrimaryControl.for(.failed("model missing"))
         XCTAssertEqual(c.title, "Try again")
@@ -35,6 +43,7 @@ final class MainScreenTests: XCTestCase {
         XCTAssertEqual(StatusWords.headline(for: .idle), "Ready")
         XCTAssertEqual(StatusWords.headline(for: .preparing), "Getting ready…")
         XCTAssertEqual(StatusWords.headline(for: .listening), "Listening")
+        XCTAssertEqual(StatusWords.headline(for: .paused("reason")), "Captions paused")
         XCTAssertEqual(StatusWords.headline(for: .failed("x")), "Stopped")
     }
 
@@ -42,6 +51,12 @@ final class MainScreenTests: XCTestCase {
         let state = CaptionState.failed("converterUnavailable")
         XCTAssertFalse(StatusWords.headline(for: state).contains("converter"))
         XCTAssertEqual(StatusWords.detail(for: state), "converterUnavailable")
+        XCTAssertNil(StatusWords.detail(for: .listening))
+    }
+
+    func testPauseReasonIsDetail() {
+        let state = CaptionState.paused("Something else is using the microphone")
+        XCTAssertEqual(StatusWords.detail(for: state), "Something else is using the microphone")
         XCTAssertNil(StatusWords.detail(for: .listening))
     }
 

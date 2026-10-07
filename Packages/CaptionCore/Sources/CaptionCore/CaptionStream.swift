@@ -15,6 +15,8 @@ public struct CaptionLine: Identifiable, Equatable, Sendable {
     public var speaker: Int?
     /// Sound label for non-speech lines (laughter, applause, etc.); nil for ordinary speech lines.
     public var soundLabel: SoundLabelKind?
+    /// Marker text for lines that mark gaps in the transcript (e.g., "— while you were away —"); nil for ordinary speech lines.
+    public var markerText: String?
     var committed: [CaptionWord]
     var tail: String?
     var tailRange: ClosedRange<Double>?
@@ -22,6 +24,7 @@ public struct CaptionLine: Identifiable, Equatable, Sendable {
     var endTime: Double?
 
     public var text: String {
+        if let marker = markerText { return marker }
         let committedText = committed.map(\.text).joined(separator: " ")
         return [committedText, tail ?? ""].filter { !$0.isEmpty }.joined(separator: " ")
     }
@@ -30,6 +33,7 @@ public struct CaptionLine: Identifiable, Equatable, Sendable {
     }
     public var isFinal: Bool { tail == nil }
     public var isSoundLabel: Bool { soundLabel != nil }
+    public var isMarker: Bool { markerText != nil }
 }
 
 /// The live caption transcript. Pure value type -- no audio, no UI, no platform APIs -- so it is tested
@@ -63,8 +67,8 @@ public struct CaptionStream: Sendable {
 
         let words = Self.captionWords(from: piece, emphasis: wordEmphasis)
         if var last = lines.last {
-            // Never merge speech into a line marked as a sound label.
-            guard !last.isSoundLabel else {
+            // Never merge speech into a line marked as a sound label or marker.
+            guard !last.isSoundLabel && !last.isMarker else {
                 // Breaking away: close whatever was still open on the previous line (should already be final for sound labels).
                 if let stale = last.tail {
                     last.committed = Self.joinWords(last.committed, stale); last.tail = nil; last.tailRange = nil
@@ -134,6 +138,22 @@ public struct CaptionStream: Sendable {
         lines.append(CaptionLine(
             id: nextID, speaker: nil, soundLabel: label,
             committed: labelWords,
+            tail: nil, tailRange: nil, startTime: nil, endTime: nil))
+        nextID += 1
+    }
+
+    /// Closes any open volatile tail on the last line and appends a new, already-final marker line.
+    public mutating func insertMarker(text: String) {
+        if var last = lines.last {
+            if let stale = last.tail {
+                last.committed = Self.joinWords(last.committed, stale); last.tail = nil; last.tailRange = nil
+                lines[lines.count - 1] = last
+            }
+        }
+
+        lines.append(CaptionLine(
+            id: nextID, speaker: nil, markerText: text,
+            committed: [],
             tail: nil, tailRange: nil, startTime: nil, endTime: nil))
         nextID += 1
     }
