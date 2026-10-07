@@ -68,6 +68,23 @@ domain understanding only.
   minimal buttons, no technical choices exposed. A hard constraint on every screen, not polish.
   See [[0013]].
 
+## Caption states
+
+- **Listening**: captioning is running and the app is working. Covers both "people are talking" and
+  "no one is talking right now" — a quiet room is normal, not a problem. See [[0018]].
+- **Can't hear**: captioning is running but the microphone picks up almost nothing for a while —
+  usually something covering it. A fixable problem, named in plain words; not a failure. See [[0018]].
+- **Captions stopped**: the engine actually stopped; the only state that needs a tap (Start again).
+  Distinct from Can't hear (still running) and from the user pressing Stop. See [[0018]].
+
+- **Idle stop**: captioning stops on its own after a stretch with no captioned speech (default 5
+  minutes; 15, 30 or Never in Settings). A gentle pause, not a failure. The only behavior setting;
+  every other setting is caption display. See [[0019]].
+
+- **Saved conversation**: the transcript of one captioning session, saved automatically on the phone
+  when captioning stops and deleted after 30 days. Never backed up or synced. Distinct from the live
+  caption stream, which is what's on screen now. See [[0022]].
+
 ## Environments
 
 - **Primary environments**: restaurants, the dinner table, and any sit-down conversation —

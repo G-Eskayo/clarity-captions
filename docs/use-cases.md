@@ -9,8 +9,8 @@ nothing is lost. Decisions live in `docs/adr/`; vocabulary in `CONTEXT.md`.
 > people are talking, read the resulting text.
 
 - **Open and caption with as few taps as possible.** Landed in the silence/failure/lock design
-  session (open question: should captioning start on launch with no Start tap?). See the design
-  session issue.
+  session (#3, 2026-10-06): **no auto-start** — captioning still begins with one Start tap after
+  opening the app (owner's decision).
 - Phone is **placed on a table or counter**. Matches the primary environments in ADR 0012.
 
 > Does the service you're using differentiate between speakers? I'm guessing it doesn't.
