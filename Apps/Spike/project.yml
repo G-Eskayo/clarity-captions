@@ -12,7 +12,8 @@ settings:
     # Filled in by scripts/generate-spike-project.sh from $DEVELOPMENT_TEAM or the gitignored Apps/Spike/.team,
     # so regenerating the project never loses signing and no personal team ID is committed.
     DEVELOPMENT_TEAM: "${DEVELOPMENT_TEAM}"
-    # Single source for the user-visible name (ADR 0011). Bundle ID is spike-only.
+    # Single source for the user-visible name (ADR 0011). The bundle ID below is permanent once
+    # the App Store Connect record exists (ADR 0011, "Bundle ID"): never change it after that.
     APP_DISPLAY_NAME: "Seal"
 packages:
   CaptionCore:
@@ -37,7 +38,7 @@ targets:
       - package: CaptionCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.gileskayo.captionspike
+        PRODUCT_BUNDLE_IDENTIFIER: com.gileskayo.captions
         TARGETED_DEVICE_FAMILY: "1"  # iPhone only for the spike; iPad is a later target (ADR 0010)
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: "$(APP_DISPLAY_NAME)"
