@@ -3,6 +3,7 @@
 ## Status
 
 Accepted (2026-10-02), as a product principle. Specific screens are designed against it later.
+Amended by [[0019]] (2026-10-06): Settings may also hold one behavior choice, the idle stop.
 
 ## Context
 
