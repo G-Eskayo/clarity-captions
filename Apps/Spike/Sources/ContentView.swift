@@ -19,6 +19,8 @@ final class CaptionModel: ObservableObject {
     /// Only used by the developer latency measurement below.
     private var task: Task<Void, Never>?
     private var controller: CaptionSessionController!
+    private var store: SavedConversationStoring?
+    private var sessionStartedAt: Date?
 
     init() {
         controller = CaptionSessionController(makeEngine: { [weak self] in
@@ -30,7 +32,14 @@ final class CaptionModel: ObservableObject {
             let vocabulary = VocabularyList(rawText: rawText).entries
             return TranscriptionEngine(micMode: self.micMode, diarizerModelURL: url, contextualStrings: vocabulary)
         })
-        controller.onStateChange = { [weak self] in self?.state = $0 }
+
+        if let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+            let conversationsDir = appSupportURL.appendingPathComponent("SavedConversations")
+            self.store = try? SavedConversationStore(directory: conversationsDir)
+            Task { try? await self.store?.purgeExpired(now: Date()) }
+        }
+
+        controller.onStateChange = { [weak self] in self?.handleCaptionStateChange($0) }
         controller.onStartup = { [weak self] in self?.startup = $0 }
         controller.onSoundLabel = { [weak self] in self?.stream.insertSoundLabel($0) }
         controller.onUpdate = { [weak self] u in
@@ -41,6 +50,46 @@ final class CaptionModel: ObservableObject {
             if let l = u.lagSeconds { self.lag = l }
             self.diag = u.diagnostics
         }
+    }
+
+    private func handleCaptionStateChange(_ newState: CaptionState) {
+        state = newState
+
+        switch newState {
+        case .preparing:
+            sessionStartedAt = Date()
+        case .idle, .failed:
+            saveSessionIfNeeded()
+        default:
+            break
+        }
+    }
+
+    private func saveSessionIfNeeded() {
+        let action = CaptionSessionLifecycle.action(for: state, sessionStartedAt: sessionStartedAt, lines: stream.lines, speakerNames: speakerNames)
+
+        Task {
+            switch action {
+            case .save(let conversation):
+                do {
+                    try await store?.save(conversation)
+                    try await store?.purgeExpired(now: Date())
+                } catch {
+                    diag = "Save failed: \(error)"
+                }
+            case .discard:
+                break
+            case .none:
+                break
+            }
+            resetSession()
+        }
+    }
+
+    private func resetSession() {
+        stream = CaptionStream()
+        speakerNames = SpeakerNames()
+        sessionStartedAt = nil
     }
 
     func perform(_ action: PrimaryControl.Action) {

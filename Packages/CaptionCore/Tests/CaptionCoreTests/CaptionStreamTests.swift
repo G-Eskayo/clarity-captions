@@ -173,4 +173,14 @@ final class CaptionStreamTests: XCTestCase {
         s.insertSoundLabel(.laughter)
         XCTAssertTrue(s.lines[0].styledWords.allSatisfy { $0.emphasis == .normal })
     }
+
+    // MARK: - Unbounded scrollback
+
+    func testUnboundedScrollbackLargeTranscript() {
+        var s = CaptionStream()
+        for i in 0..<1000 {
+            s.apply(text: "Line \(i)", isFinal: true)
+        }
+        XCTAssertEqual(s.lines.count, 1000, "all 1000 lines should be retained for scrollback")
+    }
 }
