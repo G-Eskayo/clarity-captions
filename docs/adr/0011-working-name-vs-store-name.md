@@ -3,6 +3,7 @@
 ## Status
 
 Accepted (2026-10-02). Amended 2026-10-05: the store name is chosen, see "Chosen name" below.
+Amended 2026-10-06: the bundle ID is chosen, see "Bundle ID" below.
 
 ## Context
 
@@ -40,6 +41,18 @@ the nickname, a spin on Otter, the tool that inspired the app.
   that ("Live captions" style wording; no health or medical claims, see
   `docs/app-store-compliance.md`). Wording is decided when the store listing is written.
 - **Fallback if the name is taken:** "Clarity Captions" was checked the same way and found free.
-- **Bundle ID is still undecided** and is the one permanent choice. Keep it neutral rather than
-  derived from the name, so a later rename costs nothing.
+- **Bundle ID:** decided 2026-10-06, see below.
 - Avoid names derived from "Otter", which is a competitor's trademark.
+
+## Bundle ID (2026-10-06)
+
+The owner chose **`com.gileskayo.captions`**.
+
+- Neutral, not derived from "Seal", so the fallback name (or any later rename) still fits it.
+- Permanent from the moment the App Store Connect record is created (#14); never change it after that.
+- The app target moves to it now, replacing the spike-era `com.gileskayo.captionspike`. A phone
+  that has the old build installed sees the new one as a separate app; delete the old one.
+- Only this app is affected. Other apps share the `com.gileskayo.` prefix by convention and pick
+  their own suffix.
+- **Universal purchase: yes**, confirming ADR 0010's preference. iPad and Mac versions, when they
+  come, join this same App Store record and bundle ID instead of becoming separate apps.
