@@ -72,6 +72,8 @@ public final class TranscriptionEngine {
     private let diarizer: LiveDiarizer
     private let soundLabeler = SoundLabeler()
     private var soundLabelerStream: AsyncStream<SoundLabelKind>?
+    private var audioLevelStreamValue: AsyncStream<Double>?
+    private var audioLevelContinuation: AsyncStream<Double>.Continuation?
     private let contextualStrings: [String]
     /// Spike-only: how long each startup step took, for the developer panel. Measured, not guessed.
     public private(set) var startupReport = ""
@@ -122,6 +124,10 @@ public final class TranscriptionEngine {
         try await soundLabelerAsync { try self.soundLabeler.prepare() }
         lap("sound classifier")
         soundLabelerStream = soundLabeler.stream()
+
+        let (alStream, alCont) = AsyncStream.makeStream(of: Double.self)
+        self.audioLevelStreamValue = alStream
+        self.audioLevelContinuation = alCont
 
         guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else {
             throw TranscriptionError.noCompatibleAudioFormat
@@ -329,6 +335,7 @@ public final class TranscriptionEngine {
         loudnessLock.lock(); defer { loudnessLock.unlock() }
         loudnessTimeSeries.append((audioTime: audioTime, level: level))
         loudnessBaseline.update(level)
+        audioLevelContinuation?.yield(level)
     }
 
     /// Computes the average loudness for a word's audio time range.
@@ -397,5 +404,10 @@ public final class TranscriptionEngine {
     /// Returns the stream of recognized sound labels.
     public func soundLabelsStream() -> AsyncStream<SoundLabelKind> {
         soundLabelerStream ?? AsyncStream { $0.finish() }
+    }
+
+    /// Returns the stream of room audio levels (RMS dBFS) sampled at buffer boundaries.
+    public func audioLevelStream() -> AsyncStream<Double> {
+        audioLevelStreamValue ?? AsyncStream { $0.finish() }
     }
 }

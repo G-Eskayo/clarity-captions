@@ -16,11 +16,15 @@ final class CaptionModel: ObservableObject {
     }
     @Published var latencyReport: String?
     @Published var speakerNames = SpeakerNames()
+    @Published var activity: ListeningActivity?
+    @Published var roomLevelDBFS: Double?
     /// Only used by the developer latency measurement below.
     private var task: Task<Void, Never>?
+    private var activityTask: Task<Void, Never>?
     private var controller: CaptionSessionController!
     var store: SavedConversationStoring?
     private var sessionStartedAt: Date?
+    private var tracker = ListeningActivityTracker()
 
     init() {
         controller = CaptionSessionController(makeEngine: { [weak self] in
@@ -42,6 +46,9 @@ final class CaptionModel: ObservableObject {
         controller.onStateChange = { [weak self] in self?.handleCaptionStateChange($0) }
         controller.onStartup = { [weak self] in self?.startup = $0 }
         controller.onSoundLabel = { [weak self] in self?.stream.insertSoundLabel($0) }
+        controller.onAudioLevel = { [weak self] level in
+            self?.roomLevelDBFS = level
+        }
         controller.onUpdate = { [weak self] u in
             guard let self else { return }
             var range: ClosedRange<Double>?
@@ -49,6 +56,9 @@ final class CaptionModel: ObservableObject {
             self.stream.apply(text: u.text, isFinal: u.isFinal, speaker: u.speaker, range: range)
             if let l = u.lagSeconds { self.lag = l }
             self.diag = u.diagnostics
+            if !u.text.trimmingCharacters(in: .whitespaces).isEmpty {
+                self.tracker.recordSpeech(at: Date())
+            }
         }
     }
 
@@ -58,11 +68,34 @@ final class CaptionModel: ObservableObject {
         switch newState {
         case .preparing:
             sessionStartedAt = Date()
+        case .listening:
+            startActivityLoop()
         case .idle, .failed:
+            stopActivityLoop()
             saveSessionIfNeeded()
         default:
             break
         }
+    }
+
+    private func startActivityLoop() {
+        activityTask?.cancel()
+        activityTask = Task {
+            while !Task.isCancelled && state == .listening {
+                let newActivity = tracker.activity(now: Date(), roomLevelDBFS: roomLevelDBFS)
+                if activity != newActivity {
+                    activity = newActivity
+                }
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+            }
+        }
+    }
+
+    private func stopActivityLoop() {
+        activityTask?.cancel()
+        activityTask = nil
+        activity = nil
+        roomLevelDBFS = nil
     }
 
     private func saveSessionIfNeeded() {
@@ -287,15 +320,55 @@ struct ContentView: View {
     }
 
     private func status(font: Font) -> some View {
-        VStack(spacing: 4) {
-            Text(StatusWords.headline(for: model.state))
-                .font(font.bold())
-                .onLongPressGesture(minimumDuration: 1.5) { developerTools.toggle() }
-            if let detail = StatusWords.detail(for: model.state) {
+        let headline: String
+        let detail: String?
+        if let activity = model.activity {
+            headline = StatusWords.headline(for: model.state, activity: activity)
+            detail = StatusWords.secondLine(for: model.state, activity: activity)
+        } else {
+            headline = StatusWords.headline(for: model.state)
+            detail = StatusWords.detail(for: model.state)
+        }
+
+        return VStack(spacing: 4) {
+            HStack(spacing: 8) {
+                Text(headline)
+                    .font(font.bold())
+                    .onLongPressGesture(minimumDuration: 1.5) { developerTools.toggle() }
+                if let activity = model.activity, case .listening = model.state {
+                    let dot = StatusDot.select(state: model.state, activity: activity, roomLevelDBFS: model.roomLevelDBFS)
+                    renderStatusDot(dot)
+                }
+                Spacer()
+            }
+            if let detail {
                 Text(detail).font(.footnote).opacity(0.7)
             }
         }
         .accessibilityElement(children: .combine)
+        .onChange(of: model.activity) { _, newActivity in
+            if let activity = newActivity {
+                UIAccessibility.post(notification: .announcement, argument: StatusWords.announcement(for: model.state, activity: activity))
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func renderStatusDot(_ dot: StatusDot) -> some View {
+        switch dot {
+        case .pulsing(let level):
+            let opacity = (level + 60) / 30.0
+            Circle()
+                .fill(style.text.color)
+                .opacity(opacity * 0.8)
+                .frame(width: 8, height: 8)
+        case .flatAmber:
+            Circle()
+                .fill(Color(red: 1, green: 0.68, blue: 0))
+                .frame(width: 8, height: 8)
+        case .hidden:
+            EmptyView()
+        }
     }
 
     private func captions(bottomReserve: CGFloat = 0) -> some View {
