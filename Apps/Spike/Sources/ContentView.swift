@@ -33,6 +33,7 @@ final class CaptionModel: ObservableObject {
         controller.onStateChange = { [weak self] in self?.state = $0 }
         controller.onStartup = { [weak self] in self?.startup = $0 }
         controller.onSoundLabel = { [weak self] in self?.stream.insertSoundLabel($0) }
+        controller.onGapMarker = { [weak self] in self?.stream.insertGapMarker($0) }
         controller.onUpdate = { [weak self] u in
             guard let self else { return }
             var range: ClosedRange<Double>?
@@ -151,6 +152,7 @@ struct ContentView: View {
         }
         .onChange(of: model.state) { _, newState in
             UIAccessibility.post(notification: .announcement, argument: StatusWords.announcement(for: newState))
+            UIApplication.shared.isIdleTimerDisabled = IdleTimer.shouldDisable(for: newState)
             handleStateChange(newState)
         }
     }
@@ -169,7 +171,7 @@ struct ContentView: View {
                 animationShownAt = Date()
                 withAnimation(.easeInOut(duration: 0.25)) { showPreparingAnimation = true }
             }
-        case .listening, .idle, .failed:
+        case .listening, .idle, .failed, .paused:
             preparingStartTime = nil
             guard showPreparingAnimation else { return }
             let shown = animationShownAt.map { Date().timeIntervalSince($0) } ?? LaunchAnimationGate.minimumDuration

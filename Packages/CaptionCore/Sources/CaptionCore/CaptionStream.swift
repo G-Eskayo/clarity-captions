@@ -15,6 +15,8 @@ public struct CaptionLine: Identifiable, Equatable, Sendable {
     public var speaker: Int?
     /// Sound label for non-speech lines (laughter, applause, etc.); nil for ordinary speech lines.
     public var soundLabel: SoundLabelKind?
+    /// Gap marker text for non-speech lines (e.g., "— while you were away —"); nil for ordinary speech lines and sound labels.
+    public var marker: String?
     var committed: [CaptionWord]
     var tail: String?
     var tailRange: ClosedRange<Double>?
@@ -30,6 +32,7 @@ public struct CaptionLine: Identifiable, Equatable, Sendable {
     }
     public var isFinal: Bool { tail == nil }
     public var isSoundLabel: Bool { soundLabel != nil }
+    public var isMarker: Bool { marker != nil }
 }
 
 /// The live caption transcript. Pure value type -- no audio, no UI, no platform APIs -- so it is tested
@@ -63,15 +66,15 @@ public struct CaptionStream: Sendable {
 
         let words = Self.captionWords(from: piece, emphasis: wordEmphasis)
         if var last = lines.last {
-            // Never merge speech into a line marked as a sound label.
-            guard !last.isSoundLabel else {
+            // Never merge speech into a line marked as a sound label or gap marker.
+            guard !last.isSoundLabel && !last.isMarker else {
                 // Breaking away: close whatever was still open on the previous line (should already be final for sound labels).
                 if let stale = last.tail {
                     last.committed = Self.joinWords(last.committed, stale); last.tail = nil; last.tailRange = nil
                     lines[lines.count - 1] = last
                 }
                 lines.append(CaptionLine(
-                    id: nextID, speaker: speaker,
+                    id: nextID, speaker: speaker, soundLabel: nil, marker: nil,
                     committed: isFinal ? words : [], tail: isFinal ? nil : piece,
                     tailRange: isFinal ? nil : range, startTime: range?.lowerBound, endTime: range?.upperBound))
                 nextID += 1
@@ -114,7 +117,7 @@ public struct CaptionStream: Sendable {
         }
 
         lines.append(CaptionLine(
-            id: nextID, speaker: speaker,
+            id: nextID, speaker: speaker, soundLabel: nil, marker: nil,
             committed: isFinal ? words : [], tail: isFinal ? nil : piece,
             tailRange: isFinal ? nil : range, startTime: range?.lowerBound, endTime: range?.upperBound))
         nextID += 1
@@ -132,8 +135,25 @@ public struct CaptionStream: Sendable {
         let labelText = SoundLabelFormatter.caption(for: label)
         let labelWords = Self.captionWords(from: labelText, emphasis: [])
         lines.append(CaptionLine(
-            id: nextID, speaker: nil, soundLabel: label,
+            id: nextID, speaker: nil, soundLabel: label, marker: nil,
             committed: labelWords,
+            tail: nil, tailRange: nil, startTime: nil, endTime: nil))
+        nextID += 1
+    }
+
+    /// Closes any open volatile tail on the last line and appends a new, already-final gap marker line.
+    public mutating func insertGapMarker(_ text: String) {
+        if var last = lines.last {
+            if let stale = last.tail {
+                last.committed = Self.joinWords(last.committed, stale); last.tail = nil; last.tailRange = nil
+                lines[lines.count - 1] = last
+            }
+        }
+
+        let markerWords = Self.captionWords(from: text, emphasis: [])
+        lines.append(CaptionLine(
+            id: nextID, speaker: nil, soundLabel: nil, marker: text,
+            committed: markerWords,
             tail: nil, tailRange: nil, startTime: nil, endTime: nil))
         nextID += 1
     }

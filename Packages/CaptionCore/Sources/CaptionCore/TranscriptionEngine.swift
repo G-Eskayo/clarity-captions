@@ -72,6 +72,7 @@ public final class TranscriptionEngine {
     private let diarizer: LiveDiarizer
     private let soundLabeler = SoundLabeler()
     private var soundLabelerStream: AsyncStream<SoundLabelKind>?
+    private var interruptionCont: AsyncStream<InterruptionEvent>.Continuation?
     private let contextualStrings: [String]
     /// Spike-only: how long each startup step took, for the developer panel. Measured, not guessed.
     public private(set) var startupReport = ""
@@ -154,6 +155,21 @@ public final class TranscriptionEngine {
         input.installTap(onBus: 0, bufferSize: 4096, format: inFormat) { buffer, _ in
             self.processBuffer(buffer, inFormat: inFormat, converter: converter, diarConverter: diarConverter, format: format, diarFormat: diarFormat, fed: fed, builder: builder)
         }
+        #if os(iOS)
+        Task { [weak self] in
+            for await _ in NotificationCenter.default.notifications(named: AVAudioEngine.configurationChangeNotification) {
+                guard let self else { return }
+                self.audioEngine.inputNode.removeTap(onBus: 0)
+                let newInFormat = self.audioEngine.inputNode.outputFormat(forBus: 0)
+                guard newInFormat != nil else { continue }
+                guard let newConverter = AVAudioConverter(from: newInFormat, to: format),
+                      let newDiarConverter = AVAudioConverter(from: newInFormat, to: diarFormat) else { continue }
+                self.audioEngine.inputNode.installTap(onBus: 0, bufferSize: 4096, format: newInFormat) { buffer, _ in
+                    self.processBuffer(buffer, inFormat: newInFormat, converter: newConverter, diarConverter: newDiarConverter, format: format, diarFormat: diarFormat, fed: fed, builder: builder)
+                }
+            }
+        }
+        #endif
         // Load the model before the first word, not on it.
         try await analyzer.prepareToAnalyze(in: format)
         lap("analyzer")
@@ -369,6 +385,8 @@ public final class TranscriptionEngine {
         audioEngine.stop()
         inputBuilder?.finish()
         inputBuilder = nil
+        interruptionCont?.finish()
+        interruptionCont = nil
         if let analyzer {
             self.analyzer = nil
             do { try await analyzer.finalizeAndFinishThroughEndOfInput() }
@@ -397,5 +415,43 @@ public final class TranscriptionEngine {
     /// Returns the stream of recognized sound labels.
     public func soundLabelsStream() -> AsyncStream<SoundLabelKind> {
         soundLabelerStream ?? AsyncStream { $0.finish() }
+    }
+
+    /// Returns the stream of interruption events (pauses and resumes).
+    public func interruptionEvents() -> AsyncStream<InterruptionEvent> {
+        let (stream, cont) = AsyncStream.makeStream(of: InterruptionEvent.self)
+        self.interruptionCont = cont
+        #if os(iOS)
+        let session = AVAudioSession.sharedInstance()
+        Task {
+            for await note in NotificationCenter.default.notifications(named: AVAudioSession.interruptionNotification) {
+                guard let userInfo = note.userInfo,
+                      let typeValue = userInfo[AVAudioSession.interruptionTypeKey] as? UInt,
+                      let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { continue }
+
+                switch type {
+                case .began:
+                    cont.yield(.paused(reason: String(localized: "Captions paused — something else is using the microphone")))
+                case .ended:
+                    if let optionsValue = userInfo[AVAudioSession.interruptionOptionKey] as? UInt,
+                       let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue),
+                       options.contains(.shouldResume) {
+                        cont.yield(.resumed)
+                    }
+                @unknown default:
+                    break
+                }
+            }
+        }
+        Task {
+            for await _ in NotificationCenter.default.notifications(named: AVAudioSession.routeChangeNotification) {
+                if let availableInputs = session.availableInputs,
+                   let builtInMic = availableInputs.first(where: { $0.portType == .builtInMic }) {
+                    try? session.setPreferredInput(builtInMic)
+                }
+            }
+        }
+        #endif
+        return stream
     }
 }

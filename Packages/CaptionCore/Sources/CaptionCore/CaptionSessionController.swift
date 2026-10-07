@@ -1,11 +1,18 @@
 import Foundation
 
+/// Events that pause or resume captioning during the session.
+public enum InterruptionEvent: Sendable {
+    case paused(reason: String)
+    case resumed
+}
+
 /// What the session controller needs from a captioning engine. The real engine is `TranscriptionEngine`;
 /// tests use a fake, so the lifecycle rules below are checked without a microphone or a speech model.
 public protocol CaptioningEngine: AnyObject {
     var startupReport: String { get }
     func start() async throws -> AsyncThrowingStream<CaptionUpdate, Error>
     func soundLabelsStream() -> AsyncStream<SoundLabelKind>
+    func interruptionEvents() -> AsyncStream<InterruptionEvent>
     /// Must be safe to call more than once, and safe to call after a failed start.
     func stop() async
 }
@@ -27,15 +34,18 @@ public final class CaptionSessionController {
     public var onStateChange: (CaptionState) -> Void = { _ in }
     public var onUpdate: (CaptionUpdate) -> Void = { _ in }
     public var onSoundLabel: (SoundLabelKind) -> Void = { _ in }
+    public var onGapMarker: (String) -> Void = { _ in }
     public var onStartup: (String) -> Void = { _ in }
 
     private let makeEngine: () throws -> CaptioningEngine
+    private let resumeTimeoutSeconds: Double
     private var task: Task<Void, Never>?
     private var engine: CaptioningEngine?
     private var stopRequested = false
 
-    public init(makeEngine: @escaping () throws -> CaptioningEngine) {
+    public init(makeEngine: @escaping () throws -> CaptioningEngine, resumeTimeoutSeconds: Double = 30) {
         self.makeEngine = makeEngine
+        self.resumeTimeoutSeconds = resumeTimeoutSeconds
     }
 
     /// Begins a session. Does nothing if one is already starting or running.
@@ -71,12 +81,30 @@ public final class CaptionSessionController {
             if stopRequested { await engine.stop(); state = .idle; return }
             state = .listening
             let labels = engine.soundLabelsStream()
+            let interruptions = engine.interruptionEvents()
             try await withThrowingTaskGroup(of: Void.self) { group in
                 group.addTask { @MainActor [weak self] in
                     for try await u in updates { self?.onUpdate(u) }
                 }
                 group.addTask { @MainActor [weak self] in
                     for await l in labels { self?.onSoundLabel(l) }
+                }
+                group.addTask { @MainActor [weak self] in
+                    var iterator = interruptions.makeAsyncIterator()
+                    while let event = await iterator.next() {
+                        guard let self else { return }
+                        switch event {
+                        case .paused(let reason):
+                            self.state = .paused(reason)
+                            let resumeResult = try await self.waitForResumeOrTimeout(iterator: &iterator)
+                            if resumeResult {
+                                self.state = .listening
+                                self.onGapMarker("— while you were away —")
+                            }
+                        case .resumed:
+                            break
+                        }
+                    }
                 }
                 try await group.waitForAll()
             }
@@ -86,5 +114,18 @@ public final class CaptionSessionController {
             await engine.stop()
             state = stopRequested ? .idle : .failed(String(describing: error))
         }
+    }
+
+    private func waitForResumeOrTimeout(iterator: inout AsyncStream<InterruptionEvent>.AsyncIterator) async throws -> Bool {
+        struct ResumeTimeout: Error, CustomStringConvertible {
+            var description = "resumption timeout"
+        }
+        let deadline = Date().addingTimeInterval(resumeTimeoutSeconds)
+
+        while let event = await iterator.next() {
+            if case .resumed = event { return true }
+            guard Date() < deadline else { throw ResumeTimeout() }
+        }
+        throw ResumeTimeout()
     }
 }

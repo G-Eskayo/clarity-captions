@@ -98,6 +98,61 @@ final class CaptionStreamTests: XCTestCase {
         XCTAssertNil(s.lines[0].speaker)
     }
 
+    // MARK: - Gap markers
+
+    func testInsertGapMarkerAddsNewLine() {
+        var s = CaptionStream()
+        s.insertGapMarker("— while you were away —")
+        XCTAssertEqual(s.lines.count, 1)
+        XCTAssertEqual(s.lines[0].marker, "— while you were away —")
+        XCTAssertEqual(s.lines[0].text, "— while you were away —")
+    }
+
+    func testInsertGapMarkerIsAlwaysFinal() {
+        var s = CaptionStream()
+        s.insertGapMarker("— pause —")
+        XCTAssertTrue(s.lines[0].isFinal)
+        XCTAssertNil(s.lines[0].tail)
+    }
+
+    func testInsertGapMarkerClosesOpenTail() {
+        var s = CaptionStream()
+        s.apply(text: "hello", isFinal: false)
+        XCTAssertTrue(s.lines[0].tail != nil)
+        s.insertGapMarker("— gap —")
+        XCTAssertEqual(s.lines.count, 2)
+        XCTAssertTrue(s.lines[0].isFinal)
+        XCTAssertEqual(s.lines[0].text, "hello")
+        XCTAssertEqual(s.lines[1].marker, "— gap —")
+    }
+
+    func testSpeechAfterGapMarkerStartsNewLine() {
+        var s = CaptionStream()
+        s.insertGapMarker("— away —")
+        s.apply(text: "hello", isFinal: false)
+        XCTAssertEqual(s.lines.count, 2)
+        XCTAssertEqual(s.lines[0].marker, "— away —")
+        XCTAssertNil(s.lines[1].marker)
+        XCTAssertEqual(s.lines[1].text, "hello")
+    }
+
+    func testSpeechNeverMergesIntoGapMarker() {
+        var s = CaptionStream()
+        s.insertGapMarker("— pause —")
+        s.apply(text: "back", isFinal: true)
+        s.apply(text: "again", isFinal: false)
+        XCTAssertEqual(s.lines.count, 3)
+        XCTAssertEqual(s.lines[0].marker, "— pause —")
+        XCTAssertEqual(s.lines[1].text, "back")
+        XCTAssertEqual(s.lines[2].text, "again")
+    }
+
+    func testGapMarkerLineHasNilSpeaker() {
+        var s = CaptionStream()
+        s.insertGapMarker("— gap —")
+        XCTAssertNil(s.lines[0].speaker)
+    }
+
     func testSoundLabelIsSoundLabelPropertyWorks() {
         var s = CaptionStream()
         s.apply(text: "hello", isFinal: true)

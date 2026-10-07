@@ -35,6 +35,7 @@ final class MainScreenTests: XCTestCase {
         XCTAssertEqual(StatusWords.headline(for: .idle), "Ready")
         XCTAssertEqual(StatusWords.headline(for: .preparing), "Getting ready…")
         XCTAssertEqual(StatusWords.headline(for: .listening), "Listening")
+        XCTAssertEqual(StatusWords.headline(for: .paused("test")), "Captions paused")
         XCTAssertEqual(StatusWords.headline(for: .failed("x")), "Stopped")
     }
 
@@ -49,5 +50,20 @@ final class MainScreenTests: XCTestCase {
         XCTAssertEqual(StatusWords.announcement(for: .listening), "Listening")
         let failure = CaptionState.failed("network error")
         XCTAssertEqual(StatusWords.announcement(for: failure), "Stopped. network error")
+    }
+
+    func testPausedOffersStopWithCompactPresentation() {
+        let c = PrimaryControl.for(.paused("reason"))
+        XCTAssertEqual(c.title, "Stop")
+        XCTAssertEqual(c.action, .stop)
+        XCTAssertTrue(c.isEnabled)
+        XCTAssertEqual(c.presentation, .compact)
+    }
+
+    func testPausedHeadlineAndDetail() {
+        let state = CaptionState.paused("call interrupted")
+        XCTAssertEqual(StatusWords.headline(for: state), "Captions paused")
+        XCTAssertEqual(StatusWords.detail(for: state), "call interrupted")
+        XCTAssertEqual(StatusWords.announcement(for: state), "Captions paused. call interrupted")
     }
 }
