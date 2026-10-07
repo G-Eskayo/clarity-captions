@@ -188,6 +188,17 @@
         }
       }
     },
+    "Conversations will save automatically after each session." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conversations will save automatically after each session."
+          }
+        }
+      }
+    },
     "Copy all text" : {
       "extractionState": "manual",
       "localizations": {
@@ -228,6 +239,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "Doorbell sound"
+          }
+        }
+      }
+    },
+    "Delete all" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete all"
+          }
+        }
+      }
+    },
+    "Delete all conversations?" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete all conversations?"
+          }
+        }
+      }
+    },
+    "Delete conversation?" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete conversation?"
           }
         }
       }
@@ -540,6 +584,17 @@
         }
       }
     },
+    "No saved conversations yet" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No saved conversations yet"
+          }
+        }
+      }
+    },
     "On the next screen, tap Allow so I can turn speech into words. Everything stays on your phone." : {
       "extractionState": "manual",
       "localizations": {
@@ -668,6 +723,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "Save"
+          }
+        }
+      }
+    },
+    "Saved" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved"
+          }
+        }
+      }
+    },
+    "Saved conversations" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved conversations"
+          }
+        }
+      }
+    },
+    "Search conversations" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search conversations"
           }
         }
       }
@@ -925,6 +1013,17 @@
         }
       }
     },
+    "This can't be undone." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This can't be undone."
+          }
+        }
+      }
+    },
     "Try again" : {
       "extractionState": "manual",
       "localizations": {
@@ -965,6 +1064,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "View source"
+          }
+        }
+      }
+    },
+    "View conversations" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View conversations"
           }
         }
       }
