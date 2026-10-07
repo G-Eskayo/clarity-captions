@@ -19,7 +19,7 @@ final class CaptionModel: ObservableObject {
     /// Only used by the developer latency measurement below.
     private var task: Task<Void, Never>?
     private var controller: CaptionSessionController!
-    private var store: SavedConversationStoring?
+    var store: SavedConversationStoring?
     private var sessionStartedAt: Date?
 
     init() {
@@ -192,7 +192,7 @@ struct ContentView: View {
         .tint(style.text.color)
         .preferredColorScheme(style.background.isDark ? .dark : .light)
         .animation(.snappy, value: control.presentation)
-        .sheet(isPresented: $showingSettings) { SettingsSheet(style: $model.style, stream: model.stream, speakerNames: model.speakerNames) }
+        .sheet(isPresented: $showingSettings) { SettingsSheet(style: $model.style, stream: model.stream, speakerNames: model.speakerNames, store: model.store) }
         .task {
             guard DemoMode.isOn else { return }
             model.runDemo()

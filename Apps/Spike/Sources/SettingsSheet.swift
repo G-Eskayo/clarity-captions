@@ -22,6 +22,7 @@ struct SettingsSheet: View {
     @Binding var style: CaptionStyle
     let stream: CaptionStream
     let speakerNames: SpeakerNames
+    let store: SavedConversationStoring?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var vocabularyText = ""
@@ -37,6 +38,7 @@ struct SettingsSheet: View {
                     section("Words and names") { vocabularyRow }
                     section("Speaker labels") { speakerExplanationRow }
                     section("Conversation") { conversationRow }
+                    section("Saved") { savedConversationsRow }
                     section("About") { aboutRow }
                 }
                 .padding()
@@ -177,6 +179,39 @@ struct SettingsSheet: View {
             return tmpURL
         } catch {
             return nil
+        }
+    }
+
+    private var savedConversationsRow: some View {
+        if let store = store {
+            return AnyView(
+                NavigationLink(destination: SavedConversationsView(store: store)) {
+                    HStack {
+                        Label(String(localized: "View conversations"), systemImage: "bubble.left.and.exclamation.bubble.right")
+                        Spacer()
+                        Image(systemName: "chevron.forward")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 56)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.bordered)
+            )
+        } else {
+            return AnyView(
+                HStack {
+                    Label(String(localized: "View conversations"), systemImage: "bubble.left.and.exclamation.bubble.right")
+                    Spacer()
+                    Image(systemName: "chevron.forward")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, minHeight: 56)
+                .contentShape(Rectangle())
+                .buttonStyle(.bordered)
+                .disabled(true)
+            )
         }
     }
 
