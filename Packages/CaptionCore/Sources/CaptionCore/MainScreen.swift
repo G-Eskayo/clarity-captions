@@ -26,7 +26,7 @@ public struct PrimaryControl: Equatable, Sendable {
         case .idle: PrimaryControl(title: String(localized: "Start captions"), action: .start, isEnabled: true)
         case .preparing: PrimaryControl(title: String(localized: "Getting ready…"), action: .none, isEnabled: false)
         case .listening: PrimaryControl(title: String(localized: "Stop"), action: .stop, isEnabled: true, presentation: .compact)
-        case .failed: PrimaryControl(title: String(localized: "Try again"), action: .start, isEnabled: true)
+        case .failed: PrimaryControl(title: String(localized: "Start again"), action: .start, isEnabled: true)
         }
     }
 }
@@ -39,7 +39,18 @@ public enum StatusWords {
         case .idle: String(localized: "Ready")
         case .preparing: String(localized: "Getting ready…")
         case .listening: String(localized: "Listening")
-        case .failed: String(localized: "Stopped")
+        case .failed: String(localized: "Captions stopped")
+        }
+    }
+
+    /// Activity-aware headline: same for all activities except can't hear.
+    public static func headline(for state: CaptionState, activity: ListeningActivity) -> String {
+        guard case .listening = state else { return headline(for: state) }
+        switch activity {
+        case .activelyListening, .noOneTalking:
+            return String(localized: "Listening")
+        case .cantHearAnything:
+            return String(localized: "I can't hear anything")
         }
     }
 
@@ -48,10 +59,30 @@ public enum StatusWords {
         return nil
     }
 
+    /// Activity-aware detail line for listening state.
+    public static func secondLine(for state: CaptionState, activity: ListeningActivity) -> String? {
+        guard case .listening = state else { return detail(for: state) }
+        switch activity {
+        case .activelyListening:
+            return nil
+        case .noOneTalking:
+            return String(localized: "No one is talking right now")
+        case .cantHearAnything:
+            return String(localized: "Is something covering the microphone?")
+        }
+    }
+
     /// Combines headline and detail into a single accessible announcement.
     public static func announcement(for state: CaptionState) -> String {
         let head = headline(for: state)
         if let det = detail(for: state) { return "\(head). \(det)" }
+        return head
+    }
+
+    /// Activity-aware announcement combining headline and second line.
+    public static func announcement(for state: CaptionState, activity: ListeningActivity) -> String {
+        let head = headline(for: state, activity: activity)
+        if let line = secondLine(for: state, activity: activity) { return "\(head). \(line)" }
         return head
     }
 }

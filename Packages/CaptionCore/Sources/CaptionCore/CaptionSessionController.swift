@@ -6,6 +6,7 @@ public protocol CaptioningEngine: AnyObject {
     var startupReport: String { get }
     func start() async throws -> AsyncThrowingStream<CaptionUpdate, Error>
     func soundLabelsStream() -> AsyncStream<SoundLabelKind>
+    func audioLevelStream() -> AsyncStream<Double>
     /// Must be safe to call more than once, and safe to call after a failed start.
     func stop() async
 }
@@ -27,6 +28,7 @@ public final class CaptionSessionController {
     public var onStateChange: (CaptionState) -> Void = { _ in }
     public var onUpdate: (CaptionUpdate) -> Void = { _ in }
     public var onSoundLabel: (SoundLabelKind) -> Void = { _ in }
+    public var onAudioLevel: (Double) -> Void = { _ in }
     public var onStartup: (String) -> Void = { _ in }
 
     private let makeEngine: () throws -> CaptioningEngine
@@ -45,7 +47,7 @@ public final class CaptionSessionController {
         state = .preparing
         let engine: CaptioningEngine
         do { engine = try makeEngine() } catch {
-            state = .failed(String(describing: error))
+            state = .failed(FailureReason.plainLanguage(for: error))
             return
         }
         self.engine = engine
@@ -71,6 +73,7 @@ public final class CaptionSessionController {
             if stopRequested { await engine.stop(); state = .idle; return }
             state = .listening
             let labels = engine.soundLabelsStream()
+            let levels = engine.audioLevelStream()
             try await withThrowingTaskGroup(of: Void.self) { group in
                 group.addTask { @MainActor [weak self] in
                     for try await u in updates { self?.onUpdate(u) }
@@ -78,13 +81,16 @@ public final class CaptionSessionController {
                 group.addTask { @MainActor [weak self] in
                     for await l in labels { self?.onSoundLabel(l) }
                 }
+                group.addTask { @MainActor [weak self] in
+                    for await level in levels { self?.onAudioLevel(level) }
+                }
                 try await group.waitForAll()
             }
             await engine.stop()
             state = .idle
         } catch {
             await engine.stop()
-            state = stopRequested ? .idle : .failed(String(describing: error))
+            state = stopRequested ? .idle : .failed(FailureReason.plainLanguage(for: error))
         }
     }
 }

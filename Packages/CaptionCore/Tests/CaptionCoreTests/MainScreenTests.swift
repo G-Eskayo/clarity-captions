@@ -26,7 +26,7 @@ final class MainScreenTests: XCTestCase {
 
     func testAfterAFailureTheControlIsOneTapBack() {
         let c = PrimaryControl.for(.failed("model missing"))
-        XCTAssertEqual(c.title, "Try again")
+        XCTAssertEqual(c.title, "Start again")
         XCTAssertEqual(c.action, .start)
         XCTAssertTrue(c.isEnabled)
     }
@@ -35,7 +35,7 @@ final class MainScreenTests: XCTestCase {
         XCTAssertEqual(StatusWords.headline(for: .idle), "Ready")
         XCTAssertEqual(StatusWords.headline(for: .preparing), "Getting ready…")
         XCTAssertEqual(StatusWords.headline(for: .listening), "Listening")
-        XCTAssertEqual(StatusWords.headline(for: .failed("x")), "Stopped")
+        XCTAssertEqual(StatusWords.headline(for: .failed("x")), "Captions stopped")
     }
 
     func testTechnicalFailureReasonIsDetailNotHeadline() {
@@ -48,6 +48,46 @@ final class MainScreenTests: XCTestCase {
     func testAnnouncementCombinesHeadlineAndDetail() {
         XCTAssertEqual(StatusWords.announcement(for: .listening), "Listening")
         let failure = CaptionState.failed("network error")
-        XCTAssertEqual(StatusWords.announcement(for: failure), "Stopped. network error")
+        XCTAssertEqual(StatusWords.announcement(for: failure), "Captions stopped. network error")
+    }
+
+    func testActivityAwareHeadlineForActivelyListening() {
+        let headline = StatusWords.headline(for: .listening, activity: .activelyListening)
+        XCTAssertEqual(headline, "Listening")
+    }
+
+    func testActivityAwareHeadlineForNoOneTalking() {
+        let headline = StatusWords.headline(for: .listening, activity: .noOneTalking)
+        XCTAssertEqual(headline, "Listening")
+    }
+
+    func testActivityAwareSecondLineForNoOneTalking() {
+        let secondLine = StatusWords.secondLine(for: .listening, activity: .noOneTalking)
+        XCTAssertEqual(secondLine, "No one is talking right now")
+    }
+
+    func testActivityAwareHeadlineForCantHear() {
+        let headline = StatusWords.headline(for: .listening, activity: .cantHearAnything)
+        XCTAssertEqual(headline, "I can't hear anything")
+    }
+
+    func testActivityAwareSecondLineForCantHear() {
+        let secondLine = StatusWords.secondLine(for: .listening, activity: .cantHearAnything)
+        XCTAssertEqual(secondLine, "Is something covering the microphone?")
+    }
+
+    func testActivityAwareAnnouncementForActivelyListening() {
+        let announcement = StatusWords.announcement(for: .listening, activity: .activelyListening)
+        XCTAssertEqual(announcement, "Listening")
+    }
+
+    func testActivityAwareAnnouncementForNoOneTalking() {
+        let announcement = StatusWords.announcement(for: .listening, activity: .noOneTalking)
+        XCTAssertEqual(announcement, "Listening. No one is talking right now")
+    }
+
+    func testActivityAwareAnnouncementForCantHear() {
+        let announcement = StatusWords.announcement(for: .listening, activity: .cantHearAnything)
+        XCTAssertEqual(announcement, "I can't hear anything. Is something covering the microphone?")
     }
 }

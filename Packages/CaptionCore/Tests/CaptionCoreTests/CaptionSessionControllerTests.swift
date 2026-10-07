@@ -16,29 +16,37 @@ final class CaptionSessionControllerTests: XCTestCase {
         var failAfterUpdates: Error?          // stream throws after yielding `updates`
         var holdOpen = false                  // keep the streams open until stop()
         var labels: [SoundLabelKind] = []
+        var levels: [Double] = []
         private(set) var stopCount = 0
         private var updateCont: AsyncThrowingStream<CaptionUpdate, Error>.Continuation?
         private var labelCont: AsyncStream<SoundLabelKind>.Continuation?
+        private var levelCont: AsyncStream<Double>.Continuation?
         private var labelStream: AsyncStream<SoundLabelKind>?
+        private var levelStream: AsyncStream<Double>?
 
         func start() async throws -> AsyncThrowingStream<CaptionUpdate, Error> {
             if let startError { throw startError }
             let (ls, lc) = AsyncStream.makeStream(of: SoundLabelKind.self)
             labelStream = ls; labelCont = lc
+            let (lvls, lvcont) = AsyncStream.makeStream(of: Double.self)
+            levelStream = lvls; levelCont = lvcont
             let (stream, cont) = AsyncThrowingStream.makeStream(of: CaptionUpdate.self)
             updateCont = cont
             for u in updates { cont.yield(u) }
             for l in labels { lc.yield(l) }
+            for lv in levels { lvcont.yield(lv) }
             if !holdOpen {
                 if let failAfterUpdates { cont.finish(throwing: failAfterUpdates) } else { cont.finish() }
                 lc.finish()
+                lvcont.finish()
             }
             return stream
         }
         func soundLabelsStream() -> AsyncStream<SoundLabelKind> { labelStream ?? AsyncStream { $0.finish() } }
+        func audioLevelStream() -> AsyncStream<Double> { levelStream ?? AsyncStream { $0.finish() } }
         func stop() async {
             stopCount += 1
-            updateCont?.finish(); labelCont?.finish()
+            updateCont?.finish(); labelCont?.finish(); levelCont?.finish()
         }
     }
 
@@ -153,5 +161,29 @@ final class CaptionSessionControllerTests: XCTestCase {
             try? await Task.sleep(nanoseconds: 10_000_000)
         }
         XCTAssertEqual(peak, 1)
+    }
+
+    func testFailedStateCarriesPlainLanguageReason() async {
+        let engine = FakeEngine(); engine.startError = TranscriptionError.noCompatibleAudioFormat
+        let (c, _) = make { engine }
+        c.start()
+        await eventually("failed with plain reason") { if case .failed(let reason) = c.state { return !reason.contains("noCompatibleAudioFormat") } else { return false } }
+        if case .failed(let reason) = c.state {
+            XCTAssertFalse(reason.isEmpty)
+            XCTAssertFalse(reason.contains("Error"))
+        }
+    }
+
+    func testAudioLevelSignalFiresLikeSoundLabels() async {
+        let engine = FakeEngine(); engine.holdOpen = true; engine.updates = [update("hello")]; engine.levels = [-30, -28, -32]
+        let log = Log()
+        let c = CaptionSessionController(makeEngine: { log.created += 1; return engine })
+        var audioLevels: [Double] = []
+        c.onAudioLevel = { level in audioLevels.append(level) }
+        c.start()
+        await eventually("listening") { c.state == .listening }
+        await eventually("audio levels delivered") { audioLevels.count >= 3 }
+        XCTAssertEqual(audioLevels, [-30, -28, -32])
+        await c.stopAndWait()
     }
 }

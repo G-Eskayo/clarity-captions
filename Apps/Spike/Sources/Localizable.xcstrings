@@ -419,6 +419,28 @@
         }
       }
     },
+    "I can't hear anything" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I can't hear anything"
+          }
+        }
+      }
+    },
+    "Is something covering the microphone?" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Is something covering the microphone?"
+          }
+        }
+      }
+    },
     "I'll help you follow conversations by showing what people say. This takes about a minute." : {
       "extractionState": "manual",
       "localizations": {
@@ -591,6 +613,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "No saved conversations yet"
+          }
+        }
+      }
+    },
+    "No one is talking right now" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No one is talking right now"
           }
         }
       }
@@ -914,13 +947,24 @@
         }
       }
     },
-    "Stopped" : {
+    "Something went wrong — tap to try again" : {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Stopped"
+            "value": "Something went wrong — tap to try again"
+          }
+        }
+      }
+    },
+    "Captions stopped" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Captions stopped"
           }
         }
       }
@@ -1020,6 +1064,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "This can't be undone."
+          }
+        }
+      }
+    },
+    "Start again" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start again"
           }
         }
       }
