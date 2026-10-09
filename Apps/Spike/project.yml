@@ -29,6 +29,10 @@ targets:
       # Third-party license text ships inside the app so the credits screen works offline.
       - path: ../../NOTICE.md
         buildPhase: resources
+      # Privacy manifest (#79): required-reason APIs the app and its statically linked packages use.
+      # Upload is refused (ITMS-91053) without it.
+      - path: Info/PrivacyInfo.xcprivacy
+        buildPhase: resources
       - path: Resources/Models/Sortformer_v2.1.mlmodelc
         type: folder
         buildPhase: resources
@@ -47,6 +51,8 @@ targets:
         INFOPLIST_FILE: Info/LaunchInfo.plist   # launch screen colour; merged with the generated keys
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        # iPad must allow all four, or the upload is refused (ITMS-90474). iPhone keeps the list above.
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
 schemes:
   CaptionSpike:
     build:
