@@ -1,0 +1,2 @@
+# Speaker model (Sortformer_v2.1.mlmodelc) is fetched by scripts/fetch-diarizer-models.sh
+# This directory must not be empty before generation or xcodegen fails.

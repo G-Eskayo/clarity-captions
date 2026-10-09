@@ -1,0 +1,44 @@
+# XcodeGen spec -- the .xcodeproj is generated, not committed. Mac companion app.
+# Reuses the shared CaptionCore package (ADR 0010) -- platform-agnostic logic unchanged.
+name: CaptionMac
+options:
+  bundleIdPrefix: com.gileskayo
+  deploymentTarget:
+    macOS: "26.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: "${DEVELOPMENT_TEAM}"
+    APP_DISPLAY_NAME: "Seal"
+packages:
+  CaptionCore:
+    path: ../../Packages/CaptionCore
+targets:
+  CaptionMac:
+    type: application
+    platform: macOS
+    sources:
+      - Sources
+      - path: ../../NOTICE.md
+        buildPhase: resources
+      - path: Resources/Models/Sortformer_v2.1.mlmodelc
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - package: CaptionCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.gileskayo.captions
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: "$(APP_DISPLAY_NAME)"
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Captions need the microphone to show what people nearby are saying."
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "Captions turn speech into on-screen text on this device."
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+schemes:
+  CaptionMac:
+    build:
+      targets:
+        CaptionMac: all
+    run:
+      config: Release
