@@ -39,7 +39,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.gileskayo.captions
-        TARGETED_DEVICE_FAMILY: "1"  # iPhone only for the spike; iPad is a later target (ADR 0010)
+        TARGETED_DEVICE_FAMILY: "1,2"  # iPhone and iPad (ADR 0010 gate lifted)
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: "$(APP_DISPLAY_NAME)"
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "Captions need the microphone to show what people nearby are saying."

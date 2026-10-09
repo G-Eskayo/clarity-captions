@@ -50,6 +50,25 @@ final class CaptionStyleTests: XCTestCase {
         }
     }
 
+    func testPadSizeStepsAreMonotonicAcrossEveryCategory() {
+        for category in SystemTextSizeCategory.allCases {
+            let points = CaptionTextSize.allCases.map { size in size.pointSize(for: category, device: .pad) }
+            XCTAssertEqual(points, points.sorted(), "pad sizes not monotonic for category \(category)")
+            XCTAssertEqual(Set(points).count, points.count, "duplicate pad point sizes for category \(category)")
+        }
+    }
+
+    func testPadSizesAreLargerThanPhoneSizesAtEveryStep() {
+        for size in CaptionTextSize.allCases {
+            for category in SystemTextSizeCategory.allCases {
+                let phoneSize = size.pointSize(for: category, device: .phone)
+                let padSize = size.pointSize(for: category, device: .pad)
+                XCTAssertGreaterThan(padSize, phoneSize,
+                    "iPad size should be larger than phone for \(size) at \(category): phone=\(phoneSize), pad=\(padSize)")
+            }
+        }
+    }
+
     func testSystemTextSizeCategoryHasAllTwelveCategories() {
         XCTAssertEqual(SystemTextSizeCategory.allCases.count, 12)
     }
@@ -87,5 +106,32 @@ final class CaptionStyleTests: XCTestCase {
             let contrast = RGBA.contrast(dimmedText, p.background)
             XCTAssertGreaterThanOrEqual(contrast, 4.5, "\(p.name) dimmed is not readable enough at opacity \(dimmedAlpha)")
         }
+    }
+
+    func testScreenLayoutPhoneLandscapeUsesWideLayout() {
+        let result = ScreenLayout.for(width: .compact, height: .compact)
+        XCTAssertEqual(result, .wide)
+    }
+
+    func testScreenLayoutPhonePortraitUsesStackedLayout() {
+        let result = ScreenLayout.for(width: .compact, height: .regular)
+        XCTAssertEqual(result, .stacked)
+    }
+
+    func testScreenLayoutiPadFullScreenUsesWideLayout() {
+        let result = ScreenLayout.for(width: .regular, height: .regular)
+        XCTAssertEqual(result, .wide)
+    }
+
+    func testScreenLayoutiPadSlideOverUsesStackedLayout() {
+        // iPad in Slide Over or Split View with compact width stays in stacked layout
+        let result = ScreenLayout.for(width: .compact, height: .regular)
+        XCTAssertEqual(result, .stacked)
+    }
+
+    func testScreenLayoutiPadLandscapeCompactHeightUsesWideLayout() {
+        // Narrow iPad in landscape (compact height) should use wide layout
+        let result = ScreenLayout.for(width: .regular, height: .compact)
+        XCTAssertEqual(result, .wide)
     }
 }

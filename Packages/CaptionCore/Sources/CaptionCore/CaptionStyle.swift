@@ -80,12 +80,15 @@ public enum SystemTextSizeCategory: Int, Codable, CaseIterable, Equatable, Senda
     }
 }
 
+public enum CaptionDeviceClass: Sendable { case phone, pad }
+
 public enum CaptionTextSize: Int, Codable, CaseIterable, Sendable {
     case smallest, small, medium, large, largest
     private static let basePointSize = 28.0
+    private static let padMultiplier = 1.25
 
     /// Point size for this caption text step at a given system Dynamic Type category.
-    public func pointSize(for category: SystemTextSizeCategory) -> Double {
+    public func pointSize(for category: SystemTextSizeCategory, device: CaptionDeviceClass = .phone) -> Double {
         let relativeMultiplier: Double = switch self {
         case .smallest: 0.75
         case .small: 0.875
@@ -93,7 +96,8 @@ public enum CaptionTextSize: Int, Codable, CaseIterable, Sendable {
         case .large: 1.15
         case .largest: 1.35
         }
-        return Self.basePointSize * relativeMultiplier * category.scale
+        let deviceMultiplier = device == .pad ? Self.padMultiplier : 1.0
+        return Self.basePointSize * relativeMultiplier * deviceMultiplier * category.scale
     }
 
     public func larger() -> CaptionTextSize { CaptionTextSize(rawValue: rawValue + 1) ?? self }

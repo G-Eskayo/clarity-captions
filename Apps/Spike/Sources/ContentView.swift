@@ -200,12 +200,21 @@ struct ContentView: View {
     @State private var nameDraft: String = ""
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var style: CaptionStyle { model.style }
     private var control: PrimaryControl { PrimaryControl.for(model.state) }
-    private var landscape: Bool { verticalSizeClass == .compact }
+    private var screenLayout: ScreenLayout {
+        let width: WidthClass = horizontalSizeClass == .regular ? .regular : .compact
+        let height: HeightClass = verticalSizeClass == .compact ? .compact : .regular
+        return ScreenLayout.for(width: width, height: height)
+    }
+    private var landscape: Bool { screenLayout == .wide }
+    private var deviceClass: CaptionDeviceClass {
+        UIDevice.current.userInterfaceIdiom == .pad ? .pad : .phone
+    }
 
     var body: some View {
         ZStack {
@@ -389,10 +398,10 @@ struct ContentView: View {
                                     }
                             }
                             if line.isSoundLabel {
-                                Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize)).italic()).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
+                                Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass).italic()).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
                                     .accessibilityLabel(line.soundLabel.map { soundLabelA11yLabel(for: $0) } ?? "")
                             } else {
-                                Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize))).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
+                                Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass)).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
                                     .textSelection(.enabled)
                             }
                         }
