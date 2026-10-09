@@ -122,6 +122,17 @@
         }
       }
     },
+    "Captions need a newer iPhone or iPad that can turn speech into words by itself. Sorry about that!" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Captions need a newer iPhone or iPad that can turn speech into words by itself. Sorry about that!"
+          }
+        }
+      }
+    },
     "Captions need the microphone. Tap the button, then switch Microphone on." : {
       "extractionState": "manual",
       "localizations": {
@@ -1075,6 +1086,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Start again"
+          }
+        }
+      }
+    },
+    "This device can't show captions" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This device can't show captions"
           }
         }
       }

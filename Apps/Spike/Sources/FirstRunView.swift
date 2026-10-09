@@ -32,7 +32,8 @@ final class FirstRunModel: ObservableObject {
             hasSeenWelcome: store.hasSeenWelcome,
             microphone: mic,
             speechModelInstalled: await SpeechModelInstaller.isInstalled(),
-            speakerModelWarm: store.isSpeakerModelWarm(forBuild: buildKey))
+            speakerModelWarm: store.isSpeakerModelWarm(forBuild: buildKey),
+            speechSupport: await SpeechSupport.check())
         let next = FirstRun.step(for: facts)
         step = next
         if next == .done && !sawSetupScreen { finished = true; return }
@@ -144,6 +145,7 @@ struct FirstRunView: View {
 
     private var symbol: String {
         switch model.step {
+        case .unsupported: "exclamationmark.bubble.fill"
         case .welcome: "hand.wave.fill"
         case .microphone: "mic.fill"
         case .microphoneDenied: "mic.slash.fill"

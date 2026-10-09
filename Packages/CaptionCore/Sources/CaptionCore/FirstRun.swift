@@ -3,7 +3,7 @@ import Foundation
 public enum MicrophoneAccess: Equatable, Sendable { case undetermined, granted, denied }
 
 public enum FirstRunStep: Equatable, Sendable, CaseIterable {
-    case welcome, microphone, microphoneDenied, speechModel, speakerModel, done
+    case unsupported, welcome, microphone, microphoneDenied, speechModel, speakerModel, done
 }
 
 /// Everything the first-run flow needs to know, as plain facts.
@@ -12,7 +12,11 @@ public struct FirstRunFacts: Equatable, Sendable {
     public var microphone: MicrophoneAccess
     public var speechModelInstalled: Bool
     public var speakerModelWarm: Bool
-    public init(hasSeenWelcome: Bool, microphone: MicrophoneAccess, speechModelInstalled: Bool, speakerModelWarm: Bool) {
+    /// Whether this device can caption at all (#80). Defaults to supported so callers that don't check are unchanged.
+    public var speechSupport: SpeechSupport
+    public init(hasSeenWelcome: Bool, microphone: MicrophoneAccess, speechModelInstalled: Bool, speakerModelWarm: Bool,
+                speechSupport: SpeechSupport = .supported) {
+        self.speechSupport = speechSupport
         self.hasSeenWelcome = hasSeenWelcome
         self.microphone = microphone
         self.speechModelInstalled = speechModelInstalled
@@ -25,6 +29,8 @@ public struct FirstRunFacts: Equatable, Sendable {
 /// the microphone is switched off later.
 public enum FirstRun {
     public static func step(for f: FirstRunFacts) -> FirstRunStep {
+        // First, before the welcome: nothing else on this device can lead to captions.
+        if !f.speechSupport.canCaption { return .unsupported }
         if !f.hasSeenWelcome { return .welcome }
         switch f.microphone {
         case .undetermined: return .microphone
@@ -46,6 +52,10 @@ public struct FirstRunCopy: Equatable, Sendable {
 
     public static func `for`(_ step: FirstRunStep) -> FirstRunCopy {
         switch step {
+        case .unsupported:
+            FirstRunCopy(title: String(localized: "This device can't show captions"),
+                         message: String(localized: "Captions need a newer iPhone or iPad that can turn speech into words by itself. Sorry about that!"),
+                         button: nil)
         case .welcome:
             FirstRunCopy(title: String(localized: "Hi! Let's get you set up."),
                          message: String(localized: "I'll help you follow conversations by showing what people say. This takes about a minute."),
