@@ -46,4 +46,11 @@ final class FailureReasonTests: XCTestCase {
             XCTAssertFalse(plain.contains("exception"), "Should not contain 'exception'")
         }
     }
+
+    func testPauseDetailForMicTakenElsewhere() {
+        let detail = FailureReason.pauseDetail(for: .micTakenElsewhere)
+        XCTAssertNotEqual(detail, "")
+        XCTAssertFalse(detail.contains("micTakenElsewhere"), "must not contain technical enum name")
+        XCTAssertFalse(detail.contains("Error"), "must not contain 'Error'")
+    }
 }

@@ -1,5 +1,11 @@
 import Foundation
 
+/// Engine event that may occur during a session.
+public enum CaptionEngineEvent: Equatable, Sendable {
+    case interruptionBegan(InterruptionReason)
+    case interruptionEnded
+}
+
 /// What the session controller needs from a captioning engine. The real engine is `TranscriptionEngine`;
 /// tests use a fake, so the lifecycle rules below are checked without a microphone or a speech model.
 public protocol CaptioningEngine: AnyObject {
@@ -7,6 +13,7 @@ public protocol CaptioningEngine: AnyObject {
     func start() async throws -> AsyncThrowingStream<CaptionUpdate, Error>
     func soundLabelsStream() -> AsyncStream<SoundLabelKind>
     func audioLevelStream() -> AsyncStream<Double>
+    func events() -> AsyncStream<CaptionEngineEvent>
     /// Must be safe to call more than once, and safe to call after a failed start.
     func stop() async
 }
@@ -35,9 +42,11 @@ public final class CaptionSessionController {
     private var task: Task<Void, Never>?
     private var engine: CaptioningEngine?
     private var stopRequested = false
+    private let pauseTimeout: Duration
 
-    public init(makeEngine: @escaping () throws -> CaptioningEngine) {
+    public init(makeEngine: @escaping () throws -> CaptioningEngine, pauseTimeout: Duration = .seconds(30)) {
         self.makeEngine = makeEngine
+        self.pauseTimeout = pauseTimeout
     }
 
     /// Begins a session. Does nothing if one is already starting or running.
@@ -74,6 +83,11 @@ public final class CaptionSessionController {
             state = .listening
             let labels = engine.soundLabelsStream()
             let levels = engine.audioLevelStream()
+            let events = engine.events()
+
+            var pauseTimeoutTask: Task<Void, Never>?
+            var timeoutFired = false
+
             try await withThrowingTaskGroup(of: Void.self) { group in
                 group.addTask { @MainActor [weak self] in
                     for try await u in updates { self?.onUpdate(u) }
@@ -84,10 +98,48 @@ public final class CaptionSessionController {
                 group.addTask { @MainActor [weak self] in
                     for await level in levels { self?.onAudioLevel(level) }
                 }
+                group.addTask { @MainActor [weak self] in
+                    for await event in events {
+                        guard let self else { return }
+                        switch event {
+                        case .interruptionBegan(let reason):
+                            if case .listening = self.state {
+                                let pauseReason = FailureReason.pauseDetail(for: reason)
+                                self.state = .paused(pauseReason)
+
+                                // Start timeout task
+                                pauseTimeoutTask?.cancel()
+                                pauseTimeoutTask = Task {
+                                    try? await Task.sleep(for: self.pauseTimeout)
+                                    if !Task.isCancelled {
+                                        timeoutFired = true
+                                        await engine.stop()
+                                    }
+                                }
+                            }
+                        case .interruptionEnded:
+                            if case .paused = self.state {
+                                pauseTimeoutTask?.cancel()
+                                pauseTimeoutTask = nil
+                                self.state = .listening
+                            }
+                        }
+                    }
+                }
                 try await group.waitForAll()
             }
+
+            pauseTimeoutTask?.cancel()
+
             await engine.stop()
-            state = .idle
+
+            if timeoutFired && !stopRequested {
+                if case .paused(let reason) = state {
+                    state = .failed(reason)
+                }
+            } else {
+                state = .idle
+            }
         } catch {
             await engine.stop()
             state = stopRequested ? .idle : .failed(FailureReason.plainLanguage(for: error))

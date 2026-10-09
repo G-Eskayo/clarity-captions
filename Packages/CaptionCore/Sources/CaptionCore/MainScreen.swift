@@ -2,7 +2,7 @@ import Foundation
 
 /// What the captioning engine is doing, in the only terms the main screen needs.
 public enum CaptionState: Equatable, Sendable {
-    case idle, preparing, listening
+    case idle, preparing, listening, paused(String)
     case failed(String)
 }
 
@@ -25,7 +25,7 @@ public struct PrimaryControl: Equatable, Sendable {
         switch state {
         case .idle: PrimaryControl(title: String(localized: "Start captions"), action: .start, isEnabled: true)
         case .preparing: PrimaryControl(title: String(localized: "Getting ready…"), action: .none, isEnabled: false)
-        case .listening: PrimaryControl(title: String(localized: "Stop"), action: .stop, isEnabled: true, presentation: .compact)
+        case .listening, .paused: PrimaryControl(title: String(localized: "Stop"), action: .stop, isEnabled: true, presentation: .compact)
         case .failed: PrimaryControl(title: String(localized: "Start again"), action: .start, isEnabled: true)
         }
     }
@@ -39,6 +39,7 @@ public enum StatusWords {
         case .idle: String(localized: "Ready")
         case .preparing: String(localized: "Getting ready…")
         case .listening: String(localized: "Listening")
+        case .paused: String(localized: "Captions paused")
         case .failed: String(localized: "Captions stopped")
         }
     }
@@ -55,6 +56,7 @@ public enum StatusWords {
     }
 
     public static func detail(for state: CaptionState) -> String? {
+        if case .paused(let reason) = state { return reason }
         if case .failed(let reason) = state { return reason }
         return nil
     }

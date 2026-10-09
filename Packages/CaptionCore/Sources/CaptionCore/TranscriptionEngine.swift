@@ -74,6 +74,8 @@ public final class TranscriptionEngine {
     private var soundLabelerStream: AsyncStream<SoundLabelKind>?
     private var audioLevelStreamValue: AsyncStream<Double>?
     private var audioLevelContinuation: AsyncStream<Double>.Continuation?
+    private var eventsStreamValue: AsyncStream<CaptionEngineEvent>?
+    private var eventsContinuation: AsyncStream<CaptionEngineEvent>.Continuation?
     private let contextualStrings: [String]
     /// Spike-only: how long each startup step took, for the developer panel. Measured, not guessed.
     public private(set) var startupReport = ""
@@ -81,6 +83,10 @@ public final class TranscriptionEngine {
     private var loudnessBaseline = LoudnessBaseline()
     private var loudnessTimeSeries: [(audioTime: Double, level: Double)] = []
     private let loudnessLock = NSLock()
+    #if os(iOS)
+    private var interruptionObserver: NSObjectProtocol?
+    private var routeChangeObserver: NSObjectProtocol?
+    #endif
 
     /// `diarizerModelURL` has no default on purpose: the app must say where its bundled speaker model
     /// lives, so there is no accidental network path (ADR 0014).
@@ -129,6 +135,10 @@ public final class TranscriptionEngine {
         self.audioLevelStreamValue = alStream
         self.audioLevelContinuation = alCont
 
+        let (eventsStream, eventsCont) = AsyncStream.makeStream(of: CaptionEngineEvent.self)
+        self.eventsStreamValue = eventsStream
+        self.eventsContinuation = eventsCont
+
         guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else {
             throw TranscriptionError.noCompatibleAudioFormat
         }
@@ -146,6 +156,12 @@ public final class TranscriptionEngine {
         case .voiceProcessing: try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
         }
         try session.setActive(true)
+
+        // Select built-in mic explicitly (ADR 0021 part 2)
+        selectBuiltInMicrophone(session: session)
+
+        // Install notification observers
+        setupAudioSessionObservers(session: session)
         #endif
         // Must happen before the tap format is read.
         if micMode == .voiceProcessing { try audioEngine.inputNode.setVoiceProcessingEnabled(true) }
@@ -376,6 +392,13 @@ public final class TranscriptionEngine {
         audioEngine.stop()
         inputBuilder?.finish()
         inputBuilder = nil
+        eventsContinuation?.finish()
+        eventsContinuation = nil
+
+        #if os(iOS)
+        removeAudioSessionObservers()
+        #endif
+
         if let analyzer {
             self.analyzer = nil
             do { try await analyzer.finalizeAndFinishThroughEndOfInput() }
@@ -410,4 +433,80 @@ public final class TranscriptionEngine {
     public func audioLevelStream() -> AsyncStream<Double> {
         audioLevelStreamValue ?? AsyncStream { $0.finish() }
     }
+
+    /// Returns the stream of engine events (interruptions, route changes, etc.).
+    public func events() -> AsyncStream<CaptionEngineEvent> {
+        eventsStreamValue ?? AsyncStream { $0.finish() }
+    }
+
+    #if os(iOS)
+    private func selectBuiltInMicrophone(session: AVAudioSession) {
+        guard let builtInMic = session.availableInputs?.first(where: { $0.portType == .builtInMic }) else {
+            return
+        }
+        try? session.setPreferredInput(builtInMic)
+    }
+
+    private func setupAudioSessionObservers(session: AVAudioSession) {
+        let nc = NotificationCenter.default
+
+        interruptionObserver = nc.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: session,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self else { return }
+            self.handleAudioSessionInterruption(notification)
+        }
+
+        routeChangeObserver = nc.addObserver(
+            forName: AVAudioSession.routeChangeNotification,
+            object: session,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self else { return }
+            self.handleRouteChange(notification, session: session)
+        }
+    }
+
+    private func removeAudioSessionObservers() {
+        let nc = NotificationCenter.default
+        if let observer = interruptionObserver {
+            nc.removeObserver(observer)
+            interruptionObserver = nil
+        }
+        if let observer = routeChangeObserver {
+            nc.removeObserver(observer)
+            routeChangeObserver = nil
+        }
+    }
+
+    private func handleAudioSessionInterruption(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let typeValue = userInfo[AVAudioSession.interruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
+            return
+        }
+
+        switch type {
+        case .began:
+            eventsContinuation?.yield(.interruptionBegan(.micTakenElsewhere))
+        case .ended:
+            if let optionsValue = userInfo[AVAudioSession.interruptionOptionKey] as? UInt,
+               optionsValue == AVAudioSession.InterruptionOptions.shouldResume.rawValue {
+                let session = AVAudioSession.sharedInstance()
+                try? session.setActive(true, options: .notifyOthersOnDeactivation)
+                selectBuiltInMicrophone(session: session)
+                eventsContinuation?.yield(.interruptionEnded)
+            }
+        @unknown default:
+            break
+        }
+    }
+
+    private func handleRouteChange(_ notification: Notification, session: AVAudioSession) {
+        // Re-apply built-in mic preference on every route change
+        selectBuiltInMicrophone(session: session)
+    }
+    #endif
 }

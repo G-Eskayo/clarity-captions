@@ -17,12 +17,15 @@ final class CaptionSessionControllerTests: XCTestCase {
         var holdOpen = false                  // keep the streams open until stop()
         var labels: [SoundLabelKind] = []
         var levels: [Double] = []
+        var eventValues: [CaptionEngineEvent] = []
         private(set) var stopCount = 0
         private var updateCont: AsyncThrowingStream<CaptionUpdate, Error>.Continuation?
         private var labelCont: AsyncStream<SoundLabelKind>.Continuation?
         private var levelCont: AsyncStream<Double>.Continuation?
+        private var eventCont: AsyncStream<CaptionEngineEvent>.Continuation?
         private var labelStream: AsyncStream<SoundLabelKind>?
         private var levelStream: AsyncStream<Double>?
+        private var eventStream: AsyncStream<CaptionEngineEvent>?
 
         func start() async throws -> AsyncThrowingStream<CaptionUpdate, Error> {
             if let startError { throw startError }
@@ -30,23 +33,28 @@ final class CaptionSessionControllerTests: XCTestCase {
             labelStream = ls; labelCont = lc
             let (lvls, lvcont) = AsyncStream.makeStream(of: Double.self)
             levelStream = lvls; levelCont = lvcont
+            let (es, ec) = AsyncStream.makeStream(of: CaptionEngineEvent.self)
+            eventStream = es; eventCont = ec
             let (stream, cont) = AsyncThrowingStream.makeStream(of: CaptionUpdate.self)
             updateCont = cont
             for u in updates { cont.yield(u) }
             for l in labels { lc.yield(l) }
             for lv in levels { lvcont.yield(lv) }
+            for e in eventValues { ec.yield(e) }
             if !holdOpen {
                 if let failAfterUpdates { cont.finish(throwing: failAfterUpdates) } else { cont.finish() }
                 lc.finish()
                 lvcont.finish()
+                ec.finish()
             }
             return stream
         }
         func soundLabelsStream() -> AsyncStream<SoundLabelKind> { labelStream ?? AsyncStream { $0.finish() } }
         func audioLevelStream() -> AsyncStream<Double> { levelStream ?? AsyncStream { $0.finish() } }
+        func events() -> AsyncStream<CaptionEngineEvent> { eventStream ?? AsyncStream { $0.finish() } }
         func stop() async {
             stopCount += 1
-            updateCont?.finish(); labelCont?.finish(); levelCont?.finish()
+            updateCont?.finish(); labelCont?.finish(); levelCont?.finish(); eventCont?.finish()
         }
     }
 
@@ -185,5 +193,55 @@ final class CaptionSessionControllerTests: XCTestCase {
         await eventually("audio levels delivered") { audioLevels.count >= 3 }
         XCTAssertEqual(audioLevels, [-30, -28, -32])
         await c.stopAndWait()
+    }
+
+    func testInterruptionPausesTheSession() async {
+        let engine = FakeEngine(); engine.holdOpen = true; engine.updates = [update("hello")]
+        engine.eventValues = [.interruptionBegan(.micTakenElsewhere)]
+        let (c, log) = make { engine }
+        c.start()
+        await eventually("paused") { if case .paused = c.state { return true } else { return false } }
+        if case .paused(let reason) = c.state {
+            XCTAssertFalse(reason.isEmpty, "pause reason must be a plain-language string")
+            XCTAssertFalse(reason.contains("micTakenElsewhere"), "pause reason must not contain technical enum name")
+        }
+        await c.stopAndWait()
+    }
+
+
+    func testPauseTimeoutFiresIfInterruptionNotCleared() async {
+        let engine = FakeEngine(); engine.holdOpen = true; engine.updates = [update("hello")]
+        engine.eventValues = [.interruptionBegan(.micTakenElsewhere)]
+        let log = Log()
+        let c = CaptionSessionController(
+            makeEngine: { log.created += 1; return engine },
+            pauseTimeout: .milliseconds(50)
+        )
+        c.onStateChange = { log.states.append($0) }
+        c.onUpdate = { log.updates.append($0.text) }
+        c.start()
+        await eventually("paused") { if case .paused = c.state { return true } else { return false } }
+        await eventually("timeout fires and becomes failed") { if case .failed = c.state { return true } else { return false } }
+        XCTAssertGreaterThanOrEqual(engine.stopCount, 1, "engine must be stopped when pause timeout fires")
+        if case .failed(let reason) = c.state {
+            XCTAssertEqual(reason, FailureReason.pauseDetail(for: .micTakenElsewhere))
+        }
+    }
+
+    func testUserInitiatedStopWhilePausedBecomesIdle() async {
+        let engine = FakeEngine(); engine.holdOpen = true; engine.updates = [update("hello")]
+        engine.eventValues = [.interruptionBegan(.micTakenElsewhere)]
+        let (c, log) = make { engine }
+        c.start()
+        await eventually("paused") { if case .paused = c.state { return true } else { return false } }
+        c.stop()
+        await eventually("idle after stop") { c.state == .idle }
+        XCTAssertGreaterThanOrEqual(engine.stopCount, 1)
+    }
+
+    func testPauseDetailIsPlainLanguage() async {
+        let reason = FailureReason.pauseDetail(for: .micTakenElsewhere)
+        XCTAssertFalse(reason.isEmpty, "pause detail must be non-empty")
+        XCTAssertFalse(reason.contains("micTakenElsewhere"), "must not contain technical enum name")
     }
 }

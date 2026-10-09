@@ -25,6 +25,8 @@ final class CaptionModel: ObservableObject {
     var store: SavedConversationStoring?
     private var sessionStartedAt: Date?
     private var tracker = ListeningActivityTracker()
+    private var backgroundTracker = BackgroundReturnTracker()
+    private var previousState: CaptionState = .idle
 
     init() {
         controller = CaptionSessionController(makeEngine: { [weak self] in
@@ -63,6 +65,10 @@ final class CaptionModel: ObservableObject {
     }
 
     private func handleCaptionStateChange(_ newState: CaptionState) {
+        if case .paused = previousState, case .listening = newState {
+            stream.insertMarker(InterruptionGapMarker.text)
+        }
+        previousState = newState
         state = newState
 
         switch newState {
@@ -70,11 +76,11 @@ final class CaptionModel: ObservableObject {
             sessionStartedAt = Date()
         case .listening:
             startActivityLoop()
+        case .paused:
+            stopActivityLoop()
         case .idle, .failed:
             stopActivityLoop()
             saveSessionIfNeeded()
-        default:
-            break
         }
     }
 
@@ -130,6 +136,23 @@ final class CaptionModel: ObservableObject {
         case .start: controller.start()
         case .stop: controller.stop()
         case .none: break
+        }
+    }
+
+    func handleScenePhaseChange(_ phase: ScenePhase) {
+        switch phase {
+        case .background:
+            backgroundTracker.appDidEnterBackground()
+        case .active:
+            let wasActivelyCaptioning: Bool
+            if case .paused = state { wasActivelyCaptioning = true } else { wasActivelyCaptioning = state == .listening }
+            if backgroundTracker.appDidBecomeActive() && wasActivelyCaptioning {
+                stream.insertMarker(BackgroundMarker.text)
+            }
+        case .inactive:
+            break
+        @unknown default:
+            break
         }
     }
 
@@ -202,10 +225,15 @@ struct ContentView: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
     private var style: CaptionStyle { model.style }
     private var control: PrimaryControl { PrimaryControl.for(model.state) }
     private var landscape: Bool { verticalSizeClass == .compact }
+    private var isActivelyTranscribing: Bool {
+        if case .paused = model.state { return true }
+        return model.state == .listening || model.state == .preparing
+    }
 
     var body: some View {
         ZStack {
@@ -235,6 +263,9 @@ struct ContentView: View {
             UIAccessibility.post(notification: .announcement, argument: StatusWords.announcement(for: newState))
             handleStateChange(newState)
         }
+        .onChange(of: scenePhase) { _, newPhase in
+            model.handleScenePhaseChange(newPhase)
+        }
     }
 
     /// The branded animation only appears if getting ready is genuinely slow (a cold start, a download); a quick
@@ -251,7 +282,7 @@ struct ContentView: View {
                 animationShownAt = Date()
                 withAnimation(.easeInOut(duration: 0.25)) { showPreparingAnimation = true }
             }
-        case .listening, .idle, .failed:
+        case .listening, .paused, .idle, .failed:
             preparingStartTime = nil
             guard showPreparingAnimation else { return }
             let shown = animationShownAt.map { Date().timeIntervalSince($0) } ?? LaunchAnimationGate.minimumDuration
@@ -521,14 +552,14 @@ struct ContentView: View {
                 Text("Voice").tag(MicMode.voiceProcessing)
             }
             .pickerStyle(.segmented)
-            .disabled(model.state == .listening || model.state == .preparing)
+            .disabled(isActivelyTranscribing)
             if model.micMode == .voiceProcessing {
                 Button("System mic modes (Voice Isolation)…") { AVCaptureDevice.showSystemUserInterface(.microphoneModes) }
                     .font(.footnote)
             }
             Button("Measure latency") { model.measureLatency() }
                 .font(.footnote)
-                .disabled(model.state == .listening || model.state == .preparing)
+                .disabled(isActivelyTranscribing)
             if let lag = model.lag { Text("lag \(String(format: "%.1f", lag))s").font(.caption2) }
             if !model.startup.isEmpty { Text("startup: \(model.startup)").font(.caption2) }
             if let report = model.latencyReport { Text("LATENCY \(report)").font(.caption2) }

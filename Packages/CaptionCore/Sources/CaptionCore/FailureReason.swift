@@ -1,5 +1,10 @@
 import Foundation
 
+/// Reason an interruption began.
+public enum InterruptionReason: Equatable, Sendable {
+    case micTakenElsewhere
+}
+
 /// Plain-language failure reasons for users.
 public enum FailureReason {
     /// Maps errors to sentences plain-language users can act on.
@@ -26,6 +31,14 @@ public enum FailureReason {
         switch error {
         case .modelMissing:
             return String(localized: "The speaker model didn't install — tap to try again")
+        }
+    }
+
+    /// Converts an interruption reason to a pause detail line.
+    public static func pauseDetail(for reason: InterruptionReason) -> String {
+        switch reason {
+        case .micTakenElsewhere:
+            return String(localized: "another app is using the microphone")
         }
     }
 }

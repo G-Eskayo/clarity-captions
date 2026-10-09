@@ -24,6 +24,13 @@ final class MainScreenTests: XCTestCase {
         XCTAssertTrue(c.isEnabled)
     }
 
+    func testPausedOffersStop() {
+        let c = PrimaryControl.for(.paused("another app is using the microphone"))
+        XCTAssertEqual(c.title, "Stop")
+        XCTAssertEqual(c.action, .stop)
+        XCTAssertTrue(c.isEnabled)
+    }
+
     func testAfterAFailureTheControlIsOneTapBack() {
         let c = PrimaryControl.for(.failed("model missing"))
         XCTAssertEqual(c.title, "Start again")
@@ -35,7 +42,14 @@ final class MainScreenTests: XCTestCase {
         XCTAssertEqual(StatusWords.headline(for: .idle), "Ready")
         XCTAssertEqual(StatusWords.headline(for: .preparing), "Getting ready…")
         XCTAssertEqual(StatusWords.headline(for: .listening), "Listening")
+        XCTAssertEqual(StatusWords.headline(for: .paused("reason")), "Captions paused")
         XCTAssertEqual(StatusWords.headline(for: .failed("x")), "Captions stopped")
+    }
+
+    func testPausedReasonIsDetail() {
+        let reason = "another app is using the microphone"
+        let state = CaptionState.paused(reason)
+        XCTAssertEqual(StatusWords.detail(for: state), reason)
     }
 
     func testTechnicalFailureReasonIsDetailNotHeadline() {

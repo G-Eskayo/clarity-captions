@@ -174,6 +174,44 @@ final class CaptionStreamTests: XCTestCase {
         XCTAssertTrue(s.lines[0].styledWords.allSatisfy { $0.emphasis == .normal })
     }
 
+    // MARK: - Markers
+
+    func testInsertMarkerAddsNewLine() {
+        var s = CaptionStream()
+        let markerText = "— while you were away —"
+        s.insertMarker(markerText)
+        XCTAssertEqual(s.lines.count, 1)
+        XCTAssertEqual(s.lines[0].marker, markerText)
+    }
+
+    func testInsertMarkerIsAlwaysFinal() {
+        var s = CaptionStream()
+        s.insertMarker("— while you were away —")
+        XCTAssertTrue(s.lines[0].isFinal)
+        XCTAssertNil(s.lines[0].tail)
+    }
+
+    func testInsertMarkerClosesOpenTailOnPreviousLine() {
+        var s = CaptionStream()
+        s.apply(text: "hello", isFinal: false)
+        XCTAssertEqual(s.lines[0].text, "hello")
+        XCTAssertFalse(s.lines[0].isFinal)
+        s.insertMarker("— while you were away —")
+        XCTAssertEqual(s.lines.count, 2)
+        XCTAssertTrue(s.lines[0].isFinal, "previous line's tail must be finalized")
+        XCTAssertEqual(s.lines[1].marker, "— while you were away —")
+    }
+
+    func testSpeechAfterMarkerStartsNewLine() {
+        var s = CaptionStream()
+        s.insertMarker("— while you were away —")
+        s.apply(text: "hello", isFinal: false)
+        XCTAssertEqual(s.lines.count, 2)
+        XCTAssertTrue(s.lines[0].isMarker)
+        XCTAssertFalse(s.lines[1].isMarker)
+        XCTAssertEqual(s.lines[1].text, "hello")
+    }
+
     // MARK: - Unbounded scrollback
 
     func testUnboundedScrollbackLargeTranscript() {
