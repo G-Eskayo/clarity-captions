@@ -1,4 +1,5 @@
 import AVFoundation
+import CallKit
 import CoreMedia
 import Foundation
 import Speech
@@ -72,6 +73,8 @@ public final class TranscriptionEngine {
     private let diarizer: LiveDiarizer
     private let soundLabeler = SoundLabeler()
     private var soundLabelerStream: AsyncStream<SoundLabelKind>?
+    private var eventsStream: AsyncStream<CaptionEngineEvent>?
+    private var eventsContinuation: AsyncStream<CaptionEngineEvent>.Continuation?
     private let contextualStrings: [String]
     /// Spike-only: how long each startup step took, for the developer panel. Measured, not guessed.
     public private(set) var startupReport = ""
@@ -79,6 +82,9 @@ public final class TranscriptionEngine {
     private var loudnessBaseline = LoudnessBaseline()
     private var loudnessTimeSeries: [(audioTime: Double, level: Double)] = []
     private let loudnessLock = NSLock()
+
+    private var interruptionObserver: NSObjectProtocol?
+    private var routeChangeObserver: NSObjectProtocol?
 
     /// `diarizerModelURL` has no default on purpose: the app must say where its bundled speaker model
     /// lives, so there is no accidental network path (ADR 0014).
@@ -140,6 +146,12 @@ public final class TranscriptionEngine {
         case .voiceProcessing: try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
         }
         try session.setActive(true)
+
+        if let inputs = session.availableInputs, let builtInMic = inputs.first(where: { $0.portType == .builtInMic }) {
+            try session.setPreferredInput(builtInMic)
+        }
+
+        installObservers(session: session)
         #endif
         // Must happen before the tap format is read.
         if micMode == .voiceProcessing { try audioEngine.inputNode.setVoiceProcessingEnabled(true) }
@@ -365,10 +377,15 @@ public final class TranscriptionEngine {
 
     /// Releases the microphone, the speech analyzer and the helpers. Safe to call more than once.
     public func stop() async {
+        #if os(iOS)
+        removeObservers()
+        #endif
         audioEngine.inputNode.removeTap(onBus: 0)
         audioEngine.stop()
         inputBuilder?.finish()
         inputBuilder = nil
+        eventsContinuation?.finish()
+        eventsContinuation = nil
         if let analyzer {
             self.analyzer = nil
             do { try await analyzer.finalizeAndFinishThroughEndOfInput() }
@@ -377,6 +394,82 @@ public final class TranscriptionEngine {
         diarizer.finish()
         soundLabeler.finish()
     }
+
+    #if os(iOS)
+    private func installObservers(session: AVAudioSession) {
+        let nc = NotificationCenter.default
+
+        interruptionObserver = nc.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: session,
+            queue: .main
+        ) { [weak self] notification in
+            self?.handleInterruptionNotification(session: session, notification: notification)
+        }
+
+        routeChangeObserver = nc.addObserver(
+            forName: AVAudioSession.routeChangeNotification,
+            object: session,
+            queue: .main
+        ) { [weak self] _ in
+            self?.handleRouteChangeNotification(session: session)
+        }
+    }
+
+    private func removeObservers() {
+        let nc = NotificationCenter.default
+        if let obs = interruptionObserver {
+            nc.removeObserver(obs)
+            interruptionObserver = nil
+        }
+        if let obs = routeChangeObserver {
+            nc.removeObserver(obs)
+            routeChangeObserver = nil
+        }
+    }
+
+    private func handleInterruptionNotification(session: AVAudioSession, notification: Notification) {
+        guard let userInfo = notification.userInfo else { return }
+        guard let typeValue = userInfo[AVAudioSession.interruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+
+        switch type {
+        case .began:
+            let reason = detectInterruptionReason()
+            eventsContinuation?.yield(.interruptionBegan(reason))
+        case .ended:
+            let optionsValue = userInfo[AVAudioSession.interruptionOptionKey] as? UInt ?? 0
+            let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+            if options.contains(.shouldResume) {
+                do {
+                    try session.setActive(true)
+                    if !audioEngine.isRunning {
+                        try audioEngine.start()
+                    }
+                    eventsContinuation?.yield(.interruptionEnded)
+                } catch {
+                    // If we can't resume, stay silent and let the timeout handle it
+                }
+            }
+        @unknown default:
+            break
+        }
+    }
+
+    private func handleRouteChangeNotification(session: AVAudioSession) {
+        if let inputs = session.availableInputs, let builtInMic = inputs.first(where: { $0.portType == .builtInMic }) {
+            try? session.setPreferredInput(builtInMic)
+        }
+    }
+
+    private func detectInterruptionReason() -> InterruptionReason {
+        let callObserver = CXCallObserver()
+        if !callObserver.calls.isEmpty {
+            return .phoneCall
+        }
+        return .otherApp
+    }
+    #endif
 
     /// The one-time, system-provisioned model fetch noted in CONTEXT.md "On-device only".
     private func ensureModelInstalled(for transcriber: SpeechTranscriber) async throws {
@@ -397,5 +490,14 @@ public final class TranscriptionEngine {
     /// Returns the stream of recognized sound labels.
     public func soundLabelsStream() -> AsyncStream<SoundLabelKind> {
         soundLabelerStream ?? AsyncStream { $0.finish() }
+    }
+
+    /// Returns the stream of interruption events.
+    public func events() -> AsyncStream<CaptionEngineEvent> {
+        if let stream = eventsStream { return stream }
+        let (stream, cont) = AsyncStream.makeStream(of: CaptionEngineEvent.self)
+        self.eventsStream = stream
+        self.eventsContinuation = cont
+        return stream
     }
 }

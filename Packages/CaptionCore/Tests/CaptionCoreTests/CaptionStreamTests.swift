@@ -173,4 +173,73 @@ final class CaptionStreamTests: XCTestCase {
         s.insertSoundLabel(.laughter)
         XCTAssertTrue(s.lines[0].styledWords.allSatisfy { $0.emphasis == .normal })
     }
+
+    // MARK: - Markers
+
+    func testInsertMarkerAddsNewLine() {
+        var s = CaptionStream()
+        s.insertMarker("— while you were away —")
+        XCTAssertEqual(s.lines.count, 1)
+        XCTAssertEqual(s.lines[0].marker, "— while you were away —")
+        XCTAssertEqual(s.lines[0].text, "— while you were away —")
+    }
+
+    func testInsertMarkerIsAlwaysFinal() {
+        var s = CaptionStream()
+        s.insertMarker("— gap —")
+        XCTAssertTrue(s.lines[0].isFinal)
+        XCTAssertNil(s.lines[0].tail)
+    }
+
+    func testInsertMarkerClosesOpenTail() {
+        var s = CaptionStream()
+        s.apply(text: "hel", isFinal: false)
+        XCTAssertTrue(s.lines[0].tail != nil)
+        s.insertMarker("— gap —")
+        XCTAssertEqual(s.lines.count, 2)
+        XCTAssertTrue(s.lines[0].isFinal)
+        XCTAssertEqual(s.lines[0].text, "hel")
+        XCTAssertEqual(s.lines[1].marker, "— gap —")
+    }
+
+    func testSpeechAfterMarkerStartsNewLine() {
+        var s = CaptionStream()
+        s.insertMarker("— gap —")
+        s.apply(text: "hello", isFinal: false)
+        XCTAssertEqual(s.lines.count, 2)
+        XCTAssertEqual(s.lines[0].marker, "— gap —")
+        XCTAssertNil(s.lines[1].marker)
+        XCTAssertEqual(s.lines[1].text, "hello")
+    }
+
+    func testSpeechNeverMergesIntoMarker() {
+        var s = CaptionStream()
+        s.insertMarker("— gap —")
+        s.apply(text: "thank", isFinal: true)
+        s.apply(text: "you", isFinal: false)
+        XCTAssertEqual(s.lines.count, 3)
+        XCTAssertEqual(s.lines[0].marker, "— gap —")
+        XCTAssertEqual(s.lines[1].text, "thank")
+        XCTAssertEqual(s.lines[2].text, "you")
+    }
+
+    func testMarkerLineHasNilSpeaker() {
+        var s = CaptionStream()
+        s.insertMarker("— gap —")
+        XCTAssertNil(s.lines[0].speaker)
+    }
+
+    func testIsMarkerPropertyWorks() {
+        var s = CaptionStream()
+        s.apply(text: "hello", isFinal: true)
+        s.insertMarker("— gap —")
+        XCTAssertFalse(s.lines[0].isMarker)
+        XCTAssertTrue(s.lines[1].isMarker)
+    }
+
+    func testMarkerWordsDefaultToNormal() {
+        var s = CaptionStream()
+        s.insertMarker("— gap —")
+        XCTAssertTrue(s.lines[0].styledWords.allSatisfy { $0.emphasis == .normal })
+    }
 }

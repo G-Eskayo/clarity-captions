@@ -16,29 +16,37 @@ final class CaptionSessionControllerTests: XCTestCase {
         var failAfterUpdates: Error?          // stream throws after yielding `updates`
         var holdOpen = false                  // keep the streams open until stop()
         var labels: [SoundLabelKind] = []
+        var eventsList: [CaptionEngineEvent] = []
         private(set) var stopCount = 0
         private var updateCont: AsyncThrowingStream<CaptionUpdate, Error>.Continuation?
         private var labelCont: AsyncStream<SoundLabelKind>.Continuation?
         private var labelStream: AsyncStream<SoundLabelKind>?
+        var eventCont: AsyncStream<CaptionEngineEvent>.Continuation?
+        private var eventStream: AsyncStream<CaptionEngineEvent>?
 
         func start() async throws -> AsyncThrowingStream<CaptionUpdate, Error> {
             if let startError { throw startError }
             let (ls, lc) = AsyncStream.makeStream(of: SoundLabelKind.self)
             labelStream = ls; labelCont = lc
+            let (es, ec) = AsyncStream.makeStream(of: CaptionEngineEvent.self)
+            eventStream = es; eventCont = ec
             let (stream, cont) = AsyncThrowingStream.makeStream(of: CaptionUpdate.self)
             updateCont = cont
             for u in updates { cont.yield(u) }
             for l in labels { lc.yield(l) }
+            for e in eventsList { ec.yield(e) }
             if !holdOpen {
                 if let failAfterUpdates { cont.finish(throwing: failAfterUpdates) } else { cont.finish() }
                 lc.finish()
+                ec.finish()
             }
             return stream
         }
         func soundLabelsStream() -> AsyncStream<SoundLabelKind> { labelStream ?? AsyncStream { $0.finish() } }
+        func events() -> AsyncStream<CaptionEngineEvent> { eventStream ?? AsyncStream { $0.finish() } }
         func stop() async {
             stopCount += 1
-            updateCont?.finish(); labelCont?.finish()
+            updateCont?.finish(); labelCont?.finish(); eventCont?.finish()
         }
     }
 
@@ -55,9 +63,9 @@ final class CaptionSessionControllerTests: XCTestCase {
         XCTAssertTrue(condition(), "timed out waiting for: \(what)")
     }
 
-    private func make(_ engines: @escaping () -> FakeEngine) -> (CaptionSessionController, Log) {
+    private func make(_ engines: @escaping () -> FakeEngine, pauseTimeout: Duration = .seconds(30)) -> (CaptionSessionController, Log) {
         let log = Log()
-        let c = CaptionSessionController(makeEngine: { log.created += 1; return engines() })
+        let c = CaptionSessionController(makeEngine: { log.created += 1; return engines() }, pauseTimeout: pauseTimeout)
         c.onStateChange = { log.states.append($0) }
         c.onUpdate = { log.updates.append($0.text) }
         c.onSoundLabel = { log.labels.append($0) }
@@ -153,5 +161,62 @@ final class CaptionSessionControllerTests: XCTestCase {
             try? await Task.sleep(nanoseconds: 10_000_000)
         }
         XCTAssertEqual(peak, 1)
+    }
+
+    func testPauseOnInterruptionAndResumeWithinTimeoutReturnsToListening() async {
+        let engine = FakeEngine()
+        engine.holdOpen = true
+        engine.updates = [update("hello")]
+        let (c, log) = make({ engine }, pauseTimeout: .milliseconds(100))
+        c.start()
+        await eventually("listening") { c.state == .listening }
+
+        // Send the interruption began event
+        if let cont = engine.eventCont { cont.yield(.interruptionBegan(.otherApp)) }
+        await eventually("paused") { if case .paused = c.state { return true } else { return false } }
+
+        // Send the interruption ended event within timeout
+        if let cont = engine.eventCont { cont.yield(.interruptionEnded) }
+        await eventually("back to listening") { c.state == .listening }
+
+        XCTAssertEqual(log.states.contains(where: { if case .paused = $0 { return true } else { return false } }), true)
+        await c.stopAndWait()
+    }
+
+    func testPauseWithoutResumeBeforeTimeoutEndsInFailed() async {
+        let engine = FakeEngine()
+        engine.holdOpen = true
+        engine.updates = [update("hello")]
+        let (c, _) = make({ engine }, pauseTimeout: .milliseconds(100))
+        c.start()
+        await eventually("listening") { c.state == .listening }
+
+        // Send interruption began and hold it open (don't send ended)
+        if let cont = engine.eventCont { cont.yield(.interruptionBegan(.phoneCall)) }
+        await eventually("paused") { if case .paused = c.state { return true } else { return false } }
+
+        // Wait for timeout to fire
+        await eventually("failed") { if case .failed = c.state { return true } else { return false } }
+
+        if case .failed(let reason) = c.state {
+            XCTAssertEqual(reason, "Phone call")
+        } else {
+            XCTFail("Expected failed state with reason")
+        }
+
+        await c.stopAndWait()
+    }
+
+    func testInterruptionWhileIdleIsNoOp() async {
+        let engine = FakeEngine()
+        engine.holdOpen = true
+        let (c, _) = make({ engine }, pauseTimeout: .milliseconds(100))
+        // Don't start, stay in .idle
+
+        XCTAssertEqual(c.state, .idle)
+        // Sending interruption events shouldn't matter since we're idle
+        if let cont = engine.eventCont { cont.yield(.interruptionBegan(.otherApp)) }
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertEqual(c.state, .idle)
     }
 }

@@ -19,6 +19,8 @@ final class CaptionModel: ObservableObject {
     /// Only used by the developer latency measurement below.
     private var task: Task<Void, Never>?
     private var controller: CaptionSessionController!
+    private var previousState: CaptionState = .idle
+    private var backgroundTracker = BackgroundReturnTracker()
 
     init() {
         controller = CaptionSessionController(makeEngine: { [weak self] in
@@ -30,7 +32,15 @@ final class CaptionModel: ObservableObject {
             let vocabulary = VocabularyList(rawText: rawText).entries
             return TranscriptionEngine(micMode: self.micMode, diarizerModelURL: url, contextualStrings: vocabulary)
         })
-        controller.onStateChange = { [weak self] in self?.state = $0 }
+        controller.onStateChange = { [weak self] in
+            guard let self else { return }
+            let oldState = self.state
+            self.state = $0
+            if case .paused = oldState, case .listening = $0 {
+                self.stream.insertMarker(BackgroundMarker.text)
+            }
+            self.previousState = oldState
+        }
         controller.onStartup = { [weak self] in self?.startup = $0 }
         controller.onSoundLabel = { [weak self] in self?.stream.insertSoundLabel($0) }
         controller.onUpdate = { [weak self] u in
@@ -49,6 +59,24 @@ final class CaptionModel: ObservableObject {
         case .stop: controller.stop()
         case .none: break
         }
+    }
+
+    func handleScenePhaseChange(_ newPhase: ScenePhase) {
+        switch newPhase {
+        case .background:
+            backgroundTracker.appDidEnterBackground()
+        case .active:
+            if backgroundTracker.appDidBecomeActive() && (state == .listening || isActiveCaptioning) {
+                stream.insertMarker(BackgroundMarker.text)
+            }
+        default:
+            break
+        }
+    }
+
+    private var isActiveCaptioning: Bool {
+        if case .paused = state { return true }
+        return false
     }
 
     func measureLatency() {
@@ -120,10 +148,12 @@ struct ContentView: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
     private var style: CaptionStyle { model.style }
     private var control: PrimaryControl { PrimaryControl.for(model.state) }
     private var landscape: Bool { verticalSizeClass == .compact }
+    private var isPaused: Bool { if case .paused = model.state { true } else { false } }
 
     var body: some View {
         ZStack {
@@ -153,6 +183,9 @@ struct ContentView: View {
             UIAccessibility.post(notification: .announcement, argument: StatusWords.announcement(for: newState))
             handleStateChange(newState)
         }
+        .onChange(of: scenePhase) { _, newPhase in
+            model.handleScenePhaseChange(newPhase)
+        }
     }
 
     /// The branded animation only appears if getting ready is genuinely slow (a cold start, a download); a quick
@@ -169,7 +202,7 @@ struct ContentView: View {
                 animationShownAt = Date()
                 withAnimation(.easeInOut(duration: 0.25)) { showPreparingAnimation = true }
             }
-        case .listening, .idle, .failed:
+        case .listening, .paused, .idle, .failed:
             preparingStartTime = nil
             guard showPreparingAnimation else { return }
             let shown = animationShownAt.map { Date().timeIntervalSince($0) } ?? LaunchAnimationGate.minimumDuration
@@ -266,7 +299,12 @@ struct ContentView: View {
                                         }
                                     }
                             }
-                            if line.isSoundLabel {
+                            if line.isMarker {
+                                Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize)).italic()).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
+                                    .multilineTextAlignment(.center)
+                                    .frame(maxWidth: .infinity)
+                                    .accessibilityLabel(line.marker ?? "")
+                            } else if line.isSoundLabel {
                                 Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize)).italic()).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
                                     .accessibilityLabel(line.soundLabel.map { soundLabelA11yLabel(for: $0) } ?? "")
                             } else {
@@ -399,14 +437,14 @@ struct ContentView: View {
                 Text("Voice").tag(MicMode.voiceProcessing)
             }
             .pickerStyle(.segmented)
-            .disabled(model.state == .listening || model.state == .preparing)
+            .disabled(model.state == .listening || isPaused || model.state == .preparing)
             if model.micMode == .voiceProcessing {
                 Button("System mic modes (Voice Isolation)…") { AVCaptureDevice.showSystemUserInterface(.microphoneModes) }
                     .font(.footnote)
             }
             Button("Measure latency") { model.measureLatency() }
                 .font(.footnote)
-                .disabled(model.state == .listening || model.state == .preparing)
+                .disabled(model.state == .listening || isPaused || model.state == .preparing)
             if let lag = model.lag { Text("lag \(String(format: "%.1f", lag))s").font(.caption2) }
             if !model.startup.isEmpty { Text("startup: \(model.startup)").font(.caption2) }
             if let report = model.latencyReport { Text("LATENCY \(report)").font(.caption2) }

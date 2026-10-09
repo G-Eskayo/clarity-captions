@@ -24,6 +24,14 @@ final class MainScreenTests: XCTestCase {
         XCTAssertTrue(c.isEnabled)
     }
 
+    func testPausedOffersStop() {
+        let c = PrimaryControl.for(.paused("Phone call"))
+        XCTAssertEqual(c.title, "Stop")
+        XCTAssertEqual(c.action, .stop)
+        XCTAssertTrue(c.isEnabled)
+        XCTAssertEqual(c.presentation, .compact)
+    }
+
     func testAfterAFailureTheControlIsOneTapBack() {
         let c = PrimaryControl.for(.failed("model missing"))
         XCTAssertEqual(c.title, "Try again")
@@ -35,6 +43,7 @@ final class MainScreenTests: XCTestCase {
         XCTAssertEqual(StatusWords.headline(for: .idle), "Ready")
         XCTAssertEqual(StatusWords.headline(for: .preparing), "Getting ready…")
         XCTAssertEqual(StatusWords.headline(for: .listening), "Listening")
+        XCTAssertEqual(StatusWords.headline(for: .paused("Phone call")), "Captions paused")
         XCTAssertEqual(StatusWords.headline(for: .failed("x")), "Stopped")
     }
 
@@ -45,9 +54,16 @@ final class MainScreenTests: XCTestCase {
         XCTAssertNil(StatusWords.detail(for: .listening))
     }
 
+    func testPauseReasonIsDetail() {
+        let pausedState = CaptionState.paused("Phone call")
+        XCTAssertEqual(StatusWords.detail(for: pausedState), "Phone call")
+    }
+
     func testAnnouncementCombinesHeadlineAndDetail() {
         XCTAssertEqual(StatusWords.announcement(for: .listening), "Listening")
         let failure = CaptionState.failed("network error")
         XCTAssertEqual(StatusWords.announcement(for: failure), "Stopped. network error")
+        let paused = CaptionState.paused("Phone call")
+        XCTAssertEqual(StatusWords.announcement(for: paused), "Captions paused. Phone call")
     }
 }
