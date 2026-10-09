@@ -6,14 +6,14 @@ extension RGBA {
 }
 
 extension CaptionStyle {
-    func font(for category: SystemTextSizeCategory, scaled: Double = 1) -> Font {
+    func font(for category: SystemTextSizeCategory, device: CaptionDeviceClass = .phone, scaled: Double = 1) -> Font {
         let design: Font.Design = switch font {
         case .system: .default
         case .rounded: .rounded
         case .serif: .serif
         case .monospaced: .monospaced
         }
-        return .system(size: size.pointSize(for: category) * scaled, weight: .regular, design: design)
+        return .system(size: size.pointSize(for: category, device: device) * scaled, weight: .regular, design: design)
     }
 }
 
