@@ -4,11 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Seal Launch Prototype</title>
-<!-- Launch animation prototype for the owner's approval (docs/design/v1-polish-spec.md section 8).
+<!-- Launch animation prototype for the owner's approval (docs/design/v1-polish-spec.md section 8, round 2).
      Self-contained: inline SVG + JS, no external files. The whole scene is drawn by render(t), a pure function of
      time, so the frame strips and clips in design/mascot/frames/ are exactly what plays here.
-     URL parameters (used by the frame capture): opt=A|B|C, speed=fast|slow, handoff=glide|dive, theme=light|dark,
-     motion=full|reduced, t=<seconds> (render that instant, no playback), chrome=0 (stage only). -->
+     The screen it lands in is #96's main screen (docs/design/mocks/2026-10-09/ on design/v1-polish-mocks):
+     Start captions at the bottom middle, gear top-left, Paper (light) or Night (dark).
+     Progress is modelled on what the app really does at launch (see the PROGRESS section below); durations are
+     simulated, not measured.
+     URL parameters (used by the frame capture): opt=A|B|C, progress=a|b|c, launch=ordinary|first,
+     speed=fast|slow, handoff=irisout|irisin, theme=light|dark, motion=full|reduced, t=<seconds>, chrome=0. -->
 <style>
   :root { --bg: #f3efe6; --text: #12302f; --muted: #5a6f6c; --btn: #ffffff; --btn-on: #1F998B; --btn-on-text: #FBE8C1; --rule: #d9d2c5; }
   @media (prefers-color-scheme: dark) {
@@ -17,8 +21,8 @@
   :root[data-theme="dark"] { --bg: #0c1615; --text: #eef3f1; --muted: #a9bdb9; --btn: #1a2b2a; --btn-on: #7fd1c9; --btn-on-text: #0c1615; --rule: #2a3d3c; }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  main { max-width: 980px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
-  @media (min-width: 760px) { main { grid-template-columns: 300px 1fr; align-items: start; } }
+  main { max-width: 1000px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 780px) { main { grid-template-columns: 340px 1fr; align-items: start; } }
   h1 { font-size: 1.25rem; margin: 0 0 4px; }
   p { margin: 0 0 10px; color: var(--muted); }
   .group { margin: 0 0 12px; }
@@ -27,56 +31,75 @@
   button { font: inherit; border: 1px solid var(--rule); background: var(--btn); color: var(--text); border-radius: 999px; padding: 6px 14px; cursor: pointer; transition: transform .08s; }
   button:active { transform: scale(.94); }
   button[aria-pressed="true"] { background: var(--btn-on); color: var(--btn-on-text); border-color: transparent; }
-  .readout { font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); white-space: pre-line; }
+  .note { font-size: .85rem; color: var(--muted); margin-top: 4px; }
+  .readout { font: 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); white-space: pre-line; }
   .stage-wrap { display: flex; justify-content: center; }
-  .phone { width: min(100%, 390px); aspect-ratio: 390 / 844; border-radius: 44px; overflow: hidden; box-shadow: 0 0 0 10px #111, 0 18px 50px rgba(0,0,0,.35); background: #000; }
+  .phone { width: min(100%, 402px); aspect-ratio: 402 / 874; border-radius: 50px; overflow: hidden; box-shadow: 0 0 0 10px #111, 0 18px 50px rgba(0,0,0,.35); background: #000; }
   svg#scene { width: 100%; height: 100%; display: block; }
   body.bare main { display: block; padding: 0; max-width: none; }
   body.bare .controls { display: none; }
-  body.bare .phone { width: 390px; height: 844px; border-radius: 0; box-shadow: none; }
+  body.bare .phone { width: 402px; height: 874px; border-radius: 0; box-shadow: none; }
 </style>
 </head>
 <body>
 <main>
   <section class="controls">
     <h1>Seal launch animation</h1>
-    <p>Prototype for approval. Pick an option, a start-up speed and a hand-off, then Replay.</p>
-    <div class="group"><div class="label">Animation</div><div class="row" data-key="opt">
+    <p>Round 2. Pick a dance, a progress style, a start-up case and a hand-off, then Replay.</p>
+    <div class="group"><div class="label">Dance</div><div class="row" data-key="opt">
       <button data-v="A">A · Clap &amp; wiggle</button><button data-v="B">B · Balance a bubble</button><button data-v="C">C · Belly slide &amp; wave</button></div></div>
-    <div class="group"><div class="label">Start-up</div><div class="row" data-key="speed">
-      <button data-v="fast">Fast start</button><button data-v="slow">Slow start</button></div></div>
+    <div class="group"><div class="label">Progress</div><div class="row" data-key="progress">
+      <button data-v="a">a · Pre-load, bar every launch</button><button data-v="b">b · Bar only for real setup</button><button data-v="c">c · No bar</button></div>
+      <div class="note" id="progressNote"></div></div>
+    <div class="group"><div class="label">This launch</div><div class="row" data-key="launch">
+      <button data-v="ordinary">Ordinary launch</button><button data-v="first">First launch / after an update</button></div></div>
+    <div class="group"><div class="label">Speed</div><div class="row" data-key="speed">
+      <button data-v="fast">Fast</button><button data-v="slow">Slow</button></div></div>
     <div class="group"><div class="label">Hand-off</div><div class="row" data-key="handoff">
-      <button data-v="glide">Glide into Start</button><button data-v="dive">Dive &amp; wash in</button></div></div>
+      <button data-v="irisout">Iris out</button><button data-v="irisin">Iris in</button></div></div>
     <div class="group"><div class="label">Appearance</div><div class="row" data-key="theme">
-      <button data-v="light">Light</button><button data-v="dark">Dark</button></div></div>
+      <button data-v="light">Light (Paper)</button><button data-v="dark">Dark (Night)</button></div></div>
     <div class="group"><div class="label">Motion</div><div class="row" data-key="motion">
       <button data-v="full">Full</button><button data-v="reduced">Reduce Motion</button></div></div>
     <div class="group"><div class="row"><button id="replay">▶ Replay</button></div></div>
     <div class="readout" id="readout"></div>
   </section>
   <div class="stage-wrap"><div class="phone">
-    <svg id="scene" viewBox="0 0 390 844" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Seal launch animation">
+    <svg id="scene" viewBox="0 0 402 874" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Seal launch animation">
       <defs>
-        <clipPath id="washClip"><rect id="washRect" x="0" y="0" width="390" height="844"/></clipPath>
+        <clipPath id="irisInClip"><circle id="irisInCircle" cx="201" cy="437" r="600"/></clipPath>
+        <mask id="irisOutMask" maskUnits="userSpaceOnUse" x="0" y="0" width="402" height="874">
+          <rect width="402" height="874" fill="#fff"/><circle id="irisOutHole" cx="201" cy="437" r="0" fill="#000"/>
+        </mask>
       </defs>
 
-      <!-- The start screen the animation hands off to (a stand-in: Start top middle, gear top left, per the spec). -->
-      <g id="main" clip-path="url(#washClip)">
-        <rect id="mainBg" width="390" height="844"/>
-        <g id="gear" transform="translate(34 70)">
-          <path id="gearPath" d="M-3.2 -14 h6.4 l1 4.1 a10.5 10.5 0 0 1 3.3 1.9 l4 -1.4 l3.2 5.5 l-3.1 2.9 a10.5 10.5 0 0 1 0 3.8 l3.1 2.9 l-3.2 5.5 l-4 -1.4 a10.5 10.5 0 0 1 -3.3 1.9 l-1 4.1 h-6.4 l-1 -4.1 a10.5 10.5 0 0 1 -3.3 -1.9 l-4 1.4 l-3.2 -5.5 l3.1 -2.9 a10.5 10.5 0 0 1 0 -3.8 l-3.1 -2.9 l3.2 -5.5 l4 1.4 a10.5 10.5 0 0 1 3.3 -1.9 z M0 -5 a5 5 0 1 0 0.01 0 z" fill-rule="evenodd"/>
+      <!-- The screen it lands in: #96's main screen before Start (image 11, frame 4). Gear top-left, Start captions at
+           the bottom middle as the gummy pill with a flat lip. While captioning, the Listening status sits on the gear
+           row (#96); before Start there is nothing there. -->
+      <g id="main">
+        <rect id="mainBg" width="402" height="874"/>
+        <text id="mainClock" x="34" y="34" font-size="16" font-weight="600" font-family="-apple-system, BlinkMacSystemFont, sans-serif">9:41</text>
+        <g id="gear" transform="translate(27 81) scale(1.25)" fill="none" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3.2"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
         </g>
-        <g id="startPill" transform="translate(195 92)">
-          <rect x="-108" y="-29" width="216" height="58" rx="29" fill="#1F998B"/>
-          <text x="0" y="7" text-anchor="middle" font-size="20" font-weight="700" fill="#FBE8C1" font-family="-apple-system, BlinkMacSystemFont, sans-serif">Start captions</text>
+        <g id="startPill">
+          <rect id="startLip" x="20" y="780" width="362" height="60" rx="30"/>
+          <rect id="startFace" x="20" y="774" width="362" height="60" rx="30"/>
+          <text id="startLabel" x="201" y="811" text-anchor="middle" font-size="21" font-weight="800" letter-spacing="0.84" font-family="-apple-system, 'SF Pro Rounded', BlinkMacSystemFont, sans-serif">Start captions</text>
         </g>
-        <text id="hint" x="195" y="430" text-anchor="middle" font-size="19" font-family="-apple-system, BlinkMacSystemFont, sans-serif">Tap Start captions</text>
-        <text id="hint2" x="195" y="458" text-anchor="middle" font-size="19" font-family="-apple-system, BlinkMacSystemFont, sans-serif">to see what people say.</text>
       </g>
 
-      <!-- The launch screen. -->
+      <!-- The launch screen: green background (clipped or masked by the iris), progress bar, then the seal on top. -->
       <g id="launch">
-        <rect id="launchBg" width="390" height="844"/>
+        <g id="launchBgWrap"><rect id="launchBg" width="402" height="874"/>
+          <text id="launchClock" x="34" y="34" font-size="16" font-weight="600" fill="#FBE8C1" font-family="-apple-system, BlinkMacSystemFont, sans-serif">9:41</text>
+          <g id="progress" transform="translate(111 640)">
+            <rect width="180" height="10" rx="5" fill="#FBE8C1" opacity="0.28"/>
+            <rect id="progressPulse" x="0" width="0" height="10" rx="5" fill="#FBE8C1" opacity="0"/>
+            <rect id="progressFill" width="0" height="10" rx="5" fill="#FBE8C1"/>
+          </g>
+        </g>
         <g id="speed" stroke="#FBE8C1" stroke-width="7" stroke-linecap="round" opacity="0">
           <line x1="0" y1="0" x2="-70" y2="0"/><line x1="-14" y1="-34" x2="-64" y2="-34"/><line x1="-14" y1="34" x2="-54" y2="34"/>
         </g>
@@ -116,10 +139,6 @@
             <line x1="760" y1="345" x2="870" y2="197"/><line x1="808" y1="462" x2="963" y2="385"/><line x1="818" y1="578" x2="962" y2="578"/>
           </g>
         </g>
-        <g id="progress" transform="translate(105 640)">
-          <rect width="180" height="10" rx="5" fill="#FBE8C1" opacity="0.28"/>
-          <rect id="progressFill" width="0" height="10" rx="5" fill="#FBE8C1"/>
-        </g>
       </g>
     </svg>
   </div></div>
@@ -131,23 +150,76 @@
   const reducedSystem = matchMedia('(prefers-reduced-motion: reduce)').matches
   const state = {
     opt: params.get('opt') || 'A',
+    progress: params.get('progress') || 'a',
+    launch: params.get('launch') || 'ordinary',
     speed: params.get('speed') || 'fast',
-    handoff: params.get('handoff') || 'glide',
+    handoff: params.get('handoff') || 'irisout',
     theme: params.get('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
     motion: params.get('motion') || (reducedSystem ? 'reduced' : 'full'),
   }
   if (params.get('chrome') === '0') document.body.classList.add('bare')
 
-  // ---------- timing (the spec's rule) ----------
-  const DANCE = { A: 2.6, B: 2.8, C: 2.6 }      // each dance's length, seconds
-  const PROGRESS_DONE = { fast: 1.1, slow: 4.3 } // simulated start-up
-  const HOLD = 0.75                               // freeze frame after BOTH the dance and progress are done
-  const HANDOFF = 0.9
+  // ---------- PROGRESS: what the app really does at launch ----------
+  // From the code (2026-10-09):
+  // - Ordinary launch: FirstRunView.refresh() only reads facts (mic permission, speech model installed, speaker model
+  //   warmed for this build, device support) and goes straight to the main screen. No setup at launch.
+  // - First launch / after an update: the English speech model downloads (SpeechDownload reports a real %), then the
+  //   speaker model warms up (TranscriptionEngine.warmUp: one step, no %).
+  // - Pressing Start: TranscriptionEngine.startSession runs "speech model" (installed check), "speaker model" (loads
+  //   Sortformer), "sound classifier", then opens the mic ("analyzer", "audio start"). The first three run BEFORE the
+  //   audio session is activated, so they can be done at launch without the mic.
+  // Durations below are SIMULATED (not measured on a phone); only the order and the kind of each step are real.
+  const SIM = {
+    fast: { download: 2.4, warm: 1.2, speechCheck: 0.15, speakerLoad: 0.9, sound: 0.2, facts: 0.05 },
+    slow: { download: 7.0, warm: 3.0, speechCheck: 0.3, speakerLoad: 2.6, sound: 0.5, facts: 0.1 },
+  }
+  // Each step: name, duration, whether it reports a real % (download) or only "done" (everything else), and its share
+  // of the bar. Steps without a % fill their share in one go when they finish; until then that share pulses.
+  function steps() {
+    const d = SIM[state.speed]
+    const setup = state.launch === 'first'
+      ? [{ name: 'speech model download', dur: d.download, pct: true, share: 0.75 }, { name: 'speaker model warm-up', dur: d.warm, pct: false, share: 0.25 }]
+      : []
+    if (state.progress === 'a') {
+      // Pre-load the captioning engine every launch (mic stays closed), so Start is instant.
+      const engine = [{ name: 'speech model check', dur: d.speechCheck, pct: false }, { name: 'speaker model load', dur: d.speakerLoad, pct: false }, { name: 'sound classifier', dur: d.sound, pct: false }]
+      if (!setup.length) return engine.map(s => ({ ...s, share: 1 / 3 }))
+      // First launch with pre-load: download, warm-up and the sound classifier (the warmed speaker model stays loaded).
+      return [{ ...setup[0], share: 0.7 }, { ...setup[1], share: 0.2 }, { ...engine[2], share: 0.1 }]
+    }
+    // b and c: ordinary launches only read the facts.
+    return setup.length ? setup : [{ name: 'read facts', dur: d.facts, pct: false, share: 1 }]
+  }
+  const barShown = () => state.progress === 'a' || (state.progress === 'b' && state.launch === 'first')
+  function readyTime() { return steps().reduce((s, x) => s + x.dur, 0) }
+  function progressAt(t) { // { fill 0..1, pulse: [from, to] of the step in flight, or null }
+    let start = 0, filled = 0
+    for (const s of steps()) {
+      if (t < start + s.dur) {
+        const k = (t - start) / s.dur
+        if (s.pct) return { fill: filled + s.share * downloadCurve(k), pulse: null }
+        return { fill: filled, pulse: [filled, filled + s.share] }
+      }
+      start += s.dur; filled += s.share
+    }
+    return { fill: 1, pulse: null }
+  }
+  // A download's % is real but uneven: quick at first, a slower stretch, then done.
+  function downloadCurve(k) { return state.speed === 'slow' ? (k < 0.5 ? 0.55 * (k / 0.5) : k < 0.75 ? 0.55 + 0.1 * ((k - 0.5) / 0.25) : 0.65 + 0.35 * ((k - 0.75) / 0.25)) : k }
+
+  // ---------- timing (the spec's rule, plus the ready beat) ----------
+  const DANCE = { A: 2.6, B: 2.8, C: 2.6 }
+  const BEAT = 0.55     // the "ready" beat: a happy nod and a hop, once loading is done and the dance has finished
+  const HOLD = 0.75     // freeze frame after the beat
+  const HANDOFF = 1.0
   function timeline() {
-    const dance = state.motion === 'reduced' ? 0.3 : DANCE[state.opt]
-    const progress = PROGRESS_DONE[state.speed]
-    const handoffStart = Math.max(dance, progress) + HOLD
-    return { dance, progress, handoffStart, end: handoffStart + HANDOFF }
+    const reduced = state.motion === 'reduced'
+    const dance = reduced ? 0.3 : DANCE[state.opt]
+    const ready = readyTime()
+    const beatStart = Math.max(dance, ready)
+    const beat = reduced ? 0 : BEAT
+    const handoffStart = beatStart + beat + HOLD
+    return { dance, ready, beatStart, beat, handoffStart, end: handoffStart + HANDOFF }
   }
 
   // ---------- easing ----------
@@ -157,20 +229,10 @@
   const easeOutCubic = k => 1 - Math.pow(1 - k, 3)
   const easeInCubic = k => k * k * k
   const easeInOutSine = k => -(Math.cos(Math.PI * k) - 1) / 2
+  const easeInOutCubic = k => k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2
   const easeOutBack = k => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2) }
 
-  function progressAt(t) {
-    const P = PROGRESS_DONE[state.speed]
-    if (state.speed === 'fast') return easeOutCubic(clamp(t / P))
-    // Slow: a realistic stall partway (first-launch model warm-up), then it finishes.
-    if (t < 0.8) return 0.35 * easeOutCubic(t / 0.8)
-    if (t < 2.0) return lerp(0.35, 0.42, (t - 0.8) / 1.2)
-    if (t < 3.2) return lerp(0.42, 0.8, easeInOutSine((t - 2.0) / 1.2))
-    return lerp(0.8, 1, easeOutCubic(clamp((t - 3.2) / (P - 3.2))))
-  }
-
-  // ---------- poses ----------
-  // A pose: whole-seal offset (screen px), rotation, squash; part rotations (deg); eye openness; mouth; rays; extras.
+  // ---------- dances (unchanged from round 1) ----------
   const base = () => ({ dx: 0, dy: 0, rot: 0, s: 1, sx: 1, sy: 1, opacity: 1, flipF: 0, flipB: 0, eyeNear: 1, eyeFar: 1,
     look: 0, mouth: 1, rays: 1, raysO: 1, bubble: null, speed: 0 })
 
@@ -185,7 +247,7 @@
       p.flipF = -55 * clap * env; p.flipB = 32 * clap * env
       p.mouth = 0.55 + 0.45 * clap; p.rays = 0.7 + 0.45 * clap
     }
-    if (u >= 1.8 && u < 2.2) { const k = seg(u, 1.8, 2.2); p.dy = -70 * Math.sin(Math.PI * k); const q = Math.max(0, Math.sin(Math.PI * k * 2 - Math.PI)) ; p.sx = 1 + 0.1 * q; p.sy = 1 - 0.1 * q; p.flipB = 20 * Math.sin(Math.PI * k) }
+    if (u >= 1.8 && u < 2.2) { const k = seg(u, 1.8, 2.2); p.dy = -70 * Math.sin(Math.PI * k); const q = Math.max(0, Math.sin(Math.PI * k * 2 - Math.PI)); p.sx = 1 + 0.1 * q; p.sy = 1 - 0.1 * q; p.flipB = 20 * Math.sin(Math.PI * k) }
     if (u >= 2.2) { const k = easeOutBack(seg(u, 2.2, 2.6)); p.rot = -7 * k; p.eyeNear = 1 - 0.88 * clamp(k); p.flipF = -38 * k; p.rays = 0.7 + 0.3 * clamp(k) }
     return p
   }
@@ -223,77 +285,106 @@
     } else { const k = easeInOutSine(seg(u, 2.1, 2.6)); p.flipF = lerp(-62, 0, k); p.raysO = 1; p.rays = 1 }
     return p
   }
-
   const POSES = { A: poseA, B: poseB, C: poseC }
+
+  // The ready beat: on top of the landing pose, a quick happy nod with a little hop, a flipper flick and a ray flash.
+  function addReadyBeat(p, k) { // k 0..1 through the beat
+    const nod = Math.sin(Math.PI * 2 * k) * (1 - k)
+    p.rot += 10 * nod
+    p.dy -= 26 * Math.sin(Math.PI * clamp(k / 0.6))
+    const squash = Math.sin(Math.PI * seg(k, 0.6, 1))
+    p.sx *= 1 + 0.08 * squash; p.sy *= 1 - 0.08 * squash
+    p.flipF += -30 * Math.sin(Math.PI * k)
+    p.rays *= 1 + 0.35 * Math.sin(Math.PI * k)
+    p.mouth = Math.max(p.mouth, 0.7 + 0.3 * Math.sin(Math.PI * k))
+    return p
+  }
 
   // ---------- drawing ----------
   const $ = id => document.getElementById(id)
+  // Target themes from #96: Paper (light) and Night (dark). Start is the gummy pill: theme text color fill, flat lip.
   const THEMES = {
-    light: { launch: '#1F998B', main: '#FAF5E6', text: '#5c6b69', gear: '#1F998B' },
-    dark: { launch: '#0F3F3C', main: '#101716', text: '#9fb3b0', gear: '#7fd1c9' },
+    light: { launch: '#1F998B', bg: '#FAF5E6', text: '#141419', gear: '#14514B' },
+    dark: { launch: '#0F3F3C', bg: '#1D2536', text: '#E9E3D5', gear: '#C9D6F2' },
   }
-  const SEAL = { x: 195, y: 560, scale: 0.3, pivotX: 430, pivotY: 905 }
+  function lum(hex) { const c = hex.slice(1).match(/../g).map(h => { const v = parseInt(h, 16) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4) }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] }
+  function lipColor(hex, amt = 0.28) { // same rule as #96's mocks (build.mjs)
+    const c = hex.slice(1).match(/../g).map(h => parseInt(h, 16)); const dark = lum(hex) < 0.25
+    return '#' + c.map(v => Math.round(dark ? v + (255 - v) * amt : v * (1 - amt))).map(v => v.toString(16).padStart(2, '0')).join('')
+  }
+  const SEAL = { x: 201, y: 560, scale: 0.3, pivotX: 430, pivotY: 905 }
+  const CENTER = { x: 201, y: 437 }
+  const COVER_R = Math.hypot(402, 874) / 2 + 10
 
   function rot(id, deg, px, py) { $(id).setAttribute('transform', `rotate(${deg} ${px} ${py})`) }
   function scaleAt(el, sx, sy, px, py) { el.setAttribute('transform', `translate(${px} ${py}) scale(${sx} ${sy}) translate(${-px} ${-py})`) }
 
   function render(t) {
-    const tl = timeline(), th = THEMES[state.theme]
+    const tl = timeline(), th = THEMES[state.theme], reduced = state.motion === 'reduced'
     $('launchBg').setAttribute('fill', th.launch)
-    $('mainBg').setAttribute('fill', th.main)
-    $('gearPath').setAttribute('fill', th.gear)
-    $('hint').setAttribute('fill', th.text); $('hint2').setAttribute('fill', th.text)
+    $('mainBg').setAttribute('fill', th.bg)
+    $('mainClock').setAttribute('fill', th.text)
+    $('gear').setAttribute('stroke', th.gear)
+    $('startFace').setAttribute('fill', th.text); $('startLip').setAttribute('fill', lipColor(th.text)); $('startLabel').setAttribute('fill', th.bg)
 
-    // Pose during the dance; after it, the hold pose (the last frame of the dance) stays frozen.
+    // Pose: the dance, then its last frame held; the ready beat plays once loading is done and the dance is over.
     let p
-    if (state.motion === 'reduced') { p = POSES[state.opt](DANCE[state.opt]); p.opacity = clamp(t / 0.3) }
-    else p = POSES[state.opt](Math.min(t, tl.dance))
+    if (reduced) { p = POSES[state.opt](DANCE[state.opt]); p.opacity = clamp(t / 0.3) }
+    else {
+      p = POSES[state.opt](Math.min(t, tl.dance))
+      if (t >= tl.beatStart && t < tl.beatStart + tl.beat) addReadyBeat(p, (t - tl.beatStart) / tl.beat)
+    }
 
-    // Progress bar: fills during start-up, fades out at the hand-off.
-    const prog = progressAt(t)
-    $('progressFill').setAttribute('width', (180 * prog).toFixed(1))
+    // Progress bar.
+    const pr = progressAt(t)
+    $('progressFill').setAttribute('width', (180 * pr.fill).toFixed(1))
+    if (pr.pulse) {
+      $('progressPulse').setAttribute('x', (180 * pr.pulse[0]).toFixed(1))
+      $('progressPulse').setAttribute('width', (180 * (pr.pulse[1] - pr.pulse[0])).toFixed(1))
+      $('progressPulse').setAttribute('opacity', (0.15 + 0.2 * (0.5 + 0.5 * Math.sin(t * 7))).toFixed(3))
+    } else $('progressPulse').setAttribute('opacity', 0)
+    const barFade = 1 - clamp((t - tl.handoffStart) / 0.2)
+    $('progress').setAttribute('opacity', (barShown() ? barFade : 0).toFixed(3))
 
     // Hand-off.
     const h = clamp((t - tl.handoffStart) / HANDOFF)
-    let launchOpacity = 1, mainOpacity = 0, sealX = SEAL.x + p.dx, sealY = SEAL.y + p.dy, sealScale = SEAL.scale * p.s
-    let pillScale = 1, pillOpacity = 1, washY = 0, extraRot = 0
-    $('progress').setAttribute('opacity', (1 - clamp(h / 0.2)).toFixed(3))
+    let sealX = SEAL.x + p.dx, sealY = SEAL.y + p.dy, sealScale = SEAL.scale * p.s
+    let launchOpacity = 1
+    $('launch').removeAttribute('clip-path'); $('launchBgWrap').removeAttribute('mask')
+    $('irisOutHole').setAttribute('r', 0); $('irisInCircle').setAttribute('r', COVER_R)
     if (t >= tl.handoffStart) {
-      if (state.motion === 'reduced') {
-        launchOpacity = 1 - easeInOutSine(h); mainOpacity = 1
-      } else if (state.handoff === 'glide') {
-        // The seal shrinks and glides up into the Start button's spot; the start screen fades in and the button grows out of it.
-        const k = easeInOutSine(h)
-        sealX = lerp(sealX, 195, k); sealY = lerp(sealY, 92 + 18, k); sealScale = lerp(sealScale, 0.06, k)
-        p.opacity = 1 - seg(h, 0.55, 0.85)
-        launchOpacity = 1 - seg(h, 0.25, 0.85); mainOpacity = 1
-        pillScale = lerp(0.3, 1, easeOutBack(seg(h, 0.5, 1))); pillOpacity = seg(h, 0.5, 0.7)
+      if (reduced) {
+        launchOpacity = 1 - easeInOutSine(h)
+      } else if (state.handoff === 'irisout') {
+        // Iris out: the seal zooms into the centre of the screen, and the green opens from the centre in a growing
+        // circle, revealing the main screen.
+        const k = easeInOutCubic(seg(h, 0, 0.55))
+        // Seal's visual centre is about 165 rig units above its pivot; aim that at the screen centre.
+        sealX = lerp(sealX, CENTER.x, k); sealY = lerp(sealY, CENTER.y + 165 * SEAL.scale, k)
+        sealScale = lerp(sealScale, sealScale * 1.25, easeOutCubic(seg(h, 0, 0.3))) * (1 - easeInCubic(seg(h, 0.3, 0.65)))
+        p.opacity = 1 - seg(h, 0.58, 0.65)
+        $('irisOutHole').setAttribute('r', (COVER_R * easeInOutCubic(seg(h, 0.3, 1))).toFixed(1))
+        $('launchBgWrap').setAttribute('mask', 'url(#irisOutMask)')
       } else {
-        // The seal hops, then dives down and out; the start screen washes up from the bottom.
-        const up = Math.sin(Math.PI * clamp(h / 0.3)) * (h < 0.3 ? 1 : 0)
-        sealY = sealY - 60 * up + (h > 0.2 ? 900 * easeInCubic(seg(h, 0.2, 0.6)) : 0)
-        extraRot = 70 * easeInCubic(seg(h, 0.2, 0.6))
-        mainOpacity = 1; washY = 844 * (1 - easeOutCubic(seg(h, 0.5, 1)))
-        launchOpacity = 1
+        // Iris in: the seal glides to the centre and the green closes in around it as a shrinking circle that
+        // follows it, revealing the main screen from the edges, until the circle closes over the seal.
+        const k = easeInOutCubic(seg(h, 0, 0.5))
+        sealX = lerp(sealX, CENTER.x, k); sealY = lerp(sealY, CENTER.y + 165 * SEAL.scale, k)
+        sealScale = lerp(sealScale, sealScale * 0.8, k)
+        const cx = lerp(SEAL.x + p.dx, CENTER.x, k), cy = lerp(SEAL.y + p.dy - 165 * SEAL.scale, CENTER.y, k)
+        const r = lerp(COVER_R, 130, easeInOutCubic(seg(h, 0, 0.6))) * (1 - easeInCubic(seg(h, 0.68, 1)))
+        $('irisInCircle').setAttribute('cx', cx.toFixed(1)); $('irisInCircle').setAttribute('cy', cy.toFixed(1)); $('irisInCircle').setAttribute('r', r.toFixed(1))
+        $('launch').setAttribute('clip-path', 'url(#irisInClip)')
+        // A wink inside the closing circle.
+        if (h > 0.55) p.eyeNear = Math.min(p.eyeNear, 1 - 0.88 * Math.sin(Math.PI * seg(h, 0.55, 0.8)))
       }
     }
-    if (t < tl.handoffStart) { mainOpacity = 0 }
-    // The start screen's own content arrives last, so it never shows through the fading launch screen.
-    const content = state.handoff === 'glide' && state.motion !== 'reduced' ? seg(h, 0.6, 1) : 1
-    for (const id of ['hint', 'hint2', 'gear']) $(id).setAttribute('opacity', content.toFixed(3))
     $('launch').setAttribute('opacity', launchOpacity.toFixed(3))
-    $('main').setAttribute('opacity', mainOpacity)
-    $('washRect').setAttribute('y', state.handoff === 'dive' && state.motion !== 'reduced' && t >= tl.handoffStart ? washY.toFixed(1) : 0)
-    // In the dive, the start screen washes over the launch screen, so draw it on top while that happens.
-    const scene = $('scene')
-    if (state.handoff === 'dive' && state.motion !== 'reduced' && t >= tl.handoffStart) scene.appendChild($('main'))
-    else scene.insertBefore($('main'), $('launch'))
-    $('startPill').setAttribute('transform', `translate(195 92) scale(${pillScale.toFixed(3)})`)
-    $('startPill').setAttribute('opacity', pillOpacity.toFixed(3))
+    $('main').setAttribute('opacity', t >= tl.handoffStart ? 1 : 0)
 
     // Whole seal: pivot at the bottom of the body.
-    $('seal').setAttribute('transform',
-      `translate(${sealX.toFixed(2)} ${sealY.toFixed(2)}) rotate(${(p.rot + extraRot).toFixed(2)}) scale(${(sealScale * p.sx).toFixed(4)} ${(sealScale * p.sy).toFixed(4)}) translate(${-SEAL.pivotX} ${-SEAL.pivotY})`)
+    const sealT = `translate(${sealX.toFixed(2)} ${sealY.toFixed(2)}) rotate(${p.rot.toFixed(2)}) scale(${(sealScale * p.sx).toFixed(4)} ${(sealScale * p.sy).toFixed(4)}) translate(${-SEAL.pivotX} ${-SEAL.pivotY})`
+    $('seal').setAttribute('transform', sealT)
     $('seal').setAttribute('opacity', p.opacity.toFixed(3))
 
     // Parts.
@@ -315,20 +406,31 @@
       scaleAt($('hi'), b.hi, b.hi, 430, 110)
     }
 
-    // Speed lines trail the sliding seal (option C).
+    // Speed lines trail the sliding seal (dance C).
     $('speed').setAttribute('transform', `translate(${(sealX - 150).toFixed(1)} ${(sealY - 80).toFixed(1)})`)
-    $('speed').setAttribute('opacity', (state.opt === 'C' && state.motion !== 'reduced' ? p.speed : 0).toFixed(3))
+    $('speed').setAttribute('opacity', (state.opt === 'C' && !reduced ? p.speed : 0).toFixed(3))
 
     readout(tl, t)
   }
 
+  const NOTES = {
+    a: 'Every launch loads the captioning engine (speech model check, speaker model, sound classifier) with the mic still closed; the bar tracks those steps and Start is instant. Cost: the speaker model stays in memory while not captioning.',
+    b: 'Ordinary launches do no setup, so there is no bar: just the dance. The bar appears only on first launch or after an update (real download %, then warm-up).',
+    c: 'No bar ever. The ready beat (a happy nod and hop) is the cue that the app is ready.',
+  }
   function readout(tl, t) {
     const el = $('readout'); if (!el) return
+    $('progressNote').textContent = NOTES[state.progress]
+    let start = 0
+    const lines = steps().map(s => { const l = `${s.name.padEnd(22)} ${start.toFixed(2)}–${(start + s.dur).toFixed(2)} s${s.pct ? '  (real %)' : ''}`; start += s.dur; return l })
     el.textContent =
+      `steps (simulated durations):\n${lines.join('\n')}\n` +
+      `bar shown         ${barShown() ? 'yes' : 'no'}\n` +
       `dance ends        ${tl.dance.toFixed(2)} s\n` +
-      `progress done     ${tl.progress.toFixed(2)} s\n` +
-      `freeze until      ${tl.handoffStart.toFixed(2)} s  (later of the two + 0.75 s)\n` +
-      `start screen at   ${tl.end.toFixed(2)} s\n` +
+      `ready             ${tl.ready.toFixed(2)} s\n` +
+      `ready beat        ${tl.beatStart.toFixed(2)}–${(tl.beatStart + tl.beat).toFixed(2)} s\n` +
+      `freeze until      ${tl.handoffStart.toFixed(2)} s  (beat + 0.75 s)\n` +
+      `main screen at    ${tl.end.toFixed(2)} s\n` +
       `now               ${Math.min(t, tl.end).toFixed(2)} s`
   }
 
@@ -339,7 +441,6 @@
     const tick = now => { const t = (now - startedAt) / 1000; render(t); if (t < timeline().end + 0.1) raf = requestAnimationFrame(tick) }
     raf = requestAnimationFrame(tick)
   }
-
   function syncButtons() {
     document.querySelectorAll('.row[data-key]').forEach(row => {
       row.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(state[row.dataset.key] === b.dataset.v)))
@@ -352,7 +453,7 @@
   document.getElementById('replay').addEventListener('click', play)
 
   syncButtons()
-  window.proto = { render, timeline, state }
+  window.proto = { render, timeline, state, steps }
   if (params.has('t')) render(parseFloat(params.get('t')))
   else play()
 })()
