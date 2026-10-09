@@ -18,7 +18,8 @@ public enum SpeakerModelError: Error, Equatable, CustomStringConvertible {
 /// nothing is ever downloaded at runtime.
 final class LiveDiarizer: @unchecked Sendable {
     private let modelURL: URL
-    private let diarizer = SortformerDiarizer(config: .default)
+    private let config: SortformerConfig
+    private let diarizer: SortformerDiarizer
     private let queue = DispatchQueue(label: "caption.diarizer")
     private let lock = NSLock()
     private var finalized: [SpeakerSegment] = []
@@ -28,14 +29,16 @@ final class LiveDiarizer: @unchecked Sendable {
     private var speakersSeen = Set<Int>()
     private var latestEnd = 0.0
 
-    init(modelURL: URL) {
+    /// `config` must match the model variant and precision at `modelURL` (the app ships fastV2_1, fp16): FluidAudio
+    /// only logs a warning on a mismatch and then diarizes wrongly and slowly. Other variants are for measurement.
+    init(modelURL: URL, config: SortformerConfig = .default) {
         self.modelURL = modelURL
+        self.config = config
+        self.diarizer = SortformerDiarizer(config: config)
         // Any code path that still tries to download a model must throw, not reach the network.
         ModelHub.offlineMode = true
     }
 
-    /// `config` must match the shipped model variant and precision (fastV2_1, fp16): FluidAudio only
-    /// logs a warning on a mismatch and then diarizes wrongly and slowly.
     func prepare() async throws {
         guard FileManager.default.fileExists(atPath: modelURL.path) else {
             throw SpeakerModelError.modelMissing(modelURL)
@@ -43,7 +46,7 @@ final class LiveDiarizer: @unchecked Sendable {
         let configuration = MLModelConfiguration()
         configuration.computeUnits = .all
         let model = try await MLModel.load(contentsOf: modelURL, configuration: configuration)
-        diarizer.initialize(models: try SortformerModels(config: .default, main: model))
+        diarizer.initialize(models: try SortformerModels(config: config, main: model))
     }
 
     /// Never blocks the audio thread: inference runs on a serial queue.
@@ -75,6 +78,10 @@ final class LiveDiarizer: @unchecked Sendable {
     var lastError: Error? { lock.lock(); defer { lock.unlock() }; return failure }
 
     func finish() { queue.sync { _ = try? diarizer.finalizeSession() } }
+
+    /// Waits until every chunk fed so far has been processed. For replay measurements, which label captions
+    /// against the segments the app would have had at that moment.
+    func drain() { queue.sync {} }
 
     private func merge(_ update: DiarizerTimelineUpdate) {
         func convert(_ s: DiarizerSegment) -> SpeakerSegment {
