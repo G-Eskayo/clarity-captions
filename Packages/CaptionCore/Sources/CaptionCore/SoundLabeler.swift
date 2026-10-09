@@ -24,7 +24,7 @@ final class SoundLabeler: NSObject, @unchecked Sendable, SNResultsObserving {
             defer { self.lock.unlock() }
             do {
                 let request = try SNClassifySoundRequest(classifierIdentifier: .version1)
-                let newAnalyzer = try SNAudioStreamAnalyzer(format: audioFormat)
+                let newAnalyzer = SNAudioStreamAnalyzer(format: audioFormat)
                 try newAnalyzer.add(request, withObserver: self)
                 self.analyzer = newAnalyzer
             } catch {

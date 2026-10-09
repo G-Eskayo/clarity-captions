@@ -50,7 +50,7 @@ final class LiveDiarizer: @unchecked Sendable {
     func feed(_ samples: [Float]) {
         queue.async { [self] in
             do {
-                try diarizer.addAudio(samples)
+                diarizer.addAudio(samples)
                 if let update = try diarizer.process() { merge(update) }
             } catch {
                 lock.lock(); failure = error; lock.unlock()
