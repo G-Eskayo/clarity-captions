@@ -18,3 +18,9 @@ Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/do
 ### Pull requests
 
 Anything that changes how the app looks must include screenshots of the real running app, or say plainly that none could be captured. See `docs/agents/pr-requirements.md`.
+
+### Research behind decisions
+
+When research informs a decision (a study, guideline, Apple doc or our own measurement), add or update an entry in
+`docs/research/evidence-log.md`: source link, what we took, confidence, the decision it drives, and whether it can
+be cited publicly. The portfolio page and the marketing site draw from it.
