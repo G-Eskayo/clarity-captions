@@ -6,6 +6,8 @@ has been submitted. The owner reviews the wording first (acceptance criterion of
 Lengths were counted by script on 2026-10-09. Re-count after any edit: Apple rejects the field,
 not the submission, but a truncated subtitle reads badly.
 
+Ranked review risks with evidence: docs/app-review-risks.md.
+
 Rules this text follows (docs/app-store-compliance.md, App Review Guidelines 1.4.1 and 2.3):
 
 - No medical or health claims: nothing about treating, improving or helping hearing or hearing loss.
