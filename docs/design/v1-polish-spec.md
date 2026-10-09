@@ -53,8 +53,11 @@ simulator screenshots after). This is a hard rule.
 
 ## 5. Lettering
 
-- Add a **dyslexia-friendly font** (proposed: OpenDyslexic, SIL Open Font License, credited in NOTICE and in-app
-  credits) as a lettering choice, and **make it the default**.
+- Lettering choices: **OpenDyslexic (default)**, **Atkinson Hyperlegible**, **Standard** (system font), **Typewriter**.
+  **Rounded** and **Serif** are removed (owner, 2026-10-09, PR #100).
+- Why OpenDyslexic is the default: the owner is dyslexic (an homage) and finds it comforting to look at. The research
+  shows no measured reading benefit (evidence log E5), so it is offered for comfort and never marketed as improving
+  reading. Both fonts are SIL Open Font License; credit them in NOTICE and in-app credits.
 
 ## 6. Settings cleanup
 

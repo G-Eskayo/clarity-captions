@@ -59,8 +59,9 @@ caveat), **Internal** (process detail, not for marketing).
 - **What we took:** in 12 students with dyslexia, OpenDyslexic gave no improvement in reading rate or accuracy over
   Arial or Times New Roman, and none preferred it. Some people still find it more comfortable.
 - **Confidence:** Strong (for no measured benefit, in children); Weak (for the counterpoint).
-- **Drives:** **open decision** on the default lettering (v1 polish spec §5). Whatever is chosen, marketing must
-  not claim a font improves reading.
+- **Drives:** default lettering stays OpenDyslexic by the owner's choice (2026-10-09): he is dyslexic, it is an
+  homage, and it is comforting to look at. Atkinson Hyperlegible (designed for low vision) and the system font are
+  offered alongside it, plus Typewriter. Marketing must never claim a font improves reading.
 - **Public use:** Careful ("offered for comfort", never "improves reading").
 
 ## E6. What App Review rejects, and how to avoid it
