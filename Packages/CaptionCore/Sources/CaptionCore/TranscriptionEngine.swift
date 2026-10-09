@@ -223,12 +223,13 @@ public final class TranscriptionEngine {
                     // Start the result stream task in the background.
                     let resultTask = Task {
                         var lagTracker = WordLagTracker()
+                        var labels = SpeakerLabelSmoother()
                         for try await result in transcriber.results {
                             let starts = result.text.runs.compactMap { $0.audioTimeRange?.start.seconds }
                             let ends = result.text.runs.compactMap { $0.audioTimeRange?.end.seconds }
                             let end = ends.max()
                             let speaker = (starts.min().flatMap { st in end.map { (st, $0) } })
-                                .flatMap { SpeakerAligner.speaker(start: $0.0, end: $0.1, segments: self.diarizer.segments) }
+                                .flatMap { labels.label(start: $0.0, end: $0.1, segments: self.diarizer.segments, isFinal: result.isFinal) }
                             let lag = wallTime.elapsedSinceStart().flatMap { elapsed in lagTracker.sample(elapsed: elapsed, audioEnds: ends) }
                             let wordEmphasis = self.wordEmphasisFromResultText(result.text)
                             continuation.yield(CaptionUpdate(text: String(result.text.characters), isFinal: result.isFinal, lagSeconds: lag, speaker: speaker, startSeconds: starts.min(), endSeconds: end, diagnostics: self.diarizer.diagnostics, wordEmphasis: wordEmphasis))
@@ -310,12 +311,13 @@ public final class TranscriptionEngine {
             let task = Task {
                 do {
                     var lagTracker = WordLagTracker()
+                    var labels = SpeakerLabelSmoother()     // one per session (#91)
                     for try await result in transcriber.results {
                         let starts = result.text.runs.compactMap { $0.audioTimeRange?.start.seconds }
                         let ends = result.text.runs.compactMap { $0.audioTimeRange?.end.seconds }
                         let end = ends.max()
                         let speaker = (starts.min().flatMap { st in end.map { (st, $0) } })
-                            .flatMap { SpeakerAligner.speaker(start: $0.0, end: $0.1, segments: self?.diarizer.segments ?? []) }
+                            .flatMap { labels.label(start: $0.0, end: $0.1, segments: self?.diarizer.segments ?? [], isFinal: result.isFinal) }
                         let lag = wallTime.elapsedSinceStart().flatMap { elapsed in lagTracker.sample(elapsed: elapsed, audioEnds: ends) }
                         let wordEmphasis = self?.wordEmphasisFromResultText(result.text) ?? []
                         continuation.yield(CaptionUpdate(text: String(result.text.characters), isFinal: result.isFinal, lagSeconds: lag, speaker: speaker, startSeconds: starts.min(), endSeconds: end, diagnostics: self?.diarizer.diagnostics ?? "", wordEmphasis: wordEmphasis))

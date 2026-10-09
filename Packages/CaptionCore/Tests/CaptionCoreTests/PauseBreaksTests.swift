@@ -60,6 +60,40 @@ final class PauseBreaksTests: XCTestCase {
         XCTAssertEqual(s.lines.map(\.text), ["one two"])
     }
 
+    /// #91: the next person's first words often arrive before the diarizer knows who it is, so they join the
+    /// previous line. When their speaker turns up, those words must move to their own line, not drag the whole
+    /// line (the previous person's words included) over to the new speaker.
+    func testWordsJoinedBeforeTheirSpeakerWasKnownMoveToTheirOwnLine() {
+        var s = CaptionStream()
+        s.apply(text: "hello there", isFinal: true, speaker: 0, range: 0.0...1.0)
+        s.apply(text: "hi", isFinal: false, speaker: nil, range: 1.3...1.6)
+        XCTAssertEqual(s.lines.map(\.text), ["hello there hi"])
+        s.apply(text: "hi there", isFinal: false, speaker: 1, range: 1.3...2.0)
+        XCTAssertEqual(s.lines.map(\.text), ["hello there", "hi there"])
+        XCTAssertEqual(s.lines.map(\.speaker), [0, 1])
+        s.apply(text: "hi there.", isFinal: true, speaker: 1, range: 1.3...2.0)
+        XCTAssertEqual(s.lines.map(\.text), ["hello there", "hi there."])
+        XCTAssertEqual(s.lines.map(\.speaker), [0, 1])
+        XCTAssertEqual(s.lines[1].startTime, 1.3)
+    }
+
+    func testAFinalThatNamesADifferentSpeakerAlsoSplitsTheJoinedWords() {
+        var s = CaptionStream()
+        s.apply(text: "hello there", isFinal: true, speaker: 0, range: 0.0...1.0)
+        s.apply(text: "hi", isFinal: false, speaker: 0, range: 1.3...1.6)
+        s.apply(text: "hi there.", isFinal: true, speaker: 1, range: 1.3...2.0)
+        XCTAssertEqual(s.lines.map(\.text), ["hello there", "hi there."])
+        XCTAssertEqual(s.lines.map(\.speaker), [0, 1])
+    }
+
+    func testALineThatIsOnlyTheRevisedWordsIsRelabeledInPlace() {
+        var s = CaptionStream()
+        s.apply(text: "hel", isFinal: false, speaker: nil, range: 0.0...0.5)
+        s.apply(text: "hello", isFinal: false, speaker: 1, range: 0.0...1.0)
+        XCTAssertEqual(s.lines.map(\.text), ["hello"])
+        XCTAssertEqual(s.lines.map(\.speaker), [1])
+    }
+
     func testPauseLengthIsASingleNamedSetting() {
         var s = CaptionStream(pauseSeconds: 0.5)
         s.apply(text: "one", isFinal: true, speaker: 0, range: 0.0...1.0)

@@ -84,6 +84,19 @@ public struct CaptionStream: Sendable {
                 let revises: Bool
                 if let r = range, let tr = last.tailRange { revises = r.lowerBound < tr.upperBound } else { revises = true }
                 if revises {
+                    // The words being revised joined this line before their speaker was known, and belong to
+                    // someone else: give them their own line instead of relabeling the earlier words (#91).
+                    if let speaker, let lineSpeaker = last.speaker, speaker != lineSpeaker, !last.committed.isEmpty {
+                        let tailStart = last.tailRange?.lowerBound ?? range?.lowerBound
+                        last.tail = nil; last.tailRange = nil
+                        lines[lines.count - 1] = last
+                        lines.append(CaptionLine(
+                            id: nextID, speaker: speaker,
+                            committed: isFinal ? words : [], tail: isFinal ? nil : piece,
+                            tailRange: isFinal ? nil : range, startTime: tailStart, endTime: range?.upperBound))
+                        nextID += 1
+                        return
+                    }
                     if isFinal { last.committed = Self.joinWords(last.committed, piece); last.tail = nil; last.tailRange = nil }
                     else { last.tail = piece; last.tailRange = range ?? last.tailRange }
                     if let r = range { last.endTime = r.upperBound }
