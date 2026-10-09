@@ -6,12 +6,23 @@ import Foundation
 ///   -ClarityDemo          plays the conversation at speaking pace, words firming up as they would live
 ///   -ClarityDemoStatic    shows the whole conversation at once, for repeatable screenshots
 ///   -ClarityDemoSettings  also opens the appearance settings
+///   -ClarityDemoSettingsSection idleStop   scrolls those settings to a section (simctl can't scroll)
 /// It feeds the same CaptionStream the real engine feeds, so what you see is the real caption view: speaker colours,
 /// names, line breaks and sound labels. No microphone, speech model or network is involved.
 enum DemoMode {
     static var isOn: Bool { flag("-ClarityDemo") || isStatic }
     static var isStatic: Bool { flag("-ClarityDemoStatic") }
     static var opensSettings: Bool { flag("-ClarityDemoSettings") }
+    /// The section id to scroll Settings to, from `-ClarityDemoSettingsSection <id>`. Debug builds only.
+    static var settingsSection: String? {
+        #if DEBUG
+        let args = ProcessInfo.processInfo.arguments
+        guard let i = args.firstIndex(of: "-ClarityDemoSettingsSection"), i + 1 < args.count else { return nil }
+        return args[i + 1]
+        #else
+        return nil
+        #endif
+    }
 
     private static func flag(_ name: String) -> Bool {
         #if DEBUG

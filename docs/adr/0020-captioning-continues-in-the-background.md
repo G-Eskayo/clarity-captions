@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-10-06), from the #3 design session. Implemented by #10.
+Accepted (2026-10-06), from the #3 design session. **Deferred past v1** (owner, 2026-10-09): not implemented yet (the app declares no `audio` background mode); v1 keeps the screen awake while captioning instead ([[0019]], #83). Tracked by #10.
 
 ## Context
 

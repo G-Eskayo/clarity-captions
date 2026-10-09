@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-10-06), from the #3 design session. Amends [[0013]] (settings are no longer display-only).
+Accepted (2026-10-06), from the #3 design session. Amends [[0013]] (settings are no longer display-only). Implemented by #83 (2026-10-09).
 
 ## Context
 

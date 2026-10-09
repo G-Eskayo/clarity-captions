@@ -36,15 +36,31 @@ public final class CaptionSessionController {
     private var task: Task<Void, Never>?
     private var engine: CaptioningEngine?
     private var stopRequested = false
+    private let now: () -> Date
+    private let idleStopSetting: () -> IdleStopSetting
+    private var idleClock = IdleStopClock(setting: .never)
+    /// Set when the idle stop ends the session, so it ends as `.pausedQuiet` rather than `.idle`.
+    private var quietStopMinutes: Int?
 
-    public init(makeEngine: @escaping () throws -> CaptioningEngine) {
+    /// - Parameters:
+    ///   - now: the clock for the idle stop; injected so tests don't wait.
+    ///   - idleStopSetting: read on every `tick()`, so a change in Settings applies mid-session. Defaults to
+    ///     `.never` so a caller that doesn't opt in (the Mac app) never stops on its own.
+    public init(
+        makeEngine: @escaping () throws -> CaptioningEngine,
+        now: @escaping () -> Date = { Date() },
+        idleStopSetting: @escaping () -> IdleStopSetting = { .never }
+    ) {
         self.makeEngine = makeEngine
+        self.now = now
+        self.idleStopSetting = idleStopSetting
     }
 
     /// Begins a session. Does nothing if one is already starting or running.
     public func start() {
         guard task == nil else { return }
         stopRequested = false
+        quietStopMinutes = nil
         state = .preparing
         let engine: CaptioningEngine
         do { engine = try makeEngine() } catch {
@@ -54,6 +70,20 @@ public final class CaptionSessionController {
         self.engine = engine
         task = Task { await self.run(engine) }
     }
+
+    /// Checks the idle stop (ADR 0019). The app calls this about once a second while listening; cheap, and does
+    /// nothing in any other state.
+    public func tick() {
+        guard state == .listening, task != nil, quietStopMinutes == nil else { return }
+        let t = now()
+        idleClock.change(to: idleStopSetting(), at: t)
+        guard idleClock.shouldStop(now: t), let minutes = idleClock.setting.minutes else { return }
+        quietStopMinutes = minutes
+        stop()
+    }
+
+    /// The app came back after being suspended: time away isn't silence, so the quiet stretch starts again.
+    public func noteResumed() { idleClock.resumed(at: now()) }
 
     /// Ends the session, if any, without waiting.
     public func stop() { Task { await self.stopAndWait() } }
@@ -66,12 +96,20 @@ public final class CaptionSessionController {
         await task.value
     }
 
+    private var endedState: CaptionState { quietStopMinutes.map { .pausedQuiet(minutes: $0) } ?? .idle }
+
+    private func recordIfSpeech(_ update: CaptionUpdate) {
+        if !update.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { idleClock.recordSpeech(at: now()) }
+    }
+
     private func run(_ engine: CaptioningEngine) async {
-        defer { task = nil; self.engine = nil }
+        defer { task = nil; self.engine = nil; idleClock.end() }
         do {
             let updates = try await engine.start()
             onStartup(engine.startupReport)
             if stopRequested { await engine.stop(); state = .idle; return }
+            idleClock = IdleStopClock(setting: idleStopSetting())
+            idleClock.begin(at: now())
             state = .listening
             let labels = engine.soundLabelsStream()
             let levels = engine.audioLevelStream()
@@ -80,7 +118,7 @@ public final class CaptionSessionController {
             // finished (#89), and also held back a caption failure until every side stream had ended.
             try await withThrowingTaskGroup(of: Bool.self) { group in
                 group.addTask { @MainActor [weak self] in
-                    for try await u in updates { self?.onUpdate(u) }
+                    for try await u in updates { self?.recordIfSpeech(u); self?.onUpdate(u) }
                     return true
                 }
                 group.addTask { @MainActor [weak self] in
@@ -96,10 +134,10 @@ public final class CaptionSessionController {
                 }
             }
             await engine.stop()
-            state = .idle
+            state = endedState
         } catch {
             await engine.stop()
-            state = stopRequested ? .idle : .failed(FailureReason.plainLanguage(for: error))
+            state = stopRequested ? endedState : .failed(FailureReason.plainLanguage(for: error))
         }
     }
 }
