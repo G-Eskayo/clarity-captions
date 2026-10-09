@@ -12,7 +12,7 @@ simulator screenshots. Regenerate with `node src/build.mjs` (it uses the Playwri
 | 04-dim-cleared-and-back.png | Tap the veil to clear it for scrolling and copying; press and hold on empty space brings it back. |
 | 05-copy.png | Multi-line selection with handles and only a Copy button. |
 | 06-themes.png | 3 light and 3 relaxed dark themes, with computed contrast for text, gear, speaker labels and the [ Saved ] green. All ≥ 7:1. |
-| 08-settings.png | Settings with no borders or boxes, one thin line between sections, A− / A+ buttons, no Conversation section. Light and dark. |
+| 08-settings.png | Settings with no borders or boxes, one thin line between sections, A− / A+ buttons, no Conversation section, Lettering = Easy to read (OpenDyslexic, default), Atkinson Hyperlegible, Standard, Typewriter (#100). Light and dark. |
 | 09-how-to-use-intro.png | The how-to-use tour on the real main screen: spotlight on the real control, six steps, Skip / Back / Next. |
 | 10-button-compare-A-vs-C.png | Start button in A (gummy lip) and C (outlined cream), resting and pressed, light and dark, with plain-language notes. |
 | 11-launch-handoff.png | How the launch animation (#99) ends: freeze frame with the bar full, then Glide into the Start button, or Dive. |
@@ -39,6 +39,7 @@ simulator screenshots. Regenerate with `node src/build.mjs` (it uses the Playwri
 - **Retro buttons use a monospaced font** (SF Mono) so the brackets line up like a terminal.
 - **[ Saved ] green:** #12512F on light themes (7.8–8.6:1), #9BE3B4 / #A6E8BC on dark themes (9.2–10.3:1).
 - **Dark theme colors:** Charcoal #2B2D31 / #ECE6D9, Night #1D2536 / #E9E3D5, Harbor #173331 / #ECE4D3.
+- **Atkinson Hyperlegible** (SIL OFL) is bundled for the mock in `src/fonts/`, like OpenDyslexic.
 - **Settings sits on the theme background**, selected theme marked with a small check under its swatch (no ring).
 - **Tour:** six steps, each moving on when she does the thing; Next skips a step, Back goes back, Skip tour ends it.
 

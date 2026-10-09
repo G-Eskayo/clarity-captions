@@ -44,6 +44,7 @@ const T = Object.fromEntries(THEMES.map((t) => [t.id, t]))
 const CSS = `
 @font-face { font-family: 'OpenDyslexic'; src: url('fonts/OpenDyslexic-Regular.woff') format('woff'); font-weight: 400; }
 @font-face { font-family: 'OpenDyslexic'; src: url('fonts/OpenDyslexic-Bold.woff') format('woff'); font-weight: 700; }
+@font-face { font-family: 'Atkinson Hyperlegible'; src: url('fonts/AtkinsonHyperlegible-Regular.woff') format('woff'); font-weight: 400; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Rounded', 'Helvetica Neue', sans-serif; background: #E9E4DA; color: #1b1b1b; }
 .board { padding: 36px; display: flex; flex-direction: column; gap: 22px; }
@@ -269,7 +270,7 @@ function settingsSheet(t = theme) {
     <div style="margin:16px 4px 6px;font-family:'OpenDyslexic';font-size:19px;line-height:1.45;color:${t.text}">Preview: Let's book a table for seven.</div>
     ${sec('Colors', `<div style="display:flex;justify-content:space-between">${swatches}</div>`)}
     ${sec('Size', `<div style="display:flex;gap:16px">${sizeBtn('A−', 22)}${sizeBtn('A+', 26)}</div>`)}
-    ${sec('Lettering', fontRow('Easy to read', "'OpenDyslexic'", true, ` <span style="font-family:system-ui,BlinkMacSystemFont,sans-serif;font-size:12px;font-weight:700;color:${muted}">· default</span>`) + fontRow('Standard', 'system-ui,BlinkMacSystemFont,Helvetica,sans-serif', false) + fontRow('Rounded', "ui-rounded,'SF Pro Rounded',system-ui,sans-serif", false) + fontRow('Serif', 'Georgia,serif', false) + fontRow('Typewriter', 'Menlo,monospace', false), 'Easy to read is OpenDyslexic, a font made for people with dyslexia.')}
+    ${sec('Lettering', fontRow('Easy to read', "'OpenDyslexic'", true, ` <span style="font-family:system-ui,BlinkMacSystemFont,sans-serif;font-size:12px;font-weight:700;color:${muted}">· default</span><div style="font-family:system-ui,BlinkMacSystemFont,sans-serif;font-size:12px;color:${muted};margin-top:2px">OpenDyslexic</div>`) + fontRow('Atkinson Hyperlegible', "'Atkinson Hyperlegible'", false) + fontRow('Standard', 'system-ui,BlinkMacSystemFont,Helvetica,sans-serif', false) + fontRow('Typewriter', 'Menlo,monospace', false), 'Easy to read is OpenDyslexic, made for people with dyslexia. Atkinson Hyperlegible was designed by the Braille Institute for low vision.')}
     ${sec("Stop when it's quiet", `<div style="display:flex;gap:8px;flex-wrap:wrap">${pill('5 min', true)}${pill('15 min')}${pill('30 min')}${pill('Never')}</div>`)}
     ${sec('Saved', `<div style="display:flex;justify-content:space-between;font-weight:600;color:${t.text}"><span>Saved conversations</span><span style="color:${muted}">3 ›</span></div>`, 'Saved conversations are deleted after 30 days.')}
     ${sec('How to use Seal', `<div class="btn" style="width:100%;height:54px;border-radius:27px;font-size:17px;${primaryStyle(t)}">Show how to use Seal</div>`)}
@@ -278,7 +279,7 @@ function settingsSheet(t = theme) {
   return `<div style="width:402px;background:${t.bg};border-radius:40px;padding:26px 20px 30px;box-shadow:0 0 0 10px #1b1d1f,0 18px 40px rgba(0,0,0,.25)">${body}</div>`
 }
 add('08-settings.png', 'Settings after cleanup',
-  board('8 · Settings after cleanup', 'No borders or boxes anywhere: Settings sits on the theme\'s own background so it feels like the same screen, with one thin line between sections. The preview has no border. Text size is two buttons, A− and A+, as in today\'s app. Removed: Words and names, the Speaker labels explainer, and the Conversation section (Copy all / Share), which highlight-and-copy covers. Saved has the 30-day note; one button replays the how-to-use tour.',
+  board('8 · Settings after cleanup', 'No borders or boxes anywhere: Settings sits on the theme\'s own background so it feels like the same screen, with one thin line between sections. The preview has no border. Text size is two buttons, A− and A+, as in today\'s app. Lettering is the four choices from #100: Easy to read (OpenDyslexic, default), Atkinson Hyperlegible, Standard, Typewriter. Removed: Words and names, the Speaker labels explainer, and the Conversation section (Copy all / Share), which highlight-and-copy covers. Saved has the 30-day note; one button replays the how-to-use tour.',
     `<div class="row">${fig(settingsSheet(), '<b>Light (Paper).</b> Whole sheet, top to bottom.')}${fig(settingsSheet(T.night), '<b>Dark (Night).</b> Same sheet in a dark theme.')}</div>`), 1000, 1800)
 
 // 09 interactive tour on the real screen
