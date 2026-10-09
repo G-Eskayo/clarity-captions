@@ -8,5 +8,9 @@
 		<key>UIColorName</key>
 		<string>LaunchBackground</string>
 	</dict>
+	<!-- The app makes no network calls and uses no encryption of its own, so App Store Connect
+	     stops asking the export-compliance question on every upload (#79). -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
