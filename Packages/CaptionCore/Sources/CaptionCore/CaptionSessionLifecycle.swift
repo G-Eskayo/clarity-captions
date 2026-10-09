@@ -18,7 +18,7 @@ public enum CaptionSessionLifecycle {
         switch state {
         case .preparing, .listening:
             return .none
-        case .idle, .failed:
+        case .idle, .failed, .pausedQuiet:
             if SessionRetention.shouldSave(lines: lines) {
                 let conversation = SavedConversation.from(sessionStart: startedAt, lines: lines, speakerNames: speakerNames)
                 return .save(conversation)

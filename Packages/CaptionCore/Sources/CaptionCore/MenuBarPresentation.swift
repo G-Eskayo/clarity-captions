@@ -4,7 +4,7 @@ import Foundation
 public enum MenuBarPresentation: Equatable, Sendable {
     public static func symbolName(for state: CaptionState) -> String {
         switch state {
-        case .idle:
+        case .idle, .pausedQuiet:
             return "mic"
         case .preparing:
             return "waveform.circle"

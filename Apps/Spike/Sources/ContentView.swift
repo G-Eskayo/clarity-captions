@@ -25,6 +25,11 @@ final class CaptionModel: ObservableObject {
     var store: SavedConversationStoring?
     private var sessionStartedAt: Date?
     private var tracker = ListeningActivityTracker()
+    /// ADR 0019: read by the controller on every tick, so a change in Settings applies mid-session.
+    @Published var idleStop: IdleStopSetting = IdleStopStore().load() {
+        didSet { IdleStopStore().save(idleStop) }
+    }
+    private let screenAwake = ScreenAwakeKeeper(apply: { UIApplication.shared.isIdleTimerDisabled = $0 })
 
     init() {
         controller = CaptionSessionController(makeEngine: { [weak self] in
@@ -35,7 +40,7 @@ final class CaptionModel: ObservableObject {
             let rawText = VocabularyStore().loadRawText()
             let vocabulary = VocabularyList(rawText: rawText).entries
             return TranscriptionEngine(micMode: self.micMode, diarizerModelURL: url, contextualStrings: vocabulary)
-        })
+        }, idleStopSetting: { [weak self] in self?.idleStop ?? .default })
 
         if let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
             let conversationsDir = appSupportURL.appendingPathComponent("SavedConversations")
@@ -64,13 +69,14 @@ final class CaptionModel: ObservableObject {
 
     private func handleCaptionStateChange(_ newState: CaptionState) {
         state = newState
+        screenAwake.update(state: newState)
 
         switch newState {
         case .preparing:
             sessionStartedAt = Date()
         case .listening:
             startActivityLoop()
-        case .idle, .failed:
+        case .idle, .failed, .pausedQuiet:
             stopActivityLoop()
             saveSessionIfNeeded()
         }
@@ -84,6 +90,7 @@ final class CaptionModel: ObservableObject {
                 if activity != newActivity {
                     activity = newActivity
                 }
+                controller.tick()
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
             }
         }
@@ -121,6 +128,12 @@ final class CaptionModel: ObservableObject {
         stream = CaptionStream()
         speakerNames = SpeakerNames()
         sessionStartedAt = nil
+    }
+
+    /// The app left or returned to the screen: the screen-awake flag follows, and time away isn't counted as quiet.
+    func appActiveChanged(_ isActive: Bool) {
+        screenAwake.update(appIsActive: isActive)
+        if isActive { controller.noteResumed() }
     }
 
     func perform(_ action: PrimaryControl.Action) {
@@ -201,6 +214,7 @@ struct ContentView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
     private var style: CaptionStyle { model.style }
     private var control: PrimaryControl { PrimaryControl.for(model.state) }
@@ -232,7 +246,8 @@ struct ContentView: View {
         .tint(style.text.color)
         .preferredColorScheme(style.background.isDark ? .dark : .light)
         .animation(.snappy, value: control.presentation)
-        .sheet(isPresented: $showingSettings) { SettingsSheet(style: $model.style, stream: model.stream, speakerNames: model.speakerNames, store: model.store) }
+        .onChange(of: scenePhase) { _, phase in model.appActiveChanged(phase == .active) }
+        .sheet(isPresented: $showingSettings) { SettingsSheet(style: $model.style, idleStop: $model.idleStop, stream: model.stream, speakerNames: model.speakerNames, store: model.store) }
         .task {
             guard DemoMode.isOn else { return }
             model.runDemo()
@@ -258,7 +273,7 @@ struct ContentView: View {
                 animationShownAt = Date()
                 withAnimation(.easeInOut(duration: 0.25)) { showPreparingAnimation = true }
             }
-        case .listening, .idle, .failed:
+        case .listening, .idle, .failed, .pausedQuiet:
             preparingStartTime = nil
             guard showPreparingAnimation else { return }
             let shown = animationShownAt.map { Date().timeIntervalSince($0) } ?? LaunchAnimationGate.minimumDuration

@@ -20,6 +20,7 @@ extension CaptionStyle {
 /// One screen, three questions: which colors, how big, which lettering. A live preview sits on top.
 struct SettingsSheet: View {
     @Binding var style: CaptionStyle
+    @Binding var idleStop: IdleStopSetting
     let stream: CaptionStream
     let speakerNames: SpeakerNames
     let store: SavedConversationStoring?
@@ -29,12 +30,14 @@ struct SettingsSheet: View {
 
     var body: some View {
         NavigationStack {
+            ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     preview
                     section("Colors") { presetRow }
                     section("Size") { sizeRow }
                     section("Lettering") { fontRow }
+                    section("Stop when it's quiet") { idleStopRow }.id("idleStop")
                     section("Words and names") { vocabularyRow }
                     section("Speaker labels") { speakerExplanationRow }
                     section("Conversation") { conversationRow }
@@ -43,6 +46,8 @@ struct SettingsSheet: View {
                 }
                 .padding()
                 .foregroundStyle(style.text.color)
+            }
+            .onAppear { if let id = DemoMode.settingsSection { proxy.scrollTo(id, anchor: .top) } }
             }
             .containerBackground(style.background.color, for: .navigation)
             .navigationTitle("Settings")
@@ -106,6 +111,24 @@ struct SettingsSheet: View {
                 }
                 .buttonStyle(.bordered).tint(style.font == f ? .accentColor : .secondary)
             }
+        }
+    }
+
+    /// ADR 0019: the one behavior setting. The screen stays on while captioning; this caps a forgotten session.
+    private var idleStopRow: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 12)], spacing: 12) {
+                ForEach(IdleStopSetting.allCases, id: \.self) { option in
+                    Button { idleStop = option } label: {
+                        Text(option.title).font(.title3).frame(maxWidth: .infinity, minHeight: 56)
+                    }
+                    .buttonStyle(.bordered).tint(idleStop == option ? .accentColor : .secondary)
+                    .accessibilityLabel(option.title + (idleStop == option ? String(localized: ", selected") : ""))
+                }
+            }
+            Text(String(localized: "Captions pause when no one has talked for this long. The screen stays on while captioning."))
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 

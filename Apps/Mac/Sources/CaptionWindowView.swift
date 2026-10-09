@@ -74,7 +74,7 @@ struct CaptionWindowView: View {
 
     private func toggleCaptions() {
         switch model.state {
-        case .idle, .failed:
+        case .idle, .failed, .pausedQuiet:
             model.start()
         case .listening:
             model.stop()

@@ -89,6 +89,50 @@
         }
       }
     },
+    ", selected" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ", selected"
+          }
+        }
+      }
+    },
+    "15 minutes" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "15 minutes"
+          }
+        }
+      }
+    },
+    "30 minutes" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "30 minutes"
+          }
+        }
+      }
+    },
+    "5 minutes" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 minutes"
+          }
+        }
+      }
+    },
     "A one-time download. Please keep Wi-Fi on. It only happens once." : {
       "extractionState": "manual",
       "localizations": {
@@ -639,6 +683,17 @@
         }
       }
     },
+    "Never" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Never"
+          }
+        }
+      }
+    },
     "Night" : {
       "extractionState": "manual",
       "localizations": {
@@ -646,6 +701,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Night"
+          }
+        }
+      }
+    },
+    "No one talked for %lld minutes" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No one talked for %lld minutes"
           }
         }
       }
@@ -1024,6 +1090,28 @@
         }
       }
     },
+    "Captions pause when no one has talked for this long. The screen stays on while captioning." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Captions pause when no one has talked for this long. The screen stays on while captioning."
+          }
+        }
+      }
+    },
+    "Captions paused" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Captions paused"
+          }
+        }
+      }
+    },
     "Captions stopped" : {
       "extractionState": "manual",
       "localizations": {
@@ -1053,6 +1141,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Stop"
+          }
+        }
+      }
+    },
+    "Stop when it's quiet" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop when it's quiet"
           }
         }
       }

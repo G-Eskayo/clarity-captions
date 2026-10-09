@@ -4,6 +4,8 @@ import Foundation
 public enum CaptionState: Equatable, Sendable {
     case idle, preparing, listening
     case failed(String)
+    /// Stopped on its own after a quiet stretch (ADR 0019). Not an error: said gently, with Start again.
+    case pausedQuiet(minutes: Int)
 }
 
 /// The single primary control on the main screen (ADR 0013: one obvious action).
@@ -26,7 +28,7 @@ public struct PrimaryControl: Equatable, Sendable {
         case .idle: PrimaryControl(title: String(localized: "Start captions"), action: .start, isEnabled: true)
         case .preparing: PrimaryControl(title: String(localized: "Getting ready…"), action: .none, isEnabled: false)
         case .listening: PrimaryControl(title: String(localized: "Stop"), action: .stop, isEnabled: true, presentation: .compact)
-        case .failed: PrimaryControl(title: String(localized: "Start again"), action: .start, isEnabled: true)
+        case .failed, .pausedQuiet: PrimaryControl(title: String(localized: "Start again"), action: .start, isEnabled: true)
         }
     }
 }
@@ -40,6 +42,7 @@ public enum StatusWords {
         case .preparing: String(localized: "Getting ready…")
         case .listening: String(localized: "Listening")
         case .failed: String(localized: "Captions stopped")
+        case .pausedQuiet: String(localized: "Captions paused")
         }
     }
 
@@ -56,6 +59,7 @@ public enum StatusWords {
 
     public static func detail(for state: CaptionState) -> String? {
         if case .failed(let reason) = state { return reason }
+        if case .pausedQuiet(let minutes) = state { return String(localized: "No one talked for \(minutes) minutes") }
         return nil
     }
 
