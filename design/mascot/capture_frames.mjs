@@ -1,7 +1,8 @@
-// Renders the launch prototype's round-2 frame strips and GIF clips into design/mascot/frames/v2/.
+// Renders the launch prototype's round-3 frame strips and GIF clips into design/mascot/frames/v3/.
 // Usage: node design/mascot/capture_frames.mjs [path-to-playwright-core] [chromium-executable]
 // Every frame comes from launch-prototype.html's own render(t), so the evidence is exactly what the page plays.
-// (The round-1 dance frames in design/mascot/frames/*.png|gif were rendered by the round-1 page, commit 6d7917e.)
+// (Earlier rounds' frames were rendered by earlier versions of the page: round 1 in frames/ (commit 6d7917e),
+// round 2 in frames/v2/ (commit 7d71cb2).)
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -12,24 +13,24 @@ const pw = process.argv[2] || path.join(os.homedir(), '.agents/dashboard/node_mo
 const executablePath = process.argv[3] || undefined
 const { chromium } = await import(pw)
 
-const base = { opt: 'A', progress: 'a', launch: 'ordinary', speed: 'fast', handoff: 'irisout', theme: 'light', motion: 'full' }
+const base = { entrance: 'pop', ripple: 'faces', launch: 'ordinary', speed: 'fast', theme: 'light', motion: 'full' }
 const runs = [
-  // Hand-offs, light and dark (dance A, progress a, ordinary launch).
-  { name: 'handoff-irisout-light' },
-  { name: 'handoff-irisout-dark', theme: 'dark' },
-  { name: 'handoff-irisin-light', handoff: 'irisin' },
-  { name: 'handoff-irisin-dark', handoff: 'irisin', theme: 'dark' },
-  // Progress variants (dance A, iris out, light).
-  { name: 'progress-a-ordinary', progress: 'a' },
-  { name: 'progress-a-first-launch', progress: 'a', launch: 'first' },
-  { name: 'progress-b-ordinary', progress: 'b' },
-  { name: 'progress-b-first-launch-slow', progress: 'b', launch: 'first', speed: 'slow' },
-  { name: 'progress-c-first-launch-slow', progress: 'c', launch: 'first', speed: 'slow' },
-  // Reduce Motion.
-  { name: 'reduced-motion', motion: 'reduced' },
+  // Both entrances, with tiny seal faces riding the ripple.
+  { name: 'pop-faces-light' },
+  { name: 'pop-faces-dark', theme: 'dark' },
+  { name: 'slide-faces-light', entrance: 'slide' },
+  { name: 'slide-faces-dark', entrance: 'slide', theme: 'dark' },
+  // The other ripples, with the pop-up entrance.
+  { name: 'pop-bubbles-light', ripple: 'bubbles' },
+  { name: 'pop-bubbles-dark', ripple: 'bubbles', theme: 'dark' },
+  { name: 'pop-rings-light', ripple: 'rings' },
+  { name: 'pop-rings-dark', ripple: 'rings', theme: 'dark' },
+  // A slow first launch: setup outlasts the dance, so the bar shows.
+  { name: 'first-launch-slow-light', launch: 'first', speed: 'slow' },
+  { name: 'first-launch-slow-dark', launch: 'first', speed: 'slow', theme: 'dark' },
 ].map((r) => ({ ...base, ...r }))
 
-const outDir = path.join(here, 'frames', 'v2')
+const outDir = path.join(here, 'frames', 'v3')
 fs.mkdirSync(outDir, { recursive: true })
 
 const browser = await chromium.launch(executablePath ? { executablePath } : {})
@@ -40,8 +41,8 @@ for (const run of runs) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'seal-'))
   const tl = await page.evaluate((r) => { const { name, ...s } = r; Object.assign(window.proto.state, s); return window.proto.timeline() }, run)
   // Strip: 8 moments from start to the main screen, always including the ready beat and the hand-off.
-  const strip = [0.15 * tl.dance, 0.55 * tl.dance, tl.dance - 0.05, tl.beatStart + tl.beat * 0.35,
-    tl.handoffStart - 0.05, tl.handoffStart + 0.35, tl.handoffStart + 0.65, tl.end]
+  const strip = [0.2 * tl.dance, 0.5 * tl.dance, 0.85 * tl.dance, tl.beatStart + tl.beat * 0.35,
+    tl.handoffStart + 0.3, tl.handoffStart + 0.75, tl.handoffStart + 1.05, tl.handoffStart + 1.4]
   for (const [i, t] of strip.entries()) {
     await page.evaluate((t) => window.proto.render(t), t)
     await page.screenshot({ path: path.join(tmp, `s${i}.png`) })

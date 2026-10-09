@@ -4,15 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Seal Launch Prototype</title>
-<!-- Launch animation prototype for the owner's approval (docs/design/v1-polish-spec.md section 8, round 2).
+<!-- Launch animation prototype for the owner's approval (docs/design/v1-polish-spec.md section 8, round 3).
+     Built from the owner's #99 decisions: one dance (entrance → A's clapping → C's wave and bark), a ready beat, the
+     0.75 s freeze, then the hand-off: the green irises in BEHIND the seal to a small pool at the centre, the seal jumps
+     into it, splashes, and ripples spread out over #96's main screen (Paper or Night; gear top-left, Start captions
+     at the bottom middle). The bar shows only when real work would outlast the dance.
      Self-contained: inline SVG + JS, no external files. The whole scene is drawn by render(t), a pure function of
      time, so the frame strips and clips in design/mascot/frames/ are exactly what plays here.
-     The screen it lands in is #96's main screen (docs/design/mocks/2026-10-09/ on design/v1-polish-mocks):
-     Start captions at the bottom middle, gear top-left, Paper (light) or Night (dark).
-     Progress is modelled on what the app really does at launch (see the PROGRESS section below); durations are
-     simulated, not measured.
-     URL parameters (used by the frame capture): opt=A|B|C, progress=a|b|c, launch=ordinary|first,
-     speed=fast|slow, handoff=irisout|irisin, theme=light|dark, motion=full|reduced, t=<seconds>, chrome=0. -->
+     URL parameters (used by the frame capture): entrance=pop|slide, ripple=faces|bubbles|rings,
+     launch=ordinary|first, speed=fast|slow, theme=light|dark, motion=full|reduced, t=<seconds>, chrome=0. -->
 <style>
   :root { --bg: #f3efe6; --text: #12302f; --muted: #5a6f6c; --btn: #ffffff; --btn-on: #1F998B; --btn-on-text: #FBE8C1; --rule: #d9d2c5; }
   @media (prefers-color-scheme: dark) {
@@ -45,18 +45,15 @@
 <main>
   <section class="controls">
     <h1>Seal launch animation</h1>
-    <p>Round 2. Pick a dance, a progress style, a start-up case and a hand-off, then Replay.</p>
-    <div class="group"><div class="label">Dance</div><div class="row" data-key="opt">
-      <button data-v="A">A · Clap &amp; wiggle</button><button data-v="B">B · Balance a bubble</button><button data-v="C">C · Belly slide &amp; wave</button></div></div>
-    <div class="group"><div class="label">Progress</div><div class="row" data-key="progress">
-      <button data-v="a">a · Pre-load, bar every launch</button><button data-v="b">b · Bar only for real setup</button><button data-v="c">c · No bar</button></div>
-      <div class="note" id="progressNote"></div></div>
+    <p>Round 3, from your #99 answers. Pick an entrance and what rides the ripple, then Replay.</p>
+    <div class="group"><div class="label">Entrance</div><div class="row" data-key="entrance">
+      <button data-v="pop">Pop up from below (A)</button><button data-v="slide">Belly slide in (C)</button></div></div>
+    <div class="group"><div class="label">Ripple</div><div class="row" data-key="ripple">
+      <button data-v="faces">Tiny seal faces</button><button data-v="bubbles">Small speech bubbles</button><button data-v="rings">Plain rings</button></div></div>
     <div class="group"><div class="label">This launch</div><div class="row" data-key="launch">
       <button data-v="ordinary">Ordinary launch</button><button data-v="first">First launch / after an update</button></div></div>
     <div class="group"><div class="label">Speed</div><div class="row" data-key="speed">
       <button data-v="fast">Fast</button><button data-v="slow">Slow</button></div></div>
-    <div class="group"><div class="label">Hand-off</div><div class="row" data-key="handoff">
-      <button data-v="irisout">Iris out</button><button data-v="irisin">Iris in</button></div></div>
     <div class="group"><div class="label">Appearance</div><div class="row" data-key="theme">
       <button data-v="light">Light (Paper)</button><button data-v="dark">Dark (Night)</button></div></div>
     <div class="group"><div class="label">Motion</div><div class="row" data-key="motion">
@@ -68,9 +65,18 @@
     <svg id="scene" viewBox="0 0 402 874" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Seal launch animation">
       <defs>
         <clipPath id="irisInClip"><circle id="irisInCircle" cx="201" cy="437" r="600"/></clipPath>
-        <mask id="irisOutMask" maskUnits="userSpaceOnUse" x="0" y="0" width="402" height="874">
-          <rect width="402" height="874" fill="#fff"/><circle id="irisOutHole" cx="201" cy="437" r="0" fill="#000"/>
-        </mask>
+        <!-- Ripple icons, about 30 px across, centred on 0,0. -->
+        <g id="iconFace">
+          <circle r="10" fill="#FBE8C1" class="iconStroke" stroke-width="2"/>
+          <circle cx="-3.6" cy="-1" r="1.9" fill="#0E5A56"/><circle cx="3.4" cy="-2.6" r="1.3" fill="#0E5A56"/>
+          <ellipse cx="1.6" cy="1.8" rx="2.2" ry="1.3" fill="#0E5A56"/>
+          <path d="M-1 4.5 q2.5 2 5 -0.5" stroke="#0E5A56" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+        </g>
+        <g id="iconBubble">
+          <path d="M-11 -8 h22 a4 4 0 0 1 4 4 v8 a4 4 0 0 1 -4 4 h-9 l-6 5 l1 -5 h-8 a4 4 0 0 1 -4 -4 v-8 a4 4 0 0 1 4 -4 z" class="iconFill"/>
+          <line x1="-7" y1="-2" x2="7" y2="-2" class="iconCut" stroke-width="2" stroke-linecap="round"/>
+          <line x1="-7" y1="2.5" x2="2" y2="2.5" class="iconCut" stroke-width="2" stroke-linecap="round"/>
+        </g>
       </defs>
 
       <!-- The screen it lands in: #96's main screen before Start (image 11, frame 4). Gear top-left, Start captions at
@@ -90,9 +96,9 @@
         </g>
       </g>
 
-      <!-- The launch screen: green background (clipped or masked by the iris), progress bar, then the seal on top. -->
+      <!-- The launch screen: green background (clipped by the iris), progress bar, ripples and splash, then the seal on top. -->
       <g id="launch">
-        <g id="launchBgWrap"><rect id="launchBg" width="402" height="874"/>
+        <g id="launchBgWrap" clip-path="url(#irisInClip)"><rect id="launchBg" width="402" height="874"/>
           <text id="launchClock" x="34" y="34" font-size="16" font-weight="600" fill="#FBE8C1" font-family="-apple-system, BlinkMacSystemFont, sans-serif">9:41</text>
           <g id="progress" transform="translate(111 640)">
             <rect width="180" height="10" rx="5" fill="#FBE8C1" opacity="0.28"/>
@@ -100,15 +106,12 @@
             <rect id="progressFill" width="0" height="10" rx="5" fill="#FBE8C1"/>
           </g>
         </g>
+        <g id="ripples"></g>
+        <g id="splash"></g>
         <g id="speed" stroke="#FBE8C1" stroke-width="7" stroke-linecap="round" opacity="0">
           <line x1="0" y1="0" x2="-70" y2="0"/><line x1="-14" y1="-34" x2="-64" y2="-34"/><line x1="-14" y1="34" x2="-54" y2="34"/>
         </g>
         <g id="seal">
-          <g id="bubble">
-            <path d="M300 40 h260 a40 40 0 0 1 40 40 v58 a40 40 0 0 1 -40 40 h-70 l-60 22 l14 -22 h-144 a40 40 0 0 1 -40 -40 v-58 a40 40 0 0 1 40 -40 z" fill="#ffffff"/>
-            <g id="dots" fill="#0E5A56"><circle cx="385" cy="110" r="14"/><circle cx="430" cy="110" r="14"/><circle cx="475" cy="110" r="14"/></g>
-            <text id="hi" x="430" y="138" text-anchor="middle" font-size="84" font-weight="800" fill="#0E5A56" font-family="-apple-system, BlinkMacSystemFont, sans-serif">Hi!</text>
-          </g>
           <!-- Rig: same parts and coordinates as design/mascot/seal-rig.svg. -->
           <g id="flipper-back">
             <ellipse cx="88" cy="598" rx="92" ry="50" transform="rotate(-38 88 598)" fill="#FBE8C1"/>
@@ -149,11 +152,10 @@
   const params = new URLSearchParams(location.search)
   const reducedSystem = matchMedia('(prefers-reduced-motion: reduce)').matches
   const state = {
-    opt: params.get('opt') || 'A',
-    progress: params.get('progress') || 'a',
+    entrance: params.get('entrance') || 'pop',
+    ripple: params.get('ripple') || 'faces',
     launch: params.get('launch') || 'ordinary',
     speed: params.get('speed') || 'fast',
-    handoff: params.get('handoff') || 'irisout',
     theme: params.get('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
     motion: params.get('motion') || (reducedSystem ? 'reduced' : 'full'),
   }
@@ -165,34 +167,27 @@
   //   warmed for this build, device support) and goes straight to the main screen. No setup at launch.
   // - First launch / after an update: the English speech model downloads (SpeechDownload reports a real %), then the
   //   speaker model warms up (TranscriptionEngine.warmUp: one step, no %).
-  // - Pressing Start: TranscriptionEngine.startSession runs "speech model" (installed check), "speaker model" (loads
-  //   Sortformer), "sound classifier", then opens the mic ("analyzer", "audio start"). The first three run BEFORE the
-  //   audio session is activated, so they can be done at launch without the mic.
+  // Owner's rule (#99 decisions): show the bar whenever real work would break up the animation's timing, i.e. it
+  // would outlast the dance. Known setup (first launch / after an update) shows it from the start; any other launch
+  // that isn't ready when the dance ends fades it in then. Otherwise there is no bar.
   // Durations below are SIMULATED (not measured on a phone); only the order and the kind of each step are real.
   const SIM = {
-    fast: { download: 2.4, warm: 1.2, speechCheck: 0.15, speakerLoad: 0.9, sound: 0.2, facts: 0.05 },
-    slow: { download: 7.0, warm: 3.0, speechCheck: 0.3, speakerLoad: 2.6, sound: 0.5, facts: 0.1 },
+    fast: { download: 2.4, warm: 1.2, facts: 0.05 },
+    slow: { download: 7.0, warm: 3.0, facts: 0.1 },
   }
-  // Each step: name, duration, whether it reports a real % (download) or only "done" (everything else), and its share
-  // of the bar. Steps without a % fill their share in one go when they finish; until then that share pulses.
   function steps() {
     const d = SIM[state.speed]
-    const setup = state.launch === 'first'
+    return state.launch === 'first'
       ? [{ name: 'speech model download', dur: d.download, pct: true, share: 0.75 }, { name: 'speaker model warm-up', dur: d.warm, pct: false, share: 0.25 }]
-      : []
-    if (state.progress === 'a') {
-      // Pre-load the captioning engine every launch (mic stays closed), so Start is instant.
-      const engine = [{ name: 'speech model check', dur: d.speechCheck, pct: false }, { name: 'speaker model load', dur: d.speakerLoad, pct: false }, { name: 'sound classifier', dur: d.sound, pct: false }]
-      if (!setup.length) return engine.map(s => ({ ...s, share: 1 / 3 }))
-      // First launch with pre-load: download, warm-up and the sound classifier (the warmed speaker model stays loaded).
-      return [{ ...setup[0], share: 0.7 }, { ...setup[1], share: 0.2 }, { ...engine[2], share: 0.1 }]
-    }
-    // b and c: ordinary launches only read the facts.
-    return setup.length ? setup : [{ name: 'read facts', dur: d.facts, pct: false, share: 1 }]
+      : [{ name: 'read facts', dur: d.facts, pct: false, share: 1 }]
   }
-  const barShown = () => state.progress === 'a' || (state.progress === 'b' && state.launch === 'first')
-  function readyTime() { return steps().reduce((s, x) => s + x.dur, 0) }
-  function progressAt(t) { // { fill 0..1, pulse: [from, to] of the step in flight, or null }
+  const readyTime = () => steps().reduce((s, x) => s + x.dur, 0)
+  function barOpacity(t, tl) {
+    if (state.launch === 'first') return 1                     // setup is known up front
+    if (tl.ready > tl.dance) return clamp((t - tl.dance) / 0.25)  // not ready when the dance ends
+    return 0
+  }
+  function progressAt(t) { // { fill 0..1, pulse: [from, to] of a step in flight that has no %, or null }
     let start = 0, filled = 0
     for (const s of steps()) {
       if (t < start + s.dur) {
@@ -207,21 +202,6 @@
   // A download's % is real but uneven: quick at first, a slower stretch, then done.
   function downloadCurve(k) { return state.speed === 'slow' ? (k < 0.5 ? 0.55 * (k / 0.5) : k < 0.75 ? 0.55 + 0.1 * ((k - 0.5) / 0.25) : 0.65 + 0.35 * ((k - 0.75) / 0.25)) : k }
 
-  // ---------- timing (the spec's rule, plus the ready beat) ----------
-  const DANCE = { A: 2.6, B: 2.8, C: 2.6 }
-  const BEAT = 0.55     // the "ready" beat: a happy nod and a hop, once loading is done and the dance has finished
-  const HOLD = 0.75     // freeze frame after the beat
-  const HANDOFF = 1.0
-  function timeline() {
-    const reduced = state.motion === 'reduced'
-    const dance = reduced ? 0.3 : DANCE[state.opt]
-    const ready = readyTime()
-    const beatStart = Math.max(dance, ready)
-    const beat = reduced ? 0 : BEAT
-    const handoffStart = beatStart + beat + HOLD
-    return { dance, ready, beatStart, beat, handoffStart, end: handoffStart + HANDOFF }
-  }
-
   // ---------- easing ----------
   const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x))
   const lerp = (a, b, k) => a + (b - a) * k
@@ -232,63 +212,52 @@
   const easeInOutCubic = k => k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2
   const easeOutBack = k => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2) }
 
-  // ---------- dances (unchanged from round 1) ----------
+  // ---------- the dance: entrance → A's clapping → C's wave and bark ----------
+  const ENTRANCE = { pop: 0.6, slide: 1.1 }
+  const CLAP = 1.2, WAVE = 1.0, SETTLE = 0.45
+  const danceLength = () => ENTRANCE[state.entrance] + CLAP + WAVE + SETTLE
   const base = () => ({ dx: 0, dy: 0, rot: 0, s: 1, sx: 1, sy: 1, opacity: 1, flipF: 0, flipB: 0, eyeNear: 1, eyeFar: 1,
-    look: 0, mouth: 1, rays: 1, raysO: 1, bubble: null, speed: 0 })
+    mouth: 1, rays: 1, raysO: 1, speed: 0 })
 
-  function poseA(u) { // Clap & wiggle: pops up, wiggles and claps, hops, lands with a wink.
-    const p = base(); p.rays = 0.7
-    if (u < 0.45) { const k = u / 0.45; p.dy = lerp(470, 0, easeOutBack(k)); p.sx = 1 - 0.08 * (1 - k); p.sy = 1 + 0.12 * (1 - k) }
-    else if (u < 0.6) { const q = Math.sin(Math.PI * seg(u, 0.45, 0.6)); p.sx = 1 + 0.14 * q; p.sy = 1 - 0.14 * q }
-    if (u >= 0.6 && u < 1.8) {
-      const w = seg(u, 0.6, 1.8), env = Math.sin(Math.PI * w)
+  function pose(u) {
+    const p = base()
+    const E = ENTRANCE[state.entrance]
+    if (u < E) { // entrance
+      p.raysO = 0
+      if (state.entrance === 'pop') { // A: pops up from below and squashes on landing
+        if (u < 0.45) { const k = u / 0.45; p.dy = lerp(470, 0, easeOutBack(k)); p.sx = 1 - 0.08 * (1 - k); p.sy = 1 + 0.12 * (1 - k) }
+        else { const q = Math.sin(Math.PI * seg(u, 0.45, 0.6)); p.sx = 1 + 0.14 * q; p.sy = 1 - 0.14 * q }
+      } else { // C: belly slide in, stop with a bounce
+        if (u < 0.85) { const k = easeOutCubic(u / 0.85); p.dx = lerp(-460, 0, k); p.rot = 16; p.speed = 1 - seg(u, 0.55, 0.85); p.sy = 0.92; p.sx = 1.06; p.flipB = -10 }
+        else { const k = seg(u, 0.85, 1.1); p.rot = lerp(16, 0, easeOutCubic(k)); const q = Math.sin(Math.PI * k); p.sx = 1 + 0.1 * q; p.sy = 1 - 0.1 * q; p.dy = -20 * q }
+      }
+      return p
+    }
+    const c = u - E
+    if (c < CLAP) { // A's clapping and wiggle; the bark rays pop in with the first clap
+      const w = c / CLAP, env = Math.sin(Math.PI * w)
       p.rot = 9 * env * Math.sin(2 * Math.PI * 2.5 * w)
       const clap = (Math.sin(2 * Math.PI * 3 * w - Math.PI / 2) + 1) / 2
       p.flipF = -55 * clap * env; p.flipB = 32 * clap * env
-      p.mouth = 0.55 + 0.45 * clap; p.rays = 0.7 + 0.45 * clap
+      p.mouth = 0.55 + 0.45 * clap
+      p.raysO = 1; p.rays = easeOutBack(seg(c, 0, 0.25)) * (0.7 + 0.45 * clap)
+      return p
     }
-    if (u >= 1.8 && u < 2.2) { const k = seg(u, 1.8, 2.2); p.dy = -70 * Math.sin(Math.PI * k); const q = Math.max(0, Math.sin(Math.PI * k * 2 - Math.PI)); p.sx = 1 + 0.1 * q; p.sy = 1 - 0.1 * q; p.flipB = 20 * Math.sin(Math.PI * k) }
-    if (u >= 2.2) { const k = easeOutBack(seg(u, 2.2, 2.6)); p.rot = -7 * k; p.eyeNear = 1 - 0.88 * clamp(k); p.flipF = -38 * k; p.rays = 0.7 + 0.3 * clamp(k) }
-    return p
-  }
-
-  function poseB(u) { // Balance a bubble: pops in, a speech bubble drops onto its head, it wobbles and keeps it up, "Hi!".
-    const p = base(); p.raysO = 0
-    p.s = u < 0.4 ? lerp(0.2, 1, easeOutBack(u / 0.4)) : 1
-    const b = { dy: -760, rot: 0, dots: 1, hi: 0 }
-    if (u >= 0.35 && u < 0.95) b.dy = lerp(-760, 0, easeInCubic(seg(u, 0.35, 0.95)))
-    if (u >= 0.95) b.dy = 0
-    if (u >= 0.95 && u < 1.1) { const q = Math.sin(Math.PI * seg(u, 0.95, 1.1)); p.sx = 1 + 0.12 * q; p.sy = 1 - 0.12 * q; b.dy = 14 * q }
-    if (u >= 0.6) p.look = -clamp((u - 0.6) / 0.3) * 14
-    if (u >= 1.1 && u < 2.2) {
-      const w = seg(u, 1.1, 2.2), wob = Math.exp(-2.4 * w) * Math.sin(2 * Math.PI * 2.2 * w)
-      b.rot = 16 * wob; p.rot = -7 * wob; p.flipF = -40 - 18 * wob; p.flipB = 35 + 15 * wob; p.dx = -10 * wob
-    }
-    if (u >= 2.2) {
-      const k = seg(u, 2.2, 2.8); p.flipF = lerp(-40, -20, k); p.flipB = lerp(35, 10, k)
-      b.dots = 1 - seg(u, 2.2, 2.35); b.hi = easeOutBack(seg(u, 2.3, 2.6)); p.mouth = 0.6 + 0.4 * easeOutBack(seg(u, 2.3, 2.6))
-      p.look = lerp(-14, 0, seg(u, 2.4, 2.8))
-    }
-    p.bubble = b
-    return p
-  }
-
-  function poseC(u) { // Belly slide & wave: slides in on its belly, stops with a bounce, waves and barks hello.
-    const p = base(); p.raysO = 0
-    if (u < 0.85) { const k = easeOutCubic(u / 0.85); p.dx = lerp(-460, 0, k); p.rot = 16; p.speed = 1 - seg(u, 0.55, 0.85); p.sy = 0.92; p.sx = 1.06; p.flipB = -10 }
-    else if (u < 1.1) { const k = seg(u, 0.85, 1.1); p.rot = lerp(16, -8, easeOutCubic(k)); const q = Math.sin(Math.PI * k); p.sx = 1 + 0.1 * q; p.sy = 1 - 0.1 * q; p.dy = -20 * q }
-    else if (u < 2.1) {
-      const w = seg(u, 1.1, 2.1); p.rot = lerp(-8, 0, easeOutCubic(seg(u, 1.1, 1.3)))
-      p.flipF = -62 + 26 * Math.sin(2 * Math.PI * 2 * w)
+    const v = c - CLAP
+    if (v < WAVE) { // C's wave and bark
+      const w = v / WAVE
+      p.flipF = -62 + 26 * Math.sin(2 * Math.PI * 2 * w) * Math.min(1, w * 6)
       p.mouth = 0.6 + 0.4 * Math.abs(Math.sin(2 * Math.PI * 2 * w))
-      p.raysO = 1; p.rays = easeOutBack(seg(u, 1.2, 1.45))
-    } else { const k = easeInOutSine(seg(u, 2.1, 2.6)); p.flipF = lerp(-62, 0, k); p.raysO = 1; p.rays = 1 }
+      p.rays = 0.85 + 0.25 * Math.abs(Math.sin(2 * Math.PI * 2 * w))
+      return p
+    }
+    const k = easeInOutSine(clamp((v - WAVE) / SETTLE)) // settle into the icon's pose
+    p.flipF = lerp(-62, 0, k); p.rays = 1
     return p
   }
-  const POSES = { A: poseA, B: poseB, C: poseC }
 
-  // The ready beat: on top of the landing pose, a quick happy nod with a little hop, a flipper flick and a ray flash.
-  function addReadyBeat(p, k) { // k 0..1 through the beat
+  // The ready beat: a quick happy nod with a little hop, a flipper flick and a ray flash.
+  function addReadyBeat(p, k) {
     const nod = Math.sin(Math.PI * 2 * k) * (1 - k)
     p.rot += 10 * nod
     p.dy -= 26 * Math.sin(Math.PI * clamp(k / 0.6))
@@ -300,24 +269,45 @@
     return p
   }
 
+  // ---------- timing ----------
+  const BEAT = 0.55, HOLD = 0.75, HANDOFF = 1.9
+  function timeline() {
+    const reduced = state.motion === 'reduced'
+    const dance = reduced ? 0.3 : danceLength()
+    const ready = readyTime()
+    const beatStart = Math.max(dance, ready)
+    const beat = reduced ? 0 : BEAT
+    const handoffStart = beatStart + beat + HOLD
+    return { dance, ready, beatStart, beat, handoffStart, end: handoffStart + (reduced ? 0.6 : HANDOFF) }
+  }
+
   // ---------- drawing ----------
   const $ = id => document.getElementById(id)
-  // Target themes from #96: Paper (light) and Night (dark). Start is the gummy pill: theme text color fill, flat lip.
-  const THEMES = {
-    light: { launch: '#1F998B', bg: '#FAF5E6', text: '#141419', gear: '#14514B' },
-    dark: { launch: '#0F3F3C', bg: '#1D2536', text: '#E9E3D5', gear: '#C9D6F2' },
+  const NS = 'http://www.w3.org/2000/svg'
+  const THEMES = { // #96: Paper (light) and Night (dark); ripple colour picked to read on both the green and the theme
+    light: { launch: '#1F998B', bg: '#FAF5E6', text: '#141419', gear: '#14514B', ripple: '#1F998B' },
+    dark: { launch: '#0F3F3C', bg: '#1D2536', text: '#E9E3D5', gear: '#C9D6F2', ripple: '#7FD1C9' },
   }
   function lum(hex) { const c = hex.slice(1).match(/../g).map(h => { const v = parseInt(h, 16) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4) }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] }
   function lipColor(hex, amt = 0.28) { // same rule as #96's mocks (build.mjs)
     const c = hex.slice(1).match(/../g).map(h => parseInt(h, 16)); const dark = lum(hex) < 0.25
     return '#' + c.map(v => Math.round(dark ? v + (255 - v) * amt : v * (1 - amt))).map(v => v.toString(16).padStart(2, '0')).join('')
   }
-  const SEAL = { x: 201, y: 560, scale: 0.3, pivotX: 430, pivotY: 905 }
+  const SEAL = { x: 201, y: 560, scale: 0.3, pivotX: 430, pivotY: 905, centerAbovePivot: 360 }
   const CENTER = { x: 201, y: 437 }
   const COVER_R = Math.hypot(402, 874) / 2 + 10
-
   function rot(id, deg, px, py) { $(id).setAttribute('transform', `rotate(${deg} ${px} ${py})`) }
   function scaleAt(el, sx, sy, px, py) { el.setAttribute('transform', `translate(${px} ${py}) scale(${sx} ${sy}) translate(${-px} ${-py})`) }
+
+  // Ripple rings, each with icons riding it (built once).
+  const RINGS = [{ delay: 0, icons: 6, phase: 0 }, { delay: 0.12, icons: 6, phase: Math.PI / 6 }, { delay: 0.24, icons: 0, phase: 0 }]
+  const ripples = $('ripples')
+  RINGS.forEach((r, i) => {
+    const ring = document.createElementNS(NS, 'circle'); ring.id = `ring${i}`; ring.setAttribute('fill', 'none'); ripples.appendChild(ring)
+    for (let j = 0; j < r.icons; j++) { const u = document.createElementNS(NS, 'use'); u.id = `icon${i}-${j}`; ripples.appendChild(u) }
+  })
+  const DROPS = Array.from({ length: 9 }, (_, i) => ({ a: -Math.PI / 2 + (i - 4) * 0.33, v: 150 + 55 * ((i * 7) % 3), r: 4 + (i % 3) * 1.5 }))
+  DROPS.forEach((d, i) => { const c = document.createElementNS(NS, 'circle'); c.id = `drop${i}`; c.setAttribute('r', d.r); $('splash').appendChild(c) })
 
   function render(t) {
     const tl = timeline(), th = THEMES[state.theme], reduced = state.motion === 'reduced'
@@ -326,12 +316,15 @@
     $('mainClock').setAttribute('fill', th.text)
     $('gear').setAttribute('stroke', th.gear)
     $('startFace').setAttribute('fill', th.text); $('startLip').setAttribute('fill', lipColor(th.text)); $('startLabel').setAttribute('fill', th.bg)
+    document.querySelectorAll('.iconStroke').forEach(e => e.setAttribute('stroke', th.ripple))
+    document.querySelectorAll('.iconFill').forEach(e => e.setAttribute('fill', th.ripple))
+    document.querySelectorAll('.iconCut').forEach(e => e.setAttribute('stroke', th.bg))
 
-    // Pose: the dance, then its last frame held; the ready beat plays once loading is done and the dance is over.
+    // Pose: the dance, then its last frame held; the ready beat once loading is done and the dance is over.
     let p
-    if (reduced) { p = POSES[state.opt](DANCE[state.opt]); p.opacity = clamp(t / 0.3) }
+    if (reduced) { p = pose(danceLength()); p.opacity = clamp(t / 0.3) }
     else {
-      p = POSES[state.opt](Math.min(t, tl.dance))
+      p = pose(Math.min(t, tl.dance))
       if (t >= tl.beatStart && t < tl.beatStart + tl.beat) addReadyBeat(p, (t - tl.beatStart) / tl.beat)
     }
 
@@ -343,89 +336,91 @@
       $('progressPulse').setAttribute('width', (180 * (pr.pulse[1] - pr.pulse[0])).toFixed(1))
       $('progressPulse').setAttribute('opacity', (0.15 + 0.2 * (0.5 + 0.5 * Math.sin(t * 7))).toFixed(3))
     } else $('progressPulse').setAttribute('opacity', 0)
-    const barFade = 1 - clamp((t - tl.handoffStart) / 0.2)
-    $('progress').setAttribute('opacity', (barShown() ? barFade : 0).toFixed(3))
+    $('progress').setAttribute('opacity', (barOpacity(t, tl) * (1 - clamp((t - tl.handoffStart) / 0.2))).toFixed(3))
 
-    // Hand-off.
-    const h = clamp((t - tl.handoffStart) / HANDOFF)
-    let sealX = SEAL.x + p.dx, sealY = SEAL.y + p.dy, sealScale = SEAL.scale * p.s
-    let launchOpacity = 1
-    $('launch').removeAttribute('clip-path'); $('launchBgWrap').removeAttribute('mask')
-    $('irisOutHole').setAttribute('r', 0); $('irisInCircle').setAttribute('r', COVER_R)
-    if (t >= tl.handoffStart) {
+    // Hand-off: iris in (behind the seal) → the seal jumps into the centre → splash → ripples spread out.
+    const h = t - tl.handoffStart                     // seconds into the hand-off
+    let cx = SEAL.x + p.dx, cy = SEAL.y + p.dy - SEAL.centerAbovePivot * SEAL.scale // seal's visual centre
+    let scale = SEAL.scale * p.s, irisR = COVER_R, launchOpacity = 1
+    ripples.setAttribute('opacity', 0); $('splash').setAttribute('opacity', 0)
+    if (h >= 0) {
       if (reduced) {
-        launchOpacity = 1 - easeInOutSine(h)
-      } else if (state.handoff === 'irisout') {
-        // Iris out: the seal zooms into the centre of the screen, and the green opens from the centre in a growing
-        // circle, revealing the main screen.
-        const k = easeInOutCubic(seg(h, 0, 0.55))
-        // Seal's visual centre is about 165 rig units above its pivot; aim that at the screen centre.
-        sealX = lerp(sealX, CENTER.x, k); sealY = lerp(sealY, CENTER.y + 165 * SEAL.scale, k)
-        sealScale = lerp(sealScale, sealScale * 1.25, easeOutCubic(seg(h, 0, 0.3))) * (1 - easeInCubic(seg(h, 0.3, 0.65)))
-        p.opacity = 1 - seg(h, 0.58, 0.65)
-        $('irisOutHole').setAttribute('r', (COVER_R * easeInOutCubic(seg(h, 0.3, 1))).toFixed(1))
-        $('launchBgWrap').setAttribute('mask', 'url(#irisOutMask)')
+        launchOpacity = 1 - easeInOutSine(clamp(h / 0.6))
       } else {
-        // Iris in: the seal glides to the centre and the green closes in around it as a shrinking circle that
-        // follows it, revealing the main screen from the edges, until the circle closes over the seal.
-        const k = easeInOutCubic(seg(h, 0, 0.5))
-        sealX = lerp(sealX, CENTER.x, k); sealY = lerp(sealY, CENTER.y + 165 * SEAL.scale, k)
-        sealScale = lerp(sealScale, sealScale * 0.8, k)
-        const cx = lerp(SEAL.x + p.dx, CENTER.x, k), cy = lerp(SEAL.y + p.dy - 165 * SEAL.scale, CENTER.y, k)
-        const r = lerp(COVER_R, 130, easeInOutCubic(seg(h, 0, 0.6))) * (1 - easeInCubic(seg(h, 0.68, 1)))
-        $('irisInCircle').setAttribute('cx', cx.toFixed(1)); $('irisInCircle').setAttribute('cy', cy.toFixed(1)); $('irisInCircle').setAttribute('r', r.toFixed(1))
-        $('launch').setAttribute('clip-path', 'url(#irisInClip)')
-        // A wink inside the closing circle.
-        if (h > 0.55) p.eyeNear = Math.min(p.eyeNear, 1 - 0.88 * Math.sin(Math.PI * seg(h, 0.55, 0.8)))
+        // 1. The green closes in to a small pool at the centre, behind the seal (0–0.5 s); the seal crouches.
+        irisR = lerp(COVER_R, 62, easeInOutCubic(seg(h, 0, 0.5)))
+        const crouch = Math.sin(Math.PI * seg(h, 0.2, 0.42))
+        p.sx *= 1 + 0.12 * crouch; p.sy *= 1 - 0.16 * crouch
+        // 2. It jumps in an arc and dives into the pool at the centre (0.42–0.9 s), tucking as it goes.
+        const j = seg(h, 0.42, 0.9)
+        if (j > 0) {
+          const startX = cx, startY = cy
+          cx = lerp(startX, CENTER.x, easeInOutSine(j)); cy = lerp(startY, CENTER.y, j) - 170 * Math.sin(Math.PI * j)
+          p.rot += lerp(0, 35, easeInCubic(j)); p.sx = lerp(p.sx, 0.92, j); p.sy = lerp(p.sy, 1.1, j)
+          scale *= 1 - 0.95 * easeInCubic(seg(h, 0.72, 0.92))
+          p.opacity = 1 - seg(h, 0.86, 0.93)
+        }
+        // 3. Splash: droplets jump out of the pool, and the pool closes (0.88–1.25 s).
+        const sp = seg(h, 0.88, 1.35)
+        if (sp > 0 && sp < 1) {
+          $('splash').setAttribute('opacity', (1 - seg(sp, 0.6, 1)).toFixed(3))
+          DROPS.forEach((d, i) => {
+            const x = CENTER.x + Math.cos(d.a) * d.v * sp, y = CENTER.y + Math.sin(d.a) * d.v * sp + 260 * sp * sp
+            $(`drop${i}`).setAttribute('cx', x.toFixed(1)); $(`drop${i}`).setAttribute('cy', y.toFixed(1)); $(`drop${i}`).setAttribute('fill', state.theme === 'dark' ? '#FBE8C1' : '#1F998B')
+          })
+        }
+        if (h > 0.9) irisR = 62 * (1 - easeInCubic(seg(h, 0.9, 1.15)))
+        // 4. Ripples spread out over the main screen, icons riding them (0.9–1.86 s).
+        ripples.setAttribute('opacity', 1)
+        RINGS.forEach((r, i) => {
+          const k = seg(h, 0.9 + r.delay, 0.9 + r.delay + 0.72)
+          const rad = 12 + 300 * easeOutCubic(k), o = k > 0 && k < 1 ? (1 - k) * 0.85 : 0
+          const ring = $(`ring${i}`)
+          ring.setAttribute('cx', CENTER.x); ring.setAttribute('cy', CENTER.y); ring.setAttribute('r', rad.toFixed(1))
+          ring.setAttribute('stroke', th.ripple); ring.setAttribute('stroke-width', (4 - 2.5 * k).toFixed(2)); ring.setAttribute('opacity', o.toFixed(3))
+          for (let jdx = 0; jdx < r.icons; jdx++) {
+            const icon = $(`icon${i}-${jdx}`)
+            if (state.ripple === 'rings') { icon.setAttribute('opacity', 0); continue }
+            const a = r.phase + (jdx / r.icons) * 2 * Math.PI + 0.25 * k
+            const ix = CENTER.x + Math.cos(a) * rad, iy = CENTER.y + Math.sin(a) * rad
+            const s = 0.7 + 0.5 * easeOutBack(clamp(k * 1.6))
+            icon.setAttribute('href', state.ripple === 'faces' ? '#iconFace' : '#iconBubble')
+            icon.setAttribute('transform', `translate(${ix.toFixed(1)} ${iy.toFixed(1)}) scale(${s.toFixed(3)}) rotate(${(12 * Math.sin(a * 3 + k * 6)).toFixed(1)})`)
+            icon.setAttribute('opacity', (k > 0 && k < 1 ? Math.min(seg(k, 0.1, 0.22), (1 - k) * 1.4) : 0).toFixed(3)) // appear once the ring has room
+          }
+        })
       }
     }
+    $('irisInCircle').setAttribute('r', irisR.toFixed(1))
     $('launch').setAttribute('opacity', launchOpacity.toFixed(3))
-    $('main').setAttribute('opacity', t >= tl.handoffStart ? 1 : 0)
+    $('main').setAttribute('opacity', h >= 0 ? 1 : 0)
 
-    // Whole seal: pivot at the bottom of the body.
-    const sealT = `translate(${sealX.toFixed(2)} ${sealY.toFixed(2)}) rotate(${p.rot.toFixed(2)}) scale(${(sealScale * p.sx).toFixed(4)} ${(sealScale * p.sy).toFixed(4)}) translate(${-SEAL.pivotX} ${-SEAL.pivotY})`
-    $('seal').setAttribute('transform', sealT)
-    $('seal').setAttribute('opacity', p.opacity.toFixed(3))
+    // Whole seal (on top, never clipped): pivot at the bottom of the body.
+    const px = cx, py = cy + SEAL.centerAbovePivot * scale
+    $('seal').setAttribute('transform', `translate(${px.toFixed(2)} ${py.toFixed(2)}) rotate(${p.rot.toFixed(2)}) scale(${(scale * p.sx).toFixed(4)} ${(scale * p.sy).toFixed(4)}) translate(${-SEAL.pivotX} ${-SEAL.pivotY})`)
+    $('seal').setAttribute('opacity', (p.opacity * (reduced ? launchOpacity : 1)).toFixed(3))
 
-    // Parts.
     rot('flipper-front', p.flipF, 600, 760)
     rot('flipper-back', p.flipB, 130, 600)
     scaleAt($('eye-near'), 1, Math.max(0.08, p.eyeNear), 357, 472)
     scaleAt($('eye-far'), 1, Math.max(0.08, p.eyeFar), 630, 329)
-    $('pupil-near').setAttribute('transform', `translate(0 ${p.look})`)
-    $('pupil-far').setAttribute('transform', `translate(0 ${p.look * 0.7})`)
     scaleAt($('mouth'), 1, p.mouth, 565, 560)
     scaleAt($('rays'), p.rays, p.rays, 760, 460)
     $('rays').setAttribute('opacity', p.raysO)
 
-    const b = p.bubble
-    $('bubble').setAttribute('opacity', b ? 1 : 0)
-    if (b) {
-      $('bubble').setAttribute('transform', `translate(0 ${b.dy.toFixed(1)}) rotate(${b.rot.toFixed(2)} 430 190) translate(430 190) scale(1.5) translate(-430 -190)`)
-      $('dots').setAttribute('opacity', b.dots.toFixed(3))
-      scaleAt($('hi'), b.hi, b.hi, 430, 110)
-    }
-
-    // Speed lines trail the sliding seal (dance C).
-    $('speed').setAttribute('transform', `translate(${(sealX - 150).toFixed(1)} ${(sealY - 80).toFixed(1)})`)
-    $('speed').setAttribute('opacity', (state.opt === 'C' && !reduced ? p.speed : 0).toFixed(3))
+    $('speed').setAttribute('transform', `translate(${(px - 150).toFixed(1)} ${(py - 80).toFixed(1)})`)
+    $('speed').setAttribute('opacity', (state.entrance === 'slide' && !reduced ? p.speed : 0).toFixed(3))
 
     readout(tl, t)
   }
 
-  const NOTES = {
-    a: 'Every launch loads the captioning engine (speech model check, speaker model, sound classifier) with the mic still closed; the bar tracks those steps and Start is instant. Cost: the speaker model stays in memory while not captioning.',
-    b: 'Ordinary launches do no setup, so there is no bar: just the dance. The bar appears only on first launch or after an update (real download %, then warm-up).',
-    c: 'No bar ever. The ready beat (a happy nod and hop) is the cue that the app is ready.',
-  }
   function readout(tl, t) {
     const el = $('readout'); if (!el) return
-    $('progressNote').textContent = NOTES[state.progress]
     let start = 0
     const lines = steps().map(s => { const l = `${s.name.padEnd(22)} ${start.toFixed(2)}–${(start + s.dur).toFixed(2)} s${s.pct ? '  (real %)' : ''}`; start += s.dur; return l })
     el.textContent =
       `steps (simulated durations):\n${lines.join('\n')}\n` +
-      `bar shown         ${barShown() ? 'yes' : 'no'}\n` +
+      `bar shown         ${state.launch === 'first' ? 'yes, from the start' : tl.ready > tl.dance ? 'yes, from the end of the dance' : 'no'}\n` +
       `dance ends        ${tl.dance.toFixed(2)} s\n` +
       `ready             ${tl.ready.toFixed(2)} s\n` +
       `ready beat        ${tl.beatStart.toFixed(2)}–${(tl.beatStart + tl.beat).toFixed(2)} s\n` +
