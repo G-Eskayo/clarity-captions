@@ -24,6 +24,13 @@ final class MainScreenTests: XCTestCase {
         XCTAssertTrue(c.isEnabled)
     }
 
+    func testPausedOffersStop() {
+        let c = PrimaryControl.for(.paused("Something"))
+        XCTAssertEqual(c.title, "Stop")
+        XCTAssertEqual(c.action, .stop)
+        XCTAssertTrue(c.isEnabled)
+    }
+
     func testAfterAFailureTheControlIsOneTapBack() {
         let c = PrimaryControl.for(.failed("model missing"))
         XCTAssertEqual(c.title, "Start again")
@@ -35,6 +42,7 @@ final class MainScreenTests: XCTestCase {
         XCTAssertEqual(StatusWords.headline(for: .idle), "Ready")
         XCTAssertEqual(StatusWords.headline(for: .preparing), "Getting ready…")
         XCTAssertEqual(StatusWords.headline(for: .listening), "Listening")
+        XCTAssertEqual(StatusWords.headline(for: .paused("x")), "Captions paused")
         XCTAssertEqual(StatusWords.headline(for: .failed("x")), "Captions stopped")
     }
 
@@ -45,8 +53,16 @@ final class MainScreenTests: XCTestCase {
         XCTAssertNil(StatusWords.detail(for: .listening))
     }
 
+    func testPausedReasonIsDetailNotHeadline() {
+        let state = CaptionState.paused("Something else is using the microphone")
+        XCTAssertFalse(StatusWords.headline(for: state).contains("microphone"))
+        XCTAssertEqual(StatusWords.detail(for: state), "Something else is using the microphone")
+    }
+
     func testAnnouncementCombinesHeadlineAndDetail() {
         XCTAssertEqual(StatusWords.announcement(for: .listening), "Listening")
+        let paused = CaptionState.paused("Something else is using the microphone")
+        XCTAssertEqual(StatusWords.announcement(for: paused), "Captions paused. Something else is using the microphone")
         let failure = CaptionState.failed("network error")
         XCTAssertEqual(StatusWords.announcement(for: failure), "Captions stopped. network error")
     }
@@ -89,5 +105,21 @@ final class MainScreenTests: XCTestCase {
     func testActivityAwareAnnouncementForCantHear() {
         let announcement = StatusWords.announcement(for: .listening, activity: .cantHearAnything)
         XCTAssertEqual(announcement, "I can't hear anything. Is something covering the microphone?")
+    }
+
+    func testPrimaryControlHandlesAllStates() {
+        _ = PrimaryControl.for(.idle)
+        _ = PrimaryControl.for(.preparing)
+        _ = PrimaryControl.for(.listening)
+        _ = PrimaryControl.for(.paused("x"))
+        _ = PrimaryControl.for(.failed("x"))
+    }
+
+    func testStatusWordsHandleAllStates() {
+        _ = StatusWords.headline(for: .idle)
+        _ = StatusWords.headline(for: .preparing)
+        _ = StatusWords.headline(for: .listening)
+        _ = StatusWords.headline(for: .paused("x"))
+        _ = StatusWords.headline(for: .failed("x"))
     }
 }

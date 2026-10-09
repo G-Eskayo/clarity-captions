@@ -59,10 +59,11 @@ public enum MicMode: String, CaseIterable, Sendable {
 public enum TranscriptionError: Error {
     case noCompatibleAudioFormat
     case converterUnavailable
+    case interruptionTimedOut
 }
 
 /// Live microphone -> on-device SpeechAnalyzer/SpeechTranscriber (ADR 0001).
-/// Spike-grade: no diarization yet, no interruption/route-change handling yet.
+/// Handles interruptions (calls, Siri, route changes) with auto-resume and transcript markers (ADR 0021).
 public final class TranscriptionEngine {
     private let audioEngine = AVAudioEngine()
     private var analyzer: SpeechAnalyzer?
@@ -74,6 +75,10 @@ public final class TranscriptionEngine {
     private var soundLabelerStream: AsyncStream<SoundLabelKind>?
     private var audioLevelStreamValue: AsyncStream<Double>?
     private var audioLevelContinuation: AsyncStream<Double>.Continuation?
+    private var interruptionStreamValue: AsyncStream<InterruptionSignal>?
+    private var interruptionContinuation: AsyncStream<InterruptionSignal>.Continuation?
+    private var markerStreamValue: AsyncStream<TranscriptMarker>?
+    private var markerContinuation: AsyncStream<TranscriptMarker>.Continuation?
     private let contextualStrings: [String]
     /// Spike-only: how long each startup step took, for the developer panel. Measured, not guessed.
     public private(set) var startupReport = ""
@@ -81,6 +86,11 @@ public final class TranscriptionEngine {
     private var loudnessBaseline = LoudnessBaseline()
     private var loudnessTimeSeries: [(audioTime: Double, level: Double)] = []
     private let loudnessLock = NSLock()
+    private var interruptionWatchdogTask: Task<Void, Never>?
+    private var observerTokens: [NSObjectProtocol] = []
+    private var sessionFormat: AVAudioFormat?
+    private var sessionDiarFormat: AVAudioFormat?
+    private var sessionFed: FedAudioClock?
 
     /// `diarizerModelURL` has no default on purpose: the app must say where its bundled speaker model
     /// lives, so there is no accidental network path (ADR 0014).
@@ -129,6 +139,14 @@ public final class TranscriptionEngine {
         self.audioLevelStreamValue = alStream
         self.audioLevelContinuation = alCont
 
+        let (intStream, intCont) = AsyncStream.makeStream(of: InterruptionSignal.self)
+        self.interruptionStreamValue = intStream
+        self.interruptionContinuation = intCont
+
+        let (markerStream, markerCont) = AsyncStream.makeStream(of: TranscriptMarker.self)
+        self.markerStreamValue = markerStream
+        self.markerContinuation = markerCont
+
         guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else {
             throw TranscriptionError.noCompatibleAudioFormat
         }
@@ -146,6 +164,7 @@ public final class TranscriptionEngine {
         case .voiceProcessing: try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
         }
         try session.setActive(true)
+        preferBuiltInMic(session: session)
         #endif
         // Must happen before the tap format is read.
         if micMode == .voiceProcessing { try audioEngine.inputNode.setVoiceProcessingEnabled(true) }
@@ -157,6 +176,9 @@ public final class TranscriptionEngine {
               let diarConverter = AVAudioConverter(from: inFormat, to: diarFormat) else {
             throw TranscriptionError.converterUnavailable
         }
+        self.sessionFormat = format
+        self.sessionDiarFormat = diarFormat
+        self.sessionFed = fed
         input.installTap(onBus: 0, bufferSize: 4096, format: inFormat) { buffer, _ in
             self.processBuffer(buffer, inFormat: inFormat, converter: converter, diarConverter: diarConverter, format: format, diarFormat: diarFormat, fed: fed, builder: builder)
         }
@@ -175,6 +197,11 @@ public final class TranscriptionEngine {
         try await analyzer.start(inputSequence: sequence)
         lap("audio start")
         startupReport = laps.joined(separator: " · ")
+
+        #if os(iOS)
+        registerInterruptionHandler(session: session, intCont: intCont, markerCont: markerCont)
+        registerRouteChangeHandler(session: session)
+        #endif
 
         return makeResultStream(transcriber: transcriber, fed: fed, wallTime: wallTime)
     }
@@ -372,10 +399,23 @@ public final class TranscriptionEngine {
 
     /// Releases the microphone, the speech analyzer and the helpers. Safe to call more than once.
     public func stop() async {
+        #if os(iOS)
+        observerTokens.forEach { NotificationCenter.default.removeObserver($0) }
+        observerTokens.removeAll()
+        #endif
+        interruptionWatchdogTask?.cancel()
+        interruptionWatchdogTask = nil
         audioEngine.inputNode.removeTap(onBus: 0)
         audioEngine.stop()
         inputBuilder?.finish()
         inputBuilder = nil
+        interruptionContinuation?.finish()
+        interruptionContinuation = nil
+        markerContinuation?.finish()
+        markerContinuation = nil
+        sessionFormat = nil
+        sessionDiarFormat = nil
+        sessionFed = nil
         if let analyzer {
             self.analyzer = nil
             do { try await analyzer.finalizeAndFinishThroughEndOfInput() }
@@ -410,4 +450,108 @@ public final class TranscriptionEngine {
     public func audioLevelStream() -> AsyncStream<Double> {
         audioLevelStreamValue ?? AsyncStream { $0.finish() }
     }
+
+    /// Returns the stream of interruption signals (pause/resume).
+    public func interruptionStream() -> AsyncStream<InterruptionSignal> {
+        interruptionStreamValue ?? AsyncStream { $0.finish() }
+    }
+
+    /// Returns the stream of transcript markers (gaps, transitions).
+    public func transcriptMarkerStream() -> AsyncStream<TranscriptMarker> {
+        markerStreamValue ?? AsyncStream { $0.finish() }
+    }
+
+    #if os(iOS)
+    private func registerInterruptionHandler(
+        session: AVAudioSession,
+        intCont: AsyncStream<InterruptionSignal>.Continuation,
+        markerCont: AsyncStream<TranscriptMarker>.Continuation
+    ) {
+        let token = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: session,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self else { return }
+            guard let info = notification.userInfo,
+                  let typeValue = info[AVAudioSession.interruptionTypeKey] as? UInt,
+                  let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+
+            switch type {
+            case .began:
+                self.audioEngine.inputNode.removeTap(onBus: 0)
+                self.audioEngine.stop()
+                intCont.yield(.paused(String(localized: "Something else is using the microphone")))
+                let watchdog = Task {
+                    try? await Task.sleep(nanoseconds: 30 * 1_000_000_000)
+                    if !Task.isCancelled {
+                        self.inputBuilder?.finish(throwing: TranscriptionError.interruptionTimedOut)
+                    }
+                }
+                self.interruptionWatchdogTask = watchdog
+
+            case .ended:
+                let optionsValue = notification.userInfo?[AVAudioSession.interruptionOptionKey] as? UInt ?? 0
+                let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+                self.interruptionWatchdogTask?.cancel()
+                self.interruptionWatchdogTask = nil
+                if options.contains(.shouldResume) {
+                    self.rebuildAudioTap(intCont: intCont, markerCont: markerCont)
+                }
+            @unknown default:
+                break
+            }
+        }
+        observerTokens.append(token)
+    }
+
+    private func registerRouteChangeHandler(session: AVAudioSession) {
+        let token = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.routeChangeNotification,
+            object: session,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            self.preferBuiltInMic(session: session)
+            self.rebuildAudioTap(intCont: self.interruptionContinuation, markerCont: self.markerContinuation)
+        }
+        observerTokens.append(token)
+    }
+
+    private func preferBuiltInMic(session: AVAudioSession) {
+        if let inputs = session.availableInputs,
+           let builtIn = inputs.first(where: { $0.portType == .builtInMic }) {
+            try? session.setPreferredInput(builtIn)
+        }
+    }
+
+    /// Rebuilds the audio tap with fresh converters after a format change (route change, resuming from interruption).
+    /// Derives inFormat fresh from the current input node state rather than reusing a stale stored value.
+    private func rebuildAudioTap(intCont: AsyncStream<InterruptionSignal>.Continuation?, markerCont: AsyncStream<TranscriptMarker>.Continuation?) {
+        guard let sessionFormat = self.sessionFormat,
+              let sessionDiarFormat = self.sessionDiarFormat,
+              let sessionFed = self.sessionFed,
+              let builder = self.inputBuilder else { return }
+
+        let input = audioEngine.inputNode
+        let inFormat = input.outputFormat(forBus: 0)
+        guard let converter = AVAudioConverter(from: inFormat, to: sessionFormat),
+              let diarConverter = AVAudioConverter(from: inFormat, to: sessionDiarFormat) else {
+            return
+        }
+
+        audioEngine.inputNode.removeTap(onBus: 0)
+        input.installTap(onBus: 0, bufferSize: 4096, format: inFormat) { [weak self] buffer, _ in
+            self?.processBuffer(buffer, inFormat: inFormat, converter: converter, diarConverter: diarConverter, format: sessionFormat, diarFormat: sessionDiarFormat, fed: sessionFed, builder: builder)
+        }
+        audioEngine.prepare()
+        do {
+            try audioEngine.start()
+            intCont?.yield(.resumed)
+            markerCont?.yield(.resumedAfterInterruption)
+        } catch {
+            builder.finish(throwing: error)
+        }
+    }
+    #endif
 }

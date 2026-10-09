@@ -7,8 +7,19 @@ public protocol CaptioningEngine: AnyObject {
     func start() async throws -> AsyncThrowingStream<CaptionUpdate, Error>
     func soundLabelsStream() -> AsyncStream<SoundLabelKind>
     func audioLevelStream() -> AsyncStream<Double>
+    func interruptionStream() -> AsyncStream<InterruptionSignal>
+    func transcriptMarkerStream() -> AsyncStream<TranscriptMarker>
     /// Must be safe to call more than once, and safe to call after a failed start.
     func stop() async
+}
+
+extension CaptioningEngine {
+    public func interruptionStream() -> AsyncStream<InterruptionSignal> {
+        AsyncStream { $0.finish() }
+    }
+    public func transcriptMarkerStream() -> AsyncStream<TranscriptMarker> {
+        AsyncStream { $0.finish() }
+    }
 }
 
 extension TranscriptionEngine: CaptioningEngine {}
@@ -29,6 +40,7 @@ public final class CaptionSessionController {
     public var onUpdate: (CaptionUpdate) -> Void = { _ in }
     public var onSoundLabel: (SoundLabelKind) -> Void = { _ in }
     public var onAudioLevel: (Double) -> Void = { _ in }
+    public var onTranscriptMarker: (TranscriptMarker) -> Void = { _ in }
     public var onStartup: (String) -> Void = { _ in }
 
     private let makeEngine: () throws -> CaptioningEngine
@@ -74,6 +86,8 @@ public final class CaptionSessionController {
             state = .listening
             let labels = engine.soundLabelsStream()
             let levels = engine.audioLevelStream()
+            let interruptions = engine.interruptionStream()
+            let markers = engine.transcriptMarkerStream()
             try await withThrowingTaskGroup(of: Void.self) { group in
                 group.addTask { @MainActor [weak self] in
                     for try await u in updates { self?.onUpdate(u) }
@@ -83,6 +97,20 @@ public final class CaptionSessionController {
                 }
                 group.addTask { @MainActor [weak self] in
                     for await level in levels { self?.onAudioLevel(level) }
+                }
+                group.addTask { @MainActor [weak self] in
+                    for await signal in interruptions {
+                        guard let self else { continue }
+                        switch signal {
+                        case .paused(let reason):
+                            if self.state == .listening { self.state = .paused(reason) }
+                        case .resumed:
+                            if case .paused = self.state { self.state = .listening }
+                        }
+                    }
+                }
+                group.addTask { @MainActor [weak self] in
+                    for await marker in markers { self?.onTranscriptMarker(marker) }
                 }
                 try await group.waitForAll()
             }

@@ -17,36 +17,52 @@ final class CaptionSessionControllerTests: XCTestCase {
         var holdOpen = false                  // keep the streams open until stop()
         var labels: [SoundLabelKind] = []
         var levels: [Double] = []
+        var interruptions: [InterruptionSignal] = []
+        var markers: [TranscriptMarker] = []
         private(set) var stopCount = 0
         private var updateCont: AsyncThrowingStream<CaptionUpdate, Error>.Continuation?
         private var labelCont: AsyncStream<SoundLabelKind>.Continuation?
         private var levelCont: AsyncStream<Double>.Continuation?
-        private var labelStream: AsyncStream<SoundLabelKind>?
-        private var levelStream: AsyncStream<Double>?
+        private var interruptionCont: AsyncStream<InterruptionSignal>.Continuation?
+        private var markerCont: AsyncStream<TranscriptMarker>.Continuation?
+        private var labelStreamValue: AsyncStream<SoundLabelKind>?
+        private var levelStreamValue: AsyncStream<Double>?
+        private var interruptionStreamValue: AsyncStream<InterruptionSignal>?
+        private var markerStreamValue: AsyncStream<TranscriptMarker>?
 
         func start() async throws -> AsyncThrowingStream<CaptionUpdate, Error> {
             if let startError { throw startError }
             let (ls, lc) = AsyncStream.makeStream(of: SoundLabelKind.self)
-            labelStream = ls; labelCont = lc
+            labelStreamValue = ls; labelCont = lc
             let (lvls, lvcont) = AsyncStream.makeStream(of: Double.self)
-            levelStream = lvls; levelCont = lvcont
+            levelStreamValue = lvls; levelCont = lvcont
+            let (ints, intc) = AsyncStream.makeStream(of: InterruptionSignal.self)
+            interruptionStreamValue = ints; interruptionCont = intc
+            let (marks, markc) = AsyncStream.makeStream(of: TranscriptMarker.self)
+            markerStreamValue = marks; markerCont = markc
             let (stream, cont) = AsyncThrowingStream.makeStream(of: CaptionUpdate.self)
             updateCont = cont
             for u in updates { cont.yield(u) }
             for l in labels { lc.yield(l) }
             for lv in levels { lvcont.yield(lv) }
+            for i in interruptions { intc.yield(i) }
+            for m in markers { markc.yield(m) }
             if !holdOpen {
                 if let failAfterUpdates { cont.finish(throwing: failAfterUpdates) } else { cont.finish() }
                 lc.finish()
                 lvcont.finish()
+                intc.finish()
+                markc.finish()
             }
             return stream
         }
-        func soundLabelsStream() -> AsyncStream<SoundLabelKind> { labelStream ?? AsyncStream { $0.finish() } }
-        func audioLevelStream() -> AsyncStream<Double> { levelStream ?? AsyncStream { $0.finish() } }
+        func soundLabelsStream() -> AsyncStream<SoundLabelKind> { labelStreamValue ?? AsyncStream { $0.finish() } }
+        func audioLevelStream() -> AsyncStream<Double> { levelStreamValue ?? AsyncStream { $0.finish() } }
+        func interruptionStream() -> AsyncStream<InterruptionSignal> { interruptionStreamValue ?? AsyncStream { $0.finish() } }
+        func transcriptMarkerStream() -> AsyncStream<TranscriptMarker> { markerStreamValue ?? AsyncStream { $0.finish() } }
         func stop() async {
             stopCount += 1
-            updateCont?.finish(); labelCont?.finish(); levelCont?.finish()
+            updateCont?.finish(); labelCont?.finish(); levelCont?.finish(); interruptionCont?.finish(); markerCont?.finish()
         }
     }
 
@@ -69,10 +85,11 @@ final class CaptionSessionControllerTests: XCTestCase {
         c.onStateChange = { log.states.append($0) }
         c.onUpdate = { log.updates.append($0.text) }
         c.onSoundLabel = { log.labels.append($0) }
+        c.onTranscriptMarker = { log.markers.append($0) }
         c.onStartup = { log.startup = $0 }
         return (c, log)
     }
-    final class Log { var created = 0; var states: [CaptionState] = []; var updates: [String] = []; var labels: [SoundLabelKind] = []; var startup = "" }
+    final class Log { var created = 0; var states: [CaptionState] = []; var updates: [String] = []; var labels: [SoundLabelKind] = []; var markers: [TranscriptMarker] = []; var startup = "" }
 
     // MARK: tests
 
@@ -185,5 +202,15 @@ final class CaptionSessionControllerTests: XCTestCase {
         await eventually("audio levels delivered") { audioLevels.count >= 3 }
         XCTAssertEqual(audioLevels, [-30, -28, -32])
         await c.stopAndWait()
+    }
+
+    func testTranscriptMarkersAreDelivered() async {
+        let engine = FakeEngine()
+        engine.updates = [update("hello")]
+        engine.markers = [.wasAway, .resumedAfterInterruption]
+        let (c, log) = make { engine }
+        c.start()
+        await eventually("idle after finishing") { c.state == .idle && log.markers.count >= 2 }
+        XCTAssertEqual(log.markers, [.wasAway, .resumedAfterInterruption])
     }
 }

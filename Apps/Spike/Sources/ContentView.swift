@@ -46,6 +46,7 @@ final class CaptionModel: ObservableObject {
         controller.onStateChange = { [weak self] in self?.handleCaptionStateChange($0) }
         controller.onStartup = { [weak self] in self?.startup = $0 }
         controller.onSoundLabel = { [weak self] in self?.stream.insertSoundLabel($0) }
+        controller.onTranscriptMarker = { [weak self] in self?.stream.insertMarker($0) }
         controller.onAudioLevel = { [weak self] level in
             self?.roomLevelDBFS = level
         }
@@ -202,6 +203,8 @@ struct ContentView: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var lastScenePhase: ScenePhase?
 
     private var style: CaptionStyle { model.style }
     private var control: PrimaryControl { PrimaryControl.for(model.state) }
@@ -233,7 +236,15 @@ struct ContentView: View {
         }
         .onChange(of: model.state) { _, newState in
             UIAccessibility.post(notification: .announcement, argument: StatusWords.announcement(for: newState))
+            UIApplication.shared.isIdleTimerDisabled = ScreenWakePolicy.shouldStayAwake(for: newState)
             handleStateChange(newState)
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .background && lastScenePhase != .background {
+                if case .listening = model.state { model.stream.insertMarker(.wasAway) }
+                if case .paused = model.state { model.stream.insertMarker(.wasAway) }
+            }
+            lastScenePhase = newPhase
         }
     }
 
@@ -251,7 +262,7 @@ struct ContentView: View {
                 animationShownAt = Date()
                 withAnimation(.easeInOut(duration: 0.25)) { showPreparingAnimation = true }
             }
-        case .listening, .idle, .failed:
+        case .listening, .paused, .idle, .failed:
             preparingStartTime = nil
             guard showPreparingAnimation else { return }
             let shown = animationShownAt.map { Date().timeIntervalSince($0) } ?? LaunchAnimationGate.minimumDuration

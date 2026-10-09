@@ -40,6 +40,11 @@ final class StatusDotTests: XCTestCase {
         XCTAssertEqual(dot, .hidden)
     }
 
+    func testHiddenWhenPaused() {
+        let dot = StatusDot.select(state: .paused("Something"), activity: nil, roomLevelDBFS: -30)
+        XCTAssertEqual(dot, .hidden)
+    }
+
     func testPulsingWithNilLevelWhenNoOneTalking() {
         let dot = StatusDot.select(state: .listening, activity: .noOneTalking, roomLevelDBFS: nil)
         if case .pulsing(let level) = dot {

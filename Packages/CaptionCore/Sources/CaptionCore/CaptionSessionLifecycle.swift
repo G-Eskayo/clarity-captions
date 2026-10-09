@@ -16,7 +16,7 @@ public enum CaptionSessionLifecycle {
         guard let startedAt = sessionStartedAt else { return .none }
 
         switch state {
-        case .preparing, .listening:
+        case .preparing, .listening, .paused:
             return .none
         case .idle, .failed:
             if SessionRetention.shouldSave(lines: lines) {
