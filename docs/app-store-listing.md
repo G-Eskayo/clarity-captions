@@ -21,21 +21,22 @@ Rules this text follows (docs/app-store-compliance.md, App Review Guidelines 1.4
 
 | Field | Limit | Text | Length |
 |---|---|---|---|
-| Name | 30 | Seal: Live Captions | 19 |
+| Name | 30 | Seal | 4 |
 | Subtitle | 30 | Captions for conversations | 26 |
 | Promotional text | 170 | Follow the conversation at the table. Seal captions what people nearby say, shows who is speaking, and works with no internet. No ads, no account. | 146 |
-| Keywords | 100 | `deaf,hard of hearing,subtitles,speech to text,transcribe,transcript,offline,accessibility,talk` | 94 |
+| Keywords | 100 | `deaf,hard of hearing,subtitles,speech to text,transcribe,transcript,offline,accessibility,talk,live` | 99 |
 | Primary category | | Utilities | |
 | Secondary category | | Productivity | |
 | Support URL | | `<host>/support.html` (site/support.html, PR #77) | |
 | Privacy policy URL | | `<host>/privacy.html` (site/privacy.html, PR #77) | |
 | Marketing URL | | Optional, leave empty until #44 | |
-| Copyright | | `2026 <owner's legal name>` | |
+| Copyright | | 2026 Gil Brandon Eskayo | |
 
-The name is "Seal: Live Captions" rather than plain "Seal" because store names must be unique and
-a one-word name is the most likely to be taken. The icon's home-screen label stays "Seal"
-(`APP_DISPLAY_NAME`). Keywords skip words already in the name and subtitle (Apple indexes those),
-so "captions", "live" and "conversation" are not repeated.
+The store name is "Seal" (owner, 2026-10-09). Store names must be unique: if App Store Connect
+refuses it when the record is created, fall back to a longer form such as "Seal Captions". "Live
+Captions" is avoided because it is also the name of an Apple feature (Guideline 5.2.5).
+Keywords skip words already in the name and subtitle (Apple indexes those),
+so "captions" and "conversation" are not repeated.
 
 ### Description (limit 4,000)
 
@@ -60,7 +61,7 @@ PRIVATE BY DESIGN
 MORE
 • Add names and words you use often so Seal spells them right
 • Copy or share the text of a conversation
-• Works on iPhone, iPad and Mac
+• Works on iPhone and iPad
 
 Seal is built for deaf and hard-of-hearing people, and for anyone who wants to read a conversation instead of only hearing it. Captions are made by a computer and can contain mistakes. Seal is not a medical device.
 
@@ -69,8 +70,7 @@ Captions are in English for now.
 
 Notes for the owner:
 
-- "Mac" is in the description because the Mac target exists (#41). Remove it if the Mac build is
-  not part of this first submission: describing a platform that isn't shipped is a 2.3.1 risk.
+- v1 is iPhone and iPad only (owner, 2026-10-09); the Mac target ships later.
 - "Works with no internet connection after a one-time setup" matches CONTEXT.md's precise wording
   (Apple's language files may download once).
 
@@ -149,7 +149,7 @@ Items from docs/app-store-compliance.md, each marked **Done**, **N/A** (with rea
 |---|---|---|---|
 | C1 | 2.1 crash-free on a real device, including iPad if the build is universal | **Open** | Reviewers test universal apps on iPad. iPad layout shipped in #40 on 2026-10-09 and needs a real-iPad pass before submission. |
 | C2 | 2.1 battery and thermal over a sustained session | **Open** | #12 (30-minute check). |
-| C3 | Accessibility of the app's own UI (Dynamic Type, contrast, Dark Mode, VoiceOver) | **Done** | #13 closed 2026-10-05; docs/accessibility-audit.md. Re-check the iPad and Mac layouts. |
+| C3 | Accessibility of the app's own UI (Dynamic Type, contrast, Dark Mode, VoiceOver) | **Done** | #13 closed 2026-10-05; docs/accessibility-audit.md. Re-check the iPad layout. |
 | C4 | Microphone purpose string is specific | **Done** | "Captions need the microphone to show what people nearby are saying." (Apps/Spike/project.yml). |
 | C5 | Mic requested in context, not cold at launch | **Done** | First run explains, then asks (#11). |
 | P1 | Hosted privacy policy | **Open** | Written (PR #77); needs the contact email and hosting. |
@@ -177,12 +177,12 @@ review notes don't mention them:
 4. **Faded background speech** (#6): still open, so the description doesn't mention it.
 5. **Other languages** (#37): the engine is fixed to en-US.
 
-## Open questions for the owner
+## Owner decisions (2026-10-09)
 
-1. Contact email for the support and privacy pages and App Review contact.
-2. Legal name for the copyright line (it must match the developer account).
-3. Is the Mac app part of this first submission, or iPhone + iPad only?
-4. Ship background captioning (2.5.4 review scrutiny, needs a recording) or v1 with the screen
-   kept awake while captioning?
-5. EU trader status under the Digital Services Act (a free, non-commercial individual developer
-   may qualify as a non-trader); decide before choosing EU availability.
+1. Contact email (support page, privacy page, App Review contact): panda_warrior@icloud.com.
+2. Copyright / legal name: Gil Brandon Eskayo.
+3. v1 is iPhone and iPad only; the Mac app comes later.
+4. v1 keeps the screen awake while captioning (#83) instead of background captioning (ADR 0020 deferred),
+   so the background-audio review paragraph above is not used.
+5. Store name: Seal.
+6. Still open: EU trader status under the Digital Services Act, answered in App Store Connect.
