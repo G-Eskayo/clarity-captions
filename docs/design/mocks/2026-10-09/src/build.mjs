@@ -27,15 +27,16 @@ export function contrast(a, b) {
 }
 
 // ---------- themes: 3 light, 3 dark ----------
-// Dark: the three existing dark presets (Classic, Bright, Night), unchanged colors. Light: the existing Paper plus
-// two new ones in the icon's palette. Gear color is chosen per theme (non-text UI, must be >= 3:1; we aim higher).
+// Light: Paper (existing) plus Sea Glass and Peach in the icon's palette. Dark (revised 2026-10-09 after the owner's
+// feedback): Bright (yellow on black) is dropped, and every dark theme is relaxed for older eyes: no pure black
+// behind, no pure white text; soft deep grey, navy and teal with warm off-white text, still >= 7:1.
 const THEMES = [
-  { id: 'paper', name: 'Paper', kind: 'light', bg: '#FAF5E6', text: '#141419', gear: '#14514B', s1: '#14514B', s2: '#7A350C', status: 'existing' },
-  { id: 'seaglass', name: 'Sea Glass', kind: 'light', bg: '#DCEFEA', text: '#0D2F2C', gear: '#0B4842', s1: '#0B4842', s2: '#6E2E0A', status: 'new' },
-  { id: 'peach', name: 'Peach', kind: 'light', bg: '#FBE8D2', text: '#2B1A10', gear: '#6E2E0A', s1: '#0B4842', s2: '#6E2E0A', status: 'new' },
-  { id: 'classic', name: 'Classic', kind: 'dark', bg: '#000000', text: '#FFFFFF', gear: '#FFFFFF', s1: '#7FD8CC', s2: '#F4C27E', status: 'existing' },
-  { id: 'bright', name: 'Bright', kind: 'dark', bg: '#000000', text: '#FFE633', gear: '#FFE633', s1: '#7FD8CC', s2: '#F4A27E', status: 'existing' },
-  { id: 'night', name: 'Night', kind: 'dark', bg: '#0D1226', text: '#D9E6FF', gear: '#9DB8FF', s1: '#7FD8CC', s2: '#F4C27E', status: 'existing' },
+  { id: 'paper', name: 'Paper', kind: 'light', bg: '#FAF5E6', text: '#141419', gear: '#14514B', s1: '#14514B', s2: '#7A350C', green: '#12512F', status: 'existing' },
+  { id: 'seaglass', name: 'Sea Glass', kind: 'light', bg: '#DCEFEA', text: '#0D2F2C', gear: '#0B4842', s1: '#0B4842', s2: '#6E2E0A', green: '#12512F', status: 'new' },
+  { id: 'peach', name: 'Peach', kind: 'light', bg: '#FBE8D2', text: '#2B1A10', gear: '#6E2E0A', s1: '#0B4842', s2: '#6E2E0A', green: '#12512F', status: 'new' },
+  { id: 'charcoal', name: 'Charcoal', kind: 'dark', bg: '#2B2D31', text: '#ECE6D9', gear: '#E2D9C6', s1: '#93DCD1', s2: '#F2C994', green: '#9BE3B4', status: 'replaces Classic' },
+  { id: 'night', name: 'Night', kind: 'dark', bg: '#1D2536', text: '#E9E3D5', gear: '#C9D6F2', s1: '#93DCD1', s2: '#F2C994', green: '#9BE3B4', status: 'softened' },
+  { id: 'harbor', name: 'Harbor', kind: 'dark', bg: '#173331', text: '#ECE4D3', gear: '#F2DDB5', s1: '#A3E3D9', s2: '#F2C994', green: '#A6E8BC', status: 'new' },
 ]
 const T = Object.fromEntries(THEMES.map((t) => [t.id, t]))
 
@@ -133,25 +134,26 @@ function phone(orient, t, inner, extraStyle = '') {
   return `<div class="phone ${orient}" style="background:${t.bg};${extraStyle}"><div class="island"></div>${bar}<div class="screen">${inner}</div></div>`
 }
 
-function topbar(t, center) {
+function topbar(t, center = '') {
   return `<div class="topbar"><div class="gear">${GEAR(t.gear)}</div>${center}</div>`
 }
 const listeningStatus = (t) => `<div class="status" style="color:${t.text}"><span class="dot" style="background:${t.text}"></span>Listening</div>`
 const pausedStatus = (t) => `<div class="status" style="color:${t.text}">Paused</div>`
-const stopDot = (t) => `<div class="stopdot btn" style="${primaryStyle(t)}">${XICON(t.bg)}</div>`
-const startBtn = (t, label = 'Start captions') => `<div class="btn start" style="${primaryStyle(t)}">${label}</div>`
+// Bottom controls, as in today's app: Start is the wide pill at the bottom middle; while captioning it shrinks into
+// the small Stop circle at the bottom right (MorphingControl).
+const stopDot = (t) => `<div class="stopdot btn" style="position:absolute;right:20px;bottom:34px;z-index:30;${primaryStyle(t)}">${XICON(t.bg)}</div>`
+const startBtn = (t, orient = 'p', extra = '') => `<div class="btn start" style="position:absolute;left:50%;transform:translateX(-50%);bottom:${orient === 'p' ? 40 : 26}px;width:${orient === 'p' ? 362 : 420}px;z-index:30;${primaryStyle(t)}${extra}">Start captions</div>`
 
+// The pause veil fades the captions back toward the theme's own background, so the buttons keep full theme contrast.
 function dimLayer(t, opacity = 1) {
-  const c = t.kind === 'light' ? 'rgba(20,30,30,.42)' : 'rgba(0,0,0,.55)'
-  return `<div class="dim" style="background:${c};opacity:${opacity}"></div>`
+  return `<div class="dim" style="background:${t.bg};opacity:${0.86 * opacity}"></div>`
 }
-function saveNew(t, saveState = 'save', top = 150) {
-  let save
-  if (saveState === 'save') save = `<div class="btn small" style="${secondaryStyle(t)}">SAVE</div>`
-  else if (saveState === 'check') save = `<div class="btn" style="width:64px;height:64px;border-radius:18px;background:${GREEN.fill};box-shadow:0 5px 0 #11502F">${CHECK('#fff', 36)}</div>`
-  else save = `<div class="btn small" style="background:${GREEN.fill};color:#fff;box-shadow:0 5px 0 #11502F">${CHECK('#fff', 22)} SAVED</div>`
-  const neu = `<div class="btn small" style="${secondaryStyle(t)}">NEW</div>`
-  return `<div class="overlay-buttons" style="top:${top}px"><div style="height:64px;display:grid;place-items:center">${save}</div>${neu}</div>`
+// Retro, literal text buttons: [ Save ] -> [ ✔ ] -> [ Saved ] (green, held until the conversation changes); [ New ].
+const RETRO = "font-family:'SF Mono',Menlo,ui-monospace,monospace;font-weight:700;font-size:26px;letter-spacing:.02em;white-space:pre"
+function retro(t, label, color) { return `<div style="${RETRO};color:${color || t.text};background:${t.bg};padding:4px 16px;border-radius:14px">[ ${label} ]</div>` }
+function saveNew(t, saveState = 'save', top = 300) {
+  const save = saveState === 'save' ? retro(t, 'Save') : saveState === 'check' ? retro(t, '✔', t.green) : retro(t, 'Saved', t.green)
+  return `<div class="overlay-buttons" style="top:${top}px;gap:26px">${save}${retro(t, 'New')}</div>`
 }
 
 function doc(title, body, width, height) {
@@ -166,15 +168,12 @@ const fig = (phoneHTML, caption) => `<div>${phoneHTML}<div class="cap">${caption
 const theme = T.paper
 
 function mainCaptioning(orient, t = theme) {
-  const center = `<div style="display:flex;flex-direction:column;align-items:center;gap:6px">${stopDot(t)}</div>`
-  return phone(orient, t, topbar(t, center) + listeningStatus(t) + captionsHTML(t, { lines: orient === 'l' ? LINES.slice(2) : LINES }))
+  return phone(orient, t, topbar(t) + listeningStatus(t) + captionsHTML(t, { lines: orient === 'l' ? LINES.slice(2) : LINES }) + stopDot(t))
 }
 function paused(orient, t = theme, { saveState = 'save', dimOpacity = 1, hideButtons = false } = {}) {
-  const center = startBtn(t)
-  const top = orient === 'p' ? 178 : 112
-  const inner = topbar(t, center) + pausedStatus(t) + captionsHTML(t, { lines: orient === 'l' ? LINES.slice(2, 6) : LINES.slice(0, 6) })
-    + dimLayer(t, dimOpacity) + (hideButtons ? '' : saveNew(t, saveState, top))
-  // The top bar (gear + Start) stays above the dim.
+  const top = orient === 'p' ? 330 : 120
+  const inner = topbar(t) + pausedStatus(t) + captionsHTML(t, { lines: orient === 'l' ? LINES.slice(2, 6) : LINES.slice(0, 6) })
+    + dimLayer(t, dimOpacity) + (hideButtons ? '' : saveNew(t, saveState, top)) + startBtn(t, orient)
   return phone(orient, t, inner.replace('<div class="topbar">', '<div class="topbar" style="z-index:20">'))
 }
 
@@ -183,33 +182,34 @@ const add = (file, title, html, w, h) => PAGES.push({ file, title, html: doc(tit
 
 // 01 main screen while captioning
 add('01-main-captioning.png', 'Main screen while captioning',
-  board('1 · Main screen while captioning', 'Gear in the top-left corner: icon only, no label, no background, colored for the theme. Stop keeps today\'s behavior (the big button shrinks into a small circle with an X) but now sits at the top middle, because Start lives there. Captions in the dyslexia-friendly font (the new default). Theme shown: Paper.',
-    `<div class="row">${fig(mainCaptioning('p'), '<b>Portrait.</b> Top row: gear left, small Stop circle in the middle. "Listening" with its dot under it.')}${fig(mainCaptioning('l'), '<b>Landscape.</b> Same top row; captions use the full width below it.')}</div>`), 1400, 1000)
+  board('1 · Main screen while captioning', 'Gear in the top-left corner: icon only, no label, no background, colored for the theme. Stop is today\'s small circle with an X at the bottom right: the wide Start pill at the bottom middle shrinks into it when captioning starts (today\'s behavior, unchanged). Captions in the dyslexia-friendly font, the new default. Theme shown: Paper.',
+    `<div class="row">${fig(mainCaptioning('p'), '<b>Portrait.</b> Gear top-left, "Listening" at the top, small Stop circle bottom right.')}${fig(mainCaptioning('l'), '<b>Landscape.</b> Same; captions use the full width.')}</div>`), 1400, 1000)
 
 // 02 paused
 add('02-paused-save-new.png', 'Paused: Start, Save, New',
-  board('2 · Paused (after pressing X)', 'Start captions comes back at the top middle exactly as it works today. The captions dim, and SAVE with NEW stacked under it fade in under Start. Pressing Start captions fades the dim and both buttons back to clear and the same conversation carries on.',
-    `<div class="row">${fig(paused('p'), '<b>Portrait.</b> Dim covers the captions only; gear and Start stay on top.')}${fig(paused('l'), '<b>Landscape.</b> SAVE and NEW stack under Start in the middle.')}</div>`), 1400, 1000)
+  board('2 · Paused (after pressing X)', 'The X grows back into Start captions at the bottom middle, exactly as it works today. The captions fade back and the retro text buttons [ Save ] and [ New ] fade in, centered. Pressing Start captions fades the veil and both buttons back to clear and the same conversation carries on.',
+    `<div class="row">${fig(paused('p'), '<b>Portrait.</b> [ Save ] over [ New ], centered; Start at the bottom middle.')}${fig(paused('l'), '<b>Landscape.</b> Same, centered in the wider screen.')}</div><div class="row">${fig(paused('p', T.night), '<b>Dark (Night).</b> Same layout; the veil fades toward the theme\'s own background, so the text keeps full contrast.')}</div>`), 1400, 1950)
 
 // 03 save animation strip
 add('03-save-animation.png', 'Save animation',
-  board('3 · Save animation (3 frames, about 0.8 s total)', 'Tap SAVE: the button squishes, turns into a green check box, then grows into a green SAVED. If new captions arrive later (content changes, not time passing), it turns back into SAVE so she can save again; saving again updates the same saved conversation.',
-    `<div class="row">${fig(paused('p', theme, { saveState: 'save' }), '<b>Frame 1.</b> SAVE, as it appears when paused.')}${fig(paused('p', theme, { saveState: 'check' }), '<b>Frame 2.</b> Squishes into a green check box.')}${fig(paused('p', theme, { saveState: 'saved' }), '<b>Frame 3.</b> Grows into a green SAVED and stays.')}</div>`), 1400, 1000)
+  board('3 · Save: [ Save ] → [ ✔ ] → [ Saved ]', 'Tap [ Save ]: it becomes [ ✔ ] in green, then [ Saved ] in green, and holds solid. It only turns back into [ Save ] when the conversation\'s content changes (new captions after Start captions), never because time passed. Saving again updates the same saved conversation.',
+    `<div class="row">${fig(paused('p', theme, { saveState: 'save' }), '<b>1.</b> [ Save ] when paused.')}${fig(paused('p', theme, { saveState: 'check' }), '<b>2.</b> Tap: [ ✔ ] in green.')}${fig(paused('p', theme, { saveState: 'saved' }), '<b>3.</b> [ Saved ] in green, held until something changes.')}</div>
+    <div class="row">${fig(paused('p', T.night, { saveState: 'saved' }), '<b>Dark.</b> The green is lightened for dark themes so it stays easy to read.')}</div>`), 1400, 1950)
 
-// 04 dim cleared + hold on empty space
+// 04 veil cleared + hold on empty space
 function clearedFrame(withTouch) {
   const t = theme
-  const hint = `<div class="chip" style="bottom:56px;background:${t.text};color:${t.bg}">Hold on empty space to bring back Save and New</div>`
-  let inner = topbar(t, startBtn(t)) + pausedStatus(t) + captionsHTML(t, { lines: LINES.slice(0, 6) })
+  const hint = `<div class="chip" style="bottom:120px;background:${t.text};color:${t.bg}">Hold on empty space to bring back Save and New</div>`
+  let inner = topbar(t) + pausedStatus(t) + captionsHTML(t, { lines: LINES.slice(0, 6) })
   if (!withTouch) inner += hint
-  else inner += dimLayer(t, 0.45) + saveNew(t, 'save', 178).replace('style="top:178px"', 'style="opacity:.5;top:178px"')
-    + `<div class="touch" style="left:280px;bottom:44px;background:rgba(31,153,139,.35);box-shadow:0 0 0 10px rgba(31,153,139,.18),0 0 0 22px rgba(31,153,139,.08)"></div>`
-    + `<div class="anno" style="left:24px;bottom:40px;max-width:230px">Press and hold on empty space: the dim and buttons fade back in</div>`
-  return phone('p', t, inner)
+  else inner += dimLayer(t, 0.5) + saveNew(t, 'save', 330).replace('style="top:330px', 'style="opacity:.5;top:330px')
+    + `<div class="touch" style="left:300px;bottom:106px;background:rgba(31,153,139,.35);box-shadow:0 0 0 10px rgba(31,153,139,.18),0 0 0 22px rgba(31,153,139,.08)"></div>`
+    + `<div class="anno" style="left:24px;top:96px;max-width:300px">Press and hold on empty space: the veil and buttons fade back in</div>`
+  return phone('p', t, inner + startBtn(t))
 }
-add('04-dim-cleared-and-back.png', 'Dim cleared for scrolling and copying',
-  board('4 · Clearing the dim to scroll and copy', 'While paused, one tap on the dimmed area fades the dim and SAVE / NEW away, so she can scroll and select text. Start stays put. Press and hold on empty space (not on words) brings them back. A press-and-hold on words selects text instead (see 5). Proposed, for your sign-off.',
-    `<div class="row">${fig(paused('p'), '<b>1.</b> Paused, dimmed.')}${fig(clearedFrame(false), '<b>2.</b> One tap on the dim: clear. A small hint shows the first few times.')}${fig(clearedFrame(true), '<b>3.</b> Press and hold on empty space: dim and buttons fade back in.')}</div>`), 1400, 1000)
+add('04-dim-cleared-and-back.png', 'Veil cleared for scrolling and copying',
+  board('4 · Clearing the veil to scroll and copy', 'While paused, one tap on the faded area clears the veil and [ Save ] / [ New ], so she can scroll and select text. Start stays put. Press and hold on empty space (not on words) brings them back; press and hold on words selects text (see 5). For your sign-off (Decisions).',
+    `<div class="row">${fig(paused('p'), '<b>1.</b> Paused.')}${fig(clearedFrame(false), '<b>2.</b> One tap: clear. A small hint shows the first few times.')}${fig(clearedFrame(true), '<b>3.</b> Press and hold on empty space: veil and buttons fade back in.')}</div>`), 1400, 1000)
 
 // 05 copy
 function copyFrame() {
@@ -221,14 +221,15 @@ function copyFrame() {
     4: `${hl("We should take your mom there for her birthday.")}`,
     5: `${hl("Yes! Let's book a table for Saturday")}<span id="selE"></span> around seven.`,
   }
-  const inner = topbar(t, startBtn(t)) + pausedStatus(t) + captionsHTML(t, { lines: LINES.slice(0, 6), selection: sel })
+  const inner = topbar(t) + pausedStatus(t) + captionsHTML(t, { lines: LINES.slice(0, 6), selection: sel })
     + `<div id="hS" class="handle s" style="background:#1F998B;height:32px"></div><div id="hE" class="handle e" style="background:#1F998B;height:32px"></div>`
     + `<script>addEventListener('load',()=>document.fonts.ready.then(()=>{const scr=document.querySelector('#hS').parentElement.getBoundingClientRect();for(const[m,h]of[['selS','hS'],['selE','hE']]){const r=document.getElementById(m).getBoundingClientRect();const el=document.getElementById(h);el.style.left=(r.left-scr.left-1)+'px';el.style.top=(r.top-scr.top+2)+'px'}}))</script>`
     + `<div class="btn" style="position:absolute;left:50%;transform:translateX(-50%);top:330px;z-index:30;height:50px;padding:0 26px;border-radius:25px;font-size:19px;background:${t.text};color:${t.bg};box-shadow:0 5px 0 ${lipColor(t.text)}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${t.bg}" stroke-width="2.4"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>Copy</div>`
+    + startBtn(t)
   return phone('p', t, inner)
 }
 add('05-copy.png', 'Copy: only a Copy button',
-  board('5 · Copying text', 'Press and hold on words to select, drag the handles across lines. About half a second after the selection stops changing, only a Copy button appears (no Look Up, Share, or other menu items). The handles still work after Copy appears.',
+  board('5 · Copying text', 'Press and hold on words to select, drag the handles across lines. About half a second after the selection stops changing, only a Copy button appears (no Look Up, Share or other menu items). The handles still work after Copy appears. This replaces the Copy all / Share options that were in Settings.',
     `<div class="row">${fig(copyFrame(), '<b>Selection across several lines</b>, handles at both ends, one Copy button above it.')}</div>`), 600, 1000)
 
 // 06 themes grid
@@ -237,87 +238,134 @@ function themeCard(t) {
   const g = contrast(t.gear, t.bg).toFixed(1)
   const s1 = contrast(t.s1, t.bg).toFixed(1)
   const s2 = contrast(t.s2, t.bg).toFixed(1)
-  const label = `<b>${t.name}</b> · ${t.kind} · ${t.status === 'new' ? '<b style="color:#B4532A">new</b>' : 'existing'}<br>Text ${c}:1 · gear ${g}:1 · speaker labels ${s1}:1 / ${s2}:1<br>bg ${t.bg} · text ${t.text} · gear ${t.gear}`
+  const gr = contrast(t.green, t.bg).toFixed(1)
+  const label = `<b>${t.name}</b> · ${t.kind} · ${t.status === 'existing' ? 'existing' : `<b style="color:#B4532A">${t.status}</b>`}<br>Text ${c}:1 · gear ${g}:1 · speakers ${s1}:1 / ${s2}:1 · [ Saved ] green ${gr}:1<br>bg ${t.bg} · text ${t.text}`
   return fig(mainCaptioning('p', t), label)
 }
 add('06-themes.png', 'Themes: 3 light, 3 dark',
-  board('6 · Themes: 3 light and 3 dark', 'Light: Paper (existing) plus two new ones in the icon\'s palette, Sea Glass and Peach. Dark: the three existing ones (Classic, Bright, Night), unchanged. Every caption color pair is at or above 7:1 (AAA); numbers are computed. Gear color is picked per theme. Open: you asked for relaxing colors, so Bright (yellow on black) could be swapped for a softer dark one; kept for now because nothing said to remove it.',
+  board('6 · Themes: 3 light and 3 dark', 'Light: Paper (existing), Sea Glass and Peach. Dark, revised for older eyes: Bright (yellow on black) is gone, and no dark theme uses pure black behind or pure white text. Charcoal (soft grey) replaces Classic, Night is softened, Harbor (deep teal) is new. Every pair is at or above 7:1 (AAA); numbers are computed.',
     `<div class="row">${THEMES.filter((t) => t.kind === 'light').map(themeCard).join('')}</div><div class="row">${THEMES.filter((t) => t.kind === 'dark').map(themeCard).join('')}</div>`), 1400, 2060)
 
-// 07 button styles A/B/C
-function styleCell(opt, pressed) {
-  const t = theme
-  let start, save
-  const squish = pressed ? 'transform:scaleX(1.06) scaleY(.88) translateY(4px);' : ''
-  if (opt === 'A') {
-    start = `<div class="btn start" style="${primaryStyle(t)}${pressed ? `box-shadow:0 2px 0 ${lipColor(t.text)};` : ''}${squish}">Start captions</div>`
-    save = `<div class="btn small" style="${secondaryStyle(t)}${pressed ? 'box-shadow:0 2px 0 #CFC6B5;' : ''}${squish}">SAVE</div>`
-  } else if (opt === 'B') {
-    const sq = pressed ? 'transform:scale(.92);' : ''
-    start = `<div class="btn start" style="background:${BRAND.teal};color:#fff;background-image:linear-gradient(${BRAND.teal} 0 55%, #1A8a7d 55% 100%);${sq}">Start captions</div>`
-    save = `<div class="btn small" style="background:${BRAND.cream};color:${BRAND.deep};background-image:linear-gradient(${BRAND.cream} 0 55%, #F2DDB5 55% 100%);${sq}">SAVE</div>`
-  } else {
-    const sq = pressed ? 'transform:scaleX(1.08) scaleY(.9);' : ''
-    start = `<div class="btn start" style="background:${pressed ? '#F3E1BC' : BRAND.cream};color:${BRAND.deep};border:3px solid ${BRAND.deep};${sq}">Start captions</div>`
-    save = `<div class="btn small" style="background:${pressed ? '#ECE6DA' : '#fff'};color:${BRAND.deep};border:3px solid ${BRAND.deep};${sq}">SAVE</div>`
-  }
-  return `<div style="background:${t.bg};border-radius:28px;padding:30px 28px;display:flex;flex-direction:column;align-items:center;gap:20px;width:300px;box-shadow:0 0 0 1px #d8d0bf">${start}${save}<div style="font-size:13px;font-weight:700;color:#5c6a68">${pressed ? 'Pressed (squished)' : 'Resting'}</div></div>`
-}
-const styleBlurb = {
-  A: '<b>A · Gummy lip.</b> Solid flat fill in the theme\'s text color with a darker flat "lip" under it. Pressing sinks it onto the lip and squashes it wider and shorter, like a gummy.',
-  B: '<b>B · Two-tone jelly.</b> Brand teal (and cream for secondary), a flat lighter top half. Pressing shrinks the whole button evenly (scale 0.92) and springs back. Note: white on brand teal is 3.4:1, enough only for large bold text, so B would darken the teal in the app.',
-  C: '<b>C · Outlined cream.</b> Cream fill, thick deep-teal outline. Pressing darkens the fill and squashes it. The quietest of the three.',
-}
-add('07-button-styles.png', 'Flat and gummy button styles',
-  board('7 · Flat and gummy buttons: pick A, B or C', 'Same buttons in three styles, resting and pressed. The squish springs back with a little bounce (about 0.25 s). The other screens use A so you can see it in context.',
-    ['A', 'B', 'C'].map((o) => `<div class="row" style="align-items:center">${styleCell(o, false)}${styleCell(o, true)}<div class="cap" style="max-width:420px">${styleBlurb[o]}</div></div>`).join('')), 1400, 600)
+// 07 (button styles A/B/C) is superseded by 10, the A vs C comparison. [ Save ] / [ New ] are retro text by spec.
 
-// 08 settings
-function settingsSheet() {
-  const t = theme
-  const sec = (title, body, note = '') => `<div style="margin-top:22px"><div style="font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#5c6a68;margin:0 6px 8px">${title}</div><div style="background:#fff;border-radius:22px;padding:14px 16px">${body}</div>${note ? `<div style="font-size:13px;color:#5c6a68;margin:8px 8px 0;line-height:1.4">${note}</div>` : ''}</div>`
-  const swatches = THEMES.map((x, i) => `<div style="display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:44px;height:44px;border-radius:14px;background:${x.bg};border:${i === 0 ? '3px solid #1F998B' : '1px solid #d0c8b8'};display:grid;place-items:center;font-weight:800;color:${x.text}">Aa</div><div style="font-size:11px;font-weight:600">${x.name}</div></div>`).join('')
-  const fontRow = (name, family, sel, tag = '') => `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 4px;${sel ? '' : 'opacity:.85'}"><span style="font-family:${family};font-size:18px">${name}${tag}</span>${sel ? CHECK('#1F998B', 22) : ''}</div>`
-  const pill = (s, on) => `<span style="padding:8px 13px;border-radius:16px;font-weight:700;font-size:14px;${on ? 'background:#0F5C55;color:#fff' : 'background:#EFE9DD'}">${s}</span>`
+// 08 settings: no borders, no boxes, one thin line between sections, on the theme's own background
+function settingsSheet(t = theme) {
+  const line = t.kind === 'light' ? 'rgba(20,20,25,.12)' : 'rgba(236,230,217,.16)'
+  const muted = t.kind === 'light' ? '#56625f' : '#B9B3A6'
+  let first = true
+  const sec = (title, body, note = '') => {
+    const sep = first ? '' : `border-top:1px solid ${line};`
+    first = false
+    return `<div style="${sep}padding:18px 4px 16px"><div style="font-size:14px;font-weight:800;letter-spacing:.04em;color:${muted};margin-bottom:12px">${title}</div>${body}${note ? `<div style="font-size:13px;color:${muted};margin-top:10px;line-height:1.4">${note}</div>` : ''}</div>`
+  }
+  const swatches = THEMES.map((x, i) => `<div style="display:flex;flex-direction:column;align-items:center;gap:5px"><div style="width:46px;height:46px;border-radius:15px;background:${x.bg};display:grid;place-items:center;font-weight:800;color:${x.text};box-shadow:0 1px 3px rgba(0,0,0,.18)">Aa</div><div style="font-size:11px;font-weight:600;color:${t.text}">${x.name}</div><div style="height:16px">${(t.id === x.id) ? CHECK(t.gear, 16) : ''}</div></div>`).join('')
+  const fontRow = (name, family, sel, tag = '') => `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;color:${t.text}"><span style="font-family:${family};font-size:18px">${name}${tag}</span>${sel ? CHECK(t.gear, 22) : ''}</div>`
+  const softFill = t.kind === 'light' ? 'rgba(20,20,25,.07)' : 'rgba(236,230,217,.10)'
+  const pill = (s, on) => `<span style="padding:9px 14px;border-radius:16px;font-weight:700;font-size:15px;${on ? `background:${t.text};color:${t.bg}` : `background:${softFill};color:${t.text}`}">${s}</span>`
+  const sizeBtn = (s, fs) => `<div class="btn" style="flex:1;height:56px;border-radius:18px;font-size:${fs}px;background:${softFill};color:${t.text}">${s}</div>`
+  const link = (s) => `<div style="padding:7px 0;font-weight:600;color:${t.gear}">${s}</div>`
   const body = `
-    <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:24px;font-weight:800">Settings</div><div style="font-weight:700;color:#1F6F66">Done</div></div>
-    <div style="margin-top:14px;background:${t.bg};border-radius:18px;padding:14px;border:1px solid #e1d9c8;font-family:'OpenDyslexic';font-size:18px;color:${t.text}">Preview: Let's book a table for seven.</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;color:${t.text}"><div style="font-size:24px;font-weight:800">Settings</div><div style="font-weight:700;color:${t.gear}">Done</div></div>
+    <div style="margin:16px 4px 6px;font-family:'OpenDyslexic';font-size:19px;line-height:1.45;color:${t.text}">Preview: Let's book a table for seven.</div>
     ${sec('Colors', `<div style="display:flex;justify-content:space-between">${swatches}</div>`)}
-    ${sec('Size', `<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:800;font-size:18px">A−</span><div style="flex:1;height:6px;background:#E5DED0;border-radius:3px;margin:0 14px;position:relative"><div style="position:absolute;left:45%;top:-9px;width:24px;height:24px;border-radius:50%;background:#0F5C55"></div></div><span style="font-weight:800;font-size:22px">A+</span></div>`)}
-    ${sec('Lettering', fontRow('Easy to read', "'OpenDyslexic'", true, ' <span style="font-family:system-ui,BlinkMacSystemFont,sans-serif;font-size:12px;font-weight:700;color:#1F6F66">· default</span>') + fontRow('Standard', 'system-ui,BlinkMacSystemFont,Helvetica,sans-serif', false) + fontRow('Rounded', "ui-rounded,'SF Pro Rounded',system-ui,sans-serif", false) + fontRow('Serif', 'Georgia,serif', false) + fontRow('Typewriter', 'Menlo,monospace', false), 'Easy to read is OpenDyslexic, a font made for people with dyslexia.')}
+    ${sec('Size', `<div style="display:flex;gap:16px">${sizeBtn('A−', 22)}${sizeBtn('A+', 26)}</div>`)}
+    ${sec('Lettering', fontRow('Easy to read', "'OpenDyslexic'", true, ` <span style="font-family:system-ui,BlinkMacSystemFont,sans-serif;font-size:12px;font-weight:700;color:${muted}">· default</span>`) + fontRow('Standard', 'system-ui,BlinkMacSystemFont,Helvetica,sans-serif', false) + fontRow('Rounded', "ui-rounded,'SF Pro Rounded',system-ui,sans-serif", false) + fontRow('Serif', 'Georgia,serif', false) + fontRow('Typewriter', 'Menlo,monospace', false), 'Easy to read is OpenDyslexic, a font made for people with dyslexia.')}
     ${sec("Stop when it's quiet", `<div style="display:flex;gap:8px;flex-wrap:wrap">${pill('5 min', true)}${pill('15 min')}${pill('30 min')}${pill('Never')}</div>`)}
-    ${sec('Conversation', `<div style="padding:6px 2px;font-weight:600;color:#1F6F66">Copy all text</div><div style="padding:6px 2px;font-weight:600;color:#1F6F66">Share as text</div>`)}
-    ${sec('Saved', `<div style="display:flex;justify-content:space-between;font-weight:600"><span>Saved conversations</span><span style="color:#5c6a68">3 ›</span></div>`, 'Saved conversations are deleted after 30 days.')}
-    ${sec('How to use Seal', `<div class="btn" style="width:100%;height:50px;border-radius:25px;font-size:17px;background:${t.text};color:${t.bg};box-shadow:0 5px 0 ${lipColor(t.text)}">Show how to use Seal</div>`)}
-    ${sec('About', `<div style="padding:6px 2px;font-weight:600">Privacy policy</div><div style="padding:6px 2px;font-weight:600">Help and contact</div><div style="padding:6px 2px;font-weight:600">Credits</div>`)}
+    ${sec('Saved', `<div style="display:flex;justify-content:space-between;font-weight:600;color:${t.text}"><span>Saved conversations</span><span style="color:${muted}">3 ›</span></div>`, 'Saved conversations are deleted after 30 days.')}
+    ${sec('How to use Seal', `<div class="btn" style="width:100%;height:54px;border-radius:27px;font-size:17px;${primaryStyle(t)}">Show how to use Seal</div>`)}
+    ${sec('About', link('Privacy policy') + link('Help and contact') + link('Credits'))}
   `
-  return `<div style="width:402px;background:#F4F0E8;border-radius:40px;padding:26px 18px 30px;box-shadow:0 0 0 10px #1b1d1f,0 18px 40px rgba(0,0,0,.25)">${body}</div>`
+  return `<div style="width:402px;background:${t.bg};border-radius:40px;padding:26px 20px 30px;box-shadow:0 0 0 10px #1b1d1f,0 18px 40px rgba(0,0,0,.25)">${body}</div>`
 }
 add('08-settings.png', 'Settings after cleanup',
-  board('8 · Settings after cleanup', 'Removed: Words and names, and the Speaker labels explainer. Lettering gets the dyslexia-friendly font, selected as the default (shown here as "Easy to read"; the name is a proposal). Saved has the 30-day note. New: one button to replay the how-to-use intro. Shown as the whole scrolling sheet.',
-    `<div class="row">${fig(settingsSheet(), '<b>Whole sheet, top to bottom.</b> Section order kept from today, minus the two removed sections, plus "How to use Seal".')}</div>`), 600, 1800)
+  board('8 · Settings after cleanup', 'No borders or boxes anywhere: Settings sits on the theme\'s own background so it feels like the same screen, with one thin line between sections. The preview has no border. Text size is two buttons, A− and A+, as in today\'s app. Removed: Words and names, the Speaker labels explainer, and the Conversation section (Copy all / Share), which highlight-and-copy covers. Saved has the 30-day note; one button replays the how-to-use tour.',
+    `<div class="row">${fig(settingsSheet(), '<b>Light (Paper).</b> Whole sheet, top to bottom.')}${fig(settingsSheet(T.night), '<b>Dark (Night).</b> Same sheet in a dark theme.')}</div>`), 1000, 1800)
 
-// 09 intro
-function introFrame(n, title, body, demo, last = false) {
-  const t = theme
-  const dots = [1, 2, 3, 4].map((i) => `<span style="width:${i === n ? 22 : 9}px;height:9px;border-radius:5px;background:${i === n ? BRAND.deep : '#CFC6B5'}"></span>`).join('')
-  const inner = `
-    <div style="display:flex;justify-content:flex-end;height:44px;align-items:center"><span style="font-weight:700;color:${BRAND.deep};font-size:17px">${last ? '' : 'Skip'}</span></div>
-    <div style="height:400px;margin-top:10px;border-radius:30px;background:#fff;position:relative;overflow:hidden">${demo}</div>
-    <div style="margin-top:26px;text-align:center;font-size:27px;font-weight:800;color:${t.text}">${title}</div>
-    <div style="margin-top:10px;text-align:center;font-size:17px;line-height:1.45;color:#3d4b4a;padding:0 12px">${body}</div>
-    <div style="position:absolute;bottom:110px;left:0;right:0;display:flex;gap:6px;justify-content:center">${dots}</div>
-    <div style="position:absolute;bottom:40px;left:20px;right:20px;display:flex;justify-content:center"><div class="btn start" style="width:100%;${primaryStyle(t)}">${last ? 'Start using Seal' : 'Next'}</div></div>`
-  return phone('p', t, inner)
+// 09 interactive tour on the real screen
+function spot(x, y, w, h, r) {
+  return `<div style="position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:${r}px;box-shadow:0 0 0 2000px rgba(12,20,20,.62);z-index:40;pointer-events:none"></div>`
 }
-const miniCaps = (t) => `<div style="font-family:OpenDyslexic;font-size:16px;line-height:1.5;padding:0 18px;color:${t.text}"><div class="spk" style="color:${t.s1}">Speaker 1</div>Let's book a table for seven.</div>`
-const demo1 = `<div style="display:flex;flex-direction:column;align-items:center;padding-top:40px;gap:30px">${startBtn(theme)}<div class="touch" style="position:relative;width:60px;height:60px;margin-top:-80px;margin-left:120px;background:rgba(31,153,139,.35);box-shadow:0 0 0 10px rgba(31,153,139,.15)"></div><div style="font-size:14px;font-weight:700;color:#5c6a68">Try it: tap Start</div><div style="align-self:stretch;margin-top:10px">${miniCaps(theme).replace("Let's book a table for seven.","Hi! Can you read what I'm saying?")}</div></div>`
-const demo2 = `<div style="padding-top:30px">${miniCaps(theme)}<div style="position:absolute;inset:0;background:rgba(20,30,30,.42)"></div><div style="position:absolute;top:110px;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:12px">${startBtn(theme)}<div class="btn small" style="${secondaryStyle(theme)}">SAVE</div><div class="btn small" style="${secondaryStyle(theme)}">NEW</div></div></div>`
-const demo3 = `<div style="padding-top:60px;font-family:OpenDyslexic;font-size:18px;line-height:1.6;padding-left:20px;padding-right:20px;color:${theme.text}"><div class="spk" style="color:${theme.s1}">Speaker 1</div>Meet us at <span style="background:rgba(31,153,139,.3);border-radius:4px">Luigi's on Fifth</span> around seven.</div><div class="btn" style="position:absolute;top:30px;left:50%;transform:translateX(-50%);height:44px;padding:0 22px;border-radius:22px;font-size:17px;${primaryStyle(theme)}">Copy</div><div style="position:absolute;bottom:24px;left:0;right:0;text-align:center;font-size:14px;font-weight:700;color:#5c6a68">Try it: hold on a word</div>`
-const demo4 = `<div style="padding:24px 20px"><div style="display:flex;align-items:center;gap:12px">${GEAR(theme.gear, 40)}<span style="font-weight:700;color:#5c6a68">← this gear</span></div><div style="display:flex;gap:10px;margin-top:40px;justify-content:center">${THEMES.map((x) => `<div style="width:42px;height:42px;border-radius:13px;background:${x.bg};border:1px solid #d0c8b8;display:grid;place-items:center;font-weight:800;color:${x.text}">Aa</div>`).join('')}</div><div style="margin-top:30px;text-align:center;font-family:OpenDyslexic;font-size:22px">A− &nbsp; A+</div></div>`
-add('09-how-to-use-intro.png', 'How-to-use intro',
-  board('9 · How to use Seal (first run, replay from Settings)', 'Four short cards. Each has a tiny live demo she can try (tap Start, hold a word), or she can ignore it. Fast: Skip at the top, or swipe. Slow: stay on a card as long as she likes, swipe back anytime. The same four cards replay from Settings → "Show how to use Seal".',
-    `<div class="row">${fig(introFrame(1, 'Tap Start to see what people say', 'Put the phone on the table between you and the people talking.', demo1), '<b>Card 1.</b> Start.')}${fig(introFrame(2, 'Tap X to pause', 'SAVE keeps this conversation. NEW starts a fresh one. Start carries on where you left off.', demo2), '<b>Card 2.</b> Pause, Save, New.')}${fig(introFrame(3, 'Hold words to copy them', 'Press and hold, stretch the selection, then tap Copy.', demo3), '<b>Card 3.</b> Copy.')}${fig(introFrame(4, 'Make it yours', 'The gear changes colors, text size and lettering. You can watch this again there.', demo4, true), '<b>Card 4.</b> Settings, and the way back to this intro.')}</div>`), 1880, 1050)
+function coach(text, sub, pos, step, n = 6, last = false) {
+  const dots = Array.from({ length: n }, (_, i) => `<span style="width:${i + 1 === step ? 18 : 7}px;height:7px;border-radius:4px;background:${i + 1 === step ? '#0F5C55' : '#CFC6B5'}"></span>`).join('')
+  return `<div style="position:absolute;left:20px;right:20px;${pos};z-index:45;background:#FFFDF6;border-radius:22px;padding:16px 18px;color:#141419;box-shadow:0 10px 30px rgba(0,0,0,.25)">
+    <div style="font-size:19px;font-weight:800;line-height:1.3">${text}</div>
+    <div style="font-size:15px;line-height:1.4;color:#45524f;margin-top:6px">${sub}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px"><span style="display:flex;gap:5px">${dots}</span><span style="font-size:15px;font-weight:700;color:#0F5C55">‹ Back &nbsp; ${last ? 'Done ✓' : 'Next ›'}</span></div></div>`
+}
+const skip = `<div style="position:absolute;right:22px;top:58px;z-index:46;font-weight:800;font-size:17px;color:#FFFDF6">Skip tour</div>`
+const hello = [{ s: 1, t: 'Hi! Can you read what I\'m saying?' }]
+function tour(step) {
+  const t = theme
+  let inner = ''
+  if (step === 1) inner = topbar(t) + startBtn(t) + spot(14, 768, 374, 72, 36)
+    + coach('Tap Start captions', 'Put the phone on the table between you and the people talking. Go ahead, tap it.', 'bottom:150px', 1)
+  if (step === 2) inner = topbar(t) + listeningStatus(t) + captionsHTML(t, { lines: hello }) + stopDot(t) + spot(14, 126, 374, 126, 18)
+    + coach('Say something', 'Your words show up here as people talk. Each new voice gets its own label.', 'top:290px', 2)
+  if (step === 3) inner = topbar(t) + listeningStatus(t) + captionsHTML(t, { lines: hello }) + stopDot(t) + spot(318, 776, 72, 72, 36)
+    + coach('Tap X to pause', 'Nothing is lost. Start captions carries on where you left off.', 'bottom:130px', 3)
+  if (step === 4) inner = topbar(t) + pausedStatus(t) + captionsHTML(t, { lines: hello }) + dimLayer(t) + saveNew(t, 'save', 330) + startBtn(t) + spot(118, 318, 166, 52, 14)
+    + coach('Tap [ Save ] to keep it', 'Saved conversations stay for 30 days. [ New ] starts a fresh one.', 'top:440px', 4)
+  if (step === 5) inner = topbar(t) + pausedStatus(t) + `<div class="captions" style="color:${t.text}"><div><div class="spk" style="color:${t.s1}">Speaker 1</div>Hi! Can you read <span class="sel" style="background:rgba(31,153,139,.30)">what I'm saying?</span></div></div>` + startBtn(t) + spot(14, 134, 374, 120, 16)
+    + `<div class="btn" style="position:absolute;left:50%;transform:translateX(-50%);top:266px;z-index:44;height:46px;padding:0 24px;border-radius:23px;font-size:18px;background:${t.text};color:${t.bg}">Copy</div>`
+    + coach('Hold on words to copy them', 'Press and hold, stretch the selection, then tap Copy.', 'top:340px', 5)
+  if (step === 6) inner = topbar(t) + pausedStatus(t) + captionsHTML(t, { lines: hello }) + startBtn(t) + spot(14, 66, 60, 60, 30)
+    + coach('Make it yours', 'The gear changes colors, text size and lettering. You can take this tour again there.', 'top:150px', 6, 6, true)
+  return phone('p', t, inner + (step === 6 ? '' : skip))
+}
+add('09-how-to-use-intro.png', 'How-to-use tour on the real screen',
+  board('9 · How to use Seal: a tour on the real screen', 'No instruction cards: the tour happens on the real main screen. A spotlight sits on the real control and each step moves on when she actually does it (taps Start, talks, taps X, taps [ Save ], holds words, finds the gear). Fast: Skip tour at any time, or Next to move on without doing it. Slow: no timers; Back goes to the step before. Replays from Settings → Show how to use Seal.',
+    `<div class="row">${[1, 2, 3, 4, 5, 6].map((n) => fig(tour(n), ['<b>1.</b> Spotlight on the real Start button.', '<b>2.</b> Captions appear as she talks.', '<b>3.</b> Spotlight on the real X.', '<b>4.</b> Paused: spotlight on [ Save ].', '<b>5.</b> Hold words, then Copy.', '<b>6.</b> The gear; Done ends the tour.'][n - 1])).join('')}</div>`), 2560, 1050)
+
+// 10 button style comparison: A (gummy lip) vs C (outlined cream), light and dark, resting and pressed
+function cmpButton(opt, t, pressed) {
+  if (opt === 'A') {
+    const sq = pressed ? `transform:scaleX(1.06) scaleY(.88) translateY(4px);box-shadow:0 2px 0 ${lipColor(t.text)};` : ''
+    return `<div class="btn start" style="width:250px;${primaryStyle(t)}${sq}">Start captions</div>`
+  }
+  const light = t.kind === 'light'
+  const fill = light ? (pressed ? '#F3E1BC' : BRAND.cream) : (pressed ? 'rgba(242,221,181,.22)' : 'rgba(242,221,181,.10)')
+  const edge = light ? BRAND.deep : '#F2DDB5'
+  const sq = pressed ? 'transform:scaleX(1.08) scaleY(.9);' : ''
+  return `<div class="btn start" style="width:250px;background:${fill};color:${edge};border:3px solid ${edge};${sq}">Start captions</div>`
+}
+function cmpPanel(opt, t) {
+  const m = t.kind === 'light' ? '#5c6a68' : '#B9B3A6'
+  return `<div style="background:${t.bg};border-radius:28px;padding:28px 22px;display:flex;flex-direction:column;align-items:center;gap:16px;width:300px">
+    ${cmpButton(opt, t, false)}<div style="font-size:13px;font-weight:700;color:${m}">Resting</div>
+    ${cmpButton(opt, t, true)}<div style="font-size:13px;font-weight:700;color:${m}">Pressed (squished)</div></div>`
+}
+const cmpText = {
+  A: ['<b>Looks:</b> a solid, filled button in the theme\'s text color with a darker flat "lip" underneath, like a chunky key.', '<b>When pressed:</b> it sinks onto its lip and squashes wider and shorter, then bounces back. The press is easy to see.', '<b>For older eyes:</b> the strongest, most obvious button on the screen: big solid shape, highest contrast. Can feel a little heavy.'],
+  C: ['<b>Looks:</b> a light cream button with a thick outline (deep teal on light themes; on dark themes a cream outline and cream text). Calmer, more "paper".', '<b>When pressed:</b> the fill darkens and it squashes, then bounces back. Softer, less dramatic than A.', '<b>For older eyes:</b> gentler and less glaring, still clearly a button thanks to the thick outline. The label looks a bit lighter than A\'s.'],
+}
+add('10-button-compare-A-vs-C.png', 'Button style: A vs C',
+  board('10 · Start button: A (gummy lip) vs C (outlined cream)', 'The same Start captions button in both styles, resting and pressed, in a light theme (Paper) and a dark theme (Night). Pick one in Decisions; the other screens show A so you can see one in context. [ Save ] and [ New ] stay retro text either way.',
+    ['A', 'C'].map((o) => `<div class="row" style="align-items:center"><div style="font-size:22px;font-weight:800;color:#0F3F3C;width:40px">${o}</div>${cmpPanel(o, T.paper)}${cmpPanel(o, T.night)}<div class="cap" style="max-width:420px;font-size:15px">${cmpText[o].map((x) => `<div style="margin-bottom:8px">${x}</div>`).join('')}</div></div>`).join('')), 1400, 900)
+
+// 11 launch hand-off (connects to #99): the seal's freeze frame hands off into this main screen
+const RIG = fs.readFileSync(path.join(SRC, 'seal-rig.svg'), 'utf8').replace(/<rect id="bg"[^>]*\/>/, '').replace(/<!--[\s\S]*?-->/g, '')
+const sealSVG = (size, extra = '') => RIG.replace('<svg ', `<svg style="width:${size}px;height:${size}px;${extra}" `).replace(/ width="1024" height="1024"/, '')
+const LAUNCH = '#1F998B'
+function launchFrame(kind, k) {
+  const t = theme
+  const bar = (op = 1) => `<div style="position:absolute;left:96px;right:96px;bottom:250px;height:8px;border-radius:4px;background:rgba(251,232,193,.35);opacity:${op}"><div style="width:100%;height:100%;border-radius:4px;background:#FBE8C1"></div></div>`
+  const main = (op) => `<div style="opacity:${op}">${topbar(t)}</div>`
+  if (k === 0) return phone('p', { ...t, bg: LAUNCH, text: '#FBE8C1' }, `<div style="position:absolute;left:50%;top:300px;transform:translateX(-50%)">${sealSVG(220)}</div>${bar()}`)
+  if (kind === 'glide') {
+    if (k === 1) return phone('p', { ...t, bg: LAUNCH, text: '#FBE8C1' }, `<div style="position:absolute;left:50%;top:620px;transform:translateX(-50%)">${sealSVG(110)}</div>${bar(0.3)}`)
+    if (k === 2) return phone('p', t, `<div style="position:absolute;inset:0;background:${LAUNCH};opacity:.35"></div>${main(0.7)}<div class="btn start" style="position:absolute;left:50%;transform:translateX(-50%) scale(.55);bottom:40px;width:362px;z-index:30;${primaryStyle(t)}"></div><div style="position:absolute;left:50%;bottom:44px;transform:translateX(-50%);z-index:31">${sealSVG(56)}</div>`)
+    return phone('p', t, topbar(t) + startBtn(t))
+  }
+  if (k === 1) return phone('p', { ...t, bg: LAUNCH, text: '#FBE8C1' }, `<div style="position:absolute;left:50%;top:600px;transform:translateX(-50%) rotate(28deg)">${sealSVG(200)}</div>${bar(0.3)}`)
+  if (k === 2) return phone('p', t, `<div style="position:absolute;left:0;right:0;top:0;height:46%;background:${LAUNCH}"></div><div style="position:absolute;left:0;right:0;top:46%;height:20px;background:${LAUNCH};border-radius:0 0 50% 50%/0 0 100% 100%"></div>${startBtn(t)}`)
+  return phone('p', t, topbar(t) + startBtn(t))
+}
+add('11-launch-handoff.png', 'Launch hand-off into the main screen',
+  board('11 · How the launch animation (#99) hands off into this screen', 'The end of the launch: the seal holds its freeze-frame pose on the green launch screen with the progress bar full, waits 0.75 s, then hands off into the new main screen from these mock-ups (Start captions at the bottom middle, gear top-left). Two ways, pick one in Decisions. #99 gets updated to match whatever is approved here.',
+    `<div style="font-size:18px;font-weight:800;color:#0F3F3C">Glide: the seal shrinks and glides down into the Start button, which grows out of it</div>
+    <div class="row">${[0, 1, 2, 3].map((k) => fig(launchFrame('glide', k), ['<b>1.</b> Freeze frame, bar full, 0.75 s hold.', '<b>2.</b> Seal shrinks and glides down.', '<b>3.</b> It lands in the Start spot; the button grows out of it as the main screen fades in.', '<b>4.</b> Ready: the main screen.'][k])).join('')}</div>
+    <div style="font-size:18px;font-weight:800;color:#0F3F3C;margin-top:10px">Dive: the seal dives down and the main screen washes up</div>
+    <div class="row">${[0, 1, 2, 3].map((k) => fig(launchFrame('dive', k), ['<b>1.</b> Freeze frame, bar full, 0.75 s hold.', '<b>2.</b> Seal tips forward and dives down.', '<b>3.</b> The main screen washes up from below as the green drains away.', '<b>4.</b> Ready: the main screen.'][k])).join('')}</div>`), 1880, 2050)
 
 // ---------- render ----------
 // The playwright-core here may be newer than the cached browser build; point it at whichever Chromium exists.
@@ -340,4 +388,4 @@ for (const p of PAGES) {
 await browser.close()
 
 // contrast report for the README
-console.log(JSON.stringify(THEMES.map((t) => ({ name: t.name, text: contrast(t.text, t.bg).toFixed(2), gear: contrast(t.gear, t.bg).toFixed(2), s1: contrast(t.s1, t.bg).toFixed(2), s2: contrast(t.s2, t.bg).toFixed(2) }))))
+console.log(JSON.stringify(THEMES.map((t) => ({ name: t.name, text: contrast(t.text, t.bg).toFixed(2), gear: contrast(t.gear, t.bg).toFixed(2), s1: contrast(t.s1, t.bg).toFixed(2), s2: contrast(t.s2, t.bg).toFixed(2), green: contrast(t.green, t.bg).toFixed(2) }))))

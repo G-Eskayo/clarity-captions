@@ -1,4 +1,4 @@
-# v1 polish mock-ups (2026-10-09), for the owner's approval
+# v1 polish mock-ups (2026-10-09, revised after the owner's feedback), for approval
 
 Mock-ups of [docs/design/v1-polish-spec.md](../../v1-polish-spec.md), drawn at iPhone 17 Pro size (402×874 pt,
 rendered at 3×). They are HTML pictures of the intended design, not the running app. After building, PRs carry real
@@ -6,38 +6,46 @@ simulator screenshots. Regenerate with `node src/build.mjs` (it uses the Playwri
 
 | Image | What to look at |
 |---|---|
-| 01-main-captioning.png | Gear top-left (icon only, theme-colored); the small Stop circle at the top middle; captions in the dyslexia-friendly font. Portrait and landscape. |
-| 02-paused-save-new.png | After X: Start captions top-middle, captions dimmed, SAVE then NEW stacked under Start. Portrait and landscape. |
-| 03-save-animation.png | SAVE → green check box → green SAVED, three frames. NEW doesn't move. |
-| 04-dim-cleared-and-back.png | Tap the dim to clear it for scrolling and copying; press and hold on empty space brings it back (proposed). |
+| 01-main-captioning.png | Gear top-left (icon only, theme-colored); today's small Stop circle at the bottom right; captions in the dyslexia-friendly font. Portrait and landscape. |
+| 02-paused-save-new.png | After X: Start captions at the bottom middle; captions fade back; retro text buttons [ Save ] over [ New ], centered. Portrait, landscape, and dark. |
+| 03-save-animation.png | [ Save ] → [ ✔ ] (green) → [ Saved ] (green, held until the conversation changes). Light and dark. |
+| 04-dim-cleared-and-back.png | Tap the veil to clear it for scrolling and copying; press and hold on empty space brings it back. |
 | 05-copy.png | Multi-line selection with handles and only a Copy button. |
-| 06-themes.png | All six themes (3 light, 3 dark) with computed contrast for text, gear and speaker labels. All text pairs ≥ 7:1. |
-| 07-button-styles.png | Flat and gummy buttons: options A, B, C, resting and pressed. |
-| 08-settings.png | The whole Settings sheet after cleanup, with the dyslexia font as default, the 30-day note, and "Show how to use Seal". |
-| 09-how-to-use-intro.png | Four intro cards with Skip, swipe, page dots and a small try-it demo on each. |
+| 06-themes.png | 3 light and 3 relaxed dark themes, with computed contrast for text, gear, speaker labels and the [ Saved ] green. All ≥ 7:1. |
+| 08-settings.png | Settings with no borders or boxes, one thin line between sections, A− / A+ buttons, no Conversation section. Light and dark. |
+| 09-how-to-use-intro.png | The how-to-use tour on the real main screen: spotlight on the real control, six steps, Skip / Back / Next. |
+| 10-button-compare-A-vs-C.png | Start button in A (gummy lip) and C (outlined cream), resting and pressed, light and dark, with plain-language notes. |
+| 11-launch-handoff.png | How the launch animation (#99) ends: freeze frame with the bar full, then Glide into the Start button, or Dive. |
+
+(07, the A/B/C style board, was replaced by 10.)
+
+## What changed after the owner's feedback
+
+- **Start captions is at the bottom middle** (it was drawn at the top). While captioning, Stop is today's small circle
+  at the bottom right, which the Start pill shrinks into.
+- **[ Save ] / [ New ] are retro, literal text buttons**, centered: `[ Save ]` → `[ ✔ ]` → `[ Saved ]` in green.
+- **Dark themes are relaxed for older eyes:** Bright (yellow on black) is gone; no pure black backgrounds and no pure
+  white text. Charcoal replaces Classic, Night is softened, Harbor is new.
+- **Settings:** no borders anywhere, one thin line between sections, A− / A+ buttons instead of a slider, the
+  Conversation section (Copy all / Share) removed.
+- **The intro is a tour on the real screen**, not cards.
+- **New image 11** shows the launch hand-off, so #99 can be updated to match.
 
 ## Choices made in the mock-ups (all changeable)
 
-- **Stop while captioning sits at the top middle.** Start lives there now, and today's control shrinks in place, so
-  Stop shrinks where Start was.
-- **A small status line** ("Listening" / "Paused") stays under the top row, as today's status headline does.
-- **Themes:** the three existing dark themes are kept unchanged (Classic, Bright, Night). Light gets Paper (existing)
-  plus two new ones in the icon's palette: **Sea Glass** (#DCEFEA / #0D2F2C) and **Peach** (#FBE8D2 / #2B1A10).
-  Light-theme speaker-label and gear colors were darkened to reach ≥ 7:1 (they were about 5.5:1).
-- **Gear colors:** Paper #14514B, Sea Glass #0B4842, Peach #6E2E0A, Classic #FFFFFF, Bright #FFE633, Night #9DB8FF.
-- **Dyslexia font name in Settings:** "Easy to read" (OpenDyslexic, SIL Open Font License). The name is a proposal.
-- **Screens use button style A** so you can see one style in context; image 7 compares all three.
-- **The SAVE/NEW buttons** use a white (light themes) or dark-gray (dark themes) flat pill, so they read as secondary
-  to Start.
-- **Intro:** four cards (Start; pause, Save, New; copy; settings). The last button says "Start using Seal".
+- **The pause veil fades toward the theme's own background** (about 86%), instead of darkening, so [ Save ] and
+  [ New ] keep full theme contrast. Each retro button sits on a patch of the theme background (no border) so faded
+  captions never show through the letters.
+- **Retro buttons use a monospaced font** (SF Mono) so the brackets line up like a terminal.
+- **[ Saved ] green:** #12512F on light themes (7.8–8.6:1), #9BE3B4 / #A6E8BC on dark themes (9.2–10.3:1).
+- **Dark theme colors:** Charcoal #2B2D31 / #ECE6D9, Night #1D2536 / #E9E3D5, Harbor #173331 / #ECE4D3.
+- **Settings sits on the theme background**, selected theme marked with a small check under its swatch (no ring).
+- **Tour:** six steps, each moving on when she does the thing; Next skips a step, Back goes back, Skip tour ends it.
 
-## Open questions
+## Research behind the dark-theme change
 
-- [ ] Button style: A, B or C? (B needs a darker teal for white text; white on brand teal is 3.4:1.)
-- [ ] Press and hold on empty space to bring the dim back (image 4): yes?
-- [ ] [ NEW ] with unsaved changes: ask first, or clear at once? (Spec proposes ask.)
-- [ ] Does an unsaved conversation survive closing the app? (Spec proposes yes, the one current conversation only.)
-- [ ] Keep Bright (yellow on black), or swap it for a softer dark theme?
-- [ ] Theme names Sea Glass and Peach, and the font name "Easy to read": OK?
-- [ ] Stop circle at the top middle while captioning: OK?
-- [ ] Launch-animation hand-off (what the seal turns into) is not in these images; it is a separate animated preview.
+No study found shows yellow-on-black is easier for older readers; luminance contrast, not hue, is what helps
+(Legge et al. 1990, low-vision reading). In healthy older adults, dark text on light read slightly better than light
+on dark, with no measured difference in eye fatigue (Piepenbrock et al., Ergonomics 2013). Very bright text on pure
+black is commonly reported to glare for people with astigmatism (anecdotal, not a controlled study). Hence: relaxed
+dark themes, no pure black or white, contrast kept at AAA.

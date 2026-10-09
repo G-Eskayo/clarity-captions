@@ -9,12 +9,14 @@ simulator screenshots after). This is a hard rule.
 
 - Pressing the X (Stop) brings the **Start captions** button back, with exactly the functionality and smoothness it
   has now.
-- A **dimmed background** fades in, with two buttons stacked under Start: **[ SAVE ]**, and under it **[ NEW ]**.
+- A **dimmed background** fades in (the captions fade back), with two **retro, literal text buttons**, centered:
+  **`[ Save ]`**, and under it **`[ New ]`** (owner, 2026-10-09 review of #96: no pill, just the bracketed text).
 - Pressing **Start captions** fades the dim and the choices back to clear, and captioning **resumes the same
   conversation**.
-- **Save animation:** [ SAVE ] turns into a **green check box**, then becomes **[ SAVED ]** in green.
+- **Save animation:** `[ Save ]` → tap → `[ ✔ ]` → `[ Saved ]` in **green text**, held solid until saving is allowed
+  again.
 - After saving she can resume as above. If **the conversation's content changes** (new captions, not time passing),
-  the button returns to [ SAVE ] so she can save again. Saving again updates the same saved conversation.
+  the button returns to `[ Save ]` so she can save again. Saving again updates the same saved conversation.
 - Saved conversations are **deleted after 30 days**, with a note saying so in the Saved section.
 - Only conversations she saves are kept (no automatic saving of every session).
 - **Copying while paused:** a single tap on the dimmed area fades the dim and buttons to clear, so she can scroll and
@@ -25,7 +27,8 @@ simulator screenshots after). This is a hard rule.
 
 ## 2. Layout
 
-- **Start captions** sits at the **top middle**, in portrait and landscape.
+- **Start captions** sits at the **bottom middle**, in portrait and landscape (corrected 2026-10-09 after the #96
+  mock-ups drew it at the top). While captioning, Stop is today's small circle, which the Start pill shrinks into.
 - **Settings** is always in the **top-left corner**, as a **gear icon only**: no words, no background, in a color
   chosen to suit each theme.
 - The app flows: it should never feel like changing screens. Use transitions and shared elements, not hard cuts.
@@ -42,6 +45,10 @@ simulator screenshots after). This is a hard rule.
   environments; buttons that **squish when pressed**; fun animations here and there.
 - **Themes:** an equal choice of light and dark, **3 light and 3 dark** (today: 3 dark, 1 light). Every pair stays at
   AAA contrast (the existing test).
+- **Dark themes are relaxed for older eyes** (the audience is older people, not developers): no pure black behind,
+  no pure white text; the black-and-yellow "Bright" theme is dropped as harsh. Research: luminance contrast, not hue,
+  is what helps low-vision readers; no study found favoring yellow on black.
+- **Button style:** the owner likes A (gummy lip) and C (outlined cream); picks one from a side-by-side comparison.
 
 ## 5. Lettering
 
@@ -52,10 +59,17 @@ simulator screenshots after). This is a hard rule.
 
 - Remove **Words and names** from Settings (keep the engine's vocabulary support for later).
 - Remove the **Speaker labels** explainer section.
+- Remove the **Conversation** section (Copy all text / Share as text / SRT): highlight-and-copy covers it.
+- **No borders anywhere** in Settings (not the preview, not the sections): it should feel like the same screen. At most
+  **one thin line** between sections; minimalism. "Stop when it's quiet" stays, minus its border.
+- Text size uses the **A− / A+ buttons** (as today), not a slider.
 
 ## 7. How-to-use intro
 
 - A **short, sweet, interactive** intro showing how to use the app, at first run.
+- It is a tour **on the real screen**, not instruction cards: the person actually uses the app as intended, where
+  everything really is (spotlight on the real Start, X, [ Save ], caption text, gear), moving on as they do each
+  thing, so there is no translating instructions into understanding.
 - People go through it **as fast or as slow as they want**.
 - It can be **replayed at any time from Settings with one button**.
 
@@ -68,4 +82,6 @@ simulator screenshots after). This is a hard rule.
 - Even if the progress finishes first, the animation **always finishes**, then **holds the freeze frame for 0.75 s**,
   then **animates into the start screen**.
 - The mascot does **not** live anywhere else in the app.
-- Open: what the seal turns into at the hand-off (proposed: shrinks and glides up into the Start button's spot).
+- Open: how it hands off into the main screen: **Glide** (the seal shrinks and glides down into the bottom-middle
+  Start button, which grows out of it) or **Dive** (the seal dives down and the main screen washes up). Shown in
+  #96 image 11; #99 is updated to match once #96 is approved.
