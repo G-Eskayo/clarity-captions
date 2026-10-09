@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="512" height="512">
+    <!-- Background -->
+    <rect width="1024" height="1024" fill="#1F998B" rx="200"/>
+
+    <!-- Seal head (simplified) -->
+    <circle cx="512" cy="450" r="280" fill="#FBE8C1"/>
+
+    <!-- Eyes -->
+    <circle cx="420" cy="380" r="35" fill="#0E5A56"/>
+    <circle cx="604" cy="380" r="35" fill="#0E5A56"/>
+    <circle cx="425" cy="375" r="15" fill="#FBE8C1"/>
+    <circle cx="609" cy="375" r="15" fill="#FBE8C1"/>
+
+    <!-- Nose -->
+    <ellipse cx="512" cy="470" rx="30" ry="40" fill="#0E5A56"/>
+
+    <!-- Whiskers -->
+    <g stroke="#0E5A56" stroke-width="20" stroke-linecap="round">
+        <line x1="300" y1="420" x2="380" y2="430"/>
+        <line x1="300" y1="450" x2="380" y2="460"/>
+        <line x1="300" y1="480" x2="380" y2="490"/>
+
+        <line x1="724" y1="430" x2="644" y2="420"/>
+        <line x1="724" y1="460" x2="644" y2="450"/>
+        <line x1="724" y1="490" x2="644" y2="480"/>
+    </g>
+
+    <!-- Mouth -->
+    <path d="M 512 540 Q 480 580 450 570" stroke="#0E5A56" stroke-width="25" fill="none" stroke-linecap="round"/>
+    <path d="M 512 540 Q 544 580 574 570" stroke="#0E5A56" stroke-width="25" fill="none" stroke-linecap="round"/>
+
+    <!-- Bark rays -->
+    <g stroke="#FBE8C1" stroke-width="76" stroke-linecap="round" opacity="0.9">
+        <line x1="512" y1="150" x2="512" y2="280"/>
+        <line x1="640" y1="180" x2="740" y2="260"/>
+        <line x1="630" y1="320" x2="750" y2="380"/>
+    </g>
+</svg>
