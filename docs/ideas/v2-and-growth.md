@@ -62,3 +62,5 @@ language, sound-label and emphasis switches later. One clearly labeled place fit
 - Link it from the portfolio (a project card) now; a subdomain of the portfolio's domain works until a dedicated
   domain exists.
 - The name "Seal" and the icon are decided, so the site can start before the domain does.
+
+**Status (2026-10-05):** Static site content complete: semantic HTML, responsive CSS, accessibility (WCAG AA), no external dependencies. Deployed to `seal-site` repository (public) on GitHub Pages at `https://G-Eskayo.github.io/seal-site/`. The site is ready for linking from the portfolio once a domain or portfolio card is configured.

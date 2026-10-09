@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seal — Live Captions On Your iPhone, No Network</title>
+  <meta name="description" content="Live captions of conversation around you on iPhone, on-device only, with speaker labels. Free and private by design.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <div class="container">
+      <div class="logo-area">
+        <img src="images/seal-icon.png" alt="Seal app icon: a teal seal head with whiskers" class="logo">
+        <h1>Seal</h1>
+      </div>
+      <p class="tagline">Live captions of conversation around you, on your iPhone, with no network.</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container">
+        <h2>Follow conversation at your own pace</h2>
+        <p class="hero-text">Pull out your iPhone. Tap once. Place it on the table. Read live, scrolling captions as people speak nearby — with speaker labels so you know who's talking — all without sending audio anywhere.</p>
+        <div class="hero-illustration">
+          <img src="images/pipeline.svg" alt="Diagram showing microphone feeding to SpeechAnalyzer and a diarizer in parallel, an aligner joining words to speakers, and the caption stream breaking lines at pauses and speaker changes" class="diagram">
+        </div>
+      </div>
+    </section>
+
+    <section class="who-its-for">
+      <div class="container">
+        <h2>Built for people who follow conversation differently</h2>
+        <div class="use-case-grid">
+          <article class="use-case">
+            <h3>Deaf and hard of hearing</h3>
+            <p>Seal puts real-time captions in your hands so you can follow group conversation at the table, in meetings, and anywhere people are talking — without a service connection or a hearing aid.</p>
+          </article>
+          <article class="use-case">
+            <h3>People talking with them</h3>
+            <p>You see exactly what's being said and who's saying it, in real time, on one screen. No guessing, no repeating. The speaker labels mean everyone can follow together.</p>
+          </article>
+          <article class="use-case">
+            <h3>Anyone in a noisy room</h3>
+            <p>Background noise is shown dimmed, not deleted — so nothing's lost, but you can focus on what's closest. Seal never silently drops a word.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="privacy-promise">
+      <div class="container">
+        <h2>Your conversation stays on your phone</h2>
+        <ul class="promise-list">
+          <li><strong>No cloud:</strong> everything happens on-device. Your audio never leaves your iPhone.</li>
+          <li><strong>No accounts:</strong> Seal works out of the box with no sign-up, login, or authentication.</li>
+          <li><strong>No collection:</strong> Seal collects nothing about you, your speech, or who you talk to.</li>
+          <li><strong>No telemetry:</strong> there is no analytics, tracking, or crash reporting.</li>
+        </ul>
+        <p class="privacy-note">Seal uses Apple's <code>SpeechAnalyzer</code> (iOS 26+), which runs entirely on your device. The transcription model is provisioned by the system and may require a one-time download before first use, with zero network after that point.</p>
+      </div>
+    </section>
+
+    <section class="how-it-works">
+      <div class="container">
+        <h2>How it works</h2>
+        <ol class="process-list">
+          <li>
+            <h3>Listen</h3>
+            <p>Tap Start. Seal listens to the microphone and captures the audio around you.</p>
+          </li>
+          <li>
+            <h3>Transcribe and label</h3>
+            <p>Apple's speech engine converts audio to words in real time. A speaker-diarization model identifies who is speaking — Speaker 1, Speaker 2, etc. — with no training or enrollment needed.</p>
+          </li>
+          <li>
+            <h3>Display</h3>
+            <p>Words are paired with speakers, grouped at pauses and speaker changes, and shown in the live caption stream. The newest captions scroll into view automatically. You can customize the text size, color, background, and typeface.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="what-you-see">
+      <div class="container">
+        <h2>Screenshot</h2>
+        <p class="screenshot-note">Coming soon — the app is in development. For now, here's what the caption display looks like:</p>
+        <div class="screenshot-placeholder">
+          <img src="images/screenshot-placeholder.svg" alt="Sample iPhone screen showing live caption stream with multiple speakers labeled in different colors, Speaker 1 in orange and Speaker 2 in teal, with a Stop Captioning button at bottom" class="screenshot">
+        </div>
+      </div>
+    </section>
+
+    <section class="cta">
+      <div class="container">
+        <h2>Get Seal</h2>
+        <p>Available on TestFlight first, then on the App Store.</p>
+        <div class="cta-buttons">
+          <a href="#testflight" class="btn btn-primary">Join TestFlight <span class="badge">Coming soon</span></a>
+          <a href="#app-store" class="btn btn-secondary">App Store <span class="badge">Coming soon</span></a>
+        </div>
+        <p class="requirements">Requires iPhone 17 or later, iOS 26 or later.</p>
+      </div>
+    </section>
+
+    <section class="faq">
+      <div class="container">
+        <h2>Questions?</h2>
+        <dl class="faq-list">
+          <dt>Does it work offline?</dt>
+          <dd>Yes. After the speech model is installed (a one-time download), Seal works completely offline. Nothing is sent to any server.</dd>
+
+          <dt>How many speakers can it label?</dt>
+          <dd>Seal can distinguish up to four speakers in a conversation, labeling each one as Speaker 1, Speaker 2, etc.</dd>
+
+          <dt>Can I customize the captions?</dt>
+          <dd>Yes. You can change the text size (following your system setting), text color, background color, and font. Tap Settings (gear icon) to adjust.</dd>
+
+          <dt>What languages does it support?</dt>
+          <dd>Seal currently works in English. The app automatically uses your system language setting for the interface, and can transcribe English at multiple regional accents (US, UK, Australian, etc.) — just pick your region in Settings.</dd>
+
+          <dt>Does it need microphone permission?</dt>
+          <dd>Yes. Seal asks for microphone access when you start your first captioning session. This is how it listens to conversation around you.</dd>
+
+          <dt>What if I'm in a very noisy place?</dt>
+          <dd>Seal shows low-confidence captions dimmed so you can focus on the clearest speech. Nothing is silently deleted — you decide what to read.</dd>
+
+          <dt>Do you collect my data?</dt>
+          <dd>No. Seal doesn't create an account, doesn't send your audio or captions anywhere, and doesn't track anything about you.</dd>
+        </dl>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <nav class="footer-nav">
+        <ul>
+          <li><a href="#privacy">Privacy Policy</a></li>
+          <li><a href="#support">Support</a></li>
+          <li><a href="https://github.com/G-Eskayo/clarity-captions" rel="external">GitHub</a></li>
+        </ul>
+      </nav>
+      <p class="copyright">© 2026 Seal. Free and open by design.</p>
+    </div>
+  </footer>
+</body>
+</html>
