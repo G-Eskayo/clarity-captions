@@ -430,6 +430,28 @@
         }
       }
     },
+    "I couldn't finish the download. Check that Wi-Fi is on, then tap Try again." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I couldn't finish the download. Check that Wi-Fi is on, then tap Try again."
+          }
+        }
+      }
+    },
+    "I need the internet once to finish setting up. Turn on Wi-Fi, then tap Try again." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I need the internet once to finish setting up. Turn on Wi-Fi, then tap Try again."
+          }
+        }
+      }
+    },
     "I need to hear the room" : {
       "extractionState": "manual",
       "localizations": {
@@ -1053,6 +1075,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tap the big button any time you want captions."
+          }
+        }
+      }
+    },
+    "The download stopped moving. Check that Wi-Fi is on, then tap Try again." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The download stopped moving. Check that Wi-Fi is on, then tap Try again."
           }
         }
       }

@@ -13,6 +13,7 @@ final class FirstRunModel: ObservableObject {
     private var sawSetupScreen = false
     private var working = false
     private let store = FirstRunStore()
+    private let speechDownload = SpeechDownload.english()
 
     private var buildKey: String {
         let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
@@ -47,8 +48,12 @@ final class FirstRunModel: ObservableObject {
         case .speechModel:
             working = true; problem = nil; progress = 0
             let startTime = Date()
-            do { try await SpeechModelInstaller.install { p in Task { @MainActor in self.progress = p } } }
-            catch { problem = "I couldn't finish the download. Check that Wi-Fi is on, then try again." }
+            // Always ends: installed, or plain words and Try again -- never a spinner that runs forever (#81).
+            switch await speechDownload.run(onProgress: { p in Task { @MainActor in self.progress = p } }) {
+            case .installed: break
+            case .failed(let why): problem = why.message
+            case .alreadyRunning: working = false; return
+            }
             if problem == nil {
                 let elapsed = Date().timeIntervalSince(startTime)
                 let delay = LaunchAnimationGate.remainingDelay(elapsed: elapsed)
