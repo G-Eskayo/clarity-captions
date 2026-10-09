@@ -179,7 +179,7 @@ review notes don't mention them:
 
 ## Owner decisions (2026-10-09)
 
-1. Contact email (support page, privacy page, App Review contact): panda_warrior@icloud.com.
+1. Contact email (support page, privacy page, App Review contact): gil.eskayo@icloud.com.
 2. Copyright / legal name: Gil Brandon Eskayo.
 3. v1 is iPhone and iPad only; the Mac app comes later.
 4. v1 keeps the screen awake while captioning (#83) instead of background captioning (ADR 0020 deferred),
