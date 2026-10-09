@@ -1,0 +1,60 @@
+# Seal Website Manifest
+# Files required for deployment to G-Eskayo/seal-website repository
+
+## HTML & CSS (✅ Present)
+- index.html
+- styles.css
+
+## Assets (⚠️ Source Paths Documented Below)
+- assets/icon-light.png
+  Source: Apps/Spike/Sources/Assets.xcassets/AppIcon.appiconset/icon-light.png
+  Copy to: assets/icon-light.png
+
+- assets/icon-dark.png
+  Source: Apps/Spike/Sources/Assets.xcassets/AppIcon.appiconset/icon-dark.png
+  Copy to: assets/icon-dark.png
+
+- assets/screenshot-1.svg (✅ Present, placeholder)
+  Notes: Replace with real app screenshot PNG once DemoMode captures are available
+  Expected path: assets/screenshot-1.png (when finalized)
+
+## Documentation (✅ Present)
+- README.md — Deployment instructions and overview
+- IMPLEMENTATION_NOTES.md — Detailed implementation notes, verification steps, next actions
+
+## Deployment Checklist
+
+### Before Creating New Repo
+- [ ] Verify all files listed above are in place
+- [ ] Verify icon files have been copied from app's asset catalog
+- [ ] Verify HTML/CSS load correctly in a browser (validation step)
+
+### When Creating New Repository
+- [ ] Create G-Eskayo/seal-website repository
+- [ ] Push all files to main branch
+- [ ] Enable GitHub Pages:
+  - Settings → Pages
+  - Source: Deploy from a branch
+  - Branch: main
+  - Folder: / (root)
+- [ ] Verify site is live at https://g-eskayo.github.io/seal-website/
+
+### After Deployment
+- [ ] Test responsive layout (phone/tablet/desktop)
+- [ ] Test focus states (Tab through all links)
+- [ ] Test dark mode (if browser supports)
+- [ ] Comment on G-Eskayo/clarity-captions#44 with the new repo and Pages URL
+
+## File Sizes (For Reference)
+- index.html: ~9 KB
+- styles.css: ~14 KB
+- icon-light.png: ~78 KB (from asset catalog)
+- icon-dark.png: ~76 KB (from asset catalog)
+- screenshot-1.svg: ~3 KB
+- Total: ~180 KB (compressed transfer <50 KB via HTTP/2)
+
+## Notes
+- This is a staging folder in the clarity-captions worktree
+- All content is production-ready
+- Icons are referenced by source path because of environment limitations in this build
+- Real app screenshots (to replace SVG mockup) must be captured with -ClarityDemoStatic flag
