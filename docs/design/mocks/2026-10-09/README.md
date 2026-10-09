@@ -6,20 +6,27 @@ simulator screenshots. Regenerate with `node src/build.mjs` (it uses the Playwri
 
 | Image | What to look at |
 |---|---|
-| 01-main-captioning.png | Gear top-left (icon only, theme-colored); today's small Stop circle at the bottom right; captions in the dyslexia-friendly font. Portrait and landscape. |
+| 01-main-captioning.png | Gear top-left with "Listening" on the same row; today's small Stop circle at the bottom right; captions in the dyslexia-friendly font. Portrait and landscape. |
 | 02-paused-save-new.png | After X: Start captions at the bottom middle; captions fade back; retro text buttons [ Save ] over [ New ], centered. Portrait, landscape, and dark. |
 | 03-save-animation.png | [ Save ] → [ ✔ ] (green) → [ Saved ] (green, held until the conversation changes). Light and dark. |
 | 04-dim-cleared-and-back.png | Tap the veil to clear it for scrolling and copying; press and hold on empty space brings it back. |
 | 05-copy.png | Multi-line selection with handles and only a Copy button. |
 | 06-themes.png | 3 light and 3 relaxed dark themes, with computed contrast for text, gear, speaker labels and the [ Saved ] green. All ≥ 7:1. |
-| 08-settings.png | Settings with no borders or boxes, one thin line between sections, A− / A+ buttons, no Conversation section, Lettering = Easy to read (OpenDyslexic, default), Atkinson Hyperlegible, Standard, Typewriter (#100). Light and dark. |
+| 08-settings.png | Settings with no borders, one thin line between sections, A− / A+ buttons, no Conversation section; Lettering: Easy to read (OpenDyslexic, default), Atkinson Hyperlegible, Standard, Rounded, Serif, Typewriter. Light and dark. |
 | 09-how-to-use-intro.png | The how-to-use tour on the real main screen: spotlight on the real control, six steps, Skip / Back / Next. |
-| 10-button-compare-A-vs-C.png | Start button in A (gummy lip) and C (outlined cream), resting and pressed, light and dark, with plain-language notes. |
-| 11-launch-handoff.png | How the launch animation (#99) ends: freeze frame with the bar full, then Glide into the Start button, or Dive. |
+| 10-button-style-A-final.png | The chosen Start button style: A (gummy lip) with a thinner bottom lip, resting and pressed, light and dark. Used on every screen. |
 
-(07, the A/B/C style board, was replaced by 10.)
+(07, the A/B/C board, and 11, the launch hand-off, were removed: the button style is chosen, and the hand-off is decided on #99.)
 
-## What changed after the owner's feedback
+## What changed in the latest round
+
+- **Status on the gear row:** "Listening" / "Paused" sits on the same row as the gear, so captions start higher.
+- **Button style A, final:** gummy lip with a thinner bottom lip (3 pt resting, 1 pt pressed), used everywhere.
+- **Lettering has six choices:** Easy to read (OpenDyslexic, default), Atkinson Hyperlegible, Standard, Rounded,
+  Serif, Typewriter.
+- **Launch hand-off removed from here:** the launch animation lands in this screen; its hand-off is chosen on #99.
+
+## Earlier changes after the owner's feedback
 
 - **Start captions is at the bottom middle** (it was drawn at the top). While captioning, Stop is today's small circle
   at the bottom right, which the Start pill shrinks into.
@@ -29,9 +36,8 @@ simulator screenshots. Regenerate with `node src/build.mjs` (it uses the Playwri
 - **Settings:** no borders anywhere, one thin line between sections, A− / A+ buttons instead of a slider, the
   Conversation section (Copy all / Share) removed.
 - **The intro is a tour on the real screen**, not cards.
-- **New image 11** shows the launch hand-off, so #99 can be updated to match.
 
-## Choices made in the mock-ups (all changeable)
+## Choices made in the mock-ups (the veil and the swatch check are Decisions on #96)
 
 - **The pause veil fades toward the theme's own background** (about 86%), instead of darkening, so [ Save ] and
   [ New ] keep full theme contrast. Each retro button sits on a patch of the theme background (no border) so faded

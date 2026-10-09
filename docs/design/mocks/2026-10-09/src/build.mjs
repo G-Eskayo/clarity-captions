@@ -66,7 +66,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Rounded', 'Helvet
 .l .screen { padding: 18px 64px 20px 64px; }
 .topbar { position: relative; height: 64px; display: flex; align-items: center; justify-content: center; z-index: 20; }
 .gear { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; display: grid; place-items: center; }
-.status { position: relative; z-index: 20; text-align: center; font-size: 15px; font-weight: 600; opacity: .75; margin-top: 2px; display: flex; gap: 6px; justify-content: center; align-items: center; }
+.status { position: absolute; left: 0; right: 0; height: 64px; z-index: 21; font-size: 15px; font-weight: 600; opacity: .75; display: flex; gap: 6px; justify-content: center; align-items: center; pointer-events: none; }
+.p .status { top: 62px; }
+.l .status { top: 18px; }
 .dot { width: 9px; height: 9px; border-radius: 50%; }
 .captions { font-family: 'OpenDyslexic', sans-serif; font-size: 22px; line-height: 1.5; margin-top: 18px; display: flex; flex-direction: column; gap: 16px; }
 .l .captions { font-size: 20px; gap: 10px; margin-top: 8px; }
@@ -103,7 +105,7 @@ function lipColor(hex, amt = 0.28) {
 }
 function primaryStyle(t) {
   // Start uses the theme's text color as fill (as today's MorphingControl does), background color as label.
-  return `background:${t.text};color:${t.bg};box-shadow:0 6px 0 ${lipColor(t.text)};`
+  return `background:${t.text};color:${t.bg};box-shadow:0 3px 0 ${lipColor(t.text)};`
 }
 function secondaryStyle(t) {
   const fill = t.kind === 'light' ? '#FFFFFF' : '#2A2F33'
@@ -183,8 +185,8 @@ const add = (file, title, html, w, h) => PAGES.push({ file, title, html: doc(tit
 
 // 01 main screen while captioning
 add('01-main-captioning.png', 'Main screen while captioning',
-  board('1 · Main screen while captioning', 'Gear in the top-left corner: icon only, no label, no background, colored for the theme. Stop is today\'s small circle with an X at the bottom right: the wide Start pill at the bottom middle shrinks into it when captioning starts (today\'s behavior, unchanged). Captions in the dyslexia-friendly font, the new default. Theme shown: Paper.',
-    `<div class="row">${fig(mainCaptioning('p'), '<b>Portrait.</b> Gear top-left, "Listening" at the top, small Stop circle bottom right.')}${fig(mainCaptioning('l'), '<b>Landscape.</b> Same; captions use the full width.')}</div>`), 1400, 1000)
+  board('1 · Main screen while captioning', 'Gear in the top-left corner: icon only, no label, no background, colored for the theme. Stop is today\'s small circle with an X at the bottom right: the wide Start pill at the bottom middle shrinks into it when captioning starts (today\'s behavior, unchanged). "Listening" / "Paused" sits on the gear\'s row, so no line is spent on it. Captions in the dyslexia-friendly font, the new default. Theme shown: Paper.',
+    `<div class="row">${fig(mainCaptioning('p'), '<b>Portrait.</b> Gear top-left with "Listening" on the same row, so captions start higher; small Stop circle bottom right.')}${fig(mainCaptioning('l'), '<b>Landscape.</b> Same; captions use the full width.')}</div>`), 1400, 1000)
 
 // 02 paused
 add('02-paused-save-new.png', 'Paused: Start, Save, New',
@@ -225,7 +227,7 @@ function copyFrame() {
   const inner = topbar(t) + pausedStatus(t) + captionsHTML(t, { lines: LINES.slice(0, 6), selection: sel })
     + `<div id="hS" class="handle s" style="background:#1F998B;height:32px"></div><div id="hE" class="handle e" style="background:#1F998B;height:32px"></div>`
     + `<script>addEventListener('load',()=>document.fonts.ready.then(()=>{const scr=document.querySelector('#hS').parentElement.getBoundingClientRect();for(const[m,h]of[['selS','hS'],['selE','hE']]){const r=document.getElementById(m).getBoundingClientRect();const el=document.getElementById(h);el.style.left=(r.left-scr.left-1)+'px';el.style.top=(r.top-scr.top+2)+'px'}}))</script>`
-    + `<div class="btn" style="position:absolute;left:50%;transform:translateX(-50%);top:330px;z-index:30;height:50px;padding:0 26px;border-radius:25px;font-size:19px;background:${t.text};color:${t.bg};box-shadow:0 5px 0 ${lipColor(t.text)}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${t.bg}" stroke-width="2.4"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>Copy</div>`
+    + `<div class="btn" style="position:absolute;left:50%;transform:translateX(-50%);top:330px;z-index:30;height:50px;padding:0 26px;border-radius:25px;font-size:19px;background:${t.text};color:${t.bg};box-shadow:0 3px 0 ${lipColor(t.text)}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${t.bg}" stroke-width="2.4"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>Copy</div>`
     + startBtn(t)
   return phone('p', t, inner)
 }
@@ -270,7 +272,7 @@ function settingsSheet(t = theme) {
     <div style="margin:16px 4px 6px;font-family:'OpenDyslexic';font-size:19px;line-height:1.45;color:${t.text}">Preview: Let's book a table for seven.</div>
     ${sec('Colors', `<div style="display:flex;justify-content:space-between">${swatches}</div>`)}
     ${sec('Size', `<div style="display:flex;gap:16px">${sizeBtn('A−', 22)}${sizeBtn('A+', 26)}</div>`)}
-    ${sec('Lettering', fontRow('Easy to read', "'OpenDyslexic'", true, ` <span style="font-family:system-ui,BlinkMacSystemFont,sans-serif;font-size:12px;font-weight:700;color:${muted}">· default</span><div style="font-family:system-ui,BlinkMacSystemFont,sans-serif;font-size:12px;color:${muted};margin-top:2px">OpenDyslexic</div>`) + fontRow('Atkinson Hyperlegible', "'Atkinson Hyperlegible'", false) + fontRow('Standard', 'system-ui,BlinkMacSystemFont,Helvetica,sans-serif', false) + fontRow('Typewriter', 'Menlo,monospace', false), 'Easy to read is OpenDyslexic, made for people with dyslexia. Atkinson Hyperlegible was designed by the Braille Institute for low vision.')}
+    ${sec('Lettering', fontRow('Easy to read', "'OpenDyslexic'", true, ` <span style="font-family:system-ui,BlinkMacSystemFont,sans-serif;font-size:12px;font-weight:700;color:${muted}">· default</span><div style="font-family:system-ui,BlinkMacSystemFont,sans-serif;font-size:12px;color:${muted};margin-top:2px">OpenDyslexic</div>`) + fontRow('Atkinson Hyperlegible', "'Atkinson Hyperlegible'", false) + fontRow('Standard', 'system-ui,BlinkMacSystemFont,Helvetica,sans-serif', false) + fontRow('Rounded', "ui-rounded,'SF Pro Rounded',system-ui,sans-serif", false) + fontRow('Serif', 'Georgia,serif', false) + fontRow('Typewriter', 'Menlo,monospace', false), 'Easy to read is OpenDyslexic, made for people with dyslexia. Atkinson Hyperlegible was designed by the Braille Institute for low vision.')}
     ${sec("Stop when it's quiet", `<div style="display:flex;gap:8px;flex-wrap:wrap">${pill('5 min', true)}${pill('15 min')}${pill('30 min')}${pill('Never')}</div>`)}
     ${sec('Saved', `<div style="display:flex;justify-content:space-between;font-weight:600;color:${t.text}"><span>Saved conversations</span><span style="color:${muted}">3 ›</span></div>`, 'Saved conversations are deleted after 30 days.')}
     ${sec('How to use Seal', `<div class="btn" style="width:100%;height:54px;border-radius:27px;font-size:17px;${primaryStyle(t)}">Show how to use Seal</div>`)}
@@ -279,7 +281,7 @@ function settingsSheet(t = theme) {
   return `<div style="width:402px;background:${t.bg};border-radius:40px;padding:26px 20px 30px;box-shadow:0 0 0 10px #1b1d1f,0 18px 40px rgba(0,0,0,.25)">${body}</div>`
 }
 add('08-settings.png', 'Settings after cleanup',
-  board('8 · Settings after cleanup', 'No borders or boxes anywhere: Settings sits on the theme\'s own background so it feels like the same screen, with one thin line between sections. The preview has no border. Text size is two buttons, A− and A+, as in today\'s app. Lettering is the four choices from #100: Easy to read (OpenDyslexic, default), Atkinson Hyperlegible, Standard, Typewriter. Removed: Words and names, the Speaker labels explainer, and the Conversation section (Copy all / Share), which highlight-and-copy covers. Saved has the 30-day note; one button replays the how-to-use tour.',
+  board('8 · Settings after cleanup', 'No borders or boxes anywhere: Settings sits on the theme\'s own background so it feels like the same screen, with one thin line between sections. The preview has no border. Text size is two buttons, A− and A+, as in today\'s app. Lettering has six choices: Easy to read (OpenDyslexic, default), Atkinson Hyperlegible, Standard, Rounded, Serif, Typewriter. Removed: Words and names, the Speaker labels explainer, and the Conversation section (Copy all / Share), which highlight-and-copy covers. Saved has the 30-day note; one button replays the how-to-use tour.',
     `<div class="row">${fig(settingsSheet(), '<b>Light (Paper).</b> Whole sheet, top to bottom.')}${fig(settingsSheet(T.night), '<b>Dark (Night).</b> Same sheet in a dark theme.')}</div>`), 1000, 1800)
 
 // 09 interactive tour on the real screen
@@ -317,56 +319,20 @@ add('09-how-to-use-intro.png', 'How-to-use tour on the real screen',
   board('9 · How to use Seal: a tour on the real screen', 'No instruction cards: the tour happens on the real main screen. A spotlight sits on the real control and each step moves on when she actually does it (taps Start, talks, taps X, taps [ Save ], holds words, finds the gear). Fast: Skip tour at any time, or Next to move on without doing it. Slow: no timers; Back goes to the step before. Replays from Settings → Show how to use Seal.',
     `<div class="row">${[1, 2, 3, 4, 5, 6].map((n) => fig(tour(n), ['<b>1.</b> Spotlight on the real Start button.', '<b>2.</b> Captions appear as she talks.', '<b>3.</b> Spotlight on the real X.', '<b>4.</b> Paused: spotlight on [ Save ].', '<b>5.</b> Hold words, then Copy.', '<b>6.</b> The gear; Done ends the tour.'][n - 1])).join('')}</div>`), 2560, 1050)
 
-// 10 button style comparison: A (gummy lip) vs C (outlined cream), light and dark, resting and pressed
-function cmpButton(opt, t, pressed) {
-  if (opt === 'A') {
-    const sq = pressed ? `transform:scaleX(1.06) scaleY(.88) translateY(4px);box-shadow:0 2px 0 ${lipColor(t.text)};` : ''
-    return `<div class="btn start" style="width:250px;${primaryStyle(t)}${sq}">Start captions</div>`
-  }
-  const light = t.kind === 'light'
-  const fill = light ? (pressed ? '#F3E1BC' : BRAND.cream) : (pressed ? 'rgba(242,221,181,.22)' : 'rgba(242,221,181,.10)')
-  const edge = light ? BRAND.deep : '#F2DDB5'
-  const sq = pressed ? 'transform:scaleX(1.08) scaleY(.9);' : ''
-  return `<div class="btn start" style="width:250px;background:${fill};color:${edge};border:3px solid ${edge};${sq}">Start captions</div>`
+// 10 button style, final: A (gummy lip) with a thinner bottom lip, light and dark, resting and pressed
+function finalButton(t, pressed) {
+  const sq = pressed ? `transform:scaleX(1.06) scaleY(.9) translateY(2px);box-shadow:0 1px 0 ${lipColor(t.text)};` : ''
+  return `<div class="btn start" style="width:250px;${primaryStyle(t)}${sq}">Start captions</div>`
 }
-function cmpPanel(opt, t) {
+function finalPanel(t) {
   const m = t.kind === 'light' ? '#5c6a68' : '#B9B3A6'
   return `<div style="background:${t.bg};border-radius:28px;padding:28px 22px;display:flex;flex-direction:column;align-items:center;gap:16px;width:300px">
-    ${cmpButton(opt, t, false)}<div style="font-size:13px;font-weight:700;color:${m}">Resting</div>
-    ${cmpButton(opt, t, true)}<div style="font-size:13px;font-weight:700;color:${m}">Pressed (squished)</div></div>`
+    ${finalButton(t, false)}<div style="font-size:13px;font-weight:700;color:${m}">Resting</div>
+    ${finalButton(t, true)}<div style="font-size:13px;font-weight:700;color:${m}">Pressed (squished)</div></div>`
 }
-const cmpText = {
-  A: ['<b>Looks:</b> a solid, filled button in the theme\'s text color with a darker flat "lip" underneath, like a chunky key.', '<b>When pressed:</b> it sinks onto its lip and squashes wider and shorter, then bounces back. The press is easy to see.', '<b>For older eyes:</b> the strongest, most obvious button on the screen: big solid shape, highest contrast. Can feel a little heavy.'],
-  C: ['<b>Looks:</b> a light cream button with a thick outline (deep teal on light themes; on dark themes a cream outline and cream text). Calmer, more "paper".', '<b>When pressed:</b> the fill darkens and it squashes, then bounces back. Softer, less dramatic than A.', '<b>For older eyes:</b> gentler and less glaring, still clearly a button thanks to the thick outline. The label looks a bit lighter than A\'s.'],
-}
-add('10-button-compare-A-vs-C.png', 'Button style: A vs C',
-  board('10 · Start button: A (gummy lip) vs C (outlined cream)', 'The same Start captions button in both styles, resting and pressed, in a light theme (Paper) and a dark theme (Night). Pick one in Decisions; the other screens show A so you can see one in context. [ Save ] and [ New ] stay retro text either way.',
-    ['A', 'C'].map((o) => `<div class="row" style="align-items:center"><div style="font-size:22px;font-weight:800;color:#0F3F3C;width:40px">${o}</div>${cmpPanel(o, T.paper)}${cmpPanel(o, T.night)}<div class="cap" style="max-width:420px;font-size:15px">${cmpText[o].map((x) => `<div style="margin-bottom:8px">${x}</div>`).join('')}</div></div>`).join('')), 1400, 900)
-
-// 11 launch hand-off (connects to #99): the seal's freeze frame hands off into this main screen
-const RIG = fs.readFileSync(path.join(SRC, 'seal-rig.svg'), 'utf8').replace(/<rect id="bg"[^>]*\/>/, '').replace(/<!--[\s\S]*?-->/g, '')
-const sealSVG = (size, extra = '') => RIG.replace('<svg ', `<svg style="width:${size}px;height:${size}px;${extra}" `).replace(/ width="1024" height="1024"/, '')
-const LAUNCH = '#1F998B'
-function launchFrame(kind, k) {
-  const t = theme
-  const bar = (op = 1) => `<div style="position:absolute;left:96px;right:96px;bottom:250px;height:8px;border-radius:4px;background:rgba(251,232,193,.35);opacity:${op}"><div style="width:100%;height:100%;border-radius:4px;background:#FBE8C1"></div></div>`
-  const main = (op) => `<div style="opacity:${op}">${topbar(t)}</div>`
-  if (k === 0) return phone('p', { ...t, bg: LAUNCH, text: '#FBE8C1' }, `<div style="position:absolute;left:50%;top:300px;transform:translateX(-50%)">${sealSVG(220)}</div>${bar()}`)
-  if (kind === 'glide') {
-    if (k === 1) return phone('p', { ...t, bg: LAUNCH, text: '#FBE8C1' }, `<div style="position:absolute;left:50%;top:620px;transform:translateX(-50%)">${sealSVG(110)}</div>${bar(0.3)}`)
-    if (k === 2) return phone('p', t, `<div style="position:absolute;inset:0;background:${LAUNCH};opacity:.35"></div>${main(0.7)}<div class="btn start" style="position:absolute;left:50%;transform:translateX(-50%) scale(.55);bottom:40px;width:362px;z-index:30;${primaryStyle(t)}"></div><div style="position:absolute;left:50%;bottom:44px;transform:translateX(-50%);z-index:31">${sealSVG(56)}</div>`)
-    return phone('p', t, topbar(t) + startBtn(t))
-  }
-  if (k === 1) return phone('p', { ...t, bg: LAUNCH, text: '#FBE8C1' }, `<div style="position:absolute;left:50%;top:600px;transform:translateX(-50%) rotate(28deg)">${sealSVG(200)}</div>${bar(0.3)}`)
-  if (k === 2) return phone('p', t, `<div style="position:absolute;left:0;right:0;top:0;height:46%;background:${LAUNCH}"></div><div style="position:absolute;left:0;right:0;top:46%;height:20px;background:${LAUNCH};border-radius:0 0 50% 50%/0 0 100% 100%"></div>${startBtn(t)}`)
-  return phone('p', t, topbar(t) + startBtn(t))
-}
-add('11-launch-handoff.png', 'Launch hand-off into the main screen',
-  board('11 · How the launch animation (#99) hands off into this screen', 'The end of the launch: the seal holds its freeze-frame pose on the green launch screen with the progress bar full, waits 0.75 s, then hands off into the new main screen from these mock-ups (Start captions at the bottom middle, gear top-left). Two ways, pick one in Decisions. #99 gets updated to match whatever is approved here.',
-    `<div style="font-size:18px;font-weight:800;color:#0F3F3C">Glide: the seal shrinks and glides down into the Start button, which grows out of it</div>
-    <div class="row">${[0, 1, 2, 3].map((k) => fig(launchFrame('glide', k), ['<b>1.</b> Freeze frame, bar full, 0.75 s hold.', '<b>2.</b> Seal shrinks and glides down.', '<b>3.</b> It lands in the Start spot; the button grows out of it as the main screen fades in.', '<b>4.</b> Ready: the main screen.'][k])).join('')}</div>
-    <div style="font-size:18px;font-weight:800;color:#0F3F3C;margin-top:10px">Dive: the seal dives down and the main screen washes up</div>
-    <div class="row">${[0, 1, 2, 3].map((k) => fig(launchFrame('dive', k), ['<b>1.</b> Freeze frame, bar full, 0.75 s hold.', '<b>2.</b> Seal tips forward and dives down.', '<b>3.</b> The main screen washes up from below as the green drains away.', '<b>4.</b> Ready: the main screen.'][k])).join('')}</div>`), 1880, 2050)
+add('10-button-style-A-final.png', 'Button style A, final: thinner lip',
+  board('10 · Start button: A, final (thinner lip)', 'Your pick: A, the gummy lip, with the bottom lip made thinner (3 pt resting, sinks to 1 pt when pressed, then bounces back). Shown resting and pressed in a light theme (Paper) and a dark theme (Night). Every screen in these mock-ups uses it.',
+    `<div class="row" style="align-items:center">${finalPanel(T.paper)}${finalPanel(T.night)}</div>`), 1000, 560)
 
 // ---------- render ----------
 // The playwright-core here may be newer than the cached browser build; point it at whichever Chromium exists.

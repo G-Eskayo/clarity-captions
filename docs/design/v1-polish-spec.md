@@ -29,6 +29,7 @@ simulator screenshots after). This is a hard rule.
 
 - **Start captions** sits at the **bottom middle**, in portrait and landscape (corrected 2026-10-09 after the #96
   mock-ups drew it at the top). While captioning, Stop is today's small circle, which the Start pill shrinks into.
+- The **Listening / Paused** status sits on the **same row as the gear**, so captions start higher (owner, 2026-10-09).
 - **Settings** is always in the **top-left corner**, as a **gear icon only**: no words, no background, in a color
   chosen to suit each theme.
 - The app flows: it should never feel like changing screens. Use transitions and shared elements, not hard cuts.
@@ -48,7 +49,7 @@ simulator screenshots after). This is a hard rule.
 - **Dark themes are relaxed for older eyes** (the audience is older people, not developers): no pure black behind,
   no pure white text; the black-and-yellow "Bright" theme is dropped as harsh. Research: luminance contrast, not hue,
   is what helps low-vision readers; no study found favoring yellow on black.
-- **Button style:** the owner likes A (gummy lip) and C (outlined cream); picks one from a side-by-side comparison.
+- **Button style: A (gummy lip), with a thinner bottom lip** (owner, 2026-10-09; #96 image 10).
 
 ## 5. Lettering
 
@@ -83,5 +84,5 @@ simulator screenshots after). This is a hard rule.
   then **animates into the start screen**.
 - The mascot does **not** live anywhere else in the app.
 - Open: how it hands off into the main screen: **Glide** (the seal shrinks and glides down into the bottom-middle
-  Start button, which grows out of it) or **Dive** (the seal dives down and the main screen washes up). Shown in
-  #96 image 11; #99 is updated to match once #96 is approved.
+  Start button, which grows out of it) or **Dive** (the seal dives down and the main screen washes up). Chosen on
+  #99, which is updated to land in the #96 main screen.
