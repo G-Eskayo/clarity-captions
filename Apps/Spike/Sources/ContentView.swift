@@ -73,8 +73,6 @@ final class CaptionModel: ObservableObject {
         case .idle, .failed:
             stopActivityLoop()
             saveSessionIfNeeded()
-        default:
-            break
         }
     }
 
