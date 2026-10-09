@@ -383,6 +383,8 @@ public final class TranscriptionEngine {
         }
         diarizer.finish()
         soundLabeler.finish()
+        audioLevelContinuation?.finish()   // left open, it kept the session waiting after Stop (#89)
+        audioLevelContinuation = nil
     }
 
     /// The one-time, system-provisioned model fetch noted in CONTEXT.md "On-device only".

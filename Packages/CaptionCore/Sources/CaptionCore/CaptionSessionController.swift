@@ -20,6 +20,7 @@ extension TranscriptionEngine: CaptioningEngine {}
 /// - Tapping Start while a session exists does nothing, so engines (and speech recognizers, which the system
 ///   limits) can never pile up.
 /// - A start that fails, or a session that errors, always releases the engine before reporting the failure.
+/// - Stop always gets back to `idle`, even if the engine leaves its sound-label or level stream open (#89).
 @MainActor
 public final class CaptionSessionController {
     public private(set) var state: CaptionState = .idle {
@@ -74,17 +75,25 @@ public final class CaptionSessionController {
             state = .listening
             let labels = engine.soundLabelsStream()
             let levels = engine.audioLevelStream()
-            try await withThrowingTaskGroup(of: Void.self) { group in
+            // The caption stream is the session: when it ends or fails, the side streams are cancelled rather than
+            // waited for. Waiting for all three hung Stop on a real device, where the level stream was never
+            // finished (#89), and also held back a caption failure until every side stream had ended.
+            try await withThrowingTaskGroup(of: Bool.self) { group in
                 group.addTask { @MainActor [weak self] in
                     for try await u in updates { self?.onUpdate(u) }
+                    return true
                 }
                 group.addTask { @MainActor [weak self] in
                     for await l in labels { self?.onSoundLabel(l) }
+                    return false
                 }
                 group.addTask { @MainActor [weak self] in
                     for await level in levels { self?.onAudioLevel(level) }
+                    return false
                 }
-                try await group.waitForAll()
+                while let captionsEnded = try await group.next() {
+                    if captionsEnded { group.cancelAll(); break }
+                }
             }
             await engine.stop()
             state = .idle
