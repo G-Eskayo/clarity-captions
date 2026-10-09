@@ -53,8 +53,8 @@ simulator screenshots after). This is a hard rule.
 
 ## 5. Lettering
 
-- Lettering choices: **OpenDyslexic (default)**, **Atkinson Hyperlegible**, **Standard** (system font), **Typewriter**.
-  **Rounded** and **Serif** are removed (owner, 2026-10-09, PR #100).
+- Lettering choices, an even six (owner, 2026-10-09, PR #100): **OpenDyslexic (default)**, **Atkinson Hyperlegible**,
+  **Standard** (system font), **Rounded**, **Serif**, **Typewriter**.
 - Why OpenDyslexic is the default: the owner is dyslexic (an homage) and finds it comforting to look at. The research
   shows no measured reading benefit (evidence log E5), so it is offered for comfort and never marketed as improving
   reading. Both fonts are SIL Open Font License; credit them in NOTICE and in-app credits.

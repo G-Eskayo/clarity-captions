@@ -61,7 +61,7 @@ caveat), **Internal** (process detail, not for marketing).
 - **Confidence:** Strong (for no measured benefit, in children); Weak (for the counterpoint).
 - **Drives:** default lettering stays OpenDyslexic by the owner's choice (2026-10-09): he is dyslexic, it is an
   homage, and it is comforting to look at. Atkinson Hyperlegible (designed for low vision) and the system font are
-  offered alongside it, plus Typewriter. Marketing must never claim a font improves reading.
+  offered alongside it, plus Rounded, Serif and Typewriter (six choices). Marketing must never claim a font improves reading.
 - **Public use:** Careful ("offered for comfort", never "improves reading").
 
 ## E6. What App Review rejects, and how to avoid it
