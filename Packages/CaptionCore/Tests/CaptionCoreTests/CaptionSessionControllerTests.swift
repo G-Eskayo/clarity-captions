@@ -15,6 +15,8 @@ final class CaptionSessionControllerTests: XCTestCase {
         var updates: [CaptionUpdate] = []
         var failAfterUpdates: Error?          // stream throws after yielding `updates`
         var holdOpen = false                  // keep the streams open until stop()
+        var stopLeavesSideStreamsOpen = false // like the real engine before #89: stop() never finished the level stream
+        var failHeldOpenWith: Error?          // with holdOpen, fail the caption stream on demand via failNow()
         var labels: [SoundLabelKind] = []
         var levels: [Double] = []
         private(set) var stopCount = 0
@@ -46,8 +48,10 @@ final class CaptionSessionControllerTests: XCTestCase {
         func audioLevelStream() -> AsyncStream<Double> { levelStream ?? AsyncStream { $0.finish() } }
         func stop() async {
             stopCount += 1
-            updateCont?.finish(); labelCont?.finish(); levelCont?.finish()
+            updateCont?.finish()
+            if !stopLeavesSideStreamsOpen { labelCont?.finish(); levelCont?.finish() }
         }
+        func failNow(_ error: Error) { updateCont?.finish(throwing: error) }
     }
 
     struct Boom: Error, Equatable {}
@@ -75,6 +79,45 @@ final class CaptionSessionControllerTests: XCTestCase {
     final class Log { var created = 0; var states: [CaptionState] = []; var updates: [String] = []; var labels: [SoundLabelKind] = []; var startup = "" }
 
     // MARK: tests
+
+    // #89: on a real iPhone, Stop ended the captions but the screen never went back to Start. The engine's stop()
+    // left the audio-level stream open and the session waited for every stream, so it never reached idle.
+    func testStopReturnsToIdleEvenWhenTheEngineLeavesItsSideStreamsOpen() async {
+        let engine = FakeEngine(); engine.holdOpen = true; engine.stopLeavesSideStreamsOpen = true
+        let (c, _) = make { engine }
+        c.start()
+        await eventually("listening") { c.state == .listening }
+        c.stop()
+        await eventually("idle after Stop") { c.state == .idle }
+    }
+
+    func testStopStartStopRepeatedlyNeverHangsWithSideStreamsLeftOpen() async {
+        let (c, log) = make { let e = FakeEngine(); e.holdOpen = true; e.stopLeavesSideStreamsOpen = true; return e }
+        for round in 1...3 {
+            c.start()
+            await eventually("listening, round \(round)") { c.state == .listening }
+            c.stop()
+            await eventually("idle, round \(round)") { c.state == .idle }
+        }
+        XCTAssertEqual(log.created, 3)
+    }
+
+    func testStopWhilePreparingWithSideStreamsLeftOpenStillReachesIdle() async {
+        let engine = FakeEngine(); engine.holdOpen = true; engine.stopLeavesSideStreamsOpen = true
+        let (c, _) = make { engine }
+        c.start()
+        c.stop()
+        await eventually("idle after an early Stop") { c.state == .idle }
+    }
+
+    func testACaptionFailureWithSideStreamsOpenIsReportedNotHung() async {
+        let engine = FakeEngine(); engine.holdOpen = true; engine.stopLeavesSideStreamsOpen = true
+        let (c, _) = make { engine }
+        c.start()
+        await eventually("listening") { c.state == .listening }
+        engine.failNow(Boom())
+        await eventually("failed state") { if case .failed = c.state { return true } else { return false } }
+    }
 
     func testStaysListeningWhileTheEngineRunsAndOnlyThenReturnsToIdle() async {
         let engine = FakeEngine(); engine.holdOpen = true; engine.updates = [update("hello")]
