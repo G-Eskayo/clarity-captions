@@ -397,6 +397,17 @@
         }
       }
     },
+    "Help and contact" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Help and contact"
+          }
+        }
+      }
+    },
     "Hi! Let's get you set up." : {
       "extractionState": "manual",
       "localizations": {
@@ -672,6 +683,17 @@
         }
       }
     },
+    "Opens in Safari" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens in Safari"
+          }
+        }
+      }
+    },
     "Paper" : {
       "extractionState": "manual",
       "localizations": {
@@ -712,6 +734,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Preview of caption text"
+          }
+        }
+      }
+    },
+    "Privacy policy" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Privacy policy"
           }
         }
       }

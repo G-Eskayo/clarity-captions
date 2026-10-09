@@ -216,17 +216,41 @@ struct SettingsSheet: View {
     }
 
     private var aboutRow: some View {
-        NavigationLink(destination: AboutCreditsView()) {
+        VStack(spacing: 12) {
+            NavigationLink(destination: AboutCreditsView()) {
+                HStack {
+                    Label("Third-party credits", systemImage: "info.circle")
+                    Spacer()
+                    Image(systemName: "chevron.forward")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, minHeight: 56)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.bordered)
+
+            // Guideline 5.1.1(i): the privacy policy must be reachable from inside the app. Both open in Safari.
+            webLinkRow("Privacy policy", systemImage: "hand.raised", destination: SupportLinks.privacyPolicy)
+            webLinkRow("Help and contact", systemImage: "questionmark.circle", destination: SupportLinks.support)
+        }
+    }
+
+    private func webLinkRow(_ title: LocalizedStringKey, systemImage: String, destination: URL) -> some View {
+        Link(destination: destination) {
             HStack {
-                Label("Third-party credits", systemImage: "info.circle")
+                Label(title, systemImage: systemImage)
                 Spacer()
-                Image(systemName: "chevron.forward")
+                // Leaves the app: the arrow says so, unlike the chevron of a screen inside it.
+                Image(systemName: "arrow.up.forward")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
             }
             .frame(maxWidth: .infinity, minHeight: 56)
             .contentShape(Rectangle())
         }
         .buttonStyle(.bordered)
+        .accessibilityHint(Text("Opens in Safari"))
     }
 }
