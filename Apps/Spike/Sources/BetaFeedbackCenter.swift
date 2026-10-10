@@ -82,7 +82,9 @@ final class BetaFeedbackCenter: ObservableObject {
 
     private func maybeShowNotice() {
         guard isOn, launchFinished else { return }
-        if DemoMode.betaNotice || !UserDefaults.standard.bool(forKey: Self.noticeKey) { showingNotice = true }
+        // Demo runs show the notice only when asked for, so other screenshots aren't covered by it.
+        if DemoMode.isOn || DemoMode.gummyDemo { if DemoMode.betaNotice { showingNotice = true }; return }
+        if !UserDefaults.standard.bool(forKey: Self.noticeKey) { showingNotice = true }
     }
 
     func dismissNotice() {

@@ -294,6 +294,19 @@ final class BetaFeedbackTests: XCTestCase {
                       "local ISO 8601 with offset, as in the schema")
     }
 
+    func testAnEmptyConversationStillHasEveryKeyWithNulls() throws {
+        let bare = ConversationRecorder(id: UUID())   // nothing measured, nothing rated
+        var r = bare
+        r.startPressed(at: at(0), sinceLaunch: nil, launch: nil)
+        let data = try report([r.entry(now: at(1))]).json()
+        let ours = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let schema = try XCTUnwrap(JSONSerialization.jsonObject(with: Self.schemaExample()) as? [String: Any])
+        // `ending.reason` only exists for failures and `launch` may be null; everything else is always there.
+        let expected = Self.keyPaths(schema).subtracting(["conversations[].launch.fullDance", "conversations[].launch.barShown"])
+        XCTAssertEqual(Self.keyPaths(ours).subtracting(["conversations[].ending.kind"]), expected.subtracting(["conversations[].ending.kind"]))
+        XCTAssertTrue(String(decoding: data, as: UTF8.self).contains("\"medianDBFS\" : null"))
+    }
+
     func testFileName() {
         let utc = TimeZone(identifier: "UTC")!
         XCTAssertEqual(FeedbackReport.fileName(build: "42", date: t0, timeZone: utc), "seal-feedback-42-20251009-0853.json")

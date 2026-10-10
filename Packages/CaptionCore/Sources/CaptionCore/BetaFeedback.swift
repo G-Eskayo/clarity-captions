@@ -386,6 +386,68 @@ public struct ConversationReport: Codable, Equatable, Sendable {
     public var battery: Battery
     public var micLevel: MicLevel
     public var launch: Launch?
+
+    private enum CodingKeys: String, CodingKey {
+        case id, startedAt, minutes, rating, ratingSkipped, note, lag, rewriteRate, speakers, launchToStartSeconds
+        case startToFirstCaptionSeconds, ending, battery, micLevel, launch
+    }
+
+    /// Every schema key is written, `null` when unknown, so every report has the same shape for MARVIN to read.
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(startedAt, forKey: .startedAt)
+        try c.encode(minutes, forKey: .minutes)
+        try c.encode(rating, forKey: .rating)
+        try c.encode(ratingSkipped, forKey: .ratingSkipped)
+        try c.encode(note, forKey: .note)
+        try c.encode(lag, forKey: .lag)
+        try c.encode(rewriteRate, forKey: .rewriteRate)
+        try c.encode(speakers, forKey: .speakers)
+        try c.encode(launchToStartSeconds, forKey: .launchToStartSeconds)
+        try c.encode(startToFirstCaptionSeconds, forKey: .startToFirstCaptionSeconds)
+        try c.encode(ending, forKey: .ending)
+        try c.encode(battery, forKey: .battery)
+        try c.encode(micLevel, forKey: .micLevel)
+        try c.encode(launch, forKey: .launch)
+    }
+}
+
+extension ConversationReport.Lag {
+    private enum CodingKeys: String, CodingKey { case p50Seconds, p95Seconds, samples }
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(p50Seconds, forKey: .p50Seconds)
+        try c.encode(p95Seconds, forKey: .p95Seconds)
+        try c.encode(samples, forKey: .samples)
+    }
+}
+
+extension ConversationReport.Speakers {
+    private enum CodingKeys: String, CodingKey { case detected, relabelsPerMinute }
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(detected, forKey: .detected)
+        try c.encode(relabelsPerMinute, forKey: .relabelsPerMinute)
+    }
+}
+
+extension ConversationReport.Battery {
+    private enum CodingKeys: String, CodingKey { case dropPercentPer30Min, maxThermalState }
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(dropPercentPer30Min, forKey: .dropPercentPer30Min)
+        try c.encode(maxThermalState, forKey: .maxThermalState)
+    }
+}
+
+extension ConversationReport.MicLevel {
+    private enum CodingKeys: String, CodingKey { case medianDBFS, quietFraction }
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(medianDBFS, forKey: .medianDBFS)
+        try c.encode(quietFraction, forKey: .quietFraction)
+    }
 }
 
 public struct FeedbackReport: Codable, Equatable, Sendable {

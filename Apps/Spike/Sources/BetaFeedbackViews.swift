@@ -242,6 +242,7 @@ struct FeedbackSendView: View {
         .background(palette.card.color.ignoresSafeArea())
         .preferredColorScheme(style.background.isDark ? .dark : .light)
         .task {
+            await beta.ensureResolved()
             prepare()
             if demoAutoContinue {
                 try? await Task.sleep(for: .seconds(2.5))
@@ -288,7 +289,11 @@ struct FeedbackSendView: View {
         let made = beta.makeReport(style: style, idleStop: idleStop)
         guard let data = try? made.report.json() else { return }
         let name = FeedbackReport.fileName(build: made.report.app.build, date: made.report.sentAt)
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+        let tmp = FileManager.default.temporaryDirectory
+        // Only the file being sent exists: earlier previews' copies go.
+        for old in (try? FileManager.default.contentsOfDirectory(at: tmp, includingPropertiesForKeys: nil)) ?? []
+        where old.lastPathComponent.hasPrefix("seal-feedback-") { try? FileManager.default.removeItem(at: old) }
+        let url = tmp.appendingPathComponent(name)
         try? data.write(to: url, options: .atomic)
         prepared = Prepared(report: made.report, ids: made.ids, data: data, fileName: name, fileURL: url)
     }

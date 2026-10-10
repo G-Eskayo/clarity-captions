@@ -47,6 +47,8 @@ struct SettingsSheet: View {
                     .foregroundStyle(style.text.color)
                 }
                 .onAppear { if let id = DemoMode.settingsSection { proxy.scrollTo(id, anchor: .top) } }
+                // The Test version section appears once StoreKit has answered, after Settings may already be open.
+                .onChange(of: beta.isOn) { if let id = DemoMode.settingsSection { proxy.scrollTo(id, anchor: .top) } }
                 .task {
                     // Debug flow for the screen recording: scroll to Test version, then open the preview (ADR 0023).
                     guard DemoMode.flow == "feedback" else { return }
