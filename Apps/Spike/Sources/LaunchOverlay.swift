@@ -89,10 +89,12 @@ struct LaunchOverlay: View {
             if readyAt == nil && isReady(at: t) { readyAt = t }
             if let readyAt, t >= sequence.end(readyAt: readyAt) {
                 done = true
+                // The bar shows for known setup, and for any work (first run or the engine load, #119) that outlasts the dance.
+                let barShown = setupKnown || readyAt > sequence.danceEnd
                 print(String(format: "[launch] main screen %.2f s after the app started (animation %.2f s, ready at %.2f s, bar %@)",
-                             Date().timeIntervalSince(LaunchClock.start), t, readyAt, setupKnown ? "shown" : "not shown"))
+                             Date().timeIntervalSince(LaunchClock.start), t, readyAt, barShown ? "shown" : "not shown"))
                 Self.lastFullDance = !reduceMotion
-                Self.lastBarShown = setupKnown
+                Self.lastBarShown = barShown
                 onFinished()
                 return
             }
