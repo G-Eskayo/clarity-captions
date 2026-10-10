@@ -1,0 +1,49 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Messages with the report attached</title><style>
+@font-face { font-family: 'OpenDyslexic'; src: url('../../2026-10-09/src/fonts/OpenDyslexic-Regular.woff') format('woff'); font-weight: 400; }
+@font-face { font-family: 'OpenDyslexic'; src: url('../../2026-10-09/src/fonts/OpenDyslexic-Bold.woff') format('woff'); font-weight: 700; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Rounded', 'Helvetica Neue', sans-serif; background: #E9E4DA; color: #1b1b1b; }
+.board { padding: 36px; display: flex; flex-direction: column; gap: 22px; }
+.board h1 { font-size: 26px; font-weight: 800; color: #0F3F3C; }
+.board .sub { font-size: 15px; color: #3d4b4a; max-width: 1150px; line-height: 1.45; }
+.row { display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; }
+.cap { font-size: 14px; color: #2a3534; margin-top: 10px; max-width: 402px; line-height: 1.4; }
+.cap b { color: #0F3F3C; }
+.phone { position: relative; width: 402px; height: 874px; border-radius: 54px; overflow: hidden; box-shadow: 0 0 0 10px #1b1d1f, 0 18px 40px rgba(0,0,0,.25); flex: none; }
+.island { position: absolute; top: 11px; left: 50%; width: 124px; height: 36px; transform: translateX(-50%); background: #000; border-radius: 20px; z-index: 90; }
+.statusbar { position: absolute; top: 18px; left: 34px; right: 30px; display: flex; justify-content: space-between; font-weight: 600; font-size: 16px; z-index: 80; }
+.screen { position: absolute; inset: 0; padding: 62px 20px 34px; }
+.topbar { position: relative; height: 64px; display: flex; align-items: center; justify-content: center; }
+.gear { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; display: grid; place-items: center; }
+.status { position: absolute; left: 0; right: 0; top: 62px; height: 64px; font-size: 15px; font-weight: 600; opacity: .75; display: flex; justify-content: center; align-items: center; }
+.captions { font-family: 'OpenDyslexic', sans-serif; font-size: 22px; line-height: 1.5; margin-top: 18px; display: flex; flex-direction: column; gap: 16px; }
+.spk { font-family: system-ui, sans-serif; font-size: 14px; font-weight: 800; margin-bottom: 1px; }
+.btn { border: none; font-weight: 800; letter-spacing: .03em; display: inline-flex; align-items: center; justify-content: center; }
+.dim { position: absolute; inset: 0; z-index: 10; }
+.card { position: absolute; left: 18px; right: 18px; z-index: 30; border-radius: 28px; padding: 24px 20px 20px; box-shadow: 0 10px 30px rgba(0,0,0,.18); }
+.q { font-size: 21px; font-weight: 800; line-height: 1.3; text-align: center; }
+.scale { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; margin-top: 18px; }
+.num { height: 44px; border-radius: 14px; display: grid; place-items: center; font-size: 17px; font-weight: 800; }
+.ends { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; margin-top: 8px; }
+.links { display: flex; justify-content: space-between; margin-top: 18px; font-size: 17px; font-weight: 700; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; top: 70px; border-radius: 26px 26px 0 0; z-index: 40; padding: 22px 22px; overflow: hidden; }
+.sec { font-size: 13px; font-weight: 800; letter-spacing: .04em; text-transform: none; margin: 18px 0 8px; opacity: .75; }
+.rowline { display: flex; justify-content: space-between; align-items: center; font-size: 17px; padding: 6px 0; }
+.hr { height: 1px; margin: 12px 0; }
+.pill { font-size: 12px; font-weight: 800; padding: 3px 9px; border-radius: 10px; }
+.kb { position: absolute; left: 0; right: 0; bottom: 0; height: 290px; z-index: 50; background: #D1D4DA; display: grid; grid-template-rows: repeat(4, 1fr); padding: 8px 4px 40px; gap: 8px; }
+.kb .r { display: flex; gap: 5px; justify-content: center; }
+.kb .k { width: 33px; background: #fff; border-radius: 6px; box-shadow: 0 1px 0 #898a8d; display: grid; place-items: center; font-size: 20px; color: #000; }
+.anno { position: absolute; z-index: 95; font-size: 13px; font-weight: 700; background: #FFF6D8; color: #5b3a00; border: 2px solid #E0A400; border-radius: 10px; padding: 6px 10px; max-width: 210px; line-height: 1.3; }
+</style></head><body style="width:520px;min-height:1000px"><div class="board"><h1>5 · Apple Messages, already addressed to Gil</h1><div class="sub">Apple's own Messages sheet opens with Gil as the recipient, the report attached as a small file and a one-line summary typed in. The tester taps send (or Cancel). After it sends, those records are deleted from the phone. If Messages can't send, the share sheet opens instead.</div><div class="row"><div><div class="phone" style="background:#F2F2F7"><div class="island"></div><div class="statusbar" style="color:#000"><span>9:41</span><span>●●●● ▮</span></div>
+    <div style="position:absolute;top:62px;left:0;right:0;bottom:0;background:#fff;border-radius:22px 22px 0 0;box-shadow:0 -1px 0 #ddd">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;font-size:17px"><span style="color:#0A84FF">Cancel</span><span style="font-weight:700">New iMessage</span><span style="width:52px"></span></div>
+      <div style="padding:10px 18px;border-top:1px solid #e5e5ea;border-bottom:1px solid #e5e5ea;font-size:17px"><span style="color:#8e8e93">To: </span><span style="color:#0A84FF;background:#E5F0FF;padding:3px 8px;border-radius:8px">Gil</span></div>
+      <div style="position:absolute;left:12px;right:12px;bottom:330px;border:1px solid #d1d1d6;border-radius:20px;padding:12px;font-size:16px;line-height:1.35;background:#fff">
+        <div style="display:flex;gap:12px;align-items:center;background:#F2F2F7;border-radius:14px;padding:10px 12px;margin-bottom:10px">
+          <div style="width:40px;height:50px;border-radius:6px;background:#fff;border:1px solid #c7c7cc;display:grid;place-items:center;font-size:11px;font-weight:800;color:#0F5C55">JSON</div>
+          <div><div style="font-weight:700;font-size:15px">seal-feedback-42-20261012-1804.json</div><div style="color:#8e8e93;font-size:13px">4 KB</div></div></div>
+        Seal beta feedback: 4 conversations, iPhone 14, iOS 26.1, build 42. Ratings 8, skipped, 6, 9. Worst lag 3.2 s.
+        <div style="position:absolute;right:10px;bottom:10px;width:30px;height:30px;border-radius:50%;background:#0A84FF;display:grid;place-items:center;color:#fff;font-weight:900">↑</div></div>
+      <div class="kb"><div class="r"><div class="k">q</div><div class="k">w</div><div class="k">e</div><div class="k">r</div><div class="k">t</div><div class="k">y</div><div class="k">u</div><div class="k">i</div><div class="k">o</div><div class="k">p</div></div><div class="r"><div class="k">a</div><div class="k">s</div><div class="k">d</div><div class="k">f</div><div class="k">g</div><div class="k">h</div><div class="k">j</div><div class="k">k</div><div class="k">l</div></div><div class="r"><div class="k">z</div><div class="k">x</div><div class="k">c</div><div class="k">v</div><div class="k">b</div><div class="k">n</div><div class="k">m</div></div><div class="r"><div class="k" style="width:300px;font-size:15px">space</div></div></div>
+    </div></div><div class="cap"><b>Messages.</b> Drawn like iOS Messages; the real sheet is Apple's.</div></div></div></div></body></html>

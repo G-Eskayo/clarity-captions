@@ -4,3 +4,6 @@ DerivedData/
 .swiftpm/
 Apps/Spike/Resources/Models/
 Apps/Spike/.team
+
+# Beta feedback recipient (owner phone number), never committed (ADR 0023)
+Apps/Spike/Beta.xcconfig.local
