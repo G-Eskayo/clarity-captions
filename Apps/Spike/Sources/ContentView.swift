@@ -739,15 +739,20 @@ struct ContentView: View {
                 if AutoScroll.followsNewCaptions(following: following, selecting: selection != nil) { position.scrollTo(edge: .bottom) }
             }
             .overlay(alignment: .bottom) {
-                if !following {
-                    Button {
-                        following = true
-                        withAnimation { position.scrollTo(edge: .bottom) }
-                    } label: { Label("Jump to latest", systemImage: "arrow.down.circle.fill").font(.title3.bold()).padding(.horizontal, 8).frame(minHeight: 48) }
-                        .buttonStyle(.borderedProminent)
-                        .foregroundStyle(style.background.color)
+                // Approved in #120 as A: retro words, [ ↓ Latest ], fading in and out like everything else.
+                ZStack {
+                    if AutoScroll.showsJumpToLatest(following: following) {
+                        RetroWords(word: AutoScroll.jumpToLatestWord, color: style.text.color, background: style.background.color,
+                                   size: .title3, label: String(localized: "Jump to latest")) {
+                            following = true
+                            withAnimation { position.scrollTo(edge: .bottom) }
+                        }
+                        .frame(minHeight: 48)
                         .padding(.bottom, 8)
+                        .transition(.opacity)
+                    }
                 }
+                .animation(.easeInOut(duration: 0.25), value: following)
             }
 
             if selection != nil { selectionChrome }
