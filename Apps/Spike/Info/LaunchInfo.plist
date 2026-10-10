@@ -12,6 +12,10 @@
 	     stops asking the export-compliance question on every upload (#79). -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- Beta feedback recipient (ADR 0023): filled at build time from the gitignored Apps/Spike/Beta.xcconfig.local.
+	     Empty in the repo; the app then offers the share sheet instead of Messages. -->
+	<key>SealFeedbackRecipient</key>
+	<string>$(SEAL_FEEDBACK_RECIPIENT)</string>
 	<!-- Bundled lettering fonts (#103): OpenDyslexic (the default) and Atkinson Hyperlegible, SIL OFL 1.1. -->
 	<key>UIAppFonts</key>
 	<array>

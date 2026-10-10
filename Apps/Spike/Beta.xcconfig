@@ -1,0 +1,8 @@
+// Beta feedback recipient (ADR 0023, #112). The owner's phone number must never be committed (public repo), so it
+// lives in the gitignored Beta.xcconfig.local next to this file:
+//
+//     SEAL_FEEDBACK_RECIPIENT = +15555550123
+//
+// Without it, "Send feedback to Gil" opens the share sheet instead of Messages. See docs/beta/testflight.md.
+SEAL_FEEDBACK_RECIPIENT =
+#include? "Beta.xcconfig.local"

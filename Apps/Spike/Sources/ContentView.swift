@@ -43,6 +43,10 @@ final class CaptionModel: ObservableObject {
         didSet { IdleStopStore().save(idleStop) }
     }
     private let screenAwake = ScreenAwakeKeeper(apply: { UIApplication.shared.isIdleTimerDisabled = $0 })
+    /// Beta testers' ratings and measurements (ADR 0023). Every call is a no-op in an App Store install.
+    let beta = BetaFeedbackCenter.shared
+    /// A cold launch brought back a conversation; the beta card may be due once StoreKit has answered.
+    private var restoredOnColdLaunch = false
 
     init() {
         controller = CaptionSessionController(makeEngine: { [weak self] in
@@ -65,6 +69,7 @@ final class CaptionModel: ObservableObject {
                 stream = restored.stream
                 speakerNames = restored.names
                 session = restored.session
+                restoredOnColdLaunch = true
             }
         }
 
@@ -72,7 +77,9 @@ final class CaptionModel: ObservableObject {
         controller.onStartup = { [weak self] in self?.startup = $0 }
         controller.onSoundLabel = { [weak self] in self?.stream.insertSoundLabel($0) }
         controller.onAudioLevel = { [weak self] level in
-            self?.roomLevelDBFS = level
+            guard let self else { return }
+            self.roomLevelDBFS = level
+            self.beta.audioLevel(self.session, level)
         }
         controller.onUpdate = { [weak self] u in
             guard let self else { return }
@@ -85,7 +92,16 @@ final class CaptionModel: ObservableObject {
                 self.tracker.recordSpeech(at: Date())
                 if u.isFinal { self.reportCaptionShown() }
             }
+            // After the caption is on screen: measurements never sit in front of it (ADR 0015).
+            self.beta.captionUpdate(self.session, u)
         }
+    }
+
+    /// Once StoreKit has answered: a conversation a cold launch brought back may be due its rating card.
+    func betaResolved() {
+        guard restoredOnColdLaunch else { return }
+        restoredOnColdLaunch = false
+        beta.restoredAfterColdLaunch(session, hasConversation: hasConversation)
     }
 
     func handleCaptionStateChange(_ newState: CaptionState) {
@@ -100,9 +116,11 @@ final class CaptionModel: ObservableObject {
             stream.breakLine()
         case .listening:
             startActivityLoop()
+            beta.captioningStarted(session)
         case .idle, .failed, .pausedQuiet:
             // Pausing keeps the conversation on screen; nothing is saved until she taps [ Save ].
             stopActivityLoop()
+            beta.captioningStopped(session, state: newState)
         }
     }
 
@@ -115,6 +133,7 @@ final class CaptionModel: ObservableObject {
                     activity = newActivity
                 }
                 controller.tick()
+                beta.tick(session)
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
             }
         }
@@ -158,7 +177,15 @@ final class CaptionModel: ObservableObject {
         if session.hasUnsavedChanges(lines: stream.lines, names: speakerNames) { confirmingNew = true } else { startNew() }
     }
 
+    /// [ New ], after its question if it asked. In a beta install the rating card may come first (ADR 0023).
     func startNew() {
+        beta.newTapped(session, hasConversation: hasConversation) { [weak self] in self?.resetConversation() }
+    }
+
+    func rate(_ value: Int, note: String?) { beta.rate(session, value: value, note: note) }
+    func skipRating() { beta.skip(session) }
+
+    private func resetConversation() {
         stream = CaptionStream()
         speakerNames = SpeakerNames()
         session = ConversationSession()
@@ -201,6 +228,7 @@ final class CaptionModel: ObservableObject {
     func scenePhaseChanged(_ phase: ScenePhase) {
         switch phase {
         case .background:
+            if state == .listening { beta.leftApp(session) }
             if hasConversation {
                 try? currentStore?.save(CurrentConversationSnapshot(lines: stream.lines, names: speakerNames, session: session, leftAt: Date()))
             } else {
@@ -208,6 +236,7 @@ final class CaptionModel: ObservableObject {
             }
         case .active:
             currentStore?.delete()
+            beta.returned(session, hasConversation: hasConversation, isCaptioning: state == .listening || state == .preparing)
         default:
             break
         }
@@ -221,7 +250,10 @@ final class CaptionModel: ObservableObject {
 
     func perform(_ action: PrimaryControl.Action) {
         switch action {
-        case .start: tour.did(.tappedStart); controller.start()
+        case .start:
+            tour.did(.tappedStart)
+            beta.startPressed(session)
+            controller.start()
         case .stop: tour.did(.tappedStop); controller.stop()
         case .none: break
         }
@@ -272,6 +304,7 @@ final class CaptionModel: ObservableObject {
 
 struct ContentView: View {
     @StateObject private var model = CaptionModel()
+    @ObservedObject private var beta = BetaFeedbackCenter.shared
     /// Developer-only tools (mic mode, diagnostics). Long-press the status text to toggle; never shown by default.
     @State private var developerTools = false
     /// Debug only (DemoMode `-ClarityDemoFlow start`): presses the Start pill without a finger.
@@ -315,6 +348,8 @@ struct ContentView: View {
     /// Settings' "Show how to use Seal": the tour starts once the sheet has gone.
     @State private var pendingTourReplay = false
     @Environment(\.launchCovering) private var launchCovering
+    /// Debug demos only: a scripted tap on the rating card (simctl can't tap).
+    @State private var demoRatingTap: Int?
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -346,6 +381,27 @@ struct ContentView: View {
                 }
                 .transition(.opacity)
             }
+            // Beta installs only (ADR 0023): the rating card after a conversation, and the one-time notice.
+            if beta.showingCard {
+                RatingCardView(style: style, onRate: { value, note in withAnimation(veilAnimation) { model.rate(value, note: note) } },
+                               onSkip: { withAnimation(veilAnimation) { model.skipRating() } },
+                               demoSelected: DemoMode.betaNote ? 8 : nil,
+                               demoNote: DemoMode.betaNote ? "Lost it when the waiter talked fast" : nil,
+                               demoTap: demoRatingTap)
+                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                    .zIndex(2)
+            }
+            if beta.showingNotice {
+                BetaNoticeView(style: style) { withAnimation(veilAnimation) { beta.dismissNotice() } }
+                    .transition(.opacity)
+                    .zIndex(3)
+            }
+        }
+        .animation(veilAnimation, value: beta.showingCard)
+        .animation(veilAnimation, value: beta.showingNotice)
+        .task {
+            await beta.ensureResolved()
+            model.betaResolved()
         }
         // One look for the whole app: background, text, controls and the system's own chrome all follow it.
         .foregroundStyle(style.text.color)
@@ -723,6 +779,11 @@ struct ContentView: View {
         if DemoMode.paused { model.demoSetState(.idle) }
         if DemoMode.saved { model.save() }
         if DemoMode.veilCleared { clearVeil() }
+        if DemoMode.betaCard {
+            model.demoSetState(.idle)
+            await BetaFeedbackCenter.shared.ensureResolved()
+            BetaFeedbackCenter.shared.demoShowCard()
+        }
         if DemoMode.select, let from = demoPosition("free for"), let to = demoPosition("own colour", end: true) {
             await wait(0.4)
             setSelection(CaptionSelection(anchor: from, focus: to))
@@ -760,6 +821,17 @@ struct ContentView: View {
             await wait(0.35); demoPressingStart = false
             await wait(0.25); model.demoSetState(.preparing); model.demoSetState(.listening)
             await wait(3); model.demoSetState(.idle)
+        case "rate":
+            // ADR 0023: [ New ] on a paused conversation brings the card; one tap on 8 rates it and the card fades.
+            await BetaFeedbackCenter.shared.ensureResolved()
+            model.demoSetState(.listening)
+            await wait(1.5); model.demoSetState(.idle)
+            await wait(2); model.save()
+            await wait(2); withAnimation(veilAnimation) { model.startNew() }
+            await wait(2.5); demoRatingTap = 8
+        case "feedback":
+            await BetaFeedbackCenter.shared.ensureResolved()
+            await wait(1.5); showingSettings = true
         case "new":
             model.demoSetState(.idle)
             await wait(2); model.requestNew()

@@ -43,9 +43,17 @@ targets:
       #  The package's latency test generates its own audio. Re-add this only together with a committed fixture.)
     dependencies:
       - package: CaptionCore
+    # Beta feedback recipient (ADR 0023): set in the gitignored Beta.xcconfig.local, never committed.
+    configFiles:
+      Debug: Beta.xcconfig
+      Release: Beta.xcconfig
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.gileskayo.captions
+        # The version shown on the App Store, and the build number App Store Connect needs on every upload (raise
+        # CURRENT_PROJECT_VERSION for each TestFlight build). Beta reports carry both (ADR 0023).
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
         TARGETED_DEVICE_FAMILY: "1,2"  # iPhone and iPad (ADR 0010 gate lifted)
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: "$(APP_DISPLAY_NAME)"

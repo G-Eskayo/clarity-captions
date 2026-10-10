@@ -19,6 +19,9 @@ struct SettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var savedCount: Int?
+    /// Beta installs only (ADR 0023): the "Test version" section and its preview.
+    @ObservedObject private var beta = BetaFeedbackCenter.shared
+    @State private var showingSend = DemoMode.betaPreview
 
     private var showsTourReplay: Bool { onShowTour != nil }
 
@@ -35,6 +38,7 @@ struct SettingsSheet: View {
                             .id("lettering")
                         section("Stop when it's quiet") { idleStopRow }.id("idleStop")
                         section("Saved", note: String(localized: "Saved conversations are deleted after 30 days.")) { savedRow }.id("saved")
+                        if beta.isOn { testVersionSection.id("betaFeedback") }
                         if showsTourReplay { section("How to use Seal") { tourRow }.id("tour") }
                         section("About") { aboutRows }.id("about")
                     }
@@ -43,6 +47,16 @@ struct SettingsSheet: View {
                     .foregroundStyle(style.text.color)
                 }
                 .onAppear { if let id = DemoMode.settingsSection { proxy.scrollTo(id, anchor: .top) } }
+                // The Test version section appears once StoreKit has answered, after Settings may already be open.
+                .onChange(of: beta.isOn) { if let id = DemoMode.settingsSection { proxy.scrollTo(id, anchor: .top) } }
+                .task {
+                    // Debug flow for the screen recording: scroll to Test version, then open the preview (ADR 0023).
+                    guard DemoMode.flow == "feedback" else { return }
+                    try? await Task.sleep(for: .seconds(1))
+                    withAnimation { proxy.scrollTo("betaFeedback", anchor: .center) }
+                    try? await Task.sleep(for: .seconds(2))
+                    showingSend = true
+                }
             }
             .containerBackground(style.background.color, for: .navigation)
             .toolbar(.hidden, for: .navigationBar)
@@ -50,6 +64,9 @@ struct SettingsSheet: View {
         .tint(style.gear.color)
         .preferredColorScheme(style.background.isDark ? .dark : .light)
         .task { savedCount = try? await store?.all().count }
+        .sheet(isPresented: $showingSend) {
+            FeedbackSendView(style: style, idleStop: idleStop, beta: beta, demoAutoContinue: DemoMode.flow == "feedback")
+        }
     }
 
     // MARK: pieces
@@ -214,6 +231,42 @@ struct SettingsSheet: View {
         } else {
             row.opacity(0.5)
         }
+    }
+
+    /// Mock-up 03: TestFlight installs only, between Saved and How to use Seal.
+    private var testVersionSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Text("Test version")
+                    .font(scaled(14, .heavy))
+                    .tracking(0.6)
+                    .foregroundStyle(muted)
+                    .accessibilityAddTraits(.isHeader)
+                Text("TestFlight only")
+                    .font(scaled(12, .heavy))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 9).padding(.vertical, 3)
+                    .background((style.background.isDark ? RGBA(hex: "#1F6F6B") : RGBA(hex: "#4FB3A9")).color, in: Capsule())
+            }
+            Button { showingSend = true } label: {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Send feedback to Gil").font(scaled(18, .heavy)).foregroundStyle(style.gear.color)
+                    Spacer()
+                    Text(String(format: String(localized: "%lld conversations"), beta.unsentCount) + " ›")
+                        .foregroundStyle(muted)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(beta.unsentCount == 0)
+            Text("Your ratings and notes, plus measurements like lag and battery. Never what anyone said.")
+                .font(scaled(13)).foregroundStyle(muted).lineSpacing(2)
+        }
+        .padding(.horizontal, 4)
+        .padding(.top, 18)
+        .padding(.bottom, 16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .top) { Rectangle().fill(rule).frame(height: 1) }
     }
 
     private var tourRow: some View {

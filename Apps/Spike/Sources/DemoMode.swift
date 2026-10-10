@@ -23,6 +23,12 @@ import Foundation
 ///   -ClarityDemoLaunch ordinary|first|fail   runs the real launch animation and first-run flow with a pretend system
 ///                         (#104): ordinary = everything ready; first = a slow speech download, then the warm-up,
 ///                         through the real SpeechDownload path; fail = the download stops partway, for Try again
+///   -ClarityDemoBeta      behave as a TestFlight install (ADR 0023): rating card, Settings' Test version section
+///   -ClarityDemoBetaSeed  with four recorded conversations to send (measurements only), as in mock-up 04
+///   -ClarityDemoBetaCard  paused, with the rating card up (mock-up 01); -ClarityDemoBetaNote with a note open (02)
+///   -ClarityDemoBetaNotice  the one-time test-version notice (06), even if it was seen
+///   -ClarityDemoBetaPreview opens Settings' "What will be sent" (04)
+///   -ClarityDemoFlow rate|feedback   pause, [ New ], tap 8 and the card fades; or Settings → preview → Messages
 /// It feeds the same CaptionStream the real engine feeds, so what you see is the real caption view: speaker colours,
 /// names, line breaks and sound labels. No microphone, speech model or network is involved.
 enum DemoMode {
@@ -67,6 +73,12 @@ enum DemoMode {
     static var launch: String? { value(after: "-ClarityDemoLaunch") }
     /// `-ClarityDemoTour flow` plays the whole how-to-use tour; `-ClarityDemoTour <1-6>` shows one step (#108).
     static var tour: String? { value(after: "-ClarityDemoTour") }
+    static var forcesBeta: Bool { flag("-ClarityDemoBeta") || betaSeed || betaCard || betaNotice || betaPreview || flow == "rate" || flow == "feedback" }
+    static var betaSeed: Bool { flag("-ClarityDemoBetaSeed") || betaPreview || flow == "feedback" }
+    static var betaCard: Bool { flag("-ClarityDemoBetaCard") || betaNote }
+    static var betaNote: Bool { flag("-ClarityDemoBetaNote") }
+    static var betaNotice: Bool { flag("-ClarityDemoBetaNotice") }
+    static var betaPreview: Bool { flag("-ClarityDemoBetaPreview") }
     /// Caption-screen demos and the gummy screen go straight in, so their screenshots stay repeatable.
     static var skipsLaunchAnimation: Bool { launch == nil && (isOn || gummyDemo) }
 

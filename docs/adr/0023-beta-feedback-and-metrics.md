@@ -2,7 +2,8 @@
 
 ## Status
 
-Proposed (2026-10-09). Design: `docs/design/mocks/beta-feedback/`; report format: `docs/beta/metrics-schema.md`.
+Accepted (2026-10-09, design PR #111); implemented by #112. Design: `docs/design/mocks/beta-feedback/`; report
+format: `docs/beta/metrics-schema.md`; building a TestFlight build: `docs/beta/testflight.md`.
 
 ## Context
 
