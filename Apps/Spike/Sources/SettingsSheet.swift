@@ -12,12 +12,13 @@ struct SettingsSheet: View {
     let stream: CaptionStream
     let speakerNames: SpeakerNames
     let store: SavedConversationStoring?
+    let onShowTour: (() -> Void)?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var savedCount: Int?
 
     /// "Show how to use Seal" replays the tour; it stays hidden until the tour exists (spec §7, its own ticket).
-    private let showsTourReplay = false
+    private let showsTourReplay = true
 
     var body: some View {
         NavigationStack {
@@ -214,7 +215,10 @@ struct SettingsSheet: View {
     }
 
     private var tourRow: some View {
-        Button {} label: {
+        Button {
+            dismiss()
+            onShowTour?()
+        } label: {
             Text("Show how to use Seal")
                 .font(scaled(17, .heavy))
                 .frame(maxWidth: .infinity, minHeight: 54)

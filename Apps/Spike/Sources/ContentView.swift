@@ -38,6 +38,8 @@ final class CaptionModel: ObservableObject {
     @Published var idleStop: IdleStopSetting = IdleStopStore().load() {
         didSet { IdleStopStore().save(idleStop) }
     }
+    @Published var tour = HowToUseTour()
+    @Published var showingTour = false
     private let screenAwake = ScreenAwakeKeeper(apply: { UIApplication.shared.isIdleTimerDisabled = $0 })
 
     init() {
@@ -129,6 +131,7 @@ final class CaptionModel: ObservableObject {
         let before = session
         guard let conversation = session.makeSaved(lines: stream.lines, names: speakerNames, now: Date()) else { return }
         showingSaveCheck = true
+        tour.didPerform(.save)
         Task {
             do {
                 try await store?.save(conversation)
@@ -144,6 +147,7 @@ final class CaptionModel: ObservableObject {
 
     /// [ New ]: asks first if the conversation isn't saved as it stands.
     func requestNew() {
+        tour.didPerform(.new)
         if session.hasUnsavedChanges(lines: stream.lines, names: speakerNames) { confirmingNew = true } else { startNew() }
     }
 
@@ -181,9 +185,14 @@ final class CaptionModel: ObservableObject {
 
     func perform(_ action: PrimaryControl.Action) {
         switch action {
-        case .start: controller.start()
-        case .stop: controller.stop()
-        case .none: break
+        case .start:
+            controller.start()
+            tour.didPerform(.start)
+        case .stop:
+            controller.stop()
+            tour.didPerform(.pause)
+        case .none:
+            break
         }
     }
 
@@ -274,6 +283,9 @@ struct ContentView: View {
     private var deviceClass: CaptionDeviceClass {
         UIDevice.current.userInterfaceIdiom == .pad ? .pad : .phone
     }
+    private var demoActive: Bool {
+        model.showingTour && HowToUseTour.showsDemoContent(step: model.tour.currentStep, hasConversation: model.hasConversation)
+    }
 
     var body: some View {
         ZStack {
@@ -297,13 +309,47 @@ struct ContentView: View {
             model.appActiveChanged(phase == .active)
             model.scenePhaseChanged(phase)
         }
+        .overlay(alignment: .center) {
+            if model.showingTour, let step = model.tour.currentStep {
+                ZStack {
+                    Color.black.opacity(0.5).ignoresSafeArea()
+
+                    VStack(spacing: 20) {
+                        Spacer()
+                        let copy = TourCopy.for(step)
+                        VStack(spacing: 12) {
+                            Text(copy.title).font(.headline.bold()).foregroundStyle(.primary)
+                            Text(copy.message).font(.body).foregroundStyle(.secondary)
+                        }
+                        .padding()
+                        .background(Color(UIColor.systemBackground), in: RoundedRectangle(cornerRadius: 12))
+
+                        HStack(spacing: 12) {
+                            if step != HowToUseTour.TourStep.allCases.first {
+                                Button(String(localized: "Back")) { model.tour.back() }
+                                    .buttonStyle(.bordered)
+                            }
+                            Spacer()
+                            Button(String(localized: "Skip")) { model.showingTour = false }
+                                .buttonStyle(.bordered)
+                            Button(String(localized: "Next")) { model.tour.next() }
+                                .buttonStyle(.borderedProminent)
+                        }
+                        .padding()
+                        Spacer()
+                    }
+                    .padding()
+                }
+                .transition(.opacity)
+            }
+        }
         .alert(String(localized: "Start a new conversation?"), isPresented: $model.confirmingNew) {
             Button(String(localized: "Start new"), role: .destructive) { withAnimation(veilAnimation) { model.startNew() } }
             Button(String(localized: "Cancel"), role: .cancel) {}
         } message: {
             Text(String(localized: "This conversation isn't saved."))
         }
-        .sheet(isPresented: $showingSettings) { SettingsSheet(style: $model.style, idleStop: $model.idleStop, stream: model.stream, speakerNames: model.speakerNames, store: model.store) }
+        .sheet(isPresented: $showingSettings) { SettingsSheet(style: $model.style, idleStop: $model.idleStop, stream: model.stream, speakerNames: model.speakerNames, store: model.store, onShowTour: { model.showingTour = true; model.tour = HowToUseTour() }) }
         .task {
             guard DemoMode.isOn else { return }
             model.demoApplyPreset()
@@ -317,6 +363,17 @@ struct ContentView: View {
         .onChange(of: model.state) { _, newState in
             UIAccessibility.post(notification: .announcement, argument: StatusWords.announcement(for: newState))
             handleStateChange(newState)
+        }
+        .onChange(of: model.tour.isFinished) { _, isFinished in
+            if isFinished {
+                model.showingTour = false
+                HowToUseTourStore().markSeen()
+            }
+        }
+        .onAppear {
+            if !HowToUseTourStore().hasSeenTour {
+                model.showingTour = true
+            }
         }
     }
 
@@ -411,7 +468,7 @@ struct ContentView: View {
     private var gearColor: Color { style.text.color }
 
     private var settingsButton: some View {
-        Button { showingSettings = true } label: {
+        Button { showingSettings = true; model.tour.didPerform(.gear) } label: {
             Image(systemName: "gearshape")
                 .font(.title2)
                 .foregroundStyle(gearColor)
@@ -469,10 +526,11 @@ struct ContentView: View {
     private func captions(bottomReserve: CGFloat = 0) -> some View {
         let palette = SpeakerPalette.colors(on: style.background, text: style.text).map(\.color)
         let placeholderColor = SpeakerPalette.placeholderColor(on: style.background, text: style.text).color
+        let linesToDisplay = demoActive ? TourDemoScript.lines : model.stream.lines
         return ZStack(alignment: .top) {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 16) {
-                    ForEach(model.stream.lines) { line in
+                    ForEach(linesToDisplay) { line in
                         VStack(alignment: .leading, spacing: 2) {
                             let labelState = SpeakerLabeling.state(for: line)
                             if labelState != .none {
@@ -491,6 +549,7 @@ struct ContentView: View {
                             } else {
                                 Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass)).opacity(line.isFinal ? 1 : style.volatileOpacity)
                                     .textSelection(.enabled)
+                                    .gesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in model.tour.didPerform(.copy) })
                                     .trackWords(in: textFrames, key: "text-\(line.id)")
                             }
                         }
@@ -530,7 +589,7 @@ struct ContentView: View {
                 }
             }
 
-            if model.veil.isVisible(state: model.state, hasConversation: model.hasConversation) {
+            if model.veil.isVisible(state: model.state, hasConversation: model.hasConversation || demoActive) {
                 pauseVeil.transition(.opacity)
             }
 
@@ -652,7 +711,8 @@ struct ContentView: View {
         if model.showingSaveCheck {
             retroButton(Self.checkMark, color: green, label: String(localized: "Saved"), action: nil)
         } else {
-            switch model.session.saveButton(lines: model.stream.lines, names: model.speakerNames) {
+            let linesToCheck = demoActive ? TourDemoScript.lines : model.stream.lines
+            switch model.session.saveButton(lines: linesToCheck, names: model.speakerNames) {
             case .save:
                 retroButton(String(localized: "Save"), color: style.text.color, label: String(localized: "Save conversation")) {
                     withAnimation(.easeInOut(duration: 0.2)) { model.save() }
