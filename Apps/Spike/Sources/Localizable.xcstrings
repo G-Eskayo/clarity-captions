@@ -188,6 +188,17 @@
         }
       }
     },
+    "Back" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back"
+          }
+        }
+      }
+    },
     "Bright" : {
       "extractionState": "manual",
       "localizations": {
@@ -353,6 +364,17 @@
         }
       }
     },
+    "Done ✓" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done ✓"
+          }
+        }
+      }
+    },
     "Doorbell" : {
       "extractionState": "manual",
       "localizations": {
@@ -437,6 +459,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Double tap to show the conversation"
+          }
+        }
+      }
+    },
+    "Ends the tour. You can take it again from Settings." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ends the tour. You can take it again from Settings."
           }
         }
       }
@@ -540,6 +573,17 @@
         }
       }
     },
+    "Hi! Can you read what I'm saying?" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hi! Can you read what I'm saying?"
+          }
+        }
+      }
+    },
     "Hi! Let's get you set up." : {
       "extractionState": "manual",
       "localizations": {
@@ -558,6 +602,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hold on empty space to bring back Save and New"
+          }
+        }
+      }
+    },
+    "Hold on words to copy them" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hold on words to copy them"
           }
         }
       }
@@ -760,6 +815,17 @@
         }
       }
     },
+    "Make it yours" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Make it yours"
+          }
+        }
+      }
+    },
     "Measure latency" : {
       "extractionState": "manual",
       "localizations": {
@@ -815,6 +881,28 @@
         }
       }
     },
+    "Next" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next"
+          }
+        }
+      }
+    },
+    "Next ›" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next ›"
+          }
+        }
+      }
+    },
     "Night" : {
       "extractionState": "manual",
       "localizations": {
@@ -855,6 +943,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "No one is talking right now"
+          }
+        }
+      }
+    },
+    "Nothing is lost. Start captions carries on where you left off." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing is lost. Start captions carries on where you left off."
           }
         }
       }
@@ -925,6 +1024,17 @@
         }
       }
     },
+    "Pause captions first, then come back here." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause captions first, then come back here."
+          }
+        }
+      }
+    },
     "Paused" : {
       "extractionState": "manual",
       "localizations": {
@@ -969,6 +1079,17 @@
         }
       }
     },
+    "Press and hold, stretch the selection, then tap Copy." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Press and hold, stretch the selection, then tap Copy."
+          }
+        }
+      }
+    },
     "Pressed" : {
       "extractionState": "manual",
       "localizations": {
@@ -1009,6 +1130,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Privacy policy"
+          }
+        }
+      }
+    },
+    "Put the phone on the table between you and the people talking. Go ahead, tap it." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Put the phone on the table between you and the people talking. Go ahead, tap it."
           }
         }
       }
@@ -1075,6 +1207,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Saved conversations are deleted after 30 days."
+          }
+        }
+      }
+    },
+    "Saved conversations stay for 30 days. [ New ] clears the screen for a fresh one. It asks first, so a stray tap won't wipe it." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved conversations stay for 30 days. [ New ] clears the screen for a fresh one. It asks first, so a stray tap won't wipe it."
+          }
+        }
+      }
+    },
+    "Say something" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Say something"
           }
         }
       }
@@ -1207,6 +1361,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Size"
+          }
+        }
+      }
+    },
+    "Skip tour" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skip tour"
           }
         }
       }
@@ -1387,6 +1552,17 @@
         }
       }
     },
+    "Step %lld of %lld" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Step %lld of %lld"
+          }
+        }
+      }
+    },
     "Stop captions" : {
       "extractionState": "manual",
       "localizations": {
@@ -1431,6 +1607,28 @@
         }
       }
     },
+    "Tap [ Save ] to keep it" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap [ Save ] to keep it"
+          }
+        }
+      }
+    },
+    "Tap Start captions" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap Start captions"
+          }
+        }
+      }
+    },
     "Tap the big button any time you want captions." : {
       "extractionState": "manual",
       "localizations": {
@@ -1442,6 +1640,17 @@
         }
       }
     },
+    "Tap X to pause" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap X to pause"
+          }
+        }
+      }
+    },
     "The download stopped moving. Check that Wi-Fi is on, then tap Try again." : {
       "extractionState": "manual",
       "localizations": {
@@ -1449,6 +1658,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "The download stopped moving. Check that Wi-Fi is on, then tap Try again."
+          }
+        }
+      }
+    },
+    "The gear changes colors, text size and lettering. You can take this tour again there." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The gear changes colors, text size and lettering. You can take this tour again there."
           }
         }
       }
@@ -1552,6 +1772,17 @@
         }
       }
     },
+    "Too quiet? Show an example" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Too quiet? Show an example"
+          }
+        }
+      }
+    },
     "Try again" : {
       "extractionState": "manual",
       "localizations": {
@@ -1640,6 +1871,17 @@
         }
       }
     },
+    "Your words show up here as people talk. Each new voice gets its own label." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your words show up here as people talk. Each new voice gets its own label."
+          }
+        }
+      }
+    },
     "· default" : {
       "extractionState": "manual",
       "localizations": {
@@ -1647,6 +1889,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "· default"
+          }
+        }
+      }
+    },
+    "‹ Back" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‹ Back"
           }
         }
       }

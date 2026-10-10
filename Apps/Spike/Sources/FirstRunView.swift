@@ -211,6 +211,7 @@ struct RootView: View {
                 else if firstRun.finished || DemoMode.isOn { ContentView() } else { FirstRunView(model: firstRun) }
             }
             .accessibilityHidden(launch != nil)
+            .environment(\.launchCovering, launch != nil)
             if let launch {
                 LaunchOverlay(firstRun: firstRun, theme: CaptionStyleStore().load()) { self.launch = nil }
                     .id(launch)

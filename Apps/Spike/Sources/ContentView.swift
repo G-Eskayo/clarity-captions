@@ -31,6 +31,10 @@ final class CaptionModel: ObservableObject {
     @Published var showingSaveCheck = false
     /// [ New ] with unsaved changes asks first.
     @Published var confirmingNew = false
+    /// The how-to-use tour on the real screen (#108). The real actions below report to it.
+    @Published var tour = HowToUseTour()
+    /// The tour's example line, shown when the room is quiet. Text only; never written to the saved list on its own.
+    private(set) var tourExampleIDs: Set<Int> = []
     /// The on-screen conversation, written to the phone while she's in another app.
     private var currentStore: CurrentConversationStore?
     private var tracker = ListeningActivityTracker()
@@ -79,6 +83,7 @@ final class CaptionModel: ObservableObject {
             self.diag = u.diagnostics
             if !u.text.trimmingCharacters(in: .whitespaces).isEmpty {
                 self.tracker.recordSpeech(at: Date())
+                if u.isFinal { self.tour.did(.captionShown) }
             }
         }
     }
@@ -128,11 +133,16 @@ final class CaptionModel: ObservableObject {
     func save() {
         let before = session
         guard let conversation = session.makeSaved(lines: stream.lines, names: speakerNames, now: Date()) else { return }
+        tour.did(.tappedSave)
         showingSaveCheck = true
+        // Practising on the tour's example alone: the same [ ✔ ] → [ Saved ], but nothing goes in the saved list.
+        let practice = TourExample.isOnlyExample(lines: stream.lines, exampleIDs: tourExampleIDs)
         Task {
             do {
-                try await store?.save(conversation)
-                try await store?.purgeExpired(now: Date())
+                if !practice {
+                    try await store?.save(conversation)
+                    try await store?.purgeExpired(now: Date())
+                }
             } catch {
                 session = before
                 diag = "Save failed: \(error)"
@@ -144,6 +154,7 @@ final class CaptionModel: ObservableObject {
 
     /// [ New ]: asks first if the conversation isn't saved as it stands.
     func requestNew() {
+        tour.did(.tappedNew)
         if session.hasUnsavedChanges(lines: stream.lines, names: speakerNames) { confirmingNew = true } else { startNew() }
     }
 
@@ -153,7 +164,24 @@ final class CaptionModel: ObservableObject {
         session = ConversationSession()
         veil = PauseVeil()
         showingSaveCheck = false
+        tourExampleIDs = []
         currentStore?.delete()
+    }
+
+    // MARK: the how-to-use tour (#108)
+
+    /// The quiet-room example: one line from "Speaker 1", added the way the engine adds captions.
+    func showTourExample() {
+        let before = Set(stream.lines.map(\.id))
+        stream.apply(text: TourExample.text, isFinal: true, speaker: 0)
+        tourExampleIDs.formUnion(Set(stream.lines.map(\.id)).subtracting(before))
+        tour.did(.captionShown)
+    }
+
+    /// After the tour: a conversation that is nothing but the example goes, so it never lingers or gets kept.
+    func tourEnded() {
+        if TourExample.isOnlyExample(lines: stream.lines, exampleIDs: tourExampleIDs) { startNew() }
+        tourExampleIDs = []
     }
 
     /// Leaving for another app: keep the conversation on the phone in case iOS closes Seal meanwhile. Back on
@@ -181,8 +209,8 @@ final class CaptionModel: ObservableObject {
 
     func perform(_ action: PrimaryControl.Action) {
         switch action {
-        case .start: controller.start()
-        case .stop: controller.stop()
+        case .start: tour.did(.tappedStart); controller.start()
+        case .stop: tour.did(.tappedStop); controller.stop()
         case .none: break
         }
     }
@@ -270,6 +298,11 @@ struct ContentView: View {
     @State private var draggingEdge: SelectionHandle.Edge?
     /// Follows scrolling while something is selected, so the handles and Copy stay on the words.
     @State private var selectionScroll: CGFloat = 0
+    /// The tour's "Too quiet? Show an example", offered after a quiet stretch on the captions step (#108).
+    @State private var tourOffersExample = false
+    /// Settings' "Show how to use Seal": the tour starts once the sheet has gone.
+    @State private var pendingTourReplay = false
+    @Environment(\.launchCovering) private var launchCovering
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -307,6 +340,10 @@ struct ContentView: View {
         .tint(style.text.color)
         .preferredColorScheme(style.background.isDark ? .dark : .light)
         .animation(.snappy, value: control.presentation)
+        .overlayPreferenceValue(TourTargetKey.self) { anchors in tourLayer(anchors) }
+        .onAppear { maybeStartTour() }
+        .onChange(of: launchCovering) { maybeStartTour() }
+        .onChange(of: model.tour.step) { old, new in tourStepChanged(from: old, to: new) }
         .onChange(of: scenePhase) { _, phase in
             model.appActiveChanged(phase == .active)
             model.scenePhaseChanged(phase)
@@ -317,10 +354,21 @@ struct ContentView: View {
         } message: {
             Text(String(localized: "This conversation isn't saved."))
         }
-        .sheet(isPresented: $showingSettings) { SettingsSheet(style: $model.style, idleStop: $model.idleStop, stream: model.stream, speakerNames: model.speakerNames, store: model.store) }
+        .sheet(isPresented: $showingSettings, onDismiss: {
+            guard pendingTourReplay else { return }
+            pendingTourReplay = false
+            model.tour.begin()
+        }) {
+            SettingsSheet(style: $model.style, idleStop: $model.idleStop, stream: model.stream, speakerNames: model.speakerNames,
+                          store: model.store, canShowTour: TourGate.canReplay(state: model.state)) {
+                pendingTourReplay = true
+                showingSettings = false
+            }
+        }
         .task {
             guard DemoMode.isOn else { return }
             model.demoApplyPreset()
+            if DemoMode.tour != nil { await runDemoTour(); return }
             if DemoMode.landscape, let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
                 scene.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeRight))
             }
@@ -331,6 +379,7 @@ struct ContentView: View {
         .onChange(of: model.state) { _, newState in
             UIAccessibility.post(notification: .announcement, argument: StatusWords.announcement(for: newState))
             handleStateChange(newState)
+            if model.tour.step == .captions { scheduleExampleOffer() }
         }
     }
 
@@ -396,6 +445,7 @@ struct ContentView: View {
                             fill: style.text, label: style.background, forcePressed: demoPressingStart) {
                 model.perform(control.action)
             }
+            .tourTarget(control.presentation == .compact ? .stop : .start)
             .frame(maxWidth: .infinity, maxHeight: .infinity,
                    alignment: control.presentation == .compact ? .bottomTrailing : .bottom)
         }
@@ -425,7 +475,10 @@ struct ContentView: View {
     private var gearColor: Color { style.gear.color }
 
     private var settingsButton: some View {
-        Button { showingSettings = true } label: {
+        Button {
+            model.tour.did(.openedSettings)
+            showingSettings = true
+        } label: {
             Image(systemName: "gearshape")
                 .font(.title2)
                 .foregroundStyle(gearColor)
@@ -433,6 +486,7 @@ struct ContentView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .tourTarget(.gear)
         .accessibilityLabel(String(localized: "Settings"))
     }
 
@@ -487,6 +541,7 @@ struct ContentView: View {
         let resolved = selection?.resolved(in: lines)
         let lineIndex = resolved == nil ? [:] : Dictionary(uniqueKeysWithValues: lines.enumerated().map { ($1.id, $0) })
         let highlight = SelectionColors.highlight(on: style.background).color
+        let newestSpokenLineID = lines.last(where: { !$0.isSoundLabel && !$0.text.trimmingCharacters(in: .whitespaces).isEmpty })?.id
         func selected(_ line: CaptionLine) -> Range<Int>? {
             guard let resolved, let i = lineIndex[line.id] else { return nil }
             return resolved.range(forLineAt: i, length: line.text.utf16.count)
@@ -501,7 +556,7 @@ struct ContentView: View {
                                 speakerLabelRow(for: labelState, speaker: line.speaker, palette: palette, placeholderColor: placeholderColor)
                                     .trackWords(in: textFrames, key: "label-\(line.id)")
                                     .onAppear {
-                                        if labelState == .pending && !showingSpeakerBanner && !SpeakerExplanationStore().hasSeen {
+                                        if labelState == .pending && !showingSpeakerBanner && !SpeakerExplanationStore().hasSeen && !model.tour.isRunning {
                                             showingSpeakerBanner = true
                                         }
                                     }
@@ -521,6 +576,7 @@ struct ContentView: View {
                             }
                         }
                         .onDisappear { glyphs.remove(line.id) }
+                        .modifier(TourTargetIf(target: .captions, active: line.id == newestSpokenLineID))
                         .accessibilityElement(children: .contain)
                         .accessibilityAction(named: String(localized: "Copy")) { copyLine(line) }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -742,9 +798,10 @@ struct ContentView: View {
                 .accessibilityAddTraits(.isButton)
                 .accessibilityHint(String(localized: "Double tap to show the conversation"))
             VStack(spacing: 24) {
-                saveButton
+                saveButton.tourTarget(.save)
                 retroButton(String(localized: "New"), color: style.text.color,
                             label: String(localized: "Start a new conversation")) { model.requestNew() }
+                    .tourTarget(.new)
             }
         }
     }
@@ -809,6 +866,108 @@ struct ContentView: View {
         }
     }
 
+    // MARK: the how-to-use tour (#108)
+
+    @ViewBuilder
+    private func tourLayer(_ anchors: [TourTarget: Anchor<CGRect>]) -> some View {
+        if let step = model.tour.step {
+            TourOverlay(step: step,
+                        holeAnchor: TourTarget.candidates(for: step).lazy.compactMap { anchors[$0] }.first,
+                        style: style,
+                        canGoBack: model.tour.canGoBack,
+                        isLast: model.tour.isLastStep,
+                        offersExample: step == .captions && tourOffersExample,
+                        onBack: { model.tour.back() },
+                        onNext: { model.tour.next() },
+                        onSkip: { model.tour.skip() },
+                        onExample: { withAnimation { model.showTourExample() } })
+                .transition(.opacity)
+        }
+    }
+
+    /// The one automatic run: after first run, once the launch animation has gone, on an empty idle screen.
+    private func maybeStartTour() {
+        guard !DemoMode.isOn, !model.tour.isRunning else { return }
+        let store = TourStore()
+        guard TourGate.startsByItself(hasSeen: store.hasSeen, state: model.state, hasConversation: model.hasConversation,
+                                      launchCovering: launchCovering) else { return }
+        store.markSeen()   // it runs once, even if Seal is closed partway; Settings replays it
+        withAnimation(veilAnimation) { model.tour.begin() }
+    }
+
+    private func tourStepChanged(from old: TourStep?, to new: TourStep?) {
+        tourOffersExample = false
+        guard let new else {
+            if old != nil { withAnimation(veilAnimation) { model.tourEnded() } }
+            return
+        }
+        UIAccessibility.post(notification: .announcement, argument: TourCopy.for(new).title)
+        switch new {
+        case .captions:
+            scheduleExampleOffer()
+        case .copy:
+            // Copying needs words to hold, reachable: the example if [ New ] cleared the screen, and the dim set aside
+            // (without the "hold on empty space" hint, which would sit on the words).
+            if !model.hasConversation { model.showTourExample() }
+            withAnimation(veilAnimation) { model.veil.tap(state: model.state) }
+        default:
+            break
+        }
+    }
+
+    /// A quiet room: after a few seconds of captioning with nothing to show, the card offers the example line.
+    private func scheduleExampleOffer() {
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(TourExample.quietSeconds))
+            guard model.tour.step == .captions else { return }
+            let captioning = model.state == .listening || model.state == .preparing
+            withAnimation { tourOffersExample = TourExample.offersExample(secondsWithoutCaption: TourExample.quietSeconds, isCaptioning: captioning) }
+        }
+    }
+
+    /// Debug only (`-ClarityDemoTour flow` or `-ClarityDemoTour <1-6>`). simctl can't tap, so the tour's actions are
+    /// driven through the same model calls the real controls make; only starting and stopping the engine is
+    /// pretended, since the simulator has no speech engine.
+    private func runDemoTour() async {
+        func wait(_ seconds: Double) async { try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000)) }
+        func start() { model.tour.did(.tappedStart); model.demoSetState(.preparing); model.demoSetState(.listening) }
+        func stop() { model.tour.did(.tappedStop); model.demoSetState(.idle) }
+        await wait(0.6)
+        if let n = DemoMode.tour.flatMap(Int.init), let target = TourStep(rawValue: n - 1) {
+            // A still of one step, set up the way she'd reach it.
+            if target.rawValue >= TourStep.captions.rawValue { model.demoSetState(.preparing); model.demoSetState(.listening) }
+            if target.rawValue >= TourStep.pause.rawValue { model.showTourExample() }
+            if target.rawValue >= TourStep.saveOrNew.rawValue { model.demoSetState(.idle) }
+            model.tour = HowToUseTour(step: target)
+            if target == .copy {
+                await wait(0.8)
+                if let from = demoPosition("what I'm"), let to = demoPosition("saying?", end: true) {
+                    setSelection(CaptionSelection(anchor: from, focus: to))
+                }
+            }
+            return
+        }
+        model.tour.begin()
+        await wait(3)
+        start()                                                   // step 1: Start captions
+        await wait(2.5)
+        withAnimation { model.showTourExample() }                 // step 2: a caption appears
+        await wait(3)
+        stop()                                                    // step 3: X pauses
+        await wait(3)
+        withAnimation(.easeInOut(duration: 0.2)) { model.save() } // step 4: [ Save ]
+        await wait(3)
+        if let from = demoPosition("what I'm") {                  // step 5: hold on words, stretch, Copy
+            setSelection(CaptionSelection(anchor: from, focus: CaptionPosition(lineID: from.lineID, offset: from.offset + 4)))
+            await wait(0.6)
+            if let to = demoPosition("saying?", end: true) { await demoExtend(to: to) }
+            await wait(1.4)
+            copySelection()
+        }
+        await wait(3)
+        model.tour.next()                                         // step 6: Done
+    }
+
     // MARK: copying (#107)
 
     /// Press and hold on a caption's words: select the word under the finger.
@@ -845,11 +1004,13 @@ struct ContentView: View {
         UIPasteboard.general.string = selection.copyText(lines: model.stream.lines, speakerNames: model.speakerNames)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         clearSelection()
+        model.tour.did(.copied)
     }
 
     /// VoiceOver's "Copy" on a caption: the whole line, with its speaker, as the transcript export writes it.
     private func copyLine(_ line: CaptionLine) {
         UIPasteboard.general.string = TranscriptFormatter.speakerPrefix(for: line, speakerNames: model.speakerNames) + line.text
+        model.tour.did(.copied)
     }
 
     /// The two ends of the selection as carets in the caption viewport, or nil while either is off screen.
@@ -991,5 +1152,14 @@ struct ContentView: View {
         }
         .padding(8)
         .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+/// Marks one caption (the newest spoken line) as the tour's caption target.
+private struct TourTargetIf: ViewModifier {
+    let target: TourTarget
+    let active: Bool
+    func body(content: Content) -> some View {
+        if active { content.tourTarget(target) } else { content }
     }
 }
