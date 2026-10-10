@@ -30,7 +30,8 @@ final class CaptionModel: ObservableObject {
     /// [ ✔ ] shows briefly between [ Save ] and [ Saved ].
     @Published var showingSaveCheck = false
     /// [ New ] with unsaved changes asks first.
-    @Published var confirmingNew = false
+    /// [ New ]'s one question, asked in place of [ Save ] / [ New ] (#118, mock-up round2/03), never an alert.
+    @Published var newQuestion = InPlaceQuestion<NewConversationQuestion>()
     /// The how-to-use tour on the real screen (#108). The real actions below report to it.
     @Published var tour = HowToUseTour()
     /// The tour's example line, shown when the room is quiet. Text only; never written to the saved list on its own.
@@ -177,7 +178,8 @@ final class CaptionModel: ObservableObject {
     /// [ New ]: asks first if the conversation isn't saved as it stands.
     func requestNew() {
         tour.did(.tappedNew)
-        if session.hasUnsavedChanges(lines: stream.lines, names: speakerNames) { confirmingNew = true } else { startNew() }
+        let unsaved = session.hasUnsavedChanges(lines: stream.lines, names: speakerNames)
+        if NewConversationQuestion.request(hasUnsavedChanges: unsaved, question: &newQuestion) == .startNow { startNew() }
     }
 
     /// [ New ], after its question if it asked. In a beta install the rating card may come first (ADR 0023).
@@ -312,24 +314,15 @@ struct ContentView: View {
     @State private var developerTools = false
     /// Debug only (DemoMode `-ClarityDemoFlow start`): presses the Start pill without a finger.
     @State private var demoPressingStart = false
-    @State private var showingSettings = false
+    /// Round 2 (#118): the app is one screen. Which page shows; the page actually drawn (it changes at the midpoint of
+    /// the fade, so the current page fades out before the next fades in); and the fade itself.
+    @State private var nav = ScreenNavigator()
+    @State private var shownScreen: AppScreen = .captions
+    @State private var pageOpacity: Double = 1
     @State private var position = ScrollPosition(edge: .bottom)
     /// Following the newest caption. Stops only when the user drags away; resumes at the bottom or via "Jump to latest".
     @State private var following = true
     @State private var userDragging = false
-    /// Tracks when the preparing state began, for the animation minimum-duration overlay.
-    @State private var preparingStartTime: Date?
-    /// Controls the animation overlay visibility after leaving the preparing state.
-    @State private var showPreparingAnimation = false
-    /// Bumped on every state change so a pending "show the animation" can tell it has been overtaken.
-    @State private var preparingToken = 0
-    @State private var animationShownAt: Date?
-    /// Show the one-time speaker explanation banner.
-    @State private var showingSpeakerBanner = false
-    /// Speaker index currently being renamed, or nil if no rename dialog is open.
-    @State private var renamingSpeaker: Int?
-    /// Draft name being edited in the rename dialog.
-    @State private var nameDraft: String = ""
     /// Where each caption's words are, so a press-and-hold can tell empty space from words.
     @State private var textFrames = TextFrames()
     /// "Hold on empty space to bring back Save and New": shown the first few times the dim is cleared.
@@ -348,8 +341,6 @@ struct ContentView: View {
     @State private var selectionScroll: CGFloat = 0
     /// The tour's "Too quiet? Show an example", offered after a quiet stretch on the captions step (#108).
     @State private var tourOffersExample = false
-    /// Settings' "Show how to use Seal": the tour starts once the sheet has gone.
-    @State private var pendingTourReplay = false
     @Environment(\.launchCovering) private var launchCovering
     /// Debug demos only: a scripted tap on the rating card (simctl can't tap).
     @State private var demoRatingTap: Int?
@@ -375,29 +366,39 @@ struct ContentView: View {
     var body: some View {
         ZStack {
             style.background.color.ignoresSafeArea()
+            // The captions stay alive under the other pages (their scroll position and a held selection survive a trip
+            // to Settings); only the drawn page takes touches and is read by VoiceOver.
             Group { landscape ? AnyView(landscapeLayout) : AnyView(portraitLayout) }
                 .padding()
-            if showPreparingAnimation {
+                .opacity(shownScreen == .captions ? pageOpacity : 0)
+                .allowsHitTesting(shownScreen == .captions)
+                .accessibilityHidden(shownScreen != .captions)
+            if shownScreen != .captions {
+                page(shownScreen)
+                    .padding(.top, 8)
+                    .opacity(pageOpacity)
+            }
+            // Beta installs only (ADR 0023): the rating question after a conversation, and the one-time notice. Since
+            // round 2 (mock-up round2/04) their words sit straight on the dim, no card, and they only fade.
+            if beta.showingCard && shownScreen == .captions {
                 ZStack {
-                    style.background.color.ignoresSafeArea()
-                    LaunchAnimationView()
+                    style.background.color.opacity(0.86).ignoresSafeArea()
+                    RatingCardView(style: style, onRate: { value, note in withAnimation(veilAnimation) { model.rate(value, note: note) } },
+                                   onSkip: { withAnimation(veilAnimation) { model.skipRating() } },
+                                   demoSelected: DemoMode.betaNote ? 8 : nil,
+                                   demoNote: DemoMode.betaNote ? "Lost it when the waiter talked fast" : nil,
+                                   demoTap: demoRatingTap)
                 }
                 .transition(.opacity)
-            }
-            // Beta installs only (ADR 0023): the rating card after a conversation, and the one-time notice.
-            if beta.showingCard {
-                RatingCardView(style: style, onRate: { value, note in withAnimation(veilAnimation) { model.rate(value, note: note) } },
-                               onSkip: { withAnimation(veilAnimation) { model.skipRating() } },
-                               demoSelected: DemoMode.betaNote ? 8 : nil,
-                               demoNote: DemoMode.betaNote ? "Lost it when the waiter talked fast" : nil,
-                               demoTap: demoRatingTap)
-                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
-                    .zIndex(2)
+                .zIndex(2)
             }
             if beta.showingNotice {
-                BetaNoticeView(style: style) { withAnimation(veilAnimation) { beta.dismissNotice() } }
-                    .transition(.opacity)
-                    .zIndex(3)
+                ZStack {
+                    style.background.color.opacity(0.86).ignoresSafeArea()
+                    BetaNoticeView(style: style) { withAnimation(veilAnimation) { beta.dismissNotice() } }
+                }
+                .transition(.opacity)
+                .zIndex(3)
             }
         }
         .animation(veilAnimation, value: beta.showingCard)
@@ -419,23 +420,6 @@ struct ContentView: View {
             model.appActiveChanged(phase == .active)
             model.scenePhaseChanged(phase)
         }
-        .alert(String(localized: "Start a new conversation?"), isPresented: $model.confirmingNew) {
-            Button(String(localized: "Start new"), role: .destructive) { withAnimation(veilAnimation) { model.startNew() } }
-            Button(String(localized: "Cancel"), role: .cancel) {}
-        } message: {
-            Text(String(localized: "This conversation isn't saved."))
-        }
-        .sheet(isPresented: $showingSettings, onDismiss: {
-            guard pendingTourReplay else { return }
-            pendingTourReplay = false
-            model.tour.begin()
-        }) {
-            SettingsSheet(style: $model.style, idleStop: $model.idleStop, stream: model.stream, speakerNames: model.speakerNames,
-                          store: model.store, canShowTour: TourGate.canReplay(state: model.state)) {
-                pendingTourReplay = true
-                showingSettings = false
-            }
-        }
         .task {
             guard DemoMode.isOn else { return }
             model.demoApplyPreset()
@@ -444,7 +428,17 @@ struct ContentView: View {
                 scene.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeRight))
             }
             model.runDemo()
-            if DemoMode.opensSettings { showingSettings = true }
+            if DemoMode.opensSettings || DemoMode.settingsPush != nil {
+                // Debug only: open straight on Settings (or one of its pages) for screenshots, no fade.
+                nav.gearTapped()
+                switch DemoMode.settingsPush {
+                case "saved", "deleteall": nav.open(.saved)
+                case "credits": nav.open(.credits)
+                case "license": nav.open(.credits); nav.open(.licenseText)
+                default: break
+                }
+                shownScreen = nav.current
+            }
             await runDemoPause()
         }
         .onChange(of: model.state) { _, newState in
@@ -454,31 +448,69 @@ struct ContentView: View {
         }
     }
 
-    /// The branded animation only appears if getting ready is genuinely slow (a cold start, a download); a quick
-    /// start is just the control morphing, so there is no flash. Once shown it never flickers.
+    /// Getting ready after Start is said where the status is (#117 "preparing" A, mock-up round2/05): the status row
+    /// and the Start pill both say "Getting ready…" and the row switches to Listening when it is. Nothing covers the
+    /// screen; the launch animation covers getting ready when the app opens.
     private func handleStateChange(_ newState: CaptionState) {
-        preparingToken += 1
-        let token = preparingToken
-        switch newState {
-        case .preparing:
-            showingVeilHint = false
-            preparingStartTime = Date()
-            Task {
-                try? await Task.sleep(nanoseconds: UInt64(LaunchAnimationGate.showDelay * 1_000_000_000))
-                guard token == preparingToken, model.state == .preparing else { return }   // it started fast: never show it
-                animationShownAt = Date()
-                withAnimation(.easeInOut(duration: 0.25)) { showPreparingAnimation = true }
+        if newState == .preparing { showingVeilHint = false }
+    }
+
+    // MARK: one screen (#118)
+
+    /// Changes the page: the current page fades out, then the next fades in (about 0.25 s each, spec "Round 2").
+    private func go(_ change: (inout ScreenNavigator) -> Void) {
+        var next = nav
+        change(&next)
+        guard next != nav else { return }
+        nav = next
+        let half = PageFade.half(reduceMotion: reduceMotion)
+        withAnimation(.easeInOut(duration: half)) { pageOpacity = 0 }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(half))
+            shownScreen = nav.current
+            withAnimation(.easeInOut(duration: half)) { pageOpacity = 1 }
+        }
+    }
+
+    @ViewBuilder
+    private func page(_ screen: AppScreen) -> some View {
+        switch screen {
+        case .captions:
+            EmptyView()
+        case .settings:
+            SettingsPage(style: $model.style, idleStop: $model.idleStop, store: model.store,
+                         canShowTour: TourGate.canReplay(state: model.state),
+                         onShowTour: {
+                             // "Show how to use Seal": back to the captions, then the tour starts there.
+                             go { $0.close() }
+                             Task { @MainActor in
+                                 try? await Task.sleep(for: .seconds(PageFade.half(reduceMotion: reduceMotion) * 2))
+                                 withAnimation(veilAnimation) { model.tour.begin() }
+                             }
+                         },
+                         onGear: { go { $0.gearTapped() } },
+                         onOpen: { screen in go { $0.open(screen) } })
+        case .saved:
+            if let store = model.store {
+                SavedConversationsPage(store: store, style: style, onBack: { go { $0.back() } },
+                                       onOpen: { id in go { $0.open(.savedConversation(id)) } })
+                    .padding(.horizontal, 16)
             }
-        case .listening, .idle, .failed, .pausedQuiet:
-            preparingStartTime = nil
-            guard showPreparingAnimation else { return }
-            let shown = animationShownAt.map { Date().timeIntervalSince($0) } ?? LaunchAnimationGate.minimumDuration
-            let wait = LaunchAnimationGate.remainingDelay(elapsed: shown)
-            Task {
-                if wait > 0 { try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000)) }
-                withAnimation(.easeInOut(duration: 0.25)) { showPreparingAnimation = false }
-                animationShownAt = nil
+        case .savedConversation(let id):
+            if let store = model.store {
+                SavedConversationPage(store: store, id: id, style: style, onBack: { go { $0.back() } })
+                    .padding(.horizontal, 16)
             }
+        case .credits:
+            CreditsPage(style: style, onBack: { go { $0.back() } }, onLicenseText: { go { $0.open(.licenseText) } })
+                .padding(.horizontal, 16)
+        case .licenseText:
+            LicenseTextPage(style: style, onBack: { go { $0.back() } })
+                .padding(.horizontal, 16)
+        case .feedbackPreview:
+            FeedbackPreviewPage(style: style, idleStop: model.idleStop, beta: beta, onClose: { go { $0.back() } },
+                                demoAutoContinue: DemoMode.flow == "feedback")
+                .padding(.horizontal, 16)
         }
     }
 
@@ -548,7 +580,7 @@ struct ContentView: View {
     private var settingsButton: some View {
         Button {
             model.tour.did(.openedSettings)
-            showingSettings = true
+            go { $0.gearTapped() }
         } label: {
             Image(systemName: "gearshape")
                 .font(.title2)
@@ -626,11 +658,6 @@ struct ContentView: View {
                             if labelState != .none {
                                 speakerLabelRow(for: labelState, speaker: line.speaker, palette: palette, placeholderColor: placeholderColor)
                                     .trackWords(in: textFrames, key: "label-\(line.id)")
-                                    .onAppear {
-                                        if labelState == .pending && !showingSpeakerBanner && !SpeakerExplanationStore().hasSeen && !model.tour.isRunning {
-                                            showingSpeakerBanner = true
-                                        }
-                                    }
                             }
                             // Selection is ours, not the system's (#107): it crosses lines and shows only Copy.
                             let renderer = SelectableCaptionRenderer(lineID: line.id, length: line.text.utf16.count,
@@ -656,6 +683,13 @@ struct ContentView: View {
                 }
             }
             .coordinateSpace(.named(TextFrames.space))
+            // Captions scrolling up under the status row fade out softly instead of being cut in half (#117 topedge).
+            .mask {
+                VStack(spacing: 0) {
+                    LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom).frame(height: 28)
+                    Rectangle()
+                }
+            }
             // Press and hold on caption words selects them for copying (#107), captioning or paused. Paused with the
             // dim cleared, press and hold on empty space (not on words) brings back the dim and [ Save ] / [ New ].
             .gesture(HoldLocationGesture { location in
@@ -724,52 +758,9 @@ struct ContentView: View {
                     .transition(.opacity)
             }
 
-            if showingSpeakerBanner {
-                VStack(spacing: 12) {
-                    Text(SpeakerExplanation.sentence)
-                        .font(.callout)
-                    HStack {
-                        Button("Got it") {
-                            SpeakerExplanationStore().markSeen()
-                            showingSpeakerBanner = false
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                }
-                .padding()
-                .background(style.text.color.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
-                .padding()
-                .transition(.move(edge: .top).combined(with: .opacity))
-            }
         }
         .animation(veilAnimation, value: model.veil.isVisible(state: model.state, hasConversation: model.hasConversation))
         .accessibilityAction(named: String(localized: "Show Save and New")) { bringBackVeil() }
-        .alert(String(localized: "Name this speaker"), isPresented: Binding(
-            get: { renamingSpeaker != nil },
-            set: { if !$0 { renamingSpeaker = nil; nameDraft = "" } }
-        )) {
-            TextField(String(localized: "Speaker name"), text: $nameDraft)
-            Button(String(localized: "Save")) {
-                if let sp = renamingSpeaker {
-                    model.speakerNames.apply(nameDraft, to: sp)
-                    renamingSpeaker = nil
-                    nameDraft = ""
-                }
-            }
-            Button(String(localized: "Clear Name")) {
-                if let sp = renamingSpeaker {
-                    model.speakerNames.clear(speaker: sp)
-                    renamingSpeaker = nil
-                    nameDraft = ""
-                }
-            }
-            Button(String(localized: "Cancel"), role: .cancel) {
-                renamingSpeaker = nil
-                nameDraft = ""
-            }
-        } message: {
-            Text(String(localized: "Enter a custom name for this speaker"))
-        }
     }
 
     /// Debug only (DemoMode): the paused states and flows #102's screenshots and recordings show.
@@ -834,20 +825,18 @@ struct ContentView: View {
             await wait(2.5); demoRatingTap = 8
         case "feedback":
             await BetaFeedbackCenter.shared.ensureResolved()
-            await wait(1.5); showingSettings = true
+            await wait(1.5); go { $0.gearTapped() }
         case "new":
             model.demoSetState(.idle)
             await wait(2); model.requestNew()
-            await wait(3); model.confirmingNew = false; withAnimation(veilAnimation) { model.startNew() }
+            await wait(3); withAnimation(veilAnimation) { if model.newQuestion.confirm() != nil { model.startNew() } }
         default:
             break
         }
         // The UI audit (2026-10-10): one state each, as she'd meet it.
         switch DemoMode.show {
-        case "banner": showingSpeakerBanner = true
-        case "preparing": model.demoSetState(.preparing); showPreparingAnimation = true
+        case "preparing": model.demoSetState(.preparing)
         case "confirmnew": model.demoSetState(.idle); await wait(1); model.requestNew()
-        case "namespeaker": renamingSpeaker = 0
         case "jump": following = false
         case "canthear": model.demoSetState(.listening); model.activity = .cantHearAnything
         case "failed": model.demoSetState(.failed(String(localized: "The microphone stopped. Tap Start captions to try again.")))
@@ -908,11 +897,27 @@ struct ContentView: View {
                 .accessibilityLabel(String(localized: "Paused conversation"))
                 .accessibilityAddTraits(.isButton)
                 .accessibilityHint(String(localized: "Double tap to show the conversation"))
-            VStack(spacing: 24) {
-                saveButton.tourTarget(.save)
-                retroButton(String(localized: "New"), color: style.text.color,
-                            label: String(localized: "Start a new conversation")) { model.requestNew() }
-                    .tourTarget(.new)
+            if model.newQuestion.isAsking {
+                InPlaceQuestionView(style: style,
+                                    title: String(localized: "Start a new conversation?"),
+                                    message: String(localized: "This one isn't saved."),
+                                    yes: String(localized: "Start new"), yesIsDestructive: false,
+                                    no: String(localized: "Keep it"), stacked: true,
+                                    onYes: {
+                                        withAnimation(veilAnimation) {
+                                            if model.newQuestion.confirm() != nil { model.startNew() }
+                                        }
+                                    },
+                                    onNo: { withAnimation(veilAnimation) { model.newQuestion.keep() } })
+                    .transition(.opacity)
+            } else {
+                VStack(spacing: 24) {
+                    saveButton.tourTarget(.save)
+                    retroButton(String(localized: "New"), color: style.text.color,
+                                label: String(localized: "Start a new conversation")) { withAnimation(veilAnimation) { model.requestNew() } }
+                        .tourTarget(.new)
+                }
+                .transition(.opacity)
             }
         }
     }
@@ -936,26 +941,9 @@ struct ContentView: View {
         }
     }
 
-    /// The retro, literal-text buttons: [ Save ], [ ✔ ], [ Saved ], [ New ]. A nil action shows the state only.
-    /// Without an action it's plain text, not a disabled button: a disabled button is dimmed, and [ Saved ] must
-    /// stay solid green on a solid patch.
-    @ViewBuilder
+    /// The retro, literal-text buttons: [ Save ], [ ✔ ], [ Saved ], [ New ] (shared with every page, OneScreenPieces).
     private func retroButton(_ word: String, color: Color, label: String, action: (() -> Void)?) -> some View {
-        // The brackets are the retro frame, not words; the word inside is already localized.
-        let text = Text(verbatim: "[ \(word) ]")
-            .font(.system(.title, design: .monospaced).bold())
-            .foregroundStyle(color)
-            .padding(.horizontal, 14).padding(.vertical, 6)
-            .background(style.background.color)
-            .contentShape(Rectangle())
-            .contentTransition(.opacity)
-        if let action {
-            Button(action: action) { text }
-                .buttonStyle(.plain)
-                .accessibilityLabel(label)
-        } else {
-            text.accessibilityLabel(label)
-        }
+        RetroWords(word: word, color: color, background: style.background.color, label: label, action: action)
     }
 
     private static let checkMark = "✔"
@@ -963,7 +951,11 @@ struct ContentView: View {
     private static let veilHintKey = "pauseVeilHintCount"
 
     private func clearVeil() {
-        withAnimation(veilAnimation) { model.veil.tap(state: model.state) }
+        // A tap on the dim while [ New ] is asking answers it like [ Keep it ]: nothing is lost.
+        withAnimation(veilAnimation) {
+            model.newQuestion.keep()
+            model.veil.tap(state: model.state)
+        }
         let shown = UserDefaults.standard.integer(forKey: Self.veilHintKey)
         guard shown < Self.veilHintLimit else { return }
         UserDefaults.standard.set(shown + 1, forKey: Self.veilHintKey)
@@ -1216,14 +1208,7 @@ struct ContentView: View {
                 Text(displayText)
                     .font(.headline)
                     .foregroundStyle(palette[sp % palette.count])
-                    .onTapGesture {
-                        renamingSpeaker = sp
-                        nameDraft = model.speakerNames.name(for: sp) ?? ""
-                    }
-                    .accessibilityElement(children: .ignore)
                     .accessibilityLabel(displayText)
-                    .accessibilityAddTraits(.isButton)
-                    .accessibilityHint(String(localized: "Double tap to name this speaker"))
             )
         case .unknown:
             return AnyView(

@@ -1,38 +1,35 @@
 import CaptionCore
 import SwiftUI
 
-/// Settings as approved in design #96 (image 08): no borders or boxes, one thin line between sections, everything on
-/// the look's own background so it feels like the same screen. Colors, size, lettering, quiet stop, saved
-/// conversations and About; a live preview on top.
-struct SettingsSheet: View {
+/// Settings as approved in design #96 (image 08), on the one screen since round 2 (#118, mock-up round2/01): no
+/// sheet, no Done. Tapping the gear fades the captions out and Settings in on the same background; the gear, still
+/// exactly where it was, takes her back. Its own pages (saved conversations, credits, the beta preview) fade in the
+/// same way. No borders or boxes, one thin line between sections.
+struct SettingsPage: View {
     @Binding var style: CaptionStyle
     @Binding var idleStop: IdleStopSetting
-    // Kept so the call site in ContentView doesn't change while #102 reworks it; the Conversation section that used
-    // them is gone (#103: highlight-and-copy covers it).
-    let stream: CaptionStream
-    let speakerNames: SpeakerNames
     let store: SavedConversationStoring?
-    /// Debug only (UI audit): Settings opened on a sub-screen, from `-ClarityDemoSettingsPush`.
-    @State private var demoPushed = DemoMode.settingsPush != nil
-    /// "Show how to use Seal" (#108): replays the tour once Settings closes. Not while captioning: the tour walks her
+    /// "Show how to use Seal" (#108): replays the tour back on the captions. Not while captioning: the tour walks her
     /// through starting.
     var canShowTour: Bool = true
     var onShowTour: (() -> Void)?
-    @Environment(\.dismiss) private var dismiss
+    /// The gear: back to the captions.
+    let onGear: () -> Void
+    /// Opens one of Settings' own pages.
+    let onOpen: (AppScreen) -> Void
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var savedCount: Int?
-    /// Beta installs only (ADR 0023): the "Test version" section and its preview.
+    /// Beta installs only (ADR 0023): the "Test version" section.
     @ObservedObject private var beta = BetaFeedbackCenter.shared
-    @State private var showingSend = DemoMode.betaPreview
 
     private var showsTourReplay: Bool { onShowTour != nil }
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            header
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        header
                         preview
                         section("Colors", first: true) { colorsRow }
                         section("Size") { sizeRow }
@@ -57,19 +54,12 @@ struct SettingsSheet: View {
                     try? await Task.sleep(for: .seconds(1))
                     withAnimation { proxy.scrollTo("betaFeedback", anchor: .center) }
                     try? await Task.sleep(for: .seconds(2))
-                    showingSend = true
+                    onOpen(.feedbackPreview)
                 }
             }
-            .containerBackground(style.background.color, for: .navigation)
-            .toolbar(.hidden, for: .navigationBar)
-            .navigationDestination(isPresented: $demoPushed) { demoDestination }
         }
         .tint(style.gear.color)
-        .preferredColorScheme(style.background.isDark ? .dark : .light)
         .task { savedCount = try? await store?.all().count }
-        .sheet(isPresented: $showingSend) {
-            FeedbackSendView(style: style, idleStop: idleStop, beta: beta, demoAutoContinue: DemoMode.flow == "feedback")
-        }
     }
 
     // MARK: pieces
@@ -83,15 +73,30 @@ struct SettingsSheet: View {
     private var rule: Color { style.background.isDark ? Color(red: 236 / 255, green: 230 / 255, blue: 217 / 255).opacity(0.16) : Color(red: 20 / 255, green: 20 / 255, blue: 25 / 255).opacity(0.12) }
     private var softFill: Color { style.background.isDark ? Color(red: 236 / 255, green: 230 / 255, blue: 217 / 255).opacity(0.10) : Color(red: 20 / 255, green: 20 / 255, blue: 25 / 255).opacity(0.07) }
 
+    /// Mock-up round2/01 frame 4: the gear stays exactly where it was (lightly highlighted) and "Settings" sits in the
+    /// middle of the same row.
     private var header: some View {
-        HStack {
-            Text("Settings").font(scaled(24, .heavy)).lineLimit(1).minimumScaleFactor(0.5)
-            Spacer()
-            Button("Done") { dismiss() }
-                .font(.body.weight(.bold))
-                .foregroundStyle(style.gear.color)
+        ZStack {
+            Text("Settings")
+                .font(scaled(20, .heavy))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .accessibilityAddTraits(.isHeader)
+            HStack {
+                Button(action: onGear) {
+                    Image(systemName: "gearshape")
+                        .font(.title2)
+                        .foregroundStyle(style.gear.color)
+                        .frame(width: 44, height: 44)
+                        .background(softFill, in: Circle())
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(String(localized: "Back to captions"))
+                Spacer()
+            }
         }
-        .padding(.top, 26)
+        .padding(.horizontal, 16)
     }
 
     private var preview: some View {
@@ -229,8 +234,8 @@ struct SettingsSheet: View {
             Text(savedCount.map { "\($0) ›" } ?? "›").foregroundStyle(muted)
         }
         .contentShape(Rectangle())
-        if let store {
-            NavigationLink(destination: SavedConversationsView(store: store)) { row }.buttonStyle(.plain)
+        if store != nil {
+            Button { onOpen(.saved) } label: { row }.buttonStyle(.plain)
         } else {
             row.opacity(0.5)
         }
@@ -251,7 +256,7 @@ struct SettingsSheet: View {
                     .padding(.horizontal, 9).padding(.vertical, 3)
                     .background((style.background.isDark ? RGBA(hex: "#1F6F6B") : RGBA(hex: "#4FB3A9")).color, in: Capsule())
             }
-            Button { showingSend = true } label: {
+            Button { onOpen(.feedbackPreview) } label: {
                 HStack(alignment: .firstTextBaseline) {
                     Text("Send feedback to Gil").font(scaled(18, .heavy)).foregroundStyle(style.gear.color)
                     Spacer()
@@ -299,21 +304,11 @@ struct SettingsSheet: View {
             Link("Help and contact", destination: SupportLinks.support)
                 .accessibilityHint(Text("Opens in Safari"))
                 .padding(.vertical, 7)
-            NavigationLink("Credits", destination: AboutCreditsView())
+            Button("Credits") { onOpen(.credits) }
+                .buttonStyle(.plain)
                 .padding(.vertical, 7)
         }
         .font(.body.weight(.semibold))
         .foregroundStyle(style.gear.color)
-    }
-}
-
-extension SettingsSheet {
-    /// Debug only (UI audit, 2026-10-10): the sub-screen `-ClarityDemoSettingsPush` names.
-    @ViewBuilder var demoDestination: some View {
-        switch DemoMode.settingsPush {
-        case "credits": AboutCreditsView()
-        default:
-            if let store { SavedConversationsView(store: store) }
-        }
     }
 }
