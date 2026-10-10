@@ -94,8 +94,9 @@ final class ThemeV1Tests: XCTestCase {
         }
     }
 
-    func testStandardIsCharcoalWithOpenDyslexic() {
-        XCTAssertEqual(CaptionStyle.standard.preset?.id, "charcoal")
+    func testStandardIsPaperWithOpenDyslexic() {
+        // Owner's answer on PR #105 ("defaulttheme: Paper"), applied 2026-10-10.
+        XCTAssertEqual(CaptionStyle.standard.preset?.id, "paper")
         XCTAssertEqual(CaptionStyle.standard.font, .openDyslexic)
     }
 
@@ -140,65 +141,58 @@ final class ThemeV1Tests: XCTestCase {
         }
     }
 
-    // MARK: migration from the saved v1 style
+    // MARK: one-time reset of looks saved before release (owner, 2026-10-10)
 
     private func defaults() -> UserDefaults { UserDefaults(suiteName: "theme-v1-test-\(UUID())")! }
 
-    private func saveOld(_ background: RGBA, _ text: RGBA, font: String, size: Int = 3, in d: UserDefaults) {
+    /// A look saved under an older key, as the builds before release wrote it.
+    private func saveOld(_ preset: CaptionPreset, font: String, size: Int = 3, key: String, in d: UserDefaults) {
+        let b = preset.background, t = preset.text
         let json = """
-        {"background":{"r":\(background.r),"g":\(background.g),"b":\(background.b),"a":1},\
-        "text":{"r":\(text.r),"g":\(text.g),"b":\(text.b),"a":1},"size":\(size),"font":"\(font)","emphasisEffectsEnabled":false}
+        {"background":{"r":\(b.r),"g":\(b.g),"b":\(b.b),"a":1},\
+        "text":{"r":\(t.r),"g":\(t.g),"b":\(t.b),"a":1},"size":\(size),"font":"\(font)","emphasisEffectsEnabled":false}
         """
-        d.set(Data(json.utf8), forKey: CaptionStyleStore.legacyKey)
+        d.set(Data(json.utf8), forKey: key)
     }
 
-    func testOldClassicAndBrightBecomeCharcoal() {
-        for text in [RGBA.white, RGBA(1.0, 0.9, 0.2)] {
+    func testAFreshInstallStartsOnPaperWithOpenDyslexic() {
+        let style = CaptionStyleStore(defaults: defaults()).load()
+        XCTAssertEqual(style.preset?.id, "paper")
+        XCTAssertEqual(style.font, .openDyslexic)
+        XCTAssertEqual(style, .standard)
+    }
+
+    func testAnOlderSavedLookIsResetToTheDefaultOnce() {
+        for key in CaptionStyleStore.retiredKeys {
             let d = defaults()
-            saveOld(.black, text, font: "serif", in: d)
-            let style = CaptionStyleStore(defaults: d).load()
-            XCTAssertEqual(style.preset?.id, "charcoal")
-            XCTAssertEqual(style.font, .serif, "a deliberately chosen font is kept")
-            XCTAssertEqual(style.size, .large)
-            XCTAssertFalse(style.emphasisEffectsEnabled)
+            saveOld(CaptionPreset.named("charcoal"), font: "system", key: key, in: d)
+            XCTAssertEqual(CaptionStyleStore(defaults: d).load(), .standard,
+                           "\(key): a look saved before release is replaced by Paper + OpenDyslexic")
+            XCTAssertNil(d.data(forKey: key), "\(key) is cleared, so the reset happens only once")
         }
     }
 
-    func testOldPaperAndNightKeepTheirNames() {
-        let d1 = defaults(); saveOld(RGBA(0.98, 0.96, 0.90), RGBA(0.08, 0.08, 0.10), font: "rounded", in: d1)
-        XCTAssertEqual(CaptionStyleStore(defaults: d1).load().preset?.id, "paper")
-        let d2 = defaults(); saveOld(RGBA(0.05, 0.07, 0.15), RGBA(0.85, 0.90, 1.0), font: "rounded", in: d2)
-        XCTAssertEqual(CaptionStyleStore(defaults: d2).load().preset?.id, "night")
-    }
-
-    func testOldDefaultFontBecomesOpenDyslexic() {
+    func testAChoiceMadeAfterTheResetPersists() {
         let d = defaults()
-        saveOld(.black, .white, font: "system", in: d)
-        XCTAssertEqual(CaptionStyleStore(defaults: d).load().font, .openDyslexic)
-    }
-
-    func testUnknownOldColorsFallBackByDarkness() {
-        let d1 = defaults(); saveOld(RGBA(0.2, 0.0, 0.2), RGBA(0.9, 0.9, 0.9), font: "serif", in: d1)
-        XCTAssertEqual(CaptionStyleStore(defaults: d1).load().preset?.id, "charcoal")
-        let d2 = defaults(); saveOld(RGBA(0.9, 1.0, 0.9), RGBA(0.1, 0.1, 0.1), font: "serif", in: d2)
-        XCTAssertEqual(CaptionStyleStore(defaults: d2).load().preset?.id, "paper")
-    }
-
-    func testMigrationRunsOnceAndThenTheNewSaveWins() {
-        let d = defaults()
-        saveOld(.black, .white, font: "system", in: d)
+        saveOld(CaptionPreset.named("charcoal"), font: "system", key: "captionStyle.v2", in: d)
         let store = CaptionStyleStore(defaults: d)
         var style = store.load()
-        style = style.applying(CaptionPreset.named("peach"))
+        style = style.applying(CaptionPreset.named("night"))
         style.font = .monospaced
         store.save(style)
-        XCTAssertEqual(store.load(), style, "the old saved style must not override a newer choice")
-        XCTAssertNil(d.data(forKey: CaptionStyleStore.legacyKey), "the old key is cleared after migrating")
+        XCTAssertEqual(store.load(), style, "after the one-time reset, her own choice stays")
+        XCTAssertEqual(CaptionStyleStore(defaults: d).load(), style, "and survives a relaunch")
     }
 
-    func testCorruptOldDataFallsBackToStandard() {
+    func testTheCurrentKeyIsNotARetiredOne() {
+        XCTAssertEqual(CaptionStyleStore.key, "captionStyle.v3")
+        XCTAssertFalse(CaptionStyleStore.retiredKeys.contains(CaptionStyleStore.key))
+        XCTAssertEqual(Set(CaptionStyleStore.retiredKeys), ["captionStyle.v1", "captionStyle.v2"])
+    }
+
+    func testCorruptSavedDataFallsBackToStandard() {
         let d = defaults()
-        d.set(Data("nope".utf8), forKey: CaptionStyleStore.legacyKey)
+        d.set(Data("nope".utf8), forKey: CaptionStyleStore.key)
         XCTAssertEqual(CaptionStyleStore(defaults: d).load(), .standard)
     }
 

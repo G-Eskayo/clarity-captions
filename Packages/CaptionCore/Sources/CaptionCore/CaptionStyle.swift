@@ -223,9 +223,9 @@ public struct CaptionStyle: Codable, Equatable, Sendable {
     public var font: CaptionFont
     public var emphasisEffectsEnabled: Bool = true
 
-    /// Charcoal replaces Classic, the old default; OpenDyslexic is the default lettering (#100).
+    /// A new install starts on Paper (owner's answer on #105) with OpenDyslexic, the default lettering (#100).
     public static let standard = CaptionStyle(
-        background: CaptionPreset.named("charcoal").background, text: CaptionPreset.named("charcoal").text,
+        background: CaptionPreset.named("paper").background, text: CaptionPreset.named("paper").text,
         size: .medium, font: .openDyslexic, emphasisEffectsEnabled: true)
 
     /// The theme these colors belong to (nil only for colors no theme has).
@@ -255,26 +255,23 @@ public struct CaptionStyle: Codable, Equatable, Sendable {
 }
 
 /// Saves the style between launches. Unreadable saved data never blocks the app: it falls back to standard.
-/// A style saved by a build before the v1 themes (#103) is moved over once: its colors become the nearest current
-/// theme, and the old default lettering (Standard) becomes the new default (OpenDyslexic); a font the user picked stays.
+///
+/// One-time reset before release (owner, 2026-10-10): only the owner and his testers have the app, and their phones
+/// kept looks saved by earlier builds (Charcoal with the old Standard lettering), so they never saw the real default.
+/// A look saved under a retired key is dropped once and the app starts on the default (Paper + OpenDyslexic); every
+/// choice made after that is saved under the current key and persists. Retire the key again only before a release.
 public struct CaptionStyleStore {
-    public static let key = "captionStyle.v2"
-    public static let legacyKey = "captionStyle.v1"
+    public static let key = "captionStyle.v3"
+    /// Keys earlier builds saved under; a look found there is discarded once, not migrated.
+    public static let retiredKeys = ["captionStyle.v1", "captionStyle.v2"]
     private let defaults: UserDefaults
     public init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 
     public func load() -> CaptionStyle {
-        if let data = defaults.data(forKey: Self.key) {
-            guard let style = try? JSONDecoder().decode(CaptionStyle.self, from: data) else { return .standard }
-            return Self.snappedToTheme(style)
-        }
-        guard let data = defaults.data(forKey: Self.legacyKey) else { return .standard }
-        defaults.removeObject(forKey: Self.legacyKey)
-        guard var style = try? JSONDecoder().decode(CaptionStyle.self, from: data) else { return .standard }
-        if style.font == .system { style.font = .openDyslexic }
-        style = Self.snappedToTheme(style)
-        save(style)
-        return style
+        for old in Self.retiredKeys where defaults.object(forKey: old) != nil { defaults.removeObject(forKey: old) }
+        guard let data = defaults.data(forKey: Self.key),
+              let style = try? JSONDecoder().decode(CaptionStyle.self, from: data) else { return .standard }
+        return Self.snappedToTheme(style)
     }
 
     public func save(_ style: CaptionStyle) {
