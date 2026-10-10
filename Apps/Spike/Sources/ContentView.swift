@@ -51,6 +51,8 @@ final class CaptionModel: ObservableObject {
     init() {
         controller = CaptionSessionController(makeEngine: { [weak self] in
             guard let self else { throw CancellationError() }
+            // Loaded during the launch (or after the last pause), so Start is instant (#119).
+            if let warm = EngineWarmupHost.shared.take(micMode: self.micMode) { return warm }
             guard let url = Bundle.main.url(forResource: "Sortformer_v2.1", withExtension: "mlmodelc") else {
                 throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc"))
             }
@@ -121,6 +123,7 @@ final class CaptionModel: ObservableObject {
             // Pausing keeps the conversation on screen; nothing is saved until she taps [ Save ].
             stopActivityLoop()
             beta.captioningStopped(session, state: newState)
+            EngineWarmupHost.shared.prepareIfAllowed(micMode: micMode) // the next Start is instant too (#119)
         }
     }
 

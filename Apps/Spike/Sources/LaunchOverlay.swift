@@ -14,6 +14,8 @@ enum LaunchClock {
 /// (LaunchSequence, SealChoreography); this view only draws them.
 struct LaunchOverlay: View {
     @ObservedObject var firstRun: FirstRunModel
+    /// The captioning engine loading behind the dance (#119): the launch covers the getting-ready.
+    @ObservedObject private var engine = EngineWarmupHost.shared
     let onFinished: () -> Void
     /// How the last launch went, for the beta measurements (ADR 0023): the full dance (not Reduce Motion's fade) and
     /// whether the progress bar showed.
@@ -43,10 +45,18 @@ struct LaunchOverlay: View {
 
     private var sequence: LaunchSequence { LaunchSequence(reducedMotion: reduceMotion) }
 
-    /// Ready once the facts are in and nothing is being set up, or setup stopped with a problem (the screen beneath
-    /// then shows it with Try again, so a failed download never hangs here).
-    private var isReady: Bool {
+    /// First run has nothing left to do here: the facts are in and nothing is being set up, or setup stopped with a
+    /// problem (the screen beneath then shows it with Try again, so a failed download never hangs here).
+    private var firstRunReady: Bool {
         firstRun.checked && (firstRun.problem != nil || !firstRun.step.isAutomaticSetup)
+    }
+
+    /// Ready once first run is done and the captioning engine has loaded (#119), never held by a failed or hung load
+    /// (LaunchReadiness). A first-run problem ends the launch at once, whatever the engine is doing.
+    private func isReady(at t: TimeInterval) -> Bool {
+        if firstRun.checked && firstRun.problem != nil { return true }
+        return LaunchReadiness.isReady(firstRunReady: firstRunReady, warmup: engine.state,
+                                       waitedPastDance: max(0, t - sequence.danceEnd))
     }
 
     var body: some View {
@@ -59,11 +69,8 @@ struct LaunchOverlay: View {
         .accessibilityLabel(Text("Seal is getting ready"))
         .onAppear {
             noteSetup(firstRun.step)
-            if isReady { readyAt = 0 }
+            if isReady(at: 0) { readyAt = 0 }
             UIAccessibility.post(notification: .announcement, argument: String(localized: "Seal is getting ready"))
-        }
-        .onChange(of: isReady) { _, ready in
-            if ready && readyAt == nil { readyAt = clock.now }
         }
         .onChange(of: firstRun.step) { _, step in noteSetup(step) }
         .task { await waitForEnd() }
@@ -79,12 +86,15 @@ struct LaunchOverlay: View {
         while !Task.isCancelled {
             try? await Task.sleep(for: .milliseconds(50))
             let t = clock.now
+            if readyAt == nil && isReady(at: t) { readyAt = t }
             if let readyAt, t >= sequence.end(readyAt: readyAt) {
                 done = true
+                // The bar shows for known setup, and for any work (first run or the engine load, #119) that outlasts the dance.
+                let barShown = setupKnown || readyAt > sequence.danceEnd
                 print(String(format: "[launch] main screen %.2f s after the app started (animation %.2f s, ready at %.2f s, bar %@)",
-                             Date().timeIntervalSince(LaunchClock.start), t, readyAt, setupKnown ? "shown" : "not shown"))
+                             Date().timeIntervalSince(LaunchClock.start), t, readyAt, barShown ? "shown" : "not shown"))
                 Self.lastFullDance = !reduceMotion
-                Self.lastBarShown = setupKnown
+                Self.lastBarShown = barShown
                 onFinished()
                 return
             }
@@ -153,7 +163,7 @@ struct LaunchOverlay: View {
                            with: .color(colors.ripple.color.opacity(ring.opacity)), lineWidth: ring.width * space.scale)
         }
         if let sp = frame.splash {
-            let fade = 1 - max(0, min(1, (sp - 0.6) / 0.4))
+            let fade = frame.splashOpacity
             for d in SealHandoffFrame.drops {
                 let p = SealHandoffFrame.dropPosition(d, splash: sp)
                 let at = space.point(p.x, p.y), r = d.radius * space.scale
@@ -176,7 +186,12 @@ struct LaunchOverlay: View {
     private func drawBar(in context: inout GraphicsContext, space: DesignSpace, t: TimeInterval) {
         let opacity = sequence.barOpacity(at: t, readyAt: readyAt, setupKnown: setupKnown)
         guard opacity > 0 else { return }
-        let progress = LaunchProgress.at(step: firstRun.step, downloadProgress: firstRun.progress, includesDownload: includesDownload)
+        let progress: LaunchProgress
+        if case .preparing(let step) = engine.state, !firstRun.step.isAutomaticSetup {
+            progress = .engine(step: step)  // the engine's real loading steps (#119)
+        } else {
+            progress = LaunchProgress.at(step: firstRun.step, downloadProgress: firstRun.progress, includesDownload: includesDownload)
+        }
         let origin = space.point(111, 640), width = 180 * space.scale, height = 10 * space.scale
         func bar(_ from: Double, _ to: Double) -> Path {
             Path(roundedRect: CGRect(x: origin.x + width * from, y: origin.y, width: width * (to - from), height: height),
@@ -235,7 +250,10 @@ enum SealRig {
 
         rotated(c, by: p.backFlipper, around: CGPoint(x: 130, y: 600)) { c in
             c.fill(ellipse(88, 598, 92, 50, -38), with: .color(cream))
-            c.fill(ellipse(60, 535, 38, 30, -20), with: .color(cream))
+            // The tip follows through behind the flipper (#119).
+            rotated(c, by: p.backFlipperTip, around: CGPoint(x: 82, y: 562)) { c in
+                c.fill(ellipse(60, 535, 38, 30, -20), with: .color(cream))
+            }
         }
         c.fill(ellipse(410, 612, 300, 298), with: .color(peach))
         c.fill(ellipse(430, 505, 322, 322), with: .color(cream))
@@ -259,13 +277,32 @@ enum SealRig {
             c.fill(mouth, with: .color(deepTeal))
             c.fill(ellipse(586, 624, 47, 25, -12), with: .color(peach))
         }
+        // Whiskers sway behind the body's motion (#119): straight at rest, curved while it moves.
         var whiskers = Path()
+        let sway = p.whiskerBend
         for (x1, y1, x2, y2) in [(450.0, 560.0, 318.0, 572.0), (450, 564, 320, 607), (452, 567, 342, 636)] {
-            whiskers.move(to: CGPoint(x: x1, y: y1)); whiskers.addLine(to: CGPoint(x: x2, y: y2))
+            let tip = CGPoint(x: x2, y: y2 + 14 * sway)
+            whiskers.move(to: CGPoint(x: x1, y: y1))
+            whiskers.addQuadCurve(to: tip, control: CGPoint(x: (x1 + x2) / 2, y: (y1 + y2) / 2 + 22 * sway))
         }
         c.stroke(whiskers, with: .color(deepTeal), style: StrokeStyle(lineWidth: 9, lineCap: .round))
         rotated(c, by: p.frontFlipper, around: CGPoint(x: 600, y: 760)) { c in
-            c.fill(ellipse(662, 782, 100, 44, -32), with: .color(cream))
+            // One flipper in two halves that bend at the middle: the tip follows through behind the wave (#119).
+            // At rest the halves line up into exactly the icon's flipper.
+            let flipper = ellipse(662, 782, 100, 44, -32)
+            let joint = CGPoint(x: 662, y: 782)
+            if abs(p.frontFlipperTip) < 0.05 {
+                c.fill(flipper, with: .color(cream)) // straight: one shape, no seam even while the seal fades
+            } else {
+                var base = c
+                base.clip(to: halfPlane(through: joint, degrees: -32, keepingTip: false))
+                base.fill(flipper, with: .color(cream))
+                rotated(c, by: p.frontFlipperTip, around: joint) { c in
+                    var tip = c
+                    tip.clip(to: halfPlane(through: joint, degrees: -32, keepingTip: true))
+                    tip.fill(flipper, with: .color(cream))
+                }
+            }
             var crease = Path()
             crease.move(to: CGPoint(x: 612, y: 800))
             crease.addQuadCurve(to: CGPoint(x: 712, y: 752), control: CGPoint(x: 660, y: 778))
@@ -282,6 +319,15 @@ enum SealRig {
                 c.stroke(rays, with: .color(cream), style: StrokeStyle(lineWidth: 34, lineCap: .round))
             }
         }
+    }
+
+    /// The side of the line through `p`, across a flipper pointing at `degrees`, that holds the tip (or the base).
+    /// The two sides overlap by a couple of units so no hairline shows where the halves meet.
+    private static func halfPlane(through p: CGPoint, degrees: Double, keepingTip: Bool) -> Path {
+        let overlap = 2.0, far = 2000.0
+        var r = Path(CGRect(x: keepingTip ? -overlap : -far, y: -far, width: far + overlap, height: far * 2))
+        r = r.applying(CGAffineTransform(rotationAngle: degrees * .pi / 180))
+        return r.applying(CGAffineTransform(translationX: p.x, y: p.y))
     }
 
     /// An ellipse centred at (cx, cy), rotated about its own centre by `degrees`, like SVG's rotate(deg cx cy).

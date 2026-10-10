@@ -9,6 +9,14 @@ public protocol CaptioningEngine: AnyObject {
     func audioLevelStream() -> AsyncStream<Double>
     /// Must be safe to call more than once, and safe to call after a failed start.
     func stop() async
+    /// Loads everything `start()` needs except the microphone, reporting each finished step (#119). Never opens the
+    /// microphone or asks for permission. Safe to call more than once; `start()` finishes a load in progress.
+    func prepare(onStep: @escaping @Sendable (Int) -> Void) async throws
+}
+
+public extension CaptioningEngine {
+    /// Engines with nothing to load ahead (test fakes) are ready at once.
+    func prepare(onStep: @escaping @Sendable (Int) -> Void) async throws {}
 }
 
 extension TranscriptionEngine: CaptioningEngine {}

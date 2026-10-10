@@ -81,6 +81,19 @@ public final class TranscriptionEngine {
     private var loudnessBaseline = LoudnessBaseline()
     private var loudnessTimeSeries: [(audioTime: Double, level: Double)] = []
     private let loudnessLock = NSLock()
+    /// What `prepare` loads ahead of Start (#119): the speech model, the speaker model, the sound classifier and the
+    /// analyzer, everything except the microphone.
+    private struct Prepared {
+        let transcriber: SpeechTranscriber
+        let analyzer: SpeechAnalyzer
+        let format: AVAudioFormat
+    }
+    private let prepareLock = NSLock()
+    private var prepareTask: Task<Prepared, Error>?
+    private var preparedLaps: [String] = []
+    private var analyzerStarted = false
+    /// Set by `stop()`: a load still running then frees what it made instead of keeping it.
+    private var stopped = false
 
     /// `diarizerModelURL` has no default on purpose: the app must say where its bundled speaker model
     /// lives, so there is no accidental network path (ADR 0014).
@@ -100,7 +113,24 @@ public final class TranscriptionEngine {
         }
     }
 
-    private func startSession() async throws -> AsyncThrowingStream<CaptionUpdate, Error> {
+    /// Loads everything Start needs except the microphone (#119): runs during the launch animation, so Start is
+    /// instant. Reports steps 1-3 (speech model, speaker model, sound classifier and analyzer). Never opens the
+    /// microphone or asks for permission. Safe to call more than once: every caller waits for the same load.
+    public func prepare(onStep: @escaping @Sendable (Int) -> Void) async throws {
+        _ = try await loadPrepared(onStep: onStep)
+    }
+
+    private func loadPrepared(onStep: @escaping @Sendable (Int) -> Void = { _ in }) async throws -> Prepared {
+        let task: Task<Prepared, Error> = prepareLock.withLock {
+            if let prepareTask { return prepareTask }
+            let task = Task { try await self.load(onStep: onStep) }
+            prepareTask = task
+            return task
+        }
+        return try await task.value
+    }
+
+    private func load(onStep: @escaping @Sendable (Int) -> Void) async throws -> Prepared {
         let clock = ContinuousClock()
         var mark = clock.now
         var laps: [String] = []
@@ -117,23 +147,52 @@ public final class TranscriptionEngine {
             attributeOptions: [.audioTimeRange]
         )
         try await ensureModelInstalled(for: transcriber)
-        lap("speech model")
+        lap("speech model"); onStep(1)
         // Ready before the first audio, so both clocks start at the same first sample.
         try await diarizer.prepare()
-        lap("speaker model")
+        lap("speaker model"); onStep(2)
         try await soundLabelerAsync { try self.soundLabeler.prepare() }
         lap("sound classifier")
         soundLabelerStream = soundLabeler.stream()
-
-        let (alStream, alCont) = AsyncStream.makeStream(of: Double.self)
-        self.audioLevelStreamValue = alStream
-        self.audioLevelContinuation = alCont
 
         guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else {
             throw TranscriptionError.noCompatibleAudioFormat
         }
         let analyzer = SpeechAnalyzer(modules: [transcriber])
+        // Load the model before the first word, not on it.
+        try await analyzer.prepareToAnalyze(in: format)
+        lap("analyzer")
+        if prepareLock.withLock({ stopped }) {
+            // Stopped while loading (released in the background, or a failed start): never keep a recognizer.
+            await analyzer.cancelAndFinishNow()
+            throw CancellationError()
+        }
         self.analyzer = analyzer
+        preparedLaps = laps
+        onStep(3)
+        return Prepared(transcriber: transcriber, analyzer: analyzer, format: format)
+    }
+
+    private func startSession() async throws -> AsyncThrowingStream<CaptionUpdate, Error> {
+        let clock = ContinuousClock()
+        var mark = clock.now
+        let alreadyLoaded = prepareLock.withLock { prepareTask != nil }
+        let prepared = try await loadPrepared()
+        var laps = preparedLaps
+        if alreadyLoaded { laps = ["loaded before Start (\(laps.joined(separator: ", ")))"] }
+        func lap(_ name: String) {
+            let now = clock.now
+            let d = now - mark
+            laps.append("\(name) \(String(format: "%.1f", Double(d.components.seconds) + Double(d.components.attoseconds) / 1e18))s")
+            mark = now
+        }
+        lap(alreadyLoaded ? "waited for the load" : "load")
+        let transcriber = prepared.transcriber, analyzer = prepared.analyzer, format = prepared.format
+
+        let (alStream, alCont) = AsyncStream.makeStream(of: Double.self)
+        self.audioLevelStreamValue = alStream
+        self.audioLevelContinuation = alCont
+
         let fed = FedAudioClock()
         let (sequence, builder) = AsyncStream.makeStream(of: AnalyzerInput.self)
         self.inputBuilder = builder
@@ -160,9 +219,6 @@ public final class TranscriptionEngine {
         input.installTap(onBus: 0, bufferSize: 4096, format: inFormat) { buffer, _ in
             self.processBuffer(buffer, inFormat: inFormat, converter: converter, diarConverter: diarConverter, format: format, diarFormat: diarFormat, fed: fed, builder: builder)
         }
-        // Load the model before the first word, not on it.
-        try await analyzer.prepareToAnalyze(in: format)
-        lap("analyzer")
         if !contextualStrings.isEmpty {
             let context = AnalysisContext()
             context.contextualStrings[.general] = contextualStrings
@@ -173,6 +229,7 @@ public final class TranscriptionEngine {
         try audioEngine.start()
         wallTime.set(Date())
         try await analyzer.start(inputSequence: sequence)
+        analyzerStarted = true
         lap("audio start")
         startupReport = laps.joined(separator: " · ")
 
@@ -374,14 +431,19 @@ public final class TranscriptionEngine {
 
     /// Releases the microphone, the speech analyzer and the helpers. Safe to call more than once.
     public func stop() async {
+        prepareLock.withLock { stopped = true }
         audioEngine.inputNode.removeTap(onBus: 0)
         audioEngine.stop()
         inputBuilder?.finish()
         inputBuilder = nil
         if let analyzer {
             self.analyzer = nil
-            do { try await analyzer.finalizeAndFinishThroughEndOfInput() }
-            catch { await analyzer.cancelAndFinishNow() }   // never leave a recognizer allocated
+            if analyzerStarted {
+                do { try await analyzer.finalizeAndFinishThroughEndOfInput() }
+                catch { await analyzer.cancelAndFinishNow() }   // never leave a recognizer allocated
+            } else {
+                await analyzer.cancelAndFinishNow()   // loaded ahead but never started (#119)
+            }
         }
         diarizer.finish()
         soundLabeler.finish()
