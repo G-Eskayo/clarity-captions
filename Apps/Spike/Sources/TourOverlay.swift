@@ -1,33 +1,18 @@
 import CaptionCore
 import SwiftUI
 
-/// The real controls the tour can spotlight (#108). Each one marks itself with `.tourTarget(_:)`.
-enum TourTarget: Hashable {
-    case start, stop, save, new, captions, gear
-
-    /// What a step spotlights. Save or New: [ Save ] if it's there, otherwise [ New ].
-    static func candidates(for step: TourStep) -> [TourTarget] {
-        switch step {
-        case .start: [.start]
-        case .captions, .copy: [.captions]
-        case .pause: [.stop]
-        case .saveOrNew: [.save, .new]
-        case .gear: [.gear]
-        }
-    }
-}
-
+/// The real places the tour points at. Each one marks itself with `.tourTarget(_:)`.
 struct TourTargetKey: PreferenceKey {
-    static let defaultValue: [TourTarget: Anchor<CGRect>] = [:]
-    static func reduce(value: inout [TourTarget: Anchor<CGRect>], nextValue: () -> [TourTarget: Anchor<CGRect>]) {
+    static let defaultValue: [TourSpot: Anchor<CGRect>] = [:]
+    static func reduce(value: inout [TourSpot: Anchor<CGRect>], nextValue: () -> [TourSpot: Anchor<CGRect>]) {
         value.merge(nextValue()) { _, new in new }
     }
 }
 
 extension View {
-    /// Marks a real control so the tour can put its spotlight on it.
-    func tourTarget(_ target: TourTarget) -> some View {
-        anchorPreference(key: TourTargetKey.self, value: .bounds) { [target: $0] }
+    /// Marks a real control or area so the tour can light it, or let touches through to it.
+    func tourTarget(_ spot: TourSpot) -> some View {
+        anchorPreference(key: TourTargetKey.self, value: .bounds) { [spot: $0] }
     }
 }
 
@@ -43,57 +28,64 @@ extension EnvironmentValues {
     }
 }
 
-/// The tour on the real screen (mock-up 09): the screen dims, a spotlight sits on the real control, and a card says
-/// what to do. The dim never takes touches, so she uses the real control itself; only the card and Skip tour do.
+/// The tour v2 on the real screen (#121, round3/01-02): the words sit straight on the dim (no card), the lit control
+/// gets a soft edge (no frame), and nothing but the lit control answers; touches anywhere else stop at the dim. Steps 5
+/// and 6 use the pause dim and the captions themselves, so the tour lays no dim of its own there. Back and Skip tour are
+/// on every step (no Back on the first); only the last step has [ Done ]. Everything only fades.
 struct TourOverlay: View {
-    let step: TourStep
-    /// The real control to spotlight; nil when it isn't on screen (e.g. Next before Start, so there's no X yet).
-    let holeAnchor: Anchor<CGRect>?
-    /// Other controls the card must not cover, e.g. [ New ] under the spotlit [ Save ].
-    var keepClear: [Anchor<CGRect>] = []
+    let tour: HowToUseTour
+    let anchors: [TourSpot: Anchor<CGRect>]
     let style: CaptionStyle
-    let canGoBack: Bool
-    let isLast: Bool
     let offersExample: Bool
     let onBack: () -> Void
-    let onNext: () -> Void
     let onSkip: () -> Void
+    let onDone: () -> Void
     let onExample: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var copy: TourCopy { TourCopy.for(step) }
+    private var focus: TourFocus { tour.focus }
+    private var fade: Animation { .easeInOut(duration: reduceMotion ? 0.2 : 0.35) }
 
     var body: some View {
-        // The outer reader keeps the real safe-area insets; inside, the dim covers the whole screen.
         GeometryReader { outer in
             let insets = outer.safeAreaInsets
             GeometryReader { geo in
-            let spotlight = holeAnchor.map { geo[$0].insetBy(dx: -8, dy: -8) }
-            ZStack(alignment: .topLeading) {
-                dim(size: geo.size, spotlight: spotlight)
-                skipButton
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                    .padding(.top, insets.top + 4)
-                    .padding(.trailing, 20)
-                card
-                    .frame(maxWidth: min(geo.size.width - 40, 440))
-                    .frame(maxWidth: .infinity)
-                    .alignmentGuide(.top) { _ in 0 }
-                    .offset(y: cardY(height: geo.size.height, insets: insets, spotlight: spotlight,
-                                     keepClear: keepClear.map { geo[$0] }))
-                    .id(step)
-                    .transition(.opacity)
-            }
-            .animation(.easeInOut(duration: reduceMotion ? 0.2 : 0.3), value: spotlight)
-            .animation(.easeInOut(duration: reduceMotion ? 0.2 : 0.3), value: step)
+                let lit = focus.lit.flatMap { anchors[$0] }.map { geo[$0].insetBy(dx: -8, dy: -8) }
+                let hole = holeRect(in: geo)
+                ZStack(alignment: .topLeading) {
+                    if focus.dims { dim(size: geo.size, spotlight: lit) }
+                    blocker(size: geo.size, hole: hole)
+                    if tour.showsWords {
+                        words
+                            .frame(maxWidth: min(geo.size.width - 48, 420))
+                            .background { if !focus.dims { legibilityGlow } }
+                            .position(x: geo.size.width / 2,
+                                      y: wordsCenterY(height: geo.size.height, insets: insets, lit: lit))
+                            .id(WordsID(step: tour.step, phase: tour.phase))
+                            .transition(.opacity)
+                    }
+                    skipButton
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .padding(.top, insets.top + 4)
+                        .padding(.trailing, 20)
+                }
+                .animation(fade, value: lit)
+                .animation(fade, value: WordsID(step: tour.step, phase: tour.phase))
             }
             .ignoresSafeArea()
         }
     }
 
-    /// The dim with the spotlight cut out: the theme's own background faded over the screen, like the pause veil
-    /// (round2/04, round2/07), with a soft edge around the lit control instead of a frame. It never takes touches.
+    private struct WordsID: Hashable {
+        let step: TourStep?
+        let phase: TourPhase
+    }
+
+    // MARK: the dim and what answers
+
+    /// The theme's own background faded over the screen (like the pause dim), with the lit control cut out and a soft
+    /// edge around it instead of a frame. Drawing only: touches are handled by the blocker.
     private func dim(size: CGSize, spotlight: CGRect?) -> some View {
         Path { p in
             p.addRect(CGRect(origin: .zero, size: size))
@@ -120,19 +112,120 @@ struct TourOverlay: View {
         .accessibilityHidden(true)
     }
 
-    /// A round control (X, the gear) gets a round spotlight; a wide one gets rounded corners.
+    /// Where touches get through: the answering control or area, or nowhere (waiting for a voice, the follow-ups, the
+    /// last step), or everywhere (Settings, while step 7 waits for her to come back).
+    private func holeRect(in geo: GeometryProxy) -> CGRect? {
+        guard let answers = focus.answers, answers != .everything, let anchor = anchors[answers] else { return nil }
+        return geo[anchor].insetBy(dx: -8, dy: -8)
+    }
+
+    /// Stops every touch outside the hole, so only the lit control answers (round3/01: "Nothing else answers").
+    @ViewBuilder
+    private func blocker(size: CGSize, hole: CGRect?) -> some View {
+        if focus.answers != .everything {
+            let shape = HoleShape(hole: hole)
+            Color.clear
+                .contentShape(shape, eoFill: true)
+                .onTapGesture {}
+                .onLongPressGesture(minimumDuration: 0.2) {}
+                .accessibilityHidden(true)
+        }
+    }
+
+    private struct HoleShape: Shape {
+        let hole: CGRect?
+        func path(in rect: CGRect) -> Path {
+            var p = Path(rect)
+            if let hole { p.addRect(hole) }
+            return p
+        }
+    }
+
+    /// A round control (✕, the gear) gets a round spotlight; a wide one gets rounded corners.
     private func corner(_ rect: CGRect) -> CGFloat {
         abs(rect.width - rect.height) < 6 ? rect.height / 2 : min(rect.height / 2, 22)
     }
 
-    /// The card goes just below the spotlight when there's room (it keeps the words above it visible), otherwise
-    /// just above it, as for Start and X at the bottom (mock-up 09).
-    private func cardY(height: CGFloat, insets: EdgeInsets, spotlight: CGRect?, keepClear: [CGRect]) -> CGFloat {
-        let estimatedHeight: CGFloat = 190
-        guard let spotlight else { return (height - estimatedHeight) / 2 }
-        let below = keepClear.reduce(spotlight) { $0.union($1) }.maxY + 16
-        if below + estimatedHeight <= height - insets.bottom - 90 { return below }
-        return max(insets.top + 52, spotlight.minY - 16 - estimatedHeight)
+    // MARK: the words
+
+    private var words: some View {
+        let w = tour.words
+        return VStack(spacing: 10) {
+            progressRow
+            Text(w.title)
+                .font(.title3.weight(.heavy))
+                .multilineTextAlignment(.center)
+                .accessibilityAddTraits(.isHeader)
+            Text(w.message)
+                .font(.body)
+                .multilineTextAlignment(.center)
+                .opacity(0.85)
+                .fixedSize(horizontal: false, vertical: true)
+            if offersExample && tour.step == .captions && tour.phase == .waiting {
+                RetroWords(word: String(localized: "Show an example"), color: style.text.color,
+                           background: style.background.color, label: String(localized: "Show an example"),
+                           action: onExample)
+                    .padding(.top, 6)
+                    .transition(.opacity)
+            }
+            if tour.hasDoneButton {
+                RetroWords(word: String(localized: "Done"), color: style.text.color, background: style.background.color,
+                           label: String(localized: "Done, end the tour"), action: onDone)
+                    .padding(.top, 8)
+            }
+        }
+        .foregroundStyle(style.text.color)
+        .accessibilityElement(children: .contain)
+        .accessibilitySortPriority(10)
+        .accessibilityAction(named: Text("Skip tour"), onSkip)
+    }
+
+    /// "3 of 8 · ‹ Back" (no Back on the first step).
+    private var progressRow: some View {
+        HStack(spacing: 6) {
+            Text(tour.progress)
+            if tour.canGoBack {
+                Text(verbatim: "·").accessibilityHidden(true)
+                Button(action: onBack) {
+                    Text("‹ Back").frame(minHeight: 44)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("Back"))
+            }
+        }
+        .font(.subheadline.weight(.bold))
+        .opacity(0.7)
+        .frame(minHeight: 44)
+    }
+
+    /// Where the tour lays no dim (steps 5, 6 and Settings), a soft wash of the theme's background behind the words
+    /// keeps them readable over captions: no edge, no frame.
+    private var legibilityGlow: some View {
+        style.background.color
+            .opacity(0.9)
+            .padding(-22)
+            .blur(radius: 18)
+            .allowsHitTesting(false)
+    }
+
+    /// Next to the lit control (above it when it's low on the screen, as for Start and ✕), otherwise where the mock-up
+    /// puts each step's words.
+    private func wordsCenterY(height: CGFloat, insets: EdgeInsets, lit: CGRect?) -> CGFloat {
+        let half: CGFloat = tour.step == .done ? 150 : 75
+        if let lit, tour.step != .save {
+            let below = lit.maxY + 20 + half
+            if below + half <= height - insets.bottom - 110 { return below }
+            return max(insets.top + 70 + half, lit.minY - 20 - half)
+        }
+        let fraction: CGFloat
+        switch (tour.step, tour.phase) {
+        case (.captions?, _): fraction = 0.45
+        case (.save?, _): fraction = 0.70
+        case (.gear?, .inSettings): fraction = 0.80
+        case (.clearDim?, _), (.holdBack?, _), (.gear?, _): fraction = 0.66
+        case (.done?, _), (.start?, _), (.pause?, _), (nil, _): fraction = 0.52
+        }
+        return min(height * fraction, height - insets.bottom - 110 - half)
     }
 
     private var skipButton: some View {
@@ -145,61 +238,5 @@ struct TourOverlay: View {
         }
         .buttonStyle(.plain)
         .accessibilityHint(Text("Ends the tour. You can take it again from Settings."))
-    }
-
-    private var card: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(copy.title)
-                .font(.headline.weight(.heavy))
-                .accessibilityAddTraits(.isHeader)
-            Text(copy.message)
-                .font(.subheadline)
-                .opacity(0.85)
-                .fixedSize(horizontal: false, vertical: true)
-            if offersExample {
-                Button(action: onExample) {
-                    Text("Too quiet? Show an example")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(minHeight: 44)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(style.gear.color)
-                .transition(.opacity)
-            }
-            HStack(spacing: 4) {
-                dots
-                Spacer(minLength: 12)
-                if canGoBack {
-                    Button(action: onBack) { Text("‹ Back").frame(minHeight: 44).padding(.horizontal, 6) }
-                        .accessibilityLabel(Text("Back"))
-                }
-                Button(action: onNext) {
-                    Text(isLast ? "Done ✓" : "Next ›").frame(minHeight: 44).padding(.horizontal, 6)
-                }
-                .accessibilityLabel(isLast ? Text("Done") : Text("Next"))
-            }
-            .font(.subheadline.weight(.bold))
-            .buttonStyle(.plain)
-            .foregroundStyle(style.gear.color)
-        }
-        .foregroundStyle(style.text.color)
-        .padding(.horizontal, 18)
-        .padding(.top, 16)
-        .padding(.bottom, 6)
-        .accessibilityElement(children: .contain)
-        .accessibilitySortPriority(10)
-        .accessibilityAction(named: Text("Skip tour"), onSkip)
-    }
-
-    private var dots: some View {
-        HStack(spacing: 5) {
-            ForEach(TourStep.allCases, id: \.self) { s in
-                Capsule()
-                    .fill(style.gear.color.opacity(s == step ? 1 : 0.3))
-                    .frame(width: s == step ? 18 : 6, height: 6)
-            }
-        }
-        .accessibilityElement()
-        .accessibilityLabel(Text("Step \(step.rawValue + 1) of \(TourStep.allCases.count)"))
     }
 }

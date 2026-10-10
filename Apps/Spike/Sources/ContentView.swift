@@ -172,12 +172,14 @@ final class CaptionModel: ObservableObject {
             }
             try? await Task.sleep(nanoseconds: 700_000_000)
             showingSaveCheck = false
+            // The tour's "Saved." waits until [ ✔ ] → [ Saved ] has played out (#121).
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            tour.did(.saveMomentFinished)
         }
     }
 
     /// [ New ]: asks first if the conversation isn't saved as it stands.
     func requestNew() {
-        tour.did(.tappedNew)
         let unsaved = session.hasUnsavedChanges(lines: stream.lines, names: speakerNames)
         if NewConversationQuestion.request(hasUnsavedChanges: unsaved, question: &newQuestion) == .startNow { startNew() }
     }
@@ -202,21 +204,21 @@ final class CaptionModel: ObservableObject {
 
     // MARK: the how-to-use tour (#108)
 
-    /// The quiet-room example: one line from "Speaker 1", added the way the engine adds captions.
+    /// The quiet-room example: two voices (round3/01, step 2), added the way the engine adds captions.
     func showTourExample() {
         let before = Set(stream.lines.map(\.id))
-        stream.apply(text: TourExample.text, isFinal: true, speaker: 0)
+        for line in TourExample.lines { stream.apply(text: line.text, isFinal: true, speaker: line.speaker) }
         tourExampleIDs.formUnion(Set(stream.lines.map(\.id)).subtracting(before))
         reportCaptionShown()
     }
 
-    /// The captions step moves on a beat after the first caption, so she sees her words with the card first.
+    /// Step 2's "That's you." comes a beat after the first caption, so she sees her words first.
     private var captionBeatPending = false
     private func reportCaptionShown() {
         guard tour.step == .captions, !captionBeatPending else { return }
         captionBeatPending = true
         Task { @MainActor in
-            try? await Task.sleep(for: .seconds(TourExample.captionBeatSeconds))
+            try? await Task.sleep(for: .seconds(TourTiming.captionSeenSeconds))
             captionBeatPending = false
             tour.did(.captionShown)
         }
@@ -424,7 +426,7 @@ struct ContentView: View {
         .overlayPreferenceValue(TourTargetKey.self) { anchors in tourLayer(anchors) }
         .onAppear { maybeStartTour() }
         .onChange(of: launchCovering) { maybeStartTour() }
-        .onChange(of: model.tour.step) { old, new in tourStepChanged(from: old, to: new) }
+        .onChange(of: model.tour) { old, new in tourChanged(from: old, to: new) }
         .onChange(of: scenePhase) { _, phase in
             model.appActiveChanged(phase == .active)
             model.scenePhaseChanged(phase)
@@ -498,7 +500,10 @@ struct ContentView: View {
                                  withAnimation(veilAnimation) { model.tour.begin() }
                              }
                          },
-                         onGear: { go { $0.gearTapped() } },
+                         onGear: {
+                             model.tour.did(.closedSettings)
+                             go { $0.gearTapped() }
+                         },
                          onOpen: { screen in go { $0.open(screen) } })
         case .saved:
             if let store = model.store {
@@ -776,6 +781,7 @@ struct ContentView: View {
         }
         .animation(veilAnimation, value: model.veil.isVisible(state: model.state, hasConversation: model.hasConversation))
         .accessibilityAction(named: String(localized: "Show Save and New")) { bringBackVeil() }
+        .tourTarget(.captionArea)   // step 6: holding an empty spot here brings the dim back
     }
 
     /// Debug only (DemoMode): the paused states and flows #102's screenshots and recordings show.
@@ -875,9 +881,9 @@ struct ContentView: View {
         case "failed": model.demoSetState(.failed(String(localized: "The microphone stopped. Tap Start captions to try again.")))
         case "quiet": model.demoSetState(.pausedQuiet(minutes: 5))
         case "tour4save":
-            // What follows [ Save ] while the tour is on step 4: the tour moves on to its next card.
+            // [ Save ] while the tour is on step 4: [ ✔ ] → [ Saved ] plays out, then "Saved." fades in (#121).
             model.demoSetState(.idle)
-            model.tour = HowToUseTour(step: .saveOrNew)
+            model.tour = HowToUseTour(step: .save)
             await wait(2.5); withAnimation(.easeInOut(duration: 0.2)) { model.save() }
         case "savebeta":
             // A beta install (Xcode counts), no tour: pause, [ Save ], then [ New ].
@@ -944,6 +950,7 @@ struct ContentView: View {
             style.background.color.opacity(0.86)
                 .contentShape(Rectangle())
                 .onTapGesture { clearVeil() }
+                .tourTarget(.veil)
                 .accessibilityElement()
                 .accessibilityLabel(String(localized: "Paused conversation"))
                 .accessibilityAddTraits(.isButton)
@@ -968,7 +975,6 @@ struct ContentView: View {
                     saveButton.tourTarget(.save)
                     retroButton(String(localized: "New"), color: style.text.color,
                                 label: String(localized: "Start a new conversation")) { withAnimation(veilAnimation) { model.requestNew() } }
-                        .tourTarget(.new)
                 }
                 .transition(.opacity)
             }
@@ -1008,7 +1014,10 @@ struct ContentView: View {
         withAnimation(veilAnimation) {
             model.newQuestion.keep()
             model.veil.tap(state: model.state)
+            model.tour.did(.clearedDim)
         }
+        // The tour's step 6 says this itself ("Hold an empty spot."), so the hint stays away while it runs.
+        guard !model.tour.isRunning else { return }
         let shown = UserDefaults.standard.integer(forKey: Self.veilHintKey)
         guard shown < Self.veilHintLimit else { return }
         UserDefaults.standard.set(shown + 1, forKey: Self.veilHintKey)
@@ -1019,26 +1028,22 @@ struct ContentView: View {
         withAnimation(veilAnimation) {
             model.veil.holdOnEmptySpace(state: model.state)
             showingVeilHint = false
+            model.tour.did(.restoredDim)
         }
     }
 
     // MARK: the how-to-use tour (#108)
 
     @ViewBuilder
-    private func tourLayer(_ anchors: [TourTarget: Anchor<CGRect>]) -> some View {
-        if let step = model.tour.step {
-            let candidates = TourTarget.candidates(for: step)
-            let hole = candidates.first { anchors[$0] != nil }
-            TourOverlay(step: step,
-                        holeAnchor: hole.flatMap { anchors[$0] },
-                        keepClear: candidates.filter { $0 != hole }.compactMap { anchors[$0] },
+    private func tourLayer(_ anchors: [TourSpot: Anchor<CGRect>]) -> some View {
+        if model.tour.isRunning {
+            TourOverlay(tour: model.tour,
+                        anchors: anchors,
                         style: style,
-                        canGoBack: model.tour.canGoBack,
-                        isLast: model.tour.isLastStep,
-                        offersExample: step == .captions && tourOffersExample,
-                        onBack: { model.tour.back() },
-                        onNext: { model.tour.next() },
-                        onSkip: { model.tour.skip() },
+                        offersExample: tourOffersExample,
+                        onBack: { withAnimation(veilAnimation) { model.tour.back() } },
+                        onSkip: { withAnimation(veilAnimation) { model.tour.skip() } },
+                        onDone: { withAnimation(veilAnimation) { model.tour.did(.tappedDone) } },
                         onExample: { withAnimation { model.showTourExample() } })
                 .transition(.opacity)
         }
@@ -1054,78 +1059,104 @@ struct ContentView: View {
         withAnimation(veilAnimation) { model.tour.begin() }
     }
 
-    private func tourStepChanged(from old: TourStep?, to new: TourStep?) {
-        tourOffersExample = false
-        guard let new else {
-            if old != nil { withAnimation(veilAnimation) { model.tourEnded() } }
+    /// Step or phase changed: say the new words, wait out a follow-up's reading beat, and after Back set the screen up
+    /// so the step's real action can be done again.
+    private func tourChanged(from old: HowToUseTour, to new: HowToUseTour) {
+        guard let step = new.step else {
+            tourOffersExample = false
+            if old.step != nil { withAnimation(veilAnimation) { model.tourEnded() } }
             return
         }
-        UIAccessibility.post(notification: .announcement, argument: TourCopy.for(new).title)
-        switch new {
-        case .captions:
-            scheduleExampleOffer()
-        case .copy:
-            // Copying needs words to hold, reachable: the example if [ New ] cleared the screen, and the dim set aside
-            // (without the "hold on empty space" hint, which would sit on the words).
-            if !model.hasConversation { model.showTourExample() }
-            withAnimation(veilAnimation) { model.veil.tap(state: model.state) }
-        default:
+        if new.step != old.step || new.phase != old.phase, new.showsWords {
+            UIAccessibility.post(notification: .announcement, argument: new.words.title)
+        }
+        if new.step != old.step { tourOffersExample = false }
+        if let previous = old.step, step.rawValue < previous.rawValue { prepareAfterBack(for: step) }
+        if step == .captions && new.phase == .waiting && old.step != .captions { scheduleExampleOffer() }
+        if new.phase == .followUp && (old.phase != .followUp || old.step != step) {
+            let phaseStep = step
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(TourTiming.followUpSeconds(for: phaseStep)))
+                guard model.tour.step == phaseStep, model.tour.phase == .followUp else { return }
+                withAnimation(veilAnimation) { model.tour.did(.followUpRead) }
+            }
+        }
+    }
+
+    /// Back to a step whose action already happened: put the screen back the way that step needs it, using the same
+    /// calls the real controls make (the tour ignores them, since they aren't the step's own action).
+    private func prepareAfterBack(for step: TourStep) {
+        let listening = model.state == .listening || model.state == .preparing
+        switch step {
+        case .start:
+            if listening { model.perform(.stop) }
+        case .captions, .pause:
+            if !listening { model.perform(.start) }
+        case .save, .clearDim:
+            if !model.veil.isVisible(state: model.state, hasConversation: model.hasConversation) { bringBackVeil() }
+            if step == .save, model.session.saveButton(lines: model.stream.lines, names: model.speakerNames) == .saved {
+                model.tour.alreadySaved()
+            }
+        case .holdBack:
+            if model.veil.isVisible(state: model.state, hasConversation: model.hasConversation) { clearVeil() }
+        case .gear, .done:
             break
         }
     }
 
-    /// A quiet room: after a few seconds of captioning with nothing to show, the card offers the example line.
+    /// A quiet room: after a few seconds of captioning with nothing to show, step 2 offers [ Show an example ].
     private func scheduleExampleOffer() {
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(TourExample.quietSeconds))
-            guard model.tour.step == .captions else { return }
+            guard model.tour.step == .captions, model.tour.phase == .waiting, !model.hasConversation else { return }
             let captioning = model.state == .listening || model.state == .preparing
             withAnimation { tourOffersExample = TourExample.offersExample(secondsWithoutCaption: TourExample.quietSeconds, isCaptioning: captioning) }
         }
     }
 
-    /// Debug only (`-ClarityDemoTour flow` or `-ClarityDemoTour <1-6>`). simctl can't tap, so the tour's actions are
-    /// driven through the same model calls the real controls make; only starting and stopping the engine is
-    /// pretended, since the simulator has no speech engine.
+    /// Debug only (`-ClarityDemoTour flow` plays the whole tour; `-ClarityDemoTour <1-8>` pins one step,
+    /// `-ClarityDemoTour 2b` / `4b` its follow-up). simctl can't tap, so a scripted user does each step's real action
+    /// through the same calls the real controls make; only starting and stopping the engine is pretended, since the
+    /// simulator has no speech engine.
     private func runDemoTour() async {
         func wait(_ seconds: Double) async { try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000)) }
         func start() { model.tour.did(.tappedStart); model.demoSetState(.preparing); model.demoSetState(.listening) }
         func stop() { model.tour.did(.tappedStop); model.demoSetState(.idle) }
         await wait(0.6)
-        if let n = DemoMode.tour.flatMap(Int.init), let target = TourStep(rawValue: n - 1) {
-            // A still of one step, set up the way she'd reach it.
+        if let pin = DemoMode.tour, pin != "flow" {
+            let followUp = pin.hasSuffix("b")
+            guard let n = Int(pin.filter(\.isNumber)), let target = TourStep(rawValue: n - 1) else { return }
+            // A still of one step, with the screen set up the way she'd reach it.
             if target.rawValue >= TourStep.captions.rawValue { model.demoSetState(.preparing); model.demoSetState(.listening) }
-            if target.rawValue >= TourStep.captions.rawValue { model.showTourExample() }
-            if target.rawValue >= TourStep.saveOrNew.rawValue { model.demoSetState(.idle) }
-            await wait(TourExample.captionBeatSeconds + 0.4)   // let the captions step's beat pass, then pin the step
-            model.tour = HowToUseTour(step: target)
-            if target == .copy {
-                await wait(0.8)
-                if let from = demoPosition("what I'm"), let to = demoPosition("saying?", end: true) {
-                    setSelection(CaptionSelection(anchor: from, focus: to))
-                }
-            }
+            if target.rawValue > TourStep.captions.rawValue || (target == .captions && followUp) { model.showTourExample() }
+            if target.rawValue >= TourStep.save.rawValue { model.demoSetState(.idle) }
+            if target.rawValue > TourStep.save.rawValue || (target == .save && followUp) { model.save() }
+            await wait(1.6)
+            if target == .holdBack { clearVeil() }
+            if target == .gear { showingVeilHint = false }
+            let phase: TourPhase = followUp ? .followUp : .waiting
+            model.tour = HowToUseTour(step: target, phase: phase)
             return
         }
         model.tour.begin()
-        await wait(3.5)
-        start()                                                   // step 1: Start captions
         await wait(3)
-        withAnimation { model.showTourExample() }                 // step 2: a caption appears (then the beat)
-        await wait(TourExample.captionBeatSeconds + 3.5)
-        stop()                                                    // step 3: X pauses
-        await wait(3.5)
-        withAnimation(.easeInOut(duration: 0.2)) { model.save() } // step 4: [ Save ] → [ ✔ ] → [ Saved ]
-        await wait(3.5)
-        if let from = demoPosition("what I'm") {                  // step 5: hold on words, stretch, Copy
-            setSelection(CaptionSelection(anchor: from, focus: CaptionPosition(lineID: from.lineID, offset: from.offset + 4)))
-            await wait(0.6)
-            if let to = demoPosition("saying?", end: true) { await demoExtend(to: to) }
-            await wait(1.4)
-            copySelection()
-        }
-        await wait(3.5)
-        model.tour.next()                                         // step 6: Done
+        start()                                                    // 1: Start captions
+        await wait(2.5)
+        withAnimation { model.showTourExample() }                  // 2: words appear, then "That's you."
+        await wait(TourTiming.captionSeenSeconds + TourTiming.followUpSeconds(for: .captions) + 0.6)
+        stop()                                                     // 3: the X pauses
+        await wait(3)
+        withAnimation(.easeInOut(duration: 0.2)) { model.save() }  // 4: [ Save ] -> [ Saved ], then "Saved."
+        await wait(1.2 + TourTiming.followUpSeconds(for: .save) + 0.6)
+        clearVeil()                                                // 5: a tap on the dim clears it
+        await wait(3)
+        bringBackVeil()                                            // 6: holding an empty spot brings it back
+        await wait(3)
+        model.tour.did(.openedSettings); go { $0.gearTapped() }    // 7: the gear, Settings fades in...
+        await wait(3)
+        model.tour.did(.closedSettings); go { $0.gearTapped() }    //    ...and the gear again comes back
+        await wait(4.5)
+        withAnimation(veilAnimation) { model.tour.did(.tappedDone) } // 8: [ Done ]
     }
 
     // MARK: copying (#107)
@@ -1164,13 +1195,11 @@ struct ContentView: View {
         UIPasteboard.general.string = selection.copyText(lines: model.stream.lines, speakerNames: model.speakerNames)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         clearSelection()
-        model.tour.did(.copied)
     }
 
     /// VoiceOver's "Copy" on a caption: the whole line, with its speaker, as the transcript export writes it.
     private func copyLine(_ line: CaptionLine) {
         UIPasteboard.general.string = TranscriptFormatter.speakerPrefix(for: line, speakerNames: model.speakerNames) + line.text
-        model.tour.did(.copied)
     }
 
     /// The two ends of the selection as carets in the caption viewport, or nil while either is off screen.
@@ -1310,7 +1339,7 @@ struct ContentView: View {
 
 /// Marks one caption (the newest spoken line) as the tour's caption target.
 private struct TourTargetIf: ViewModifier {
-    let target: TourTarget
+    let target: TourSpot
     let active: Bool
     func body(content: Content) -> some View {
         if active { content.tourTarget(target) } else { content }

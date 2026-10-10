@@ -18,7 +18,7 @@ import Foundation
 ///   -ClarityDemoSelect    a selection across three captions with its handles and, after half a second, Copy (#107)
 ///   -ClarityDemoPreset <id>   shows a color preset (e.g. night, paper)
 ///   -ClarityDemoLandscape rotates to landscape (simctl can't rotate)
-///   -ClarityDemoTour flow|1-6   the how-to-use tour (#108): the whole tour driven through the real model calls
+///   -ClarityDemoTour flow|1-8|2b|4b   the how-to-use tour v2 (#121): the whole tour done by a scripted user
 ///                         (simctl can't tap), or one step as a still
 ///   -ClarityDemoLaunch ordinary|first|fail   runs the real launch animation and first-run flow with a pretend system
 ///                         (#104): ordinary = everything ready; first = a slow speech download, then the warm-up,
@@ -76,7 +76,7 @@ enum DemoMode {
     static var flow: String? { value(after: "-ClarityDemoFlow") }
     static var preset: String? { value(after: "-ClarityDemoPreset") }
     static var launch: String? { value(after: "-ClarityDemoLaunch") }
-    /// `-ClarityDemoTour flow` plays the whole how-to-use tour; `-ClarityDemoTour <1-6>` shows one step (#108).
+    /// `-ClarityDemoTour flow` plays the whole tour; `<1-8>` pins one step, `2b`/`4b` a step's follow-up (#121).
     static var tour: String? { value(after: "-ClarityDemoTour") }
     static var show: String? { value(after: "-ClarityDemoShow") }
     static var settingsPush: String? { value(after: "-ClarityDemoSettingsPush") }
