@@ -16,6 +16,10 @@
 	     Empty in the repo; the app then offers the share sheet instead of Messages. -->
 	<key>SealFeedbackRecipient</key>
 	<string>$(SEAL_FEEDBACK_RECIPIENT)</string>
+	<!-- Lets the launch animation run at the display's full rate on ProMotion iPhones (120 Hz) instead of being
+	     held to 60 (#119). -->
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 	<!-- Bundled lettering fonts (#103): OpenDyslexic (the default) and Atkinson Hyperlegible, SIL OFL 1.1. -->
 	<key>UIAppFonts</key>
 	<array>

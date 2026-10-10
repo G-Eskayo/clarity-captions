@@ -226,9 +226,16 @@ struct RootView: View {
             await BetaFeedbackCenter.shared.ensureResolved()
             if launch == nil { BetaFeedbackCenter.shared.launchAnimationFinished(fullDance: false, barShown: false) }
         }
-        .task { await firstRun.refresh() }
+        .task {
+            await firstRun.refresh()
+            if setupDone { EngineWarmupHost.shared.allow() }
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await firstRun.refresh() } }
+        }
+        // Once there's nothing left to set up, the captioning engine loads behind the launch animation (#119).
+        .onChange(of: setupDone) { _, done in
+            if done { EngineWarmupHost.shared.allow() }
         }
         .onChange(of: setupNeedsCover) { _, needs in
             if needs && launch == nil { launch = UUID() }
@@ -236,4 +243,5 @@ struct RootView: View {
     }
 
     private var setupNeedsCover: Bool { firstRun.checked && firstRun.step.isAutomaticSetup && firstRun.problem == nil }
+    private var setupDone: Bool { firstRun.checked && firstRun.step == .done }
 }
