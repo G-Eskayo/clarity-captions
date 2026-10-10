@@ -18,6 +18,9 @@ import Foundation
 ///   -ClarityDemoSelect    a selection across three captions with its handles and, after half a second, Copy (#107)
 ///   -ClarityDemoPreset <id>   shows a color preset (e.g. night, paper)
 ///   -ClarityDemoLandscape rotates to landscape (simctl can't rotate)
+///   -ClarityDemoLaunch ordinary|first|fail   runs the real launch animation and first-run flow with a pretend system
+///                         (#104): ordinary = everything ready; first = a slow speech download, then the warm-up,
+///                         through the real SpeechDownload path; fail = the download stops partway, for Try again
 /// It feeds the same CaptionStream the real engine feeds, so what you see is the real caption view: speaker colours,
 /// names, line breaks and sound labels. No microphone, speech model or network is involved.
 enum DemoMode {
@@ -59,6 +62,45 @@ enum DemoMode {
     static var landscape: Bool { flag("-ClarityDemoLandscape") }
     static var flow: String? { value(after: "-ClarityDemoFlow") }
     static var preset: String? { value(after: "-ClarityDemoPreset") }
+    static var launch: String? { value(after: "-ClarityDemoLaunch") }
+    /// Caption-screen demos and the gummy screen go straight in, so their screenshots stay repeatable.
+    static var skipsLaunchAnimation: Bool { launch == nil && (isOn || gummyDemo) }
+
+    /// The pretend system behind `-ClarityDemoLaunch`, or nil (always nil in a shipped app).
+    static var launchDemoSystem: FirstRunSystem? {
+        #if DEBUG
+        guard let kind = launch else { return nil }
+        let state = LaunchDemoState(ready: kind == "ordinary")
+        return FirstRunSystem(
+            microphone: { .granted },
+            requestMicrophone: {},
+            speechModelInstalled: { state.installed },
+            speechSupport: { .supported },
+            hasSeenWelcome: { true },
+            markWelcomeSeen: {},
+            speakerModelWarm: { state.warm },
+            warmUpSpeakerModel: {
+                try? await Task.sleep(for: .seconds(3))
+                state.warm = true
+            },
+            speechDownload: SpeechDownload(install: { progress in
+                // Uneven like a real download: quick at first, a slower stretch, then done (about 7 s).
+                let points: [(Double, Double)] = [(0, 0), (3.5, 0.55), (5.25, 0.65), (7, 1)]
+                for i in 1..<points.count {
+                    let (t0, p0) = points[i - 1], (t1, p1) = points[i]
+                    for step in 1...Int((t1 - t0) * 10) {
+                        try await Task.sleep(for: .milliseconds(100))
+                        let p = p0 + (p1 - p0) * Double(step) / ((t1 - t0) * 10)
+                        if kind == "fail" && p >= 0.4 { throw URLError(.notConnectedToInternet) }
+                        progress(p)
+                    }
+                }
+                state.installed = true
+            }))
+        #else
+        return nil
+        #endif
+    }
 
     private static func value(after name: String) -> String? {
         #if DEBUG
@@ -154,3 +196,15 @@ extension CaptionModel {
         style = style.applying(preset)
     }
 }
+
+#if DEBUG
+/// What the pretend system behind `-ClarityDemoLaunch` has done so far.
+private final class LaunchDemoState: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _installed: Bool
+    private var _warm: Bool
+    init(ready: Bool) { _installed = ready; _warm = ready }
+    var installed: Bool { get { lock.withLock { _installed } } set { lock.withLock { _installed = newValue } } }
+    var warm: Bool { get { lock.withLock { _warm } } set { lock.withLock { _warm = newValue } } }
+}
+#endif
