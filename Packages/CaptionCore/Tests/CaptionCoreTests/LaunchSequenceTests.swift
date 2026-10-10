@@ -195,6 +195,35 @@ final class SealChoreographyTests: XCTestCase {
     }
 }
 
+/// The animation clock never skips the dance when frames stall (found on the simulator: the belly slide played unseen).
+final class LaunchAnimationClockTests: XCTestCase {
+    func testTheFirstFrameIsTimeZeroHoweverLateItIsDrawn() {
+        let clock = LaunchAnimationClock()
+        XCTAssertEqual(clock.advance(to: Date().addingTimeInterval(5)), 0)
+    }
+
+    func testSmoothFramesAdvanceByRealTime() {
+        let clock = LaunchAnimationClock(), t0 = Date()
+        clock.advance(to: t0)
+        for i in 1...60 { clock.advance(to: t0.addingTimeInterval(Double(i) / 60)) }
+        XCTAssertEqual(clock.now, 1, accuracy: 1e-6)
+    }
+
+    func testAStallPausesTheDanceInsteadOfSkippingIt() {
+        let clock = LaunchAnimationClock(), t0 = Date()
+        clock.advance(to: t0)
+        clock.advance(to: t0.addingTimeInterval(1.3))   // the main thread was busy for 1.3 s
+        XCTAssertEqual(clock.now, LaunchAnimationClock.maxStep, accuracy: 1e-6)
+    }
+
+    func testClockGoingBackwardsNeverRewinds() {
+        let clock = LaunchAnimationClock(), t0 = Date()
+        clock.advance(to: t0); clock.advance(to: t0.addingTimeInterval(0.04))
+        clock.advance(to: t0.addingTimeInterval(-10))
+        XCTAssertEqual(clock.now, 0.04, accuracy: 1e-6)
+    }
+}
+
 /// The splash's colours come from the chosen theme (#105's model), and the pool reads clearly on every dark theme.
 final class SealLaunchColorsTests: XCTestCase {
     private func style(_ p: CaptionPreset) -> CaptionStyle { CaptionStyle.standard.applying(p) }

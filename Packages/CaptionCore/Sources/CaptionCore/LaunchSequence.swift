@@ -68,6 +68,32 @@ public struct LaunchSequence: Equatable, Sendable {
     }
 }
 
+/// The animation's own clock: it only moves when a frame is actually drawn, and never jumps more than `maxStep` at a
+/// time. Found on the simulator (#104): the app's first second can block the main thread while iOS still shows the
+/// launch screen, and a wall clock then played the whole belly slide unseen. With this clock a hiccup pauses the
+/// dance instead of skipping it, and so does the app being in the background.
+public final class LaunchAnimationClock: @unchecked Sendable {
+    public static let maxStep: TimeInterval = 1.0 / 20
+    private let lock = NSLock()
+    private var last: Date?
+    private var elapsed: TimeInterval = 0
+
+    public init() {}
+
+    /// Seconds of animation so far, after moving to the frame drawn at `date`.
+    @discardableResult
+    public func advance(to date: Date) -> TimeInterval {
+        lock.withLock {
+            if let last { elapsed += min(Self.maxStep, max(0, date.timeIntervalSince(last))) }
+            last = date
+            return elapsed
+        }
+    }
+
+    /// Seconds of animation so far, without moving.
+    public var now: TimeInterval { lock.withLock { elapsed } }
+}
+
 /// How full the bar is, from the real first-run steps. A download reports a real percentage; the warm-up has none, so
 /// its part of the bar pulses until it finishes instead of pretending to move.
 public struct LaunchProgress: Equatable, Sendable {

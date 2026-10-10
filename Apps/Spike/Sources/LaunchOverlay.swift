@@ -17,7 +17,8 @@ struct LaunchOverlay: View {
     let onFinished: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var start = Date()
+    /// Moves only on drawn frames, so a startup stall never skips the belly slide (see LaunchAnimationClock).
+    @State private var clock = LaunchAnimationClock()
     @State private var readyAt: TimeInterval?
     @State private var setupKnown = false
     @State private var includesDownload = false
@@ -46,20 +47,19 @@ struct LaunchOverlay: View {
 
     var body: some View {
         TimelineView(.animation(paused: done)) { timeline in
-            let t = timeline.date.timeIntervalSince(start)
+            let t = clock.advance(to: timeline.date)
             Canvas { context, size in draw(in: &context, size: size, t: t) }
         }
         .ignoresSafeArea()
         .accessibilityElement()
         .accessibilityLabel(Text("Seal is getting ready"))
         .onAppear {
-            start = Date()
             noteSetup(firstRun.step)
             if isReady { readyAt = 0 }
             UIAccessibility.post(notification: .announcement, argument: String(localized: "Seal is getting ready"))
         }
         .onChange(of: isReady) { _, ready in
-            if ready && readyAt == nil { readyAt = Date().timeIntervalSince(start) }
+            if ready && readyAt == nil { readyAt = clock.now }
         }
         .onChange(of: firstRun.step) { _, step in noteSetup(step) }
         .task { await waitForEnd() }
@@ -74,7 +74,7 @@ struct LaunchOverlay: View {
     private func waitForEnd() async {
         while !Task.isCancelled {
             try? await Task.sleep(for: .milliseconds(50))
-            let t = Date().timeIntervalSince(start)
+            let t = clock.now
             if let readyAt, t >= sequence.end(readyAt: readyAt) {
                 done = true
                 print(String(format: "[launch] main screen %.2f s after the app started (animation %.2f s, ready at %.2f s, bar %@)",
