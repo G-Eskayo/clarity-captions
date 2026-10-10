@@ -47,6 +47,12 @@ public enum StatusWords {
     }
 
     /// Activity-aware headline: same for all activities except can't hear.
+    /// Stopped with a conversation still on screen reads "Paused" (#102): it resumes where it left off.
+    public static func headline(for state: CaptionState, hasConversation: Bool) -> String {
+        if case .idle = state, hasConversation { return String(localized: "Paused") }
+        return headline(for: state)
+    }
+
     public static func headline(for state: CaptionState, activity: ListeningActivity) -> String {
         guard case .listening = state else { return headline(for: state) }
         switch activity {

@@ -287,6 +287,17 @@
         }
       }
     },
+    "Conversation saved" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conversation saved"
+          }
+        }
+      }
+    },
     "Conversations will save automatically after each session." : {
       "extractionState": "manual",
       "localizations": {
@@ -397,6 +408,17 @@
         }
       }
     },
+    "Double tap to show the conversation" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Double tap to show the conversation"
+          }
+        }
+      }
+    },
     "Enter a custom name for this speaker" : {
       "extractionState": "manual",
       "localizations": {
@@ -503,6 +525,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hi! Let's get you set up."
+          }
+        }
+      }
+    },
+    "Hold on empty space to bring back Save and New" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hold on empty space to bring back Save and New"
           }
         }
       }
@@ -749,6 +782,17 @@
         }
       }
     },
+    "New" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New"
+          }
+        }
+      }
+    },
     "Night" : {
       "extractionState": "manual",
       "localizations": {
@@ -859,6 +903,28 @@
         }
       }
     },
+    "Paused" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paused"
+          }
+        }
+      }
+    },
+    "Paused conversation" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paused conversation"
+          }
+        }
+      }
+    },
     "Phone ringing" : {
       "extractionState": "manual",
       "localizations": {
@@ -965,6 +1031,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rounded"
+          }
+        }
+      }
+    },
+    "Save conversation" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save conversation"
           }
         }
       }
@@ -1090,6 +1167,17 @@
         }
       }
     },
+    "Show Save and New" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show Save and New"
+          }
+        }
+      }
+    },
     "Size" : {
       "extractionState": "manual",
       "localizations": {
@@ -1167,6 +1255,28 @@
         }
       }
     },
+    "Start a new conversation" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start a new conversation"
+          }
+        }
+      }
+    },
+    "Start a new conversation?" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start a new conversation?"
+          }
+        }
+      }
+    },
     "Start captions" : {
       "extractionState": "manual",
       "localizations": {
@@ -1240,6 +1350,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Captions stopped"
+          }
+        }
+      }
+    },
+    "Start new" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start new"
           }
         }
       }
@@ -1372,6 +1493,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Start again"
+          }
+        }
+      }
+    },
+    "This conversation isn't saved." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This conversation isn't saved."
           }
         }
       }

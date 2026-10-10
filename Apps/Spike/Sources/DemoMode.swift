@@ -9,6 +9,13 @@ import Foundation
 ///   -ClarityDemoSettingsSection idleStop   scrolls those settings to a section (simctl can't scroll)
 ///   -ClarityDemoTheme night  -ClarityDemoFont serif   start with this look
 ///   -ClarityDemoGummy     a screen of gummy buttons pressing by themselves
+///   -ClarityDemoPaused    pauses after the conversation: the dim with [ Save ] / [ New ] (#102)
+///   -ClarityDemoSaved     paused and saved: [ Saved ] in green
+///   -ClarityDemoVeilCleared  paused with the dim tapped away, and the hint
+///   -ClarityDemoFlow save|clear|new   plays a flow for screen recordings: pause, save, resume and pause again;
+///                         tap the dim away and hold to bring it back; [ New ] asking first
+///   -ClarityDemoPreset <id>   shows a color preset (e.g. night, paper)
+///   -ClarityDemoLandscape rotates to landscape (simctl can't rotate)
 /// It feeds the same CaptionStream the real engine feeds, so what you see is the real caption view: speaker colours,
 /// names, line breaks and sound labels. No microphone, speech model or network is involved.
 enum DemoMode {
@@ -28,8 +35,8 @@ enum DemoMode {
 
     /// `-ClarityDemoTheme <id>` and `-ClarityDemoFont <rawValue>`: start with this look (saved, like a user's choice),
     /// for screenshots of every theme and lettering. Debug builds only.
-    static var theme: CaptionPreset? { value("-ClarityDemoTheme").flatMap { id in CaptionPreset.all.first { $0.id == id } } }
-    static var font: CaptionFont? { value("-ClarityDemoFont").flatMap(CaptionFont.init(rawValue:)) }
+    static var theme: CaptionPreset? { value(after: "-ClarityDemoTheme").flatMap { id in CaptionPreset.all.first { $0.id == id } } }
+    static var font: CaptionFont? { value(after: "-ClarityDemoFont").flatMap(CaptionFont.init(rawValue:)) }
     /// `-ClarityDemoGummy`: a screen of gummy buttons that press and release by themselves (simctl can't tap).
     static var gummyDemo: Bool { flag("-ClarityDemoGummy") }
 
@@ -43,7 +50,14 @@ enum DemoMode {
         store.save(style)
     }
 
-    private static func value(_ name: String) -> String? {
+    static var paused: Bool { flag("-ClarityDemoPaused") || saved || veilCleared }
+    static var saved: Bool { flag("-ClarityDemoSaved") }
+    static var veilCleared: Bool { flag("-ClarityDemoVeilCleared") }
+    static var landscape: Bool { flag("-ClarityDemoLandscape") }
+    static var flow: String? { value(after: "-ClarityDemoFlow") }
+    static var preset: String? { value(after: "-ClarityDemoPreset") }
+
+    private static func value(after name: String) -> String? {
         #if DEBUG
         let args = ProcessInfo.processInfo.arguments
         guard let i = args.firstIndex(of: name), i + 1 < args.count else { return nil }
@@ -117,5 +131,23 @@ extension CaptionModel {
         case .line(let speaker, let text): stream.apply(text: text, isFinal: isFinal, speaker: speaker)
         case .sound(let kind): stream.insertSoundLabel(kind)
         }
+    }
+}
+
+extension CaptionModel {
+    /// Debug only: moves the screen between captioning and paused the way the real controller's states do.
+    func demoSetState(_ newState: CaptionState) {
+        handleCaptionStateChange(newState)
+    }
+
+    /// Debug only: a few more words after resuming, so the saved state visibly turns back into [ Save ].
+    func demoSay(_ text: String, speaker: Int) {
+        stream.apply(text: text, isFinal: true, speaker: speaker)
+    }
+
+    /// Debug only: applies `-ClarityDemoPreset <id>` for screenshots in each look.
+    func demoApplyPreset() {
+        guard let id = DemoMode.preset, let preset = CaptionPreset.all.first(where: { $0.id == id }) else { return }
+        style = style.applying(preset)
     }
 }
