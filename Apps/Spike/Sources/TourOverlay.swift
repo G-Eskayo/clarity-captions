@@ -49,6 +49,8 @@ struct TourOverlay: View {
     let step: TourStep
     /// The real control to spotlight; nil when it isn't on screen (e.g. Next before Start, so there's no X yet).
     let holeAnchor: Anchor<CGRect>?
+    /// Other controls the card must not cover, e.g. [ New ] under the spotlit [ Save ].
+    var keepClear: [Anchor<CGRect>] = []
     let style: CaptionStyle
     let canGoBack: Bool
     let isLast: Bool
@@ -63,7 +65,10 @@ struct TourOverlay: View {
     private var copy: TourCopy { TourCopy.for(step) }
 
     var body: some View {
-        GeometryReader { geo in
+        // The outer reader keeps the real safe-area insets; inside, the dim covers the whole screen.
+        GeometryReader { outer in
+            let insets = outer.safeAreaInsets
+            GeometryReader { geo in
             let spotlight = holeAnchor.map { geo[$0].insetBy(dx: -8, dy: -8) }
             ZStack(alignment: .topLeading) {
                 dim(size: geo.size, spotlight: spotlight)
@@ -77,20 +82,22 @@ struct TourOverlay: View {
                 }
                 skipButton
                     .frame(maxWidth: .infinity, alignment: .trailing)
-                    .padding(.top, geo.safeAreaInsets.top + 4)
+                    .padding(.top, insets.top + 4)
                     .padding(.trailing, 20)
                 card
                     .frame(maxWidth: min(geo.size.width - 40, 440))
                     .frame(maxWidth: .infinity)
                     .alignmentGuide(.top) { _ in 0 }
-                    .offset(y: cardY(in: geo, spotlight: spotlight))
+                    .offset(y: cardY(height: geo.size.height, insets: insets, spotlight: spotlight,
+                                     keepClear: keepClear.map { geo[$0] }))
                     .id(step)
                     .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.96)))
             }
             .animation(reduceMotion ? .easeInOut(duration: 0.2) : .snappy(duration: 0.35), value: spotlight)
             .animation(reduceMotion ? .easeInOut(duration: 0.2) : .snappy(duration: 0.35), value: step)
+            }
+            .ignoresSafeArea()
         }
-        .ignoresSafeArea()
     }
 
     /// The dim with the spotlight cut out. It never takes touches.
@@ -104,16 +111,19 @@ struct TourOverlay: View {
         .accessibilityHidden(true)
     }
 
-    private func corner(_ rect: CGRect) -> CGFloat { min(rect.height / 2, 22) }
+    /// A round control (X, the gear) gets a round spotlight; a wide one gets rounded corners.
+    private func corner(_ rect: CGRect) -> CGFloat {
+        abs(rect.width - rect.height) < 6 ? rect.height / 2 : min(rect.height / 2, 22)
+    }
 
-    /// The card sits above a spotlight in the lower half of the screen and below one in the upper half.
-    private func cardY(in geo: GeometryProxy, spotlight: CGRect?) -> CGFloat {
+    /// The card goes just below the spotlight when there's room (it keeps the words above it visible), otherwise
+    /// just above it, as for Start and X at the bottom (mock-up 09).
+    private func cardY(height: CGFloat, insets: EdgeInsets, spotlight: CGRect?, keepClear: [CGRect]) -> CGFloat {
         let estimatedHeight: CGFloat = 190
-        guard let spotlight else { return (geo.size.height - estimatedHeight) / 2 }
-        if spotlight.midY > geo.size.height / 2 {
-            return max(geo.safeAreaInsets.top + 52, spotlight.minY - 16 - estimatedHeight)
-        }
-        return min(spotlight.maxY + 16, geo.size.height - estimatedHeight - geo.safeAreaInsets.bottom)
+        guard let spotlight else { return (height - estimatedHeight) / 2 }
+        let below = keepClear.reduce(spotlight) { $0.union($1) }.maxY + 16
+        if below + estimatedHeight <= height - insets.bottom - 90 { return below }
+        return max(insets.top + 52, spotlight.minY - 16 - estimatedHeight)
     }
 
     private var skipButton: some View {

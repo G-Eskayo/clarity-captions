@@ -101,6 +101,8 @@ public enum TourExample {
     public static var text: String { String(localized: "Hi! Can you read what I'm saying?") }
     /// How long with no caption before the tour offers the example.
     public static let quietSeconds: Double = 6
+    /// After the first caption shows, how long the "Say something" card stays next to her words before moving on.
+    public static let captionBeatSeconds: Double = 2.5
 
     public static func offersExample(secondsWithoutCaption: Double, isCaptioning: Bool) -> Bool {
         isCaptioning && secondsWithoutCaption >= quietSeconds

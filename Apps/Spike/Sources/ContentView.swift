@@ -83,7 +83,7 @@ final class CaptionModel: ObservableObject {
             self.diag = u.diagnostics
             if !u.text.trimmingCharacters(in: .whitespaces).isEmpty {
                 self.tracker.recordSpeech(at: Date())
-                if u.isFinal { self.tour.did(.captionShown) }
+                if u.isFinal { self.reportCaptionShown() }
             }
         }
     }
@@ -175,7 +175,19 @@ final class CaptionModel: ObservableObject {
         let before = Set(stream.lines.map(\.id))
         stream.apply(text: TourExample.text, isFinal: true, speaker: 0)
         tourExampleIDs.formUnion(Set(stream.lines.map(\.id)).subtracting(before))
-        tour.did(.captionShown)
+        reportCaptionShown()
+    }
+
+    /// The captions step moves on a beat after the first caption, so she sees her words with the card first.
+    private var captionBeatPending = false
+    private func reportCaptionShown() {
+        guard tour.step == .captions, !captionBeatPending else { return }
+        captionBeatPending = true
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(TourExample.captionBeatSeconds))
+            captionBeatPending = false
+            tour.did(.captionShown)
+        }
     }
 
     /// After the tour: a conversation that is nothing but the example goes, so it never lingers or gets kept.
@@ -871,8 +883,11 @@ struct ContentView: View {
     @ViewBuilder
     private func tourLayer(_ anchors: [TourTarget: Anchor<CGRect>]) -> some View {
         if let step = model.tour.step {
+            let candidates = TourTarget.candidates(for: step)
+            let hole = candidates.first { anchors[$0] != nil }
             TourOverlay(step: step,
-                        holeAnchor: TourTarget.candidates(for: step).lazy.compactMap { anchors[$0] }.first,
+                        holeAnchor: hole.flatMap { anchors[$0] },
+                        keepClear: candidates.filter { $0 != hole }.compactMap { anchors[$0] },
                         style: style,
                         canGoBack: model.tour.canGoBack,
                         isLast: model.tour.isLastStep,
@@ -936,8 +951,9 @@ struct ContentView: View {
         if let n = DemoMode.tour.flatMap(Int.init), let target = TourStep(rawValue: n - 1) {
             // A still of one step, set up the way she'd reach it.
             if target.rawValue >= TourStep.captions.rawValue { model.demoSetState(.preparing); model.demoSetState(.listening) }
-            if target.rawValue >= TourStep.pause.rawValue { model.showTourExample() }
+            if target.rawValue >= TourStep.captions.rawValue { model.showTourExample() }
             if target.rawValue >= TourStep.saveOrNew.rawValue { model.demoSetState(.idle) }
+            await wait(TourExample.captionBeatSeconds + 0.4)   // let the captions step's beat pass, then pin the step
             model.tour = HowToUseTour(step: target)
             if target == .copy {
                 await wait(0.8)
@@ -948,15 +964,15 @@ struct ContentView: View {
             return
         }
         model.tour.begin()
-        await wait(3)
+        await wait(3.5)
         start()                                                   // step 1: Start captions
-        await wait(2.5)
-        withAnimation { model.showTourExample() }                 // step 2: a caption appears
         await wait(3)
+        withAnimation { model.showTourExample() }                 // step 2: a caption appears (then the beat)
+        await wait(TourExample.captionBeatSeconds + 3.5)
         stop()                                                    // step 3: X pauses
-        await wait(3)
-        withAnimation(.easeInOut(duration: 0.2)) { model.save() } // step 4: [ Save ]
-        await wait(3)
+        await wait(3.5)
+        withAnimation(.easeInOut(duration: 0.2)) { model.save() } // step 4: [ Save ] → [ ✔ ] → [ Saved ]
+        await wait(3.5)
         if let from = demoPosition("what I'm") {                  // step 5: hold on words, stretch, Copy
             setSelection(CaptionSelection(anchor: from, focus: CaptionPosition(lineID: from.lineID, offset: from.offset + 4)))
             await wait(0.6)
@@ -964,7 +980,7 @@ struct ContentView: View {
             await wait(1.4)
             copySelection()
         }
-        await wait(3)
+        await wait(3.5)
         model.tour.next()                                         // step 6: Done
     }
 
