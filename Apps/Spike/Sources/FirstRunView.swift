@@ -258,6 +258,17 @@ struct RootView: View {
             await firstRun.refresh()
             if setupDone { EngineWarmupHost.shared.allow() }
         }
+        #if DEBUG
+        .task {
+            // -ClarityDemoLaunch firstrun (#122 evidence; simctl can't tap): tap Set up, then Continue, as she would.
+            guard DemoMode.launch == "firstrun" else { return }
+            for step in [FirstRunStep.welcome, .microphone] {
+                while !(firstRun.step == step && launch == nil) { try? await Task.sleep(for: .milliseconds(100)) }
+                try? await Task.sleep(for: .seconds(2.5))
+                firstRun.primaryTapped()
+            }
+        }
+        #endif
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await firstRun.refresh() } }
         }
