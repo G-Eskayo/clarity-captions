@@ -82,7 +82,9 @@ final class SpeechSupportTests: XCTestCase {
     func testTheDeadEndHasNoButtonAndPlainWords() {
         let copy = FirstRunCopy.for(.unsupported)
         XCTAssertNil(copy.button, "nothing to tap: there is no fix on this device")
-        XCTAssertTrue(copy.title.lowercased().contains("device"))
+        // Approved wording (#120): says plainly that this phone can't run it, and which ones can.
+        XCTAssertTrue(copy.title.lowercased().contains("can't run"))
+        XCTAssertTrue(copy.message.contains("iPhone 12"))
     }
 }
 

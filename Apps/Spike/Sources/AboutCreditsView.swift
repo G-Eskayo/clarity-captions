@@ -1,8 +1,9 @@
 import CaptionCore
 import SwiftUI
 
-/// Third-party credits, on the one screen (#118; #117 "credits": the same borderless style as the saved list, fading
-/// in on the same screen). Plain blocks with one thin line between them; no grey boxes, no system bar.
+/// Third-party credits on the one screen, as approved in #120 (mock-up round3/04): a short intro, then a name and one
+/// line per entry with one thin line between them, and the full license texts one tap further. No boxes, no links per
+/// entry; every bundled work is credited in full on the license page (CreditsEntry, tested).
 struct CreditsPage: View {
     let style: CaptionStyle
     let onBack: () -> Void
@@ -13,33 +14,25 @@ struct CreditsPage: View {
             PageHeader(style: style, title: String(localized: "Credits"), backTitle: String(localized: "Settings"), onBack: onBack)
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("This app uses the following third-party libraries and models.")
+                    Text(CreditsEntry.intro)
                         .font(.body)
                         .foregroundStyle(mutedColor(style))
                         .padding(.top, 18)
-                        .padding(.bottom, 14)
-                    ForEach(ThirdPartyNotice.all) { notice in
-                        ThinRule(style: style)
-                        VStack(alignment: .leading, spacing: 8) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(notice.name).font(.headline.weight(.heavy))
-                                Text(notice.licenseName).font(.footnote).foregroundStyle(mutedColor(style))
-                            }
-                            Text(notice.note).font(.subheadline).foregroundStyle(mutedColor(style))
-                            HStack(spacing: 20) {
-                                Link("View license", destination: notice.licenseURL)
-                                if let source = notice.sourceURL { Link("View source", destination: source) }
-                            }
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(style.gear.color)
+                        .padding(.bottom, 10)
+                    ForEach(Array(CreditsEntry.all.enumerated()), id: \.element.id) { index, entry in
+                        if index > 0 { ThinRule(style: style) }
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(verbatim: entry.name).font(.headline.weight(.heavy))
+                            Text(entry.line).font(.subheadline).foregroundStyle(mutedColor(style))
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 14)
+                        .padding(.vertical, 12)
+                        .accessibilityElement(children: .combine)
                     }
                     ThinRule(style: style)
-                    // The complete license text ships inside the app, so it can be read with no network.
+                    // The complete license texts ship inside the app, so they can be read with no network.
                     Button(action: onLicenseText) {
-                        Text(verbatim: String(localized: "Full license text") + " ›")
+                        Text(verbatim: String(localized: "Full license texts") + " ›")
                             .font(.body.weight(.bold))
                             .foregroundStyle(style.gear.color)
                             .frame(minHeight: 48)

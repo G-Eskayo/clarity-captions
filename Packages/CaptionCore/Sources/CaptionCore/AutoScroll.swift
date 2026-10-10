@@ -10,4 +10,10 @@ public enum AutoScroll {
         if contentHeight <= viewportHeight { return true }
         return offsetY + viewportHeight >= contentHeight - tolerance
     }
+
+    /// "Jump to latest" shows only after she scrolls back while captions keep coming, and goes once she's at the
+    /// newest line again (mock-up round3/04, approved in #120 as A: retro words).
+    public static func showsJumpToLatest(following: Bool) -> Bool { !following }
+    /// The word inside the retro brackets: [ ↓ Latest ].
+    public static var jumpToLatestWord: String { "↓ " + String(localized: "Latest") }
 }

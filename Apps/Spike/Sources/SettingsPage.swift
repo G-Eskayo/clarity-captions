@@ -88,7 +88,8 @@ struct SettingsPage: View {
                         .font(.title2)
                         .foregroundStyle(style.gear.color)
                         .frame(width: 44, height: 44)
-                        .background(softFill, in: Circle())
+                        // Icon only, in the theme's gear color, never a background (owner's rule, #96); the title says
+                        // this is Settings.
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)

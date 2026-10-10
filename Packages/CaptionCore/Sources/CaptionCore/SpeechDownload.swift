@@ -9,9 +9,9 @@ public enum DownloadProblem: Equatable, Sendable {
 
     public var message: String {
         switch self {
-        case .offline: String(localized: "I need the internet once to finish setting up. Turn on Wi-Fi, then tap Try again.")
-        case .stalled: String(localized: "The download stopped moving. Check that Wi-Fi is on, then tap Try again.")
-        case .failed: String(localized: "I couldn't finish the download. Check that Wi-Fi is on, then tap Try again.")
+        case .offline: String(localized: "Seal needs the internet once, for Apple's English speech files. Turn on Wi-Fi and try again.")
+        case .stalled: String(localized: "The download stopped moving. Check that Wi-Fi is on and try again.")
+        case .failed: String(localized: "Seal couldn't finish the download. Check that Wi-Fi is on and try again.")
         }
     }
 

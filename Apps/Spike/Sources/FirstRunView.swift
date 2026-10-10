@@ -51,6 +51,8 @@ final class FirstRunModel: ObservableObject {
     @Published var step: FirstRunStep = .welcome
     @Published var progress = 0.0
     @Published var problem: String?
+    /// Which download failure, when the speech download stopped: one screen, the reason on its second line (#122).
+    @Published var downloadProblem: DownloadProblem?
     /// True once there is nothing left to set up, and the main screen can take over.
     @Published var finished = false
     /// True once the facts have been read at least once, so `step` is real rather than the starting guess.
@@ -84,12 +86,12 @@ final class FirstRunModel: ObservableObject {
         guard !working else { return }
         switch step {
         case .speechModel:
-            working = true; problem = nil; progress = 0
+            working = true; problem = nil; downloadProblem = nil; progress = 0
             let startTime = Date()
             // Always ends: installed, or plain words and Try again -- never a spinner that runs forever (#81).
             switch await system.speechDownload.run(onProgress: { p in Task { @MainActor in self.progress = p } }) {
             case .installed: break
-            case .failed(let why): problem = why.message
+            case .failed(let why): problem = why.message; downloadProblem = why
             case .alreadyRunning: working = false; return
             }
             if problem == nil {
@@ -131,67 +133,93 @@ final class FirstRunModel: ObservableObject {
         }
     }
 
-    func retry() { problem = nil; Task { await refresh() } }
+    func retry() { problem = nil; downloadProblem = nil; Task { await refresh() } }
 }
 
+/// First run in the v1 look (#122, approved in #120, mock-up round3/03): the chosen theme's background, plain words,
+/// the gummy button only where there's something to do, and a fade from one screen to the next. No icons, no boxes.
 struct FirstRunView: View {
     @ObservedObject var model: FirstRunModel
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private let style = CaptionStyleStore().load()
+
+    /// What this screen says: a stopped download gets its own words, with the reason on the second line.
+    private var copy: FirstRunCopy {
+        if model.step == .speechModel, let why = model.downloadProblem { return FirstRunCopy.downloadStopped(why) }
+        return FirstRunCopy.for(model.step)
+    }
+
+    /// Changes whenever the words change, so the old screen fades out and the new one fades in.
+    private var screenID: String { "\(model.step)-\(model.problem ?? "")" }
 
     var body: some View {
-        let copy = FirstRunCopy.for(model.step)
         let compact = verticalSizeClass == .compact
-        // Scrolls when sideways (landscape is short), and fills the screen otherwise.
-        GeometryReader { geo in ScrollView { VStack(spacing: compact ? 14 : 28) {
-            Spacer()
-            // A download or warm-up runs behind the launch animation (#104); this screen only shows them when one
-            // stopped, with Try again.
-            Image(systemName: symbol)
-                .font(.system(size: compact ? 36 : 72))
-                .foregroundStyle(.white)
-                .frame(width: compact ? 72 : 150, height: compact ? 72 : 150)
-                .background(Color("LaunchBackground"), in: Circle())
-                .accessibilityHidden(true)
-            Text(copy.title).font(.largeTitle.bold()).multilineTextAlignment(.center)
-            Text(copy.message).font(.title3).multilineTextAlignment(.center).foregroundStyle(.secondary)
-            if model.step == .speechModel && model.problem == nil {
-                ProgressView(value: model.progress).padding(.horizontal, 40)
-                Text("\(Int(model.progress * 100))%").font(.headline).monospacedDigit()
-            } else if model.step == .speakerModel && model.problem == nil {
-                ProgressView().controlSize(.large)
+        ZStack {
+            style.background.color.ignoresSafeArea()
+            // Scrolls when sideways (landscape is short), and fills the screen otherwise.
+            GeometryReader { geo in
+                ScrollView {
+                    screen(compact: compact)
+                        .frame(maxWidth: .infinity, minHeight: geo.size.height)
+                        .padding(.horizontal, 24)
+                        .id(screenID)
+                        .transition(.opacity)
+                }
+                .scrollBounceBehavior(.basedOnSize)
             }
-            if let problem = model.problem {
-                Text(problem).font(.headline).foregroundStyle(.red).multilineTextAlignment(.center)
-                bigButton("Try again") { model.retry() }
-            } else if let button = copy.button {
-                bigButton(button) { model.primaryTapped() }
-            }
-            Spacer()
         }
-        .frame(maxWidth: .infinity, minHeight: geo.size.height)
-        .padding(24) }
-        .scrollBounceBehavior(.basedOnSize)
+        .foregroundStyle(style.text.color)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: screenID)
         .onChange(of: model.step) { _, newStep in
             UIAccessibility.post(notification: .screenChanged, argument: FirstRunCopy.for(newStep).title)
         }
-        }
     }
 
+    private func screen(compact: Bool) -> some View {
+        let copy = copy
+        return VStack(spacing: 0) {
+            Spacer(minLength: compact ? 16 : 40)
+            VStack(spacing: compact ? 8 : 12) {
+                Text(copy.title)
+                    .font(.title.bold())
+                    .multilineTextAlignment(.center)
+                    .accessibilityAddTraits(.isHeader)
+                Text(copy.message)
+                    .font(.title3)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(mutedColor(style))
+                // A download or warm-up runs behind the launch animation (#104, #119); these only show when nothing
+                // covers it, in the theme's colors.
+                if model.problem == nil, model.step == .speechModel {
+                    ProgressView(value: model.progress)
+                        .tint(style.gear.color)
+                        .padding(.horizontal, 40)
+                        .padding(.top, 12)
+                    Text("\(Int(model.progress * 100))%").font(.headline).monospacedDigit().foregroundStyle(mutedColor(style))
+                } else if model.problem == nil, model.step == .speakerModel {
+                    ProgressView().tint(style.gear.color).padding(.top, 12)
+                } else if let problem = model.problem, model.downloadProblem == nil {
+                    // The warm-up stopped (not a download): its reason, under the step's own words.
+                    Text(problem).font(.title3).multilineTextAlignment(.center).foregroundStyle(mutedColor(style))
+                }
+            }
+            Spacer(minLength: compact ? 16 : 40)
+            if model.problem != nil {
+                bigButton(String(localized: "Try again")) { model.retry() }
+            } else if let button = copy.button {
+                bigButton(button) { model.primaryTapped() }
+            }
+        }
+        .padding(.bottom, compact ? 12 : 24)
+    }
+
+    /// The approved button A (#105, #113): the same gummy pill as Start captions.
     private func bigButton(_ title: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) { Text(title).font(.title2.bold()).frame(maxWidth: .infinity, minHeight: 72) }
-            .buttonStyle(.borderedProminent)
-    }
-
-    private var symbol: String {
-        switch model.step {
-        case .unsupported: "exclamationmark.bubble.fill"
-        case .welcome: "hand.wave.fill"
-        case .microphone: "mic.fill"
-        case .microphoneDenied: "mic.slash.fill"
-        case .speechModel: "arrow.down.circle.fill"
-        case .speakerModel: "waveform.circle.fill"
-        case .done: "checkmark.circle.fill"
+        Button(action: action) {
+            Text(title).font(.title3.bold()).frame(maxWidth: .infinity, minHeight: 60)
         }
+        .buttonStyle(GummyButtonStyle(style: style))
     }
 }
 
@@ -230,6 +258,17 @@ struct RootView: View {
             await firstRun.refresh()
             if setupDone { EngineWarmupHost.shared.allow() }
         }
+        #if DEBUG
+        .task {
+            // -ClarityDemoLaunch firstrun (#122 evidence; simctl can't tap): tap Set up, then Continue, as she would.
+            guard DemoMode.launch == "firstrun" else { return }
+            for step in [FirstRunStep.welcome, .microphone] {
+                while !(firstRun.step == step && launch == nil) { try? await Task.sleep(for: .milliseconds(100)) }
+                try? await Task.sleep(for: .seconds(2.5))
+                firstRun.primaryTapped()
+            }
+        }
+        #endif
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await firstRun.refresh() } }
         }

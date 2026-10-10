@@ -22,7 +22,9 @@ import Foundation
 ///                         (simctl can't tap), or one step as a still
 ///   -ClarityDemoLaunch ordinary|first|fail   runs the real launch animation and first-run flow with a pretend system
 ///                         (#104): ordinary = everything ready; first = a slow speech download, then the warm-up,
-///                         through the real SpeechDownload path; fail = the download stops partway, for Try again
+///                         through the real SpeechDownload path; fail = the download stops partway, for Try again;
+///                         welcome / microphone / micdenied / unsupported open on that first-run screen; firstrun taps
+///                         through welcome and microphone by itself, then setup runs behind the launch (#122)
 ///   -ClarityDemoBeta      behave as a TestFlight install (ADR 0023): rating card, Settings' Test version section
 ///   -ClarityDemoBetaSeed  with four recorded conversations to send (measurements only), as in mock-up 04
 ///   -ClarityDemoBetaCard  paused, with the rating card up (mock-up 01); -ClarityDemoBetaNote with a note open (02)
@@ -97,12 +99,20 @@ enum DemoMode {
         guard let kind = launch else { return nil }
         let state = LaunchDemoState(ready: kind == "ordinary")
         return FirstRunSystem(
-            microphone: { kind == "welcome" ? .undetermined : kind == "micdenied" ? .denied : .granted },
-            requestMicrophone: {},
+            // "microphone" opens on the microphone screen; "firstrun" walks welcome → microphone → setup (#122 evidence).
+            microphone: {
+                switch kind {
+                case "welcome": .undetermined
+                case "micdenied": .denied
+                case "microphone", "firstrun": state.micGranted ? .granted : .undetermined
+                default: .granted
+                }
+            },
+            requestMicrophone: { state.micGranted = true },
             speechModelInstalled: { state.installed },
             speechSupport: { kind == "unsupported" ? .unsupportedDevice : .supported },
-            hasSeenWelcome: { kind != "welcome" },
-            markWelcomeSeen: {},
+            hasSeenWelcome: { kind == "welcome" ? false : kind == "firstrun" ? state.welcomeSeen : true },
+            markWelcomeSeen: { state.welcomeSeen = true },
             speakerModelWarm: { state.warm },
             warmUpSpeakerModel: {
                 try? await Task.sleep(for: .seconds(3))
@@ -228,7 +238,11 @@ private final class LaunchDemoState: @unchecked Sendable {
     private let lock = NSLock()
     private var _installed: Bool
     private var _warm: Bool
+    private var _welcomeSeen = false
+    private var _micGranted = false
     init(ready: Bool) { _installed = ready; _warm = ready }
+    var welcomeSeen: Bool { get { lock.withLock { _welcomeSeen } } set { lock.withLock { _welcomeSeen = newValue } } }
+    var micGranted: Bool { get { lock.withLock { _micGranted } } set { lock.withLock { _micGranted = newValue } } }
     var installed: Bool { get { lock.withLock { _installed } } set { lock.withLock { _installed = newValue } } }
     var warm: Bool { get { lock.withLock { _warm } } set { lock.withLock { _warm = newValue } } }
 }

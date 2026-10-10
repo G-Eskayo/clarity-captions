@@ -89,6 +89,17 @@
         }
       }
     },
+    "Abbie Gonzalez. Bitstream Vera license." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abbie Gonzalez. Bitstream Vera license."
+          }
+        }
+      }
+    },
     "Add a note" : {
       "extractionState": "manual",
       "localizations": {
@@ -140,17 +151,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "All set!"
-          }
-        }
-      }
-    },
-    "Almost there! This is a one-time warm-up so you never wait later." : {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Almost there! This is a one-time warm-up so you never wait later."
           }
         }
       }
@@ -265,6 +265,17 @@
         }
       }
     },
+    "Braille Institute. SIL Open Font License." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Braille Institute. SIL Open Font License."
+          }
+        }
+      }
+    },
     "Bright" : {
       "extractionState": "manual",
       "localizations": {
@@ -287,24 +298,13 @@
         }
       }
     },
-    "Captions need a newer iPhone or iPad that can turn speech into words by itself. Sorry about that!" : {
+    "Captions need it. Open Settings and turn on Microphone for Seal." : {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Captions need a newer iPhone or iPad that can turn speech into words by itself. Sorry about that!"
-          }
-        }
-      }
-    },
-    "Captions need the microphone. Tap the button, then switch Microphone on." : {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Captions need the microphone. Tap the button, then switch Microphone on."
+            "value": "Captions need it. Open Settings and turn on Microphone for Seal."
           }
         }
       }
@@ -672,13 +672,24 @@
         }
       }
     },
-    "Full license text" : {
+    "Full license texts" : {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Full license text"
+            "value": "Full license texts"
+          }
+        }
+      }
+    },
+    "Getting ready" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Getting ready"
           }
         }
       }
@@ -690,17 +701,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Getting ready…"
-          }
-        }
-      }
-    },
-    "Getting ready to tell voices apart" : {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Getting ready to tell voices apart"
           }
         }
       }
@@ -749,17 +749,6 @@
         }
       }
     },
-    "Hi! Let's get you set up." : {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hi! Let's get you set up."
-          }
-        }
-      }
-    },
     "Hold on empty space to bring back Save and New" : {
       "extractionState": "manual",
       "localizations": {
@@ -804,50 +793,6 @@
         }
       }
     },
-    "I can't hear yet" : {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "I can't hear yet"
-          }
-        }
-      }
-    },
-    "I couldn't finish the download. Check that Wi-Fi is on, then tap Try again." : {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "I couldn't finish the download. Check that Wi-Fi is on, then tap Try again."
-          }
-        }
-      }
-    },
-    "I need the internet once to finish setting up. Turn on Wi-Fi, then tap Try again." : {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "I need the internet once to finish setting up. Turn on Wi-Fi, then tap Try again."
-          }
-        }
-      }
-    },
-    "I need to hear the room" : {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "I need to hear the room"
-          }
-        }
-      }
-    },
     "I can't hear anything" : {
       "extractionState": "manual",
       "localizations": {
@@ -870,13 +815,24 @@
         }
       }
     },
-    "I'll help you follow conversations by showing what people say. This takes about a minute." : {
+    "It all happens on this phone. Setup takes about a minute." : {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "I'll help you follow conversations by showing what people say. This takes about a minute."
+            "value": "It all happens on this phone. Setup takes about a minute."
+          }
+        }
+      }
+    },
+    "It needs an iPhone 12 or newer, or an iPad with an A14 chip or newer." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It needs an iPhone 12 or newer, or an iPad with an A14 chip or newer."
           }
         }
       }
@@ -958,6 +914,17 @@
         }
       }
     },
+    "Latest" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Latest"
+          }
+        }
+      }
+    },
     "Laughter" : {
       "extractionState": "manual",
       "localizations": {
@@ -987,17 +954,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Learning English"
-          }
-        }
-      }
-    },
-    "Let's go" : {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Let's go"
           }
         }
       }
@@ -1185,17 +1141,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nothing is lost. Start captions carries on where you left off."
-          }
-        }
-      }
-    },
-    "On the next screen, tap Allow so I can turn speech into words. Everything stays on your phone." : {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "On the next screen, tap Allow so I can turn speech into words. Everything stays on your phone."
           }
         }
       }
@@ -1464,6 +1409,72 @@
         }
       }
     },
+    "Seal couldn't finish the download. Check that Wi-Fi is on and try again." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seal couldn't finish the download. Check that Wi-Fi is on and try again."
+          }
+        }
+      }
+    },
+    "Seal is built on free, open work by these people." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seal is built on free, open work by these people."
+          }
+        }
+      }
+    },
+    "Seal is setting up on this phone. It takes a moment, once." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seal is setting up on this phone. It takes a moment, once."
+          }
+        }
+      }
+    },
+    "Seal needs the internet once, for Apple's English speech files. Turn on Wi-Fi and try again." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seal needs the internet once, for Apple's English speech files. Turn on Wi-Fi and try again."
+          }
+        }
+      }
+    },
+    "Seal needs the microphone." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seal needs the microphone."
+          }
+        }
+      }
+    },
+    "Seal shows what people around you are saying." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seal shows what people around you are saying."
+          }
+        }
+      }
+    },
     "Search" : {
       "extractionState": "manual",
       "localizations": {
@@ -1548,6 +1559,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Seal tells voices apart as people talk."
+          }
+        }
+      }
+    },
+    "Set up" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set up"
           }
         }
       }
@@ -1702,6 +1724,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Speaker unknown"
+          }
+        }
+      }
+    },
+    "Speech to text, on this phone." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speech to text, on this phone."
           }
         }
       }
@@ -1882,6 +1915,17 @@
         }
       }
     },
+    "Tap Allow on the next screen. What it hears stays on this phone." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap Allow on the next screen. What it hears stays on this phone."
+          }
+        }
+      }
+    },
     "Tap Start captions" : {
       "extractionState": "manual",
       "localizations": {
@@ -1911,6 +1955,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tap X to pause"
+          }
+        }
+      }
+    },
+    "Telling voices apart. Apache 2.0." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Telling voices apart. Apache 2.0."
           }
         }
       }
@@ -1948,13 +2003,24 @@
         }
       }
     },
-    "The download stopped moving. Check that Wi-Fi is on, then tap Try again." : {
+    "The download didn't finish." : {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The download stopped moving. Check that Wi-Fi is on, then tap Try again."
+            "value": "The download didn't finish."
+          }
+        }
+      }
+    },
+    "The download stopped moving. Check that Wi-Fi is on and try again." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The download stopped moving. Check that Wi-Fi is on and try again."
           }
         }
       }
@@ -1981,6 +2047,17 @@
         }
       }
     },
+    "The microphone is off." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The microphone is off."
+          }
+        }
+      }
+    },
     "The speaker-labeling model is missing from this build." : {
       "extractionState": "manual",
       "localizations": {
@@ -1992,6 +2069,17 @@
         }
       }
     },
+    "The voice model. CC BY 4.0." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The voice model. CC BY 4.0."
+          }
+        }
+      }
+    },
     "Third-party credits" : {
       "extractionState": "manual",
       "localizations": {
@@ -1999,17 +2087,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Third-party credits"
-          }
-        }
-      }
-    },
-    "This app uses the following third-party libraries and models." : {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This app uses the following third-party libraries and models."
           }
         }
       }
@@ -2047,17 +2124,6 @@
         }
       }
     },
-    "This device can't show captions" : {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This device can't show captions"
-          }
-        }
-      }
-    },
     "Seal is getting ready" : {
       "extractionState": "manual",
       "localizations": {
@@ -2076,6 +2142,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "This one isn't saved."
+          }
+        }
+      }
+    },
+    "This phone can't run Seal." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This phone can't run Seal."
           }
         }
       }
