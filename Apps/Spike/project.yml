@@ -43,6 +43,10 @@ targets:
       #  The package's latency test generates its own audio. Re-add this only together with a committed fixture.)
     dependencies:
       - package: CaptionCore
+    # Beta feedback recipient (ADR 0023): set in the gitignored Beta.xcconfig.local, never committed.
+    configFiles:
+      Debug: Beta.xcconfig
+      Release: Beta.xcconfig
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.gileskayo.captions

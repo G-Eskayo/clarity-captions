@@ -280,6 +280,11 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
         if segmentStart != nil { leftWhileCaptioning = true }
     }
 
+    /// Back on screen with captions still running: she didn't leave the conversation after all.
+    public mutating func backWhileCaptioning() {
+        if segmentStart != nil { leftWhileCaptioning = false }
+    }
+
     /// A cold launch restored this conversation: captions were cut off by the app closing.
     public mutating func restoredAfterAppClosed(at date: Date) {
         if segmentStart != nil {

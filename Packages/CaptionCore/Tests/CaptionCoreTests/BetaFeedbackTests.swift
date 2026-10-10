@@ -241,6 +241,17 @@ final class BetaFeedbackTests: XCTestCase {
                                                   hasConversation: true, isCaptioning: false))
     }
 
+    func testComingBackWhileStillCaptioningMeansHerLaterStopIsStillHers() {
+        var r = conversation()
+        r.leftMidConversation()
+        r.backWhileCaptioning()
+        r.captioningStopped(at: at(60), battery: nil, ending: .userStop)
+        XCTAssertFalse(RatingCardTiming.shouldShow(event: .returnedToConversation, ending: r.ending,
+                                                   leftWhileCaptioning: r.leftWhileCaptioning, alreadyAsked: r.asked,
+                                                   hasConversation: true, isCaptioning: false),
+                       "she came back, kept captioning, then pressed Stop herself: wait for [ New ]")
+    }
+
     func testLeavingWhilePausedIsNotLeavingMidConversation() {
         var r = conversation()
         r.captioningStopped(at: at(30), battery: nil, ending: .userStop)

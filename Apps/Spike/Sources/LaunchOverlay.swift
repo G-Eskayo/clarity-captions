@@ -15,6 +15,10 @@ enum LaunchClock {
 struct LaunchOverlay: View {
     @ObservedObject var firstRun: FirstRunModel
     let onFinished: () -> Void
+    /// How the last launch went, for the beta measurements (ADR 0023): the full dance (not Reduce Motion's fade) and
+    /// whether the progress bar showed.
+    static var lastFullDance = false
+    static var lastBarShown = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Moves only on drawn frames, so a startup stall never skips the belly slide (see LaunchAnimationClock).
@@ -79,6 +83,8 @@ struct LaunchOverlay: View {
                 done = true
                 print(String(format: "[launch] main screen %.2f s after the app started (animation %.2f s, ready at %.2f s, bar %@)",
                              Date().timeIntervalSince(LaunchClock.start), t, readyAt, setupKnown ? "shown" : "not shown"))
+                Self.lastFullDance = !reduceMotion
+                Self.lastBarShown = setupKnown
                 onFinished()
                 return
             }

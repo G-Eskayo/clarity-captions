@@ -1,6 +1,28 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "%lld conversations" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld conversations"
+          }
+        }
+      }
+    },
+    "%lld conversations since your last report. Seal never sends what anyone said, any audio, or names." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld conversations since your last report. Seal never sends what anyone said, any audio, or names."
+          }
+        }
+      }
+    },
     ", default" : {
       "extractionState": "manual",
       "localizations": {
@@ -63,6 +85,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aa"
+          }
+        }
+      }
+    },
+    "Add a note" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add a note"
+          }
+        }
+      }
+    },
+    "After a conversation, Seal asks how it went. It also keeps measurements like caption lag and battery." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "After a conversation, Seal asks how it went. It also keeps measurements like caption lag and battery."
           }
         }
       }
@@ -243,6 +287,17 @@
         }
       }
     },
+    "Choose a number first" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a number first"
+          }
+        }
+      }
+    },
     "Classic" : {
       "extractionState": "manual",
       "localizations": {
@@ -283,6 +338,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Continue"
+          }
+        }
+      }
+    },
+    "Continue to Messages" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continue to Messages"
           }
         }
       }
@@ -496,6 +562,17 @@
         }
       }
     },
+    "Every word" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Every word"
+          }
+        }
+      }
+    },
     "Fixture or model missing" : {
       "extractionState": "manual",
       "localizations": {
@@ -628,6 +705,17 @@
         }
       }
     },
+    "How well could you follow the conversation?" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How well could you follow the conversation?"
+          }
+        }
+      }
+    },
     "I can't hear yet" : {
       "extractionState": "manual",
       "localizations": {
@@ -701,6 +789,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "I'll help you follow conversations by showing what people say. This takes about a minute."
+          }
+        }
+      }
+    },
+    "It never keeps what anyone said." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It never keeps what anyone said."
           }
         }
       }
@@ -943,6 +1042,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "No one is talking right now"
+          }
+        }
+      }
+    },
+    "Not at all" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not at all"
           }
         }
       }
@@ -1233,6 +1343,17 @@
         }
       }
     },
+    "Send feedback to Gil" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send feedback to Gil"
+          }
+        }
+      }
+    },
     "Serif" : {
       "extractionState": "manual",
       "localizations": {
@@ -1361,6 +1482,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Size"
+          }
+        }
+      }
+    },
+    "Skip" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skip"
           }
         }
       }
@@ -1651,6 +1783,39 @@
         }
       }
     },
+    "Test version" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Test version"
+          }
+        }
+      }
+    },
+    "TestFlight only" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TestFlight only"
+          }
+        }
+      }
+    },
+    "Thanks for testing Seal" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thanks for testing Seal"
+          }
+        }
+      }
+    },
     "The download stopped moving. Check that Wi-Fi is on, then tap Try again." : {
       "extractionState": "manual",
       "localizations": {
@@ -1849,6 +2014,17 @@
         }
       }
     },
+    "What will be sent" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What will be sent"
+          }
+        }
+      }
+    },
     "Words and names" : {
       "extractionState": "manual",
       "localizations": {
@@ -1867,6 +2043,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "Jump to latest"
+          }
+        }
+      }
+    },
+    "You choose when to send them to Gil, from Settings." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You choose when to send them to Gil, from Settings."
+          }
+        }
+      }
+    },
+    "Your note" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your note"
+          }
+        }
+      }
+    },
+    "Your ratings and notes, plus measurements like lag and battery. Never what anyone said." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your ratings and notes, plus measurements like lag and battery. Never what anyone said."
           }
         }
       }

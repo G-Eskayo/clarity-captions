@@ -213,9 +213,18 @@ struct RootView: View {
             .accessibilityHidden(launch != nil)
             .environment(\.launchCovering, launch != nil)
             if let launch {
-                LaunchOverlay(firstRun: firstRun, theme: CaptionStyleStore().load()) { self.launch = nil }
+                LaunchOverlay(firstRun: firstRun, theme: CaptionStyleStore().load()) {
+                    self.launch = nil
+                    BetaFeedbackCenter.shared.launchAnimationFinished(fullDance: LaunchOverlay.lastFullDance, barShown: LaunchOverlay.lastBarShown)
+                }
                     .id(launch)
             }
+        }
+        .task {
+            // Beta or not is known before the main screen needs it; without a launch animation the notice may show
+            // straight away (ADR 0023).
+            await BetaFeedbackCenter.shared.ensureResolved()
+            if launch == nil { BetaFeedbackCenter.shared.launchAnimationFinished(fullDance: false, barShown: false) }
         }
         .task { await firstRun.refresh() }
         .onChange(of: scenePhase) { _, phase in

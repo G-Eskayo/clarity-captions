@@ -20,6 +20,13 @@ struct GummyButtonStyle: ButtonStyle {
         self.forcePressed = forcePressed
     }
 
+    /// Other colorings of the same button, e.g. the unselected 1–10 pills on the beta rating card (#112, mock-up 01).
+    init(fill: RGBA, label: RGBA, cornerRadius: CGFloat? = nil) {
+        self.fill = fill
+        self.label = label
+        self.cornerRadius = cornerRadius
+    }
+
     static let restingLip: CGFloat = 3
     static let pressedLip: CGFloat = 1
 
