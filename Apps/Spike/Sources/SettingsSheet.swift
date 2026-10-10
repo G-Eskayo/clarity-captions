@@ -12,12 +12,15 @@ struct SettingsSheet: View {
     let stream: CaptionStream
     let speakerNames: SpeakerNames
     let store: SavedConversationStoring?
+    /// "Show how to use Seal" (#108): replays the tour once Settings closes. Not while captioning: the tour walks her
+    /// through starting.
+    var canShowTour: Bool = true
+    var onShowTour: (() -> Void)?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var savedCount: Int?
 
-    /// "Show how to use Seal" replays the tour; it stays hidden until the tour exists (spec §7, its own ticket).
-    private let showsTourReplay = false
+    private var showsTourReplay: Bool { onShowTour != nil }
 
     var body: some View {
         NavigationStack {
@@ -32,7 +35,7 @@ struct SettingsSheet: View {
                             .id("lettering")
                         section("Stop when it's quiet") { idleStopRow }.id("idleStop")
                         section("Saved", note: String(localized: "Saved conversations are deleted after 30 days.")) { savedRow }.id("saved")
-                        if showsTourReplay { section("How to use Seal") { tourRow } }
+                        if showsTourReplay { section("How to use Seal") { tourRow }.id("tour") }
                         section("About") { aboutRows }.id("about")
                     }
                     .padding(.horizontal, 20)
@@ -214,12 +217,21 @@ struct SettingsSheet: View {
     }
 
     private var tourRow: some View {
-        Button {} label: {
-            Text("Show how to use Seal")
-                .font(scaled(17, .heavy))
-                .frame(maxWidth: .infinity, minHeight: 54)
+        VStack(alignment: .leading, spacing: 8) {
+            Button { onShowTour?() } label: {
+                Text("Show how to use Seal")
+                    .font(scaled(17, .heavy))
+                    .frame(maxWidth: .infinity, minHeight: 54)
+            }
+            .buttonStyle(GummyButtonStyle(style: style))
+            .disabled(!canShowTour)
+            .opacity(canShowTour ? 1 : 0.5)
+            if !canShowTour {
+                Text("Pause captions first, then come back here.")
+                    .font(scaled(13))
+                    .foregroundStyle(muted)
+            }
         }
-        .buttonStyle(GummyButtonStyle(style: style))
     }
 
     private var aboutRows: some View {
