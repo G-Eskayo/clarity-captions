@@ -49,8 +49,8 @@ the tester's own optional note.
 | `battery` | Battery drop scaled to 30 minutes; highest `ProcessInfo.thermalState` | `UIDevice.batteryLevel`, `ProcessInfo` |
 | `micLevel` | Room loudness summary, never audio | `AudioLevel`, `ListeningActivityTracker` |
 
-Size: about 1 KB per conversation; capped at the newest 200 (ADR 0023), so a report stays under about 250 KB,
-well within an iMessage attachment.
+Size: about 1 KB per conversation, with no cap until sent (ADR 0023), so even 1,000 unsent conversations make a
+report of about 1 MB, well within an iMessage attachment.
 
 ## How MARVIN ingests reports
 

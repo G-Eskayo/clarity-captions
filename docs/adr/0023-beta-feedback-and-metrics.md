@@ -33,6 +33,11 @@ privacy label "Data Not Collected"). A conversation holds other people's words, 
 3. **The 2-second card.** After a conversation, at most once per conversation and never mid-conversation:
    *"How well could you follow the conversation?"* with 1 to 10 in one row, an optional *Add a note*, and *Skip*.
    A skip is recorded as a skip.
+   **When it appears** (owner, 2026-10-09): it depends on how the conversation paused. If she paused it herself
+   (Stop/X), she may want to come back to it, so the card waits until she taps [ New ]. If it paused without her
+   (quiet stop, or the app was closed or left mid-conversation), the card shows when she taps [ New ] or when she
+   comes back to it. No accuracy question; testers don't get a separate screen of their own measurements (the
+   send preview is enough).
 4. **Measured per conversation, on the device:**
    - caption lag (p50 and p95, from the engine's existing `lagSeconds`)
    - how often a caption is rewritten before it's final (an accuracy proxy)
@@ -54,8 +59,8 @@ privacy label "Data Not Collected"). A conversation holds other people's words, 
 6. **The owner's number isn't in the public repo.** It's injected at build time from a gitignored
    `Apps/Spike/Beta.xcconfig.local` (`SEAL_FEEDBACK_RECIPIENT = +1…`) into an Info.plist key. Without it, the
    row falls back to the share sheet.
-7. **Retention:** records stay on the phone until they're sent, capped at the newest 200 conversations (about
-   1 KB each). After Messages reports the text was sent, the sent records are deleted. If it's cancelled, they
+7. **Retention:** records stay on the phone until they're sent, with no limit (owner, 2026-10-09; about 1 KB per
+   conversation). After Messages reports the text was sent, the sent records are deleted. If it's cancelled, they
    stay.
 8. **What testers are told:**
    - A one-time notice on the first beta launch: *"This test version asks how each conversation went and keeps
