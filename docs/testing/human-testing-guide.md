@@ -5,8 +5,8 @@ break anything, and there are no wrong answers: we want to know exactly what you
 
 ## What Seal does
 
-It listens to the people around you and shows what they say as text on the screen, and it labels
-who is speaking ("Speaker 1", "Speaker 2"). Everything happens on your phone. Nothing is sent
+It listens to the people around you and shows what they say as text on the screen, and it starts
+a new line when the voice changes ("Speaker 1", "Speaker 2"). It can mix up similar voices. Everything happens on your phone. Nothing is sent
 anywhere.
 
 ## Before you start (about 5 minutes)

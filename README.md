@@ -15,7 +15,7 @@ It is free and non-commercial by design ([ADR 0007](docs/adr/0007-free-and-non-c
 ![Microphone feeds SpeechAnalyzer and a diarizer in parallel; an aligner joins words to speakers; the caption stream breaks lines at pauses and speaker changes](docs/images/pipeline.svg)
 
 - **Words:** Apple's `SpeechAnalyzer` (iOS 26), on device.
-- **Who is speaking:** FluidAudio's Sortformer diarizer, with its model bundled in the app
+- **Speaker changes:** FluidAudio's Sortformer diarizer (it tells voices apart by sound; it doesn't identify anyone), with its model bundled in the app
   ([ADR 0014](docs/adr/0014-bundle-diarizer-models-in-the-app.md)), so there is no download path.
 - **Captions:** words are paired with speakers and broken at pauses and speaker changes, one colour
   per speaker, auto-scrolling with a *Jump to latest* control. The look is the user's to change.

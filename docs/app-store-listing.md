@@ -23,7 +23,7 @@ Rules this text follows (docs/app-store-compliance.md, App Review Guidelines 1.4
 |---|---|---|---|
 | Name | 30 | Seal | 4 |
 | Subtitle | 30 | Captions for conversations | 26 |
-| Promotional text | 170 | Follow the conversation at the table. Seal captions what people nearby say, shows who is speaking, and works with no internet. No ads, no account. | 146 |
+| Promotional text | 170 | Follow the conversation at the table. Seal captions what people nearby say, starts a new line when the voice changes, and works with no internet. No ads, no account. | 165 |
 | Keywords | 100 | `deaf,hard of hearing,subtitles,speech to text,transcribe,transcript,offline,accessibility,talk,live` | 99 |
 | Primary category | | Utilities | |
 | Secondary category | | Productivity | |
@@ -43,7 +43,7 @@ so "captions" and "conversation" are not repeated.
 ```text
 Seal shows what people around you are saying, as they say it, in large clear text.
 
-Put your iPhone on the table, tap Start, and follow the conversation. When someone new starts talking, Seal starts a new line and labels them Speaker 1, Speaker 2 and so on. Tap a label to give that voice a name.
+Put your iPhone on the table, tap Start, and follow the conversation. When the voice changes, Seal starts a new line and labels it Speaker 1, Speaker 2. It goes by the sound of the voice, so it can mix people up.
 
 MADE TO BE EASY
 • One big button to start and stop
@@ -56,11 +56,10 @@ PRIVATE BY DESIGN
 • Captions are made on your device. Audio is never recorded or sent anywhere.
 • Works with no internet connection after a one-time setup.
 • No account, no ads, no tracking.
-• Conversations are saved on your device for 30 days so you can reread them, then deleted. Delete any of them sooner whenever you like.
+• Tap [ Save ] to keep a conversation on your phone for 30 days. Delete any of them sooner whenever you like.
 
 MORE
-• Add names and words you use often so Seal spells them right
-• Copy or share the text of a conversation
+• Highlight any words to copy them
 • Works on iPhone and iPad
 
 Seal is built for deaf and hard-of-hearing people, and for anyone who wants to read a conversation instead of only hearing it. Captions are made by a computer and can contain mistakes. Seal is not a medical device.
@@ -118,13 +117,13 @@ Expected result: **4+**.
 Paste into App Review Information → Notes. Plain, short and specific: reviewers read many apps a day.
 
 ```text
-Seal shows live captions of nearby conversation for deaf and hard-of-hearing people. Everything runs on the device: Apple's SpeechAnalyzer turns speech into text, and a bundled Core ML model (FluidAudio, Sortformer) labels who is speaking. No account, no network service, no analytics, no ads, no in-app purchases. Seal does not use any external AI service, so no AI data-sharing consent is needed.
+Seal shows live captions of nearby conversation for deaf and hard-of-hearing people. Everything runs on the device: Apple's SpeechAnalyzer turns speech into text, and a bundled Core ML model (FluidAudio, Sortformer) labels changes of speaker (Speaker 1, Speaker 2); it doesn't identify anyone. No account, no network service, no analytics, no ads, no in-app purchases. Seal does not use any external AI service, so no AI data-sharing consent is needed.
 
 HOW TO TRY IT (about 1 minute)
 1. Open Seal. The first screen explains what it does; tap through it and allow the Microphone.
 2. The first launch may download Apple's English speech files (a few seconds on Wi-Fi). After that the app works in airplane mode.
-3. Tap Start and talk, or play a podcast or video near the device. Captions appear within about a second. When a second voice speaks, a new "Speaker 2" line starts. Tap a speaker label to name it.
-4. Tap Stop. The conversation is saved on the device (Saved conversations), kept for 30 days, and can be deleted.
+3. Tap Start and talk, or play a podcast or video near the device. Captions appear as people talk. When a second voice speaks, a new "Speaker 2" line starts.
+4. Tap ✕ to pause, then [ Save ] keeps it on the device for 30 days (Settings → Saved conversations), where it can be deleted.
 
 PERMISSIONS
 • Microphone: needed to caption what people nearby are saying. Used only while captioning is running; audio is never recorded or stored.
