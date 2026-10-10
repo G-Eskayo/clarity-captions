@@ -48,6 +48,11 @@ struct SavedConversationsPage: View {
         .task {
             await load()
             if DemoMode.settingsPush == "deleteall" { question.ask(.deleteAll) }   // debug only: the UI audit
+            if DemoMode.flow == "delete" {
+                // Debug only (#118 recording): [ Delete all ] asks in place, [ Keep ] answers no.
+                try? await Task.sleep(for: .seconds(2)); question.ask(.deleteAll)
+                try? await Task.sleep(for: .seconds(3)); question.keep()
+            }
         }
     }
 

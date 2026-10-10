@@ -344,6 +344,8 @@ struct ContentView: View {
     @Environment(\.launchCovering) private var launchCovering
     /// Debug demos only: a scripted tap on the rating card (simctl can't tap).
     @State private var demoRatingTap: Int?
+    /// Debug demos only: flips an invisible pixel so screen recordings keep writing frames (see runDemoPause).
+    @State private var demoFlushTick = 0
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -401,6 +403,13 @@ struct ContentView: View {
                 .zIndex(3)
             }
         }
+        .overlay(alignment: .bottomTrailing) {
+            // Debug recordings only (demoFlushTick stays 0 otherwise): one corner point, too faint to see.
+            if demoFlushTick > 0 {
+                (demoFlushTick.isMultiple(of: 2) ? Color.black : Color.white).opacity(0.05)
+                    .frame(width: 1, height: 1).ignoresSafeArea().allowsHitTesting(false).accessibilityHidden(true)
+            }
+        }
         .animation(veilAnimation, value: beta.showingCard)
         .animation(veilAnimation, value: beta.showingNotice)
         .task {
@@ -427,6 +436,7 @@ struct ContentView: View {
             if DemoMode.landscape, let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
                 scene.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeRight))
             }
+            if DemoMode.seedsSaved { await seedDemoSaved() }
             model.runDemo()
             if DemoMode.opensSettings || DemoMode.settingsPush != nil {
                 // Debug only: open straight on Settings (or one of its pages) for screenshots, no fade.
@@ -686,7 +696,7 @@ struct ContentView: View {
             // Captions scrolling up under the status row fade out softly instead of being cut in half (#117 topedge).
             .mask {
                 VStack(spacing: 0) {
-                    LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom).frame(height: 28)
+                    LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom).frame(height: 56)
                     Rectangle()
                 }
             }
@@ -813,7 +823,9 @@ struct ContentView: View {
             model.demoSetState(.idle)
             await wait(2); demoPressingStart = true
             await wait(0.35); demoPressingStart = false
-            await wait(0.25); model.demoSetState(.preparing); model.demoSetState(.listening)
+            // Getting ready shows in the status row and on the pill only (round 2), then Listening.
+            await wait(0.25); model.demoSetState(.preparing)
+            await wait(2); model.demoSetState(.listening)
             await wait(3); model.demoSetState(.idle)
         case "rate":
             // ADR 0023: [ New ] on a paused conversation brings the card; one tap on 8 rates it and the card fades.
@@ -823,6 +835,17 @@ struct ContentView: View {
             await wait(2); model.save()
             await wait(2); withAnimation(veilAnimation) { model.startNew() }
             await wait(2.5); demoRatingTap = 8
+        case "settings":
+            // Round 2 (#118): the gear fades the captions out and Settings in; the gear takes her back.
+            model.demoSetState(.listening)
+            await wait(2); go { $0.gearTapped() }
+            await wait(3); go { $0.gearTapped() }
+            await wait(2)
+        case "saved", "delete":
+            // Round 2: Settings, then the saved list fades in; "‹ Settings" fades back (the delete flow asks in place).
+            await wait(1.5); go { $0.gearTapped() }
+            await wait(2); go { $0.open(.saved) }
+            if DemoMode.flow == "saved" { await wait(3); go { $0.back() }; await wait(2) }
         case "feedback":
             await BetaFeedbackCenter.shared.ensureResolved()
             await wait(1.5); go { $0.gearTapped() }
@@ -832,6 +855,11 @@ struct ContentView: View {
             await wait(3); withAnimation(veilAnimation) { if model.newQuestion.confirm() != nil { model.startNew() } }
         default:
             break
+        }
+        // Debug only: simctl's recorder stops writing frames once the screen goes still, so a recording ends mid-fade.
+        // A few invisible pixel changes after a flow keep it writing until the last fade has settled.
+        if ["settings", "saved", "delete", "new", "start"].contains(DemoMode.flow ?? "") {
+            for _ in 0..<20 { await wait(0.35); demoFlushTick += 1 }
         }
         // The UI audit (2026-10-10): one state each, as she'd meet it.
         switch DemoMode.show {
@@ -854,6 +882,24 @@ struct ContentView: View {
             await wait(2); withAnimation(.easeInOut(duration: 0.2)) { model.save() }
             await wait(3); model.requestNew()
         default: break
+        }
+    }
+
+    /// Debug only: the three saved conversations of mock-up round2/02.
+    private func seedDemoSaved() async {
+        guard let store = model.store else { return }
+        try? await store.deleteAll()
+        let cal = Calendar.current
+        let today = Date()
+        func at(_ day: Date, _ h: Int, _ m: Int) -> Date { cal.date(bySettingHour: h, minute: m, second: 0, of: day) ?? day }
+        let yesterday = cal.date(byAdding: .day, value: -1, to: today) ?? today
+        let items: [(Date, String)] = [
+            (at(yesterday, 19, 12), "Speaker 1: So we finally tried the new place on Fifth, Luigi's.\nSpeaker 2: Oh, how was it? I heard the pasta is homemade."),
+            (at(today, 8, 55), "Speaker 2: It's catching every word, even from across the table.\nSpeaker 1: That's the idea."),
+            (at(today, 8, 56), "Speaker 1: Happy birthday, Mom. Watch the screen while we talk.\nSpeaker 2: Oh, I can read all of it!"),
+        ]
+        for (when, text) in items {
+            try? await store.save(SavedConversation(startedAt: when, savedAt: when, transcript: text))
         }
     }
 
@@ -910,7 +956,9 @@ struct ContentView: View {
                                     },
                                     onNo: { withAnimation(veilAnimation) { model.newQuestion.keep() } })
                     .transition(.opacity)
-            } else {
+            } else if !beta.showingCard {
+                // While the rating question shows over a paused conversation, [ Save ] / [ New ] step aside so its
+                // words sit on a plain dim (round2/04), not over ghosted buttons.
                 VStack(spacing: 24) {
                     saveButton.tourTarget(.save)
                     retroButton(String(localized: "New"), color: style.text.color,

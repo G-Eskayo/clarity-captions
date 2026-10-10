@@ -78,6 +78,10 @@ enum DemoMode {
     static var tour: String? { value(after: "-ClarityDemoTour") }
     static var show: String? { value(after: "-ClarityDemoShow") }
     static var settingsPush: String? { value(after: "-ClarityDemoSettingsPush") }
+    /// Round 2 (#118): three saved conversations to show the saved list (mock-up round2/02), written once on launch.
+    static var seedsSaved: Bool {
+        flag("-ClarityDemoSavedSeed") || settingsPush == "saved" || settingsPush == "deleteall" || flow == "saved" || flow == "delete"
+    }
     static var forcesBeta: Bool { flag("-ClarityDemoBeta") || betaSeed || betaCard || betaNotice || betaPreview || flow == "rate" || flow == "feedback" }
     static var betaSeed: Bool { flag("-ClarityDemoBetaSeed") || betaPreview || flow == "feedback" }
     static var betaCard: Bool { flag("-ClarityDemoBetaCard") || betaNote }
