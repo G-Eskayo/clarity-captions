@@ -20,8 +20,9 @@ private struct BetaPalette {
     }
 }
 
-/// Mock-up 01/02: "How well could you follow the conversation?" One tap on a number rates and the card fades; Add a
-/// note opens a box in the same card and Done saves both. Skip records a skip.
+/// Mock-up beta-feedback/01–02, shown as round2/04 since #118: "How well could you follow the conversation?" straight on
+/// the dim, no card. One tap on a number rates and everything fades; Add a note opens a plain underlined line in the
+/// same place and Done saves both. Skip records a skip.
 struct RatingCardView: View {
     let style: CaptionStyle
     let onRate: (Int, String?) -> Void
@@ -62,8 +63,6 @@ struct RatingCardView: View {
         .padding(.horizontal, 18)
         .padding(.vertical, 22)
         .foregroundStyle(style.text.color)
-        .background(palette.card.color, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .shadow(color: .black.opacity(palette.dark ? 0 : 0.12), radius: 18, y: 6)
         .padding(.horizontal, 20)
         .onAppear {
             if let demoSelected { selected = demoSelected }
@@ -127,12 +126,14 @@ struct RatingCardView: View {
 
     private var noteBox: some View {
         VStack(alignment: .trailing, spacing: 14) {
-            TextField("Add a note", text: $note, axis: .vertical)
-                .lineLimit(3...5)
-                .focused($noteFocused)
-                .padding(14)
-                .background(palette.soft.color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .accessibilityLabel(Text("Your note"))
+            VStack(alignment: .leading, spacing: 6) {
+                TextField("Add a note", text: $note, axis: .vertical)
+                    .lineLimit(1...5)
+                    .focused($noteFocused)
+                    .accessibilityLabel(Text("Your note"))
+                // A plain underline, as for every typed line in round 2 (no box).
+                Rectangle().fill(style.gear.color).frame(height: 2).accessibilityHidden(true)
+            }
             Button { if let selected { onRate(selected, note) } } label: {
                 Text("Done").font(.body.weight(.heavy)).padding(.horizontal, 26).frame(minHeight: 48)
             }
@@ -143,7 +144,8 @@ struct RatingCardView: View {
     }
 }
 
-/// Mock-up 06: shown once, after the launch animation, on the first launch of a TestFlight build.
+/// Mock-up beta-feedback/06: shown once, after the launch animation, on the first launch of a TestFlight build. Since
+/// round 2 (#118) its words sit straight on the dim, no card.
 struct BetaNoticeView: View {
     let style: CaptionStyle
     let onDismiss: () -> Void
@@ -176,21 +178,20 @@ struct BetaNoticeView: View {
         .fixedSize(horizontal: false, vertical: true)
         .padding(22)
         .foregroundStyle(style.text.color)
-        .background(palette.card.color, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .shadow(color: .black.opacity(palette.dark ? 0 : 0.12), radius: 18, y: 6)
         .padding(.horizontal, 22)
         .accessibilityElement(children: .contain)
     }
 }
 
-/// Mock-up 04/05: exactly what will be sent, in words; then Apple's Messages, addressed to Gil, with the file
-/// attached. Without Messages (or without a recipient in the build), the share sheet. Nothing leaves the phone unless
-/// the tester sends it.
-struct FeedbackSendView: View {
+/// Mock-up beta-feedback/04–05: exactly what will be sent, in words; then Apple's Messages, addressed to Gil, with the
+/// file attached. Without Messages (or without a recipient in the build), the share sheet. Nothing leaves the phone
+/// unless the tester sends it. Since round 2 (#118) it's a page on the one screen ("‹ Settings" fades back); Messages
+/// and the share sheet are drawn by iOS and stay sheets.
+struct FeedbackPreviewPage: View {
     let style: CaptionStyle
     let idleStop: IdleStopSetting
     @ObservedObject var beta: BetaFeedbackCenter
-    @Environment(\.dismiss) private var dismiss
+    let onClose: () -> Void
     @State private var prepared: Prepared?
     @State private var composing = false
     @State private var sharing = false
@@ -209,14 +210,9 @@ struct FeedbackSendView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ZStack {
-                Text("What will be sent").font(.headline.weight(.heavy))
-                HStack {
-                    Button("Cancel") { dismiss() }.foregroundStyle(style.gear.color).font(.body.weight(.bold))
-                    Spacer()
-                }
-            }
-            .padding(.top, 22).padding(.bottom, 12)
+            PageHeader(style: style, title: String(localized: "What will be sent"), backTitle: String(localized: "Settings"),
+                       onBack: onClose)
+                .padding(.bottom, 12)
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     if let prepared {
@@ -239,8 +235,6 @@ struct FeedbackSendView: View {
         }
         .padding(.horizontal, 20)
         .foregroundStyle(style.text.color)
-        .background(palette.card.color.ignoresSafeArea())
-        .preferredColorScheme(style.background.isDark ? .dark : .light)
         .task {
             await beta.ensureResolved()
             prepare()
@@ -253,7 +247,7 @@ struct FeedbackSendView: View {
             if let prepared, let to = beta.recipient {
                 MessageComposeView(recipient: to, body: prepared.report.summary, data: prepared.data, fileName: prepared.fileName) { sent in
                     composing = false
-                    if sent { beta.markSent(prepared.ids); dismiss() }
+                    if sent { beta.markSent(prepared.ids); onClose() }
                 }
                 .ignoresSafeArea()
             }
@@ -262,7 +256,7 @@ struct FeedbackSendView: View {
             if let prepared {
                 ShareSheet(items: [prepared.fileURL, prepared.report.summary]) { completed in
                     sharing = false
-                    if completed { beta.markSent(prepared.ids); dismiss() }
+                    if completed { beta.markSent(prepared.ids); onClose() }
                 }
                 .presentationDetents([.medium, .large])
             }
@@ -271,6 +265,7 @@ struct FeedbackSendView: View {
 
     private func cardView(_ card: FeedbackPreviewCard) -> some View {
         VStack(alignment: .leading, spacing: 8) {
+            ThinRule(style: style)
             Text(card.title).font(.headline.weight(.heavy))
             ForEach(Array(card.rows.enumerated()), id: \.offset) { _, row in
                 HStack(alignment: .firstTextBaseline) {
@@ -281,8 +276,7 @@ struct FeedbackSendView: View {
                 .accessibilityElement(children: .combine)
             }
         }
-        .padding(16)
-        .background(palette.soft.color, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .padding(.vertical, 6)
     }
 
     private func prepare() {

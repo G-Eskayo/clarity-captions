@@ -243,6 +243,28 @@
         }
       }
     },
+    "Back to %@" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back to %@"
+          }
+        }
+      }
+    },
+    "Back to captions" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back to captions"
+          }
+        }
+      }
+    },
     "Bright" : {
       "extractionState": "manual",
       "localizations": {
@@ -386,6 +408,17 @@
         }
       }
     },
+    "Conversations you save show up here." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conversations you save show up here."
+          }
+        }
+      }
+    },
     "Copies the selected words" : {
       "extractionState": "manual",
       "localizations": {
@@ -426,6 +459,61 @@
           "stringUnit": {
             "state": "translated",
             "value": "Credits"
+          }
+        }
+      }
+    },
+    "Delete" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete"
+          }
+        }
+      }
+    },
+    "Delete all %lld conversations?" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete all %lld conversations?"
+          }
+        }
+      }
+    },
+    "Delete all saved conversations" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete all saved conversations"
+          }
+        }
+      }
+    },
+    "Delete this conversation" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete this conversation"
+          }
+        }
+      }
+    },
+    "Delete this conversation?" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete this conversation?"
           }
         }
       }
@@ -800,6 +888,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "It never keeps what anyone said."
+          }
+        }
+      }
+    },
+    "Keep" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep"
+          }
+        }
+      }
+    },
+    "Keep it" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep it"
+          }
+        }
+      }
+    },
+    "Kept for 30 days, then deleted." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kept for 30 days, then deleted."
           }
         }
       }
@@ -1339,6 +1460,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Say something"
+          }
+        }
+      }
+    },
+    "Search" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search"
           }
         }
       }
@@ -1937,6 +2069,28 @@
         }
       }
     },
+    "This one isn't saved." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This one isn't saved."
+          }
+        }
+      }
+    },
+    "Today, %@" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today, %@"
+          }
+        }
+      }
+    },
     "Too quiet? Show an example" : {
       "extractionState": "manual",
       "localizations": {
@@ -2043,6 +2197,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Jump to latest"
+          }
+        }
+      }
+    },
+    "Yesterday, %@" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yesterday, %@"
           }
         }
       }

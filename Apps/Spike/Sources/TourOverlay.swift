@@ -72,14 +72,6 @@ struct TourOverlay: View {
             let spotlight = holeAnchor.map { geo[$0].insetBy(dx: -8, dy: -8) }
             ZStack(alignment: .topLeading) {
                 dim(size: geo.size, spotlight: spotlight)
-                if let spotlight {
-                    RoundedRectangle(cornerRadius: corner(spotlight), style: .continuous)
-                        .stroke(Color.white, lineWidth: 3)
-                        .frame(width: spotlight.width, height: spotlight.height)
-                        .offset(x: spotlight.minX, y: spotlight.minY)
-                        .allowsHitTesting(false)
-                        .accessibilityHidden(true)
-                }
                 skipButton
                     .frame(maxWidth: .infinity, alignment: .trailing)
                     .padding(.top, insets.top + 4)
@@ -91,22 +83,39 @@ struct TourOverlay: View {
                     .offset(y: cardY(height: geo.size.height, insets: insets, spotlight: spotlight,
                                      keepClear: keepClear.map { geo[$0] }))
                     .id(step)
-                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.96)))
+                    .transition(.opacity)
             }
-            .animation(reduceMotion ? .easeInOut(duration: 0.2) : .snappy(duration: 0.35), value: spotlight)
-            .animation(reduceMotion ? .easeInOut(duration: 0.2) : .snappy(duration: 0.35), value: step)
+            .animation(.easeInOut(duration: reduceMotion ? 0.2 : 0.3), value: spotlight)
+            .animation(.easeInOut(duration: reduceMotion ? 0.2 : 0.3), value: step)
             }
             .ignoresSafeArea()
         }
     }
 
-    /// The dim with the spotlight cut out. It never takes touches.
+    /// The dim with the spotlight cut out: the theme's own background faded over the screen, like the pause veil
+    /// (round2/04, round2/07), with a soft edge around the lit control instead of a frame. It never takes touches.
     private func dim(size: CGSize, spotlight: CGRect?) -> some View {
         Path { p in
             p.addRect(CGRect(origin: .zero, size: size))
             if let spotlight { p.addRoundedRect(in: spotlight, cornerSize: CGSize(width: corner(spotlight), height: corner(spotlight))) }
         }
-        .fill(Color.black.opacity(0.55), style: FillStyle(eoFill: true))
+        .fill(style.background.color.opacity(0.86), style: FillStyle(eoFill: true))
+        .overlay {
+            if let spotlight {
+                RoundedRectangle(cornerRadius: corner(spotlight), style: .continuous)
+                    .fill(style.background.color.opacity(0.5))
+                    .frame(width: spotlight.width + 12, height: spotlight.height + 12)
+                    .position(x: spotlight.midX, y: spotlight.midY)
+                    .blur(radius: 10)
+                    .mask {
+                        Path { p in
+                            p.addRect(CGRect(origin: .zero, size: size))
+                            p.addRoundedRect(in: spotlight, cornerSize: CGSize(width: corner(spotlight), height: corner(spotlight)))
+                        }
+                        .fill(style: FillStyle(eoFill: true))
+                    }
+            }
+        }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
@@ -130,7 +139,7 @@ struct TourOverlay: View {
         Button(action: onSkip) {
             Text("Skip tour")
                 .font(.headline)
-                .foregroundStyle(.white)
+                .foregroundStyle(style.text.color)
                 .padding(.horizontal, 8)
                 .frame(minHeight: 44)
         }
@@ -177,8 +186,6 @@ struct TourOverlay: View {
         .padding(.horizontal, 18)
         .padding(.top, 16)
         .padding(.bottom, 6)
-        .background(style.background.color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .shadow(color: .black.opacity(0.25), radius: 14, y: 6)
         .accessibilityElement(children: .contain)
         .accessibilitySortPriority(10)
         .accessibilityAction(named: Text("Skip tour"), onSkip)
