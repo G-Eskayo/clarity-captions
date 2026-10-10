@@ -32,6 +32,23 @@ final class ThemeV1Tests: XCTestCase {
         XCTAssertEqual(harbor.saved, RGBA(hex: "#A6E8BC"))
     }
 
+    /// The main screen's gear takes each theme's own color (mock-up 06), not the caption text color.
+    func testEveryThemeHasTheMockupGearAndTheStyleUsesIt() {
+        // docs/design/mocks/2026-10-09/src/build.mjs, THEMES[].gear
+        let mockup = ["paper": "#14514B", "seaglass": "#0B4842", "peach": "#6E2E0A",
+                      "charcoal": "#E2D9C6", "night": "#C9D6F2", "harbor": "#F2DDB5"]
+        XCTAssertEqual(Set(CaptionPreset.all.map(\.id)), Set(mockup.keys))
+        for p in CaptionPreset.all {
+            XCTAssertEqual(p.gear, RGBA(hex: mockup[p.id]!), p.id)
+            XCTAssertEqual(CaptionStyle.standard.applying(p).gear, p.gear, "\(p.id): the style hands the screen the theme's gear")
+        }
+        // Colors no theme has (an older build's custom look) keep a visible gear: the text color.
+        var odd = CaptionStyle.standard
+        odd.background = RGBA(0.5, 0.2, 0.7)
+        XCTAssertNil(odd.preset)
+        XCTAssertEqual(odd.gear, odd.text)
+    }
+
     func testEveryColorDrawnOnEveryThemeIsAAA() {
         for p in CaptionPreset.all {
             XCTAssertGreaterThanOrEqual(RGBA.contrast(p.text, p.background), 7, "\(p.id) text")
