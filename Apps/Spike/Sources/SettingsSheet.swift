@@ -1,279 +1,240 @@
 import CaptionCore
 import SwiftUI
 
-extension RGBA {
-    var color: Color { Color(red: r, green: g, blue: b, opacity: a) }
-}
-
-extension CaptionStyle {
-    func font(for category: SystemTextSizeCategory, device: CaptionDeviceClass = .phone, scaled: Double = 1) -> Font {
-        let design: Font.Design = switch font {
-        case .system: .default
-        case .rounded: .rounded
-        case .serif: .serif
-        case .monospaced: .monospaced
-        }
-        return .system(size: size.pointSize(for: category, device: device) * scaled, weight: .regular, design: design)
-    }
-}
-
-/// One screen, three questions: which colors, how big, which lettering. A live preview sits on top.
+/// Settings as approved in design #96 (image 08): no borders or boxes, one thin line between sections, everything on
+/// the look's own background so it feels like the same screen. Colors, size, lettering, quiet stop, saved
+/// conversations and About; a live preview on top.
 struct SettingsSheet: View {
     @Binding var style: CaptionStyle
     @Binding var idleStop: IdleStopSetting
+    // Kept so the call site in ContentView doesn't change while #102 reworks it; the Conversation section that used
+    // them is gone (#103: highlight-and-copy covers it).
     let stream: CaptionStream
     let speakerNames: SpeakerNames
     let store: SavedConversationStoring?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @State private var vocabularyText = ""
+    @State private var savedCount: Int?
+
+    /// "Show how to use Seal" replays the tour; it stays hidden until the tour exists (spec §7, its own ticket).
+    private let showsTourReplay = false
 
     var body: some View {
         NavigationStack {
             ScrollViewReader { proxy in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    preview
-                    section("Colors") { presetRow }
-                    section("Size") { sizeRow }
-                    section("Lettering") { fontRow }
-                    section("Stop when it's quiet") { idleStopRow }.id("idleStop")
-                    section("Words and names") { vocabularyRow }
-                    section("Speaker labels") { speakerExplanationRow }
-                    section("Conversation") { conversationRow }
-                    section("Saved") { savedConversationsRow }
-                    section("About") { aboutRow }
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        header
+                        preview
+                        section("Colors", first: true) { colorsRow }
+                        section("Size") { sizeRow }
+                        section("Lettering", note: String(localized: "OpenDyslexic was made for people with dyslexia. Atkinson Hyperlegible was designed by the Braille Institute for low vision.")) { letteringRows }
+                            .id("lettering")
+                        section("Stop when it's quiet") { idleStopRow }.id("idleStop")
+                        section("Saved", note: String(localized: "Saved conversations are deleted after 30 days.")) { savedRow }.id("saved")
+                        if showsTourReplay { section("How to use Seal") { tourRow } }
+                        section("About") { aboutRows }.id("about")
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 30)
+                    .foregroundStyle(style.text.color)
                 }
-                .padding()
-                .foregroundStyle(style.text.color)
-            }
-            .onAppear { if let id = DemoMode.settingsSection { proxy.scrollTo(id, anchor: .top) } }
+                .onAppear { if let id = DemoMode.settingsSection { proxy.scrollTo(id, anchor: .top) } }
             }
             .containerBackground(style.background.color, for: .navigation)
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.font(.headline) } }
+            .toolbar(.hidden, for: .navigationBar)
         }
-        .tint(style.text.color)
+        .tint(style.gear.color)
         .preferredColorScheme(style.background.isDark ? .dark : .light)
+        .task { savedCount = try? await store?.all().count }
+    }
+
+    // MARK: pieces
+
+    /// A size from the mock-up (drawn at the default text size), scaled with the iPhone's text-size setting.
+    private func scaled(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
+        .system(size: UIFontMetrics.default.scaledValue(for: size), weight: weight)
+    }
+
+    private var muted: Color { (style.background.isDark ? RGBA(hex: "#B9B3A6") : RGBA(hex: "#56625F")).color }
+    private var rule: Color { style.background.isDark ? Color(red: 236 / 255, green: 230 / 255, blue: 217 / 255).opacity(0.16) : Color(red: 20 / 255, green: 20 / 255, blue: 25 / 255).opacity(0.12) }
+    private var softFill: Color { style.background.isDark ? Color(red: 236 / 255, green: 230 / 255, blue: 217 / 255).opacity(0.10) : Color(red: 20 / 255, green: 20 / 255, blue: 25 / 255).opacity(0.07) }
+
+    private var header: some View {
+        HStack {
+            Text("Settings").font(scaled(24, .heavy)).lineLimit(1).minimumScaleFactor(0.5)
+            Spacer()
+            Button("Done") { dismiss() }
+                .font(.body.weight(.bold))
+                .foregroundStyle(style.gear.color)
+        }
+        .padding(.top, 26)
     }
 
     private var preview: some View {
-        Text("Hello! This is how captions will look.")
+        Text("Preview: Let's book a table for seven.")
             .font(style.font(for: SystemTextSizeCategory(dynamicTypeSize)))
-            .foregroundStyle(style.text.color)
-            .frame(maxWidth: .infinity, minHeight: 120, alignment: .leading)
-            .padding()
-            .background(style.background.color, in: RoundedRectangle(cornerRadius: 12))
+            .lineSpacing(4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 4)
+            .padding(.top, 16)
+            .padding(.bottom, 6)
             .accessibilityLabel("Preview of caption text")
     }
 
-    private func section<C: View>(_ title: String, @ViewBuilder _ content: () -> C) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title).font(.title3.bold())
+    private func section<C: View>(_ title: LocalizedStringKey, first: Bool = false, note: String? = nil, @ViewBuilder _ content: () -> C) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(scaled(14, .heavy))
+                .tracking(0.6)
+                .foregroundStyle(muted)
+                .accessibilityAddTraits(.isHeader)
             content()
+            if let note {
+                Text(note).font(scaled(13)).foregroundStyle(muted).lineSpacing(2)
+            }
         }
+        .padding(.horizontal, 4)
+        .padding(.top, 18)
+        .padding(.bottom, 16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .top) { if !first { Rectangle().fill(rule).frame(height: 1) } }
     }
 
-    private var presetRow: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 12)], spacing: 12) {
+    private var colorsRow: some View {
+        HStack(alignment: .top) {
             ForEach(CaptionPreset.all) { preset in
-                let selected = style.background == preset.background && style.text == preset.text
+                let selected = style.preset?.id == preset.id
                 Button { style = style.applying(preset) } label: {
-                    VStack(spacing: 4) {
-                        Text("Aa").font(.system(size: 34, weight: .bold)).foregroundStyle(preset.text.color)
-                        Text(preset.name).font(.subheadline).foregroundStyle(preset.text.color)
+                    VStack(spacing: 5) {
+                        Text("Aa")
+                            .font(.system(size: 17, weight: .heavy))   // fixed: it sits in a fixed 46-pt swatch
+                            .foregroundStyle(preset.text.color)
+                            .frame(width: 46, height: 46)
+                            .background(preset.background.color, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+                            .shadow(color: .black.opacity(0.18), radius: 1.5, y: 1)
+                        Text(preset.name).font(scaled(11, .semibold)).lineLimit(1).minimumScaleFactor(0.7)
+                        Image(systemName: "checkmark")
+                            .font(scaled(13, .heavy))
+                            .foregroundStyle(style.gear.color)
+                            .frame(height: 16)
+                            .opacity(selected ? 1 : 0)
                     }
-                    .frame(maxWidth: .infinity, minHeight: 84)
-                    .background(preset.background.color, in: RoundedRectangle(cornerRadius: 12))
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(selected ? Color.accentColor : .secondary.opacity(0.4), lineWidth: selected ? 4 : 1))
+                    .frame(maxWidth: .infinity)
                 }
-                .accessibilityLabel(preset.name + (selected ? ", selected" : ""))
+                .buttonStyle(.plain)
+                .accessibilityLabel(preset.name + (selected ? String(localized: ", selected") : ""))
             }
         }
     }
 
     private var sizeRow: some View {
         HStack(spacing: 16) {
-            Button { style.size = style.size.smaller() } label: { Text("A−").font(.title2.bold()).frame(maxWidth: .infinity, minHeight: 56) }
-                .buttonStyle(.bordered).disabled(style.size == .smallest).accessibilityLabel("Smaller text")
-            Button { style.size = style.size.larger() } label: { Text("A+").font(.title2.bold()).frame(maxWidth: .infinity, minHeight: 56) }
-                .buttonStyle(.bordered).disabled(style.size == .largest).accessibilityLabel("Larger text")
+            sizeButton("A−", points: 22, label: "Smaller text", disabled: style.size == .smallest) { style.size = style.size.smaller() }
+            sizeButton("A+", points: 26, label: "Larger text", disabled: style.size == .largest) { style.size = style.size.larger() }
         }
     }
 
-    private var fontRow: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 12)], spacing: 12) {
+    private func sizeButton(_ title: String, points: CGFloat, label: LocalizedStringKey, disabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(scaled(points, .heavy))
+                .frame(maxWidth: .infinity, minHeight: 56)
+                .background(softFill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+        .opacity(disabled ? 0.45 : 1)
+        .accessibilityLabel(label)
+    }
+
+    private var letteringRows: some View {
+        VStack(spacing: 0) {
             ForEach(CaptionFont.allCases, id: \.self) { f in
-                var sample = style; let _ = sample.font = f
+                let selected = style.font == f
                 Button { style.font = f } label: {
-                    Text(f.label).font(sample.font(for: SystemTextSizeCategory(dynamicTypeSize), scaled: 0.7)).frame(maxWidth: .infinity, minHeight: 56)
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(f.label).font(f.sample(size: UIFontMetrics.default.scaledValue(for: 18)))
+                        if f == .openDyslexic {
+                            Text("· default").font(scaled(12, .bold)).foregroundStyle(muted)
+                        }
+                        Spacer()
+                        Image(systemName: "checkmark")
+                            .font(scaled(18, .heavy))
+                            .foregroundStyle(style.gear.color)
+                            .opacity(selected ? 1 : 0)
+                    }
+                    .padding(.vertical, 9)
+                    .contentShape(Rectangle())
                 }
-                .buttonStyle(.bordered).tint(style.font == f ? .accentColor : .secondary)
+                .buttonStyle(.plain)
+                .accessibilityLabel(f.label + (f == .openDyslexic ? String(localized: ", default") : "") + (selected ? String(localized: ", selected") : ""))
             }
         }
     }
 
     /// ADR 0019: the one behavior setting. The screen stays on while captioning; this caps a forgotten session.
     private var idleStopRow: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 12)], spacing: 12) {
-                ForEach(IdleStopSetting.allCases, id: \.self) { option in
-                    Button { idleStop = option } label: {
-                        Text(option.title).font(.title3).frame(maxWidth: .infinity, minHeight: 56)
-                    }
-                    .buttonStyle(.bordered).tint(idleStop == option ? .accentColor : .secondary)
-                    .accessibilityLabel(option.title + (idleStop == option ? String(localized: ", selected") : ""))
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) { idleStopChoices }
+            VStack(alignment: .leading, spacing: 8) { idleStopChoices }
+        }
+    }
+
+    @ViewBuilder private var idleStopChoices: some View {
+            ForEach(IdleStopSetting.allCases, id: \.self) { option in
+                let selected = idleStop == option
+                Button { idleStop = option } label: {
+                    Text(option.shortTitle)
+                        .font(scaled(15, .bold))
+                        .lineLimit(1)
+                        .fixedSize()
+                        .padding(.vertical, 9)
+                        .padding(.horizontal, 14)
+                        .foregroundStyle(selected ? style.background.color : style.text.color)
+                        .background(selected ? style.text.color : softFill, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel(option.title + (selected ? String(localized: ", selected") : ""))
             }
-            Text(String(localized: "Captions pause when no one has talked for this long. The screen stays on while captioning."))
-                .font(.caption)
-                .foregroundStyle(.secondary)
+    }
+
+    @ViewBuilder private var savedRow: some View {
+        let row = HStack {
+            Text("Saved conversations").fontWeight(.semibold)
+            Spacer()
+            Text(savedCount.map { "\($0) ›" } ?? "›").foregroundStyle(muted)
         }
-    }
-
-    private var vocabularyRow: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            TextEditor(text: $vocabularyText)
-                .font(.body.monospaced())
-                .frame(minHeight: 120)
-                .border(Color.secondary.opacity(0.3), width: 1)
-            Text(String(localized: "One word or name per line"))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .onAppear { vocabularyText = VocabularyStore().loadRawText() }
-        .onChange(of: vocabularyText) { _, newValue in VocabularyStore().save(rawText: newValue) }
-    }
-
-    private var speakerExplanationRow: some View {
-        Text(SpeakerExplanation.sentence)
-            .font(.callout)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding()
-            .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
-    }
-
-    private var conversationRow: some View {
-        VStack(spacing: 12) {
-            Button { copyPlainText() } label: {
-                HStack {
-                    Label(String(localized: "Copy all text"), systemImage: "doc.on.doc")
-                    Spacer()
-                }
-                .frame(maxWidth: .infinity, minHeight: 56)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.bordered)
-            .disabled(stream.lines.isEmpty)
-
-            ShareLink(
-                item: TranscriptFormatter.plainText(lines: stream.lines, speakerNames: speakerNames),
-                subject: Text(String(localized: "Conversation")),
-                label: { Label(String(localized: "Share as text"), systemImage: "square.and.arrow.up") }
-            )
-            .frame(maxWidth: .infinity, minHeight: 56)
-            .buttonStyle(.bordered)
-            .disabled(stream.lines.isEmpty)
-
-            if let srtURL = createSRTFile() {
-                ShareLink(
-                    item: srtURL,
-                    subject: Text(String(localized: "Conversation")),
-                    label: { Label(String(localized: "Share as SRT file"), systemImage: "square.and.arrow.up") }
-                )
-                .frame(maxWidth: .infinity, minHeight: 56)
-                .buttonStyle(.bordered)
-            }
-        }
-    }
-
-    private func copyPlainText() {
-        UIPasteboard.general.string = TranscriptFormatter.plainText(lines: stream.lines, speakerNames: speakerNames)
-    }
-
-    private func createSRTFile() -> URL? {
-        let srtText = TranscriptFormatter.srt(lines: stream.lines, speakerNames: speakerNames)
-        guard !srtText.isEmpty else { return nil }
-
-        let tmpURL = FileManager.default.temporaryDirectory.appendingPathComponent("Conversation.srt")
-        do {
-            try srtText.write(to: tmpURL, atomically: true, encoding: .utf8)
-            return tmpURL
-        } catch {
-            return nil
-        }
-    }
-
-    private var savedConversationsRow: some View {
-        if let store = store {
-            return AnyView(
-                NavigationLink(destination: SavedConversationsView(store: store)) {
-                    HStack {
-                        Label(String(localized: "View conversations"), systemImage: "bubble.left.and.exclamation.bubble.right")
-                        Spacer()
-                        Image(systemName: "chevron.forward")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 56)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.bordered)
-            )
+        .contentShape(Rectangle())
+        if let store {
+            NavigationLink(destination: SavedConversationsView(store: store)) { row }.buttonStyle(.plain)
         } else {
-            return AnyView(
-                HStack {
-                    Label(String(localized: "View conversations"), systemImage: "bubble.left.and.exclamation.bubble.right")
-                    Spacer()
-                    Image(systemName: "chevron.forward")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, minHeight: 56)
-                .contentShape(Rectangle())
-                .buttonStyle(.bordered)
-                .disabled(true)
-            )
+            row.opacity(0.5)
         }
     }
 
-    private var aboutRow: some View {
-        VStack(spacing: 12) {
-            NavigationLink(destination: AboutCreditsView()) {
-                HStack {
-                    Label("Third-party credits", systemImage: "info.circle")
-                    Spacer()
-                    Image(systemName: "chevron.forward")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, minHeight: 56)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.bordered)
+    private var tourRow: some View {
+        Button {} label: {
+            Text("Show how to use Seal")
+                .font(scaled(17, .heavy))
+                .frame(maxWidth: .infinity, minHeight: 54)
+        }
+        .buttonStyle(GummyButtonStyle(style: style))
+    }
 
+    private var aboutRows: some View {
+        VStack(alignment: .leading, spacing: 0) {
             // Guideline 5.1.1(i): the privacy policy must be reachable from inside the app. Both open in Safari.
-            webLinkRow("Privacy policy", systemImage: "hand.raised", destination: SupportLinks.privacyPolicy)
-            webLinkRow("Help and contact", systemImage: "questionmark.circle", destination: SupportLinks.support)
+            Link("Privacy policy", destination: SupportLinks.privacyPolicy)
+                .accessibilityHint(Text("Opens in Safari"))
+                .padding(.vertical, 7)
+            Link("Help and contact", destination: SupportLinks.support)
+                .accessibilityHint(Text("Opens in Safari"))
+                .padding(.vertical, 7)
+            NavigationLink("Credits", destination: AboutCreditsView())
+                .padding(.vertical, 7)
         }
-    }
-
-    private func webLinkRow(_ title: LocalizedStringKey, systemImage: String, destination: URL) -> some View {
-        Link(destination: destination) {
-            HStack {
-                Label(title, systemImage: systemImage)
-                Spacer()
-                // Leaves the app: the arrow says so, unlike the chevron of a screen inside it.
-                Image(systemName: "arrow.up.forward")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .accessibilityHidden(true)
-            }
-            .frame(maxWidth: .infinity, minHeight: 56)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.bordered)
-        .accessibilityHint(Text("Opens in Safari"))
+        .font(.body.weight(.semibold))
+        .foregroundStyle(style.gear.color)
     }
 }

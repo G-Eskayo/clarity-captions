@@ -12,5 +12,17 @@
 	     stops asking the export-compliance question on every upload (#79). -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- Bundled lettering fonts (#103): OpenDyslexic (the default) and Atkinson Hyperlegible, SIL OFL 1.1. -->
+	<key>UIAppFonts</key>
+	<array>
+		<string>OpenDyslexic-Regular.otf</string>
+		<string>OpenDyslexic-Bold.otf</string>
+		<string>OpenDyslexic-Italic.otf</string>
+		<string>OpenDyslexic-BoldItalic.otf</string>
+		<string>AtkinsonHyperlegible-Regular.ttf</string>
+		<string>AtkinsonHyperlegible-Bold.ttf</string>
+		<string>AtkinsonHyperlegible-Italic.ttf</string>
+		<string>AtkinsonHyperlegible-BoldItalic.ttf</string>
+	</array>
 </dict>
 </plist>

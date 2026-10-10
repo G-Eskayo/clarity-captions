@@ -99,8 +99,8 @@ final class CaptionStyleTests: XCTestCase {
     }
 
     func testDimmedCaptionStaysHighContrast() {
-        let dimmedAlpha = CaptionLine.volatileOpacity
         for p in CaptionPreset.all {
+            let dimmedAlpha = CaptionStyle.standard.applying(p).volatileOpacity
             // the text itself is faded to dimmedAlpha, then seen against the opaque background
             let dimmedText = RGBA(p.text.r, p.text.g, p.text.b, dimmedAlpha).composited(over: p.background)
             let contrast = RGBA.contrast(dimmedText, p.background)

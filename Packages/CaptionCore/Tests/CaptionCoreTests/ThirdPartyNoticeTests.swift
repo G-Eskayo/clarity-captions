@@ -28,6 +28,18 @@ final class ThirdPartyNoticeTests: XCTestCase {
         XCTAssertEqual(fluidAudio?.licenseURL.absoluteString, "https://www.apache.org/licenses/LICENSE-2.0")
     }
 
+    func testBundledFontsAreCreditedUnderTheirOwnLicenses() {
+        // Classic OpenDyslexic (2.020, the face the approved mock-ups use) ships under the Bitstream Vera license;
+        // Atkinson Hyperlegible under the SIL Open Font License.
+        let expected = ["opendyslexic": "Bitstream Vera License", "atkinsonhyperlegible": "SIL OFL 1.1"]
+        for (id, license) in expected {
+            let notice = ThirdPartyNotice.all.first { $0.id == id }
+            XCTAssertNotNil(notice, "\(id) is bundled in the app, so it must be credited")
+            XCTAssertEqual(notice?.licenseName, license, id)
+        }
+        XCTAssertEqual(ThirdPartyNotice.all.first { $0.id == "atkinsonhyperlegible" }?.licenseURL.absoluteString, "https://openfontlicense.org")
+    }
+
     func testEveryNoticeLinksToItsSource() {
         for notice in ThirdPartyNotice.all {
             XCTAssertNotNil(notice.sourceURL, "\(notice.name) should link to its source")

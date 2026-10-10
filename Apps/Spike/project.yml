@@ -33,6 +33,9 @@ targets:
       # Upload is refused (ITMS-91053) without it.
       - path: Info/PrivacyInfo.xcprivacy
         buildPhase: resources
+      # Lettering fonts (#103, SIL OFL 1.1, license files alongside): registered by UIAppFonts in Info/LaunchInfo.plist.
+      - path: Resources/Fonts
+        buildPhase: resources
       - path: Resources/Models/Sortformer_v2.1.mlmodelc
         type: folder
         buildPhase: resources
