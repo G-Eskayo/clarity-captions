@@ -23,7 +23,16 @@ final class CaptionModel: ObservableObject {
     private var activityTask: Task<Void, Never>?
     private var controller: CaptionSessionController!
     var store: SavedConversationStoring?
-    private var sessionStartedAt: Date?
+    /// The conversation on screen, kept across pauses until [ New ]; saved only when she taps [ Save ] (#102).
+    @Published var session = ConversationSession()
+    /// The dim over a paused conversation, with [ Save ] and [ New ].
+    @Published var veil = PauseVeil()
+    /// [ ✔ ] shows briefly between [ Save ] and [ Saved ].
+    @Published var showingSaveCheck = false
+    /// [ New ] with unsaved changes asks first.
+    @Published var confirmingNew = false
+    /// The on-screen conversation, written to the phone while she's in another app.
+    private var currentStore: CurrentConversationStore?
     private var tracker = ListeningActivityTracker()
     /// ADR 0019: read by the controller on every tick, so a change in Settings applies mid-session.
     @Published var idleStop: IdleStopSetting = IdleStopStore().load() {
@@ -46,6 +55,13 @@ final class CaptionModel: ObservableObject {
             let conversationsDir = appSupportURL.appendingPathComponent("SavedConversations")
             self.store = try? SavedConversationStore(directory: conversationsDir)
             Task { try? await self.store?.purgeExpired(now: Date()) }
+            currentStore = try? CurrentConversationStore(directory: appSupportURL.appendingPathComponent("CurrentConversation"))
+            // A cold launch: bring back a conversation she was in the middle of, paused (Decision "coldlaunch").
+            if let restored = currentStore?.restoreOnColdLaunch(now: Date())?.restore() {
+                stream = restored.stream
+                speakerNames = restored.names
+                session = restored.session
+            }
         }
 
         controller.onStateChange = { [weak self] in self?.handleCaptionStateChange($0) }
@@ -67,18 +83,21 @@ final class CaptionModel: ObservableObject {
         }
     }
 
-    private func handleCaptionStateChange(_ newState: CaptionState) {
+    func handleCaptionStateChange(_ newState: CaptionState) {
         state = newState
         screenAwake.update(state: newState)
 
         switch newState {
         case .preparing:
-            sessionStartedAt = Date()
+            // Resuming continues the same conversation, on a new line.
+            session.captioningStarted(at: Date())
+            veil.captioningStarted()
+            stream.breakLine()
         case .listening:
             startActivityLoop()
         case .idle, .failed, .pausedQuiet:
+            // Pausing keeps the conversation on screen; nothing is saved until she taps [ Save ].
             stopActivityLoop()
-            saveSessionIfNeeded()
         }
     }
 
@@ -103,31 +122,55 @@ final class CaptionModel: ObservableObject {
         roomLevelDBFS = nil
     }
 
-    private func saveSessionIfNeeded() {
-        let action = CaptionSessionLifecycle.action(for: state, sessionStartedAt: sessionStartedAt, lines: stream.lines, speakerNames: speakerNames)
+    var hasConversation: Bool { ConversationSession.hasContent(stream.lines) }
 
+    /// [ Save ]: writes the conversation to the saved list (kept 30 days). Saving again updates the same one.
+    func save() {
+        let before = session
+        guard let conversation = session.makeSaved(lines: stream.lines, names: speakerNames, now: Date()) else { return }
+        showingSaveCheck = true
         Task {
-            switch action {
-            case .save(let conversation):
-                do {
-                    try await store?.save(conversation)
-                    try await store?.purgeExpired(now: Date())
-                } catch {
-                    diag = "Save failed: \(error)"
-                }
-            case .discard:
-                break
-            case .none:
-                break
+            do {
+                try await store?.save(conversation)
+                try await store?.purgeExpired(now: Date())
+            } catch {
+                session = before
+                diag = "Save failed: \(error)"
             }
-            resetSession()
+            try? await Task.sleep(nanoseconds: 700_000_000)
+            showingSaveCheck = false
         }
     }
 
-    private func resetSession() {
+    /// [ New ]: asks first if the conversation isn't saved as it stands.
+    func requestNew() {
+        if session.hasUnsavedChanges(lines: stream.lines, names: speakerNames) { confirmingNew = true } else { startNew() }
+    }
+
+    func startNew() {
         stream = CaptionStream()
         speakerNames = SpeakerNames()
-        sessionStartedAt = nil
+        session = ConversationSession()
+        veil = PauseVeil()
+        showingSaveCheck = false
+        currentStore?.delete()
+    }
+
+    /// Leaving for another app: keep the conversation on the phone in case iOS closes Seal meanwhile. Back on
+    /// screen it's in memory again, so the file goes.
+    func scenePhaseChanged(_ phase: ScenePhase) {
+        switch phase {
+        case .background:
+            if hasConversation {
+                try? currentStore?.save(CurrentConversationSnapshot(lines: stream.lines, names: speakerNames, session: session, leftAt: Date()))
+            } else {
+                currentStore?.delete()
+            }
+        case .active:
+            currentStore?.delete()
+        default:
+            break
+        }
     }
 
     /// The app left or returned to the screen: the screen-awake flag follows, and time away isn't counted as quiet.
@@ -209,6 +252,10 @@ struct ContentView: View {
     @State private var renamingSpeaker: Int?
     /// Draft name being edited in the rename dialog.
     @State private var nameDraft: String = ""
+    /// Where each caption's words are, so a press-and-hold can tell empty space from words.
+    @State private var textFrames = TextFrames()
+    /// "Hold on empty space to bring back Save and New": shown the first few times the dim is cleared.
+    @State private var showingVeilHint = false
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -246,12 +293,26 @@ struct ContentView: View {
         .tint(style.text.color)
         .preferredColorScheme(style.background.isDark ? .dark : .light)
         .animation(.snappy, value: control.presentation)
-        .onChange(of: scenePhase) { _, phase in model.appActiveChanged(phase == .active) }
+        .onChange(of: scenePhase) { _, phase in
+            model.appActiveChanged(phase == .active)
+            model.scenePhaseChanged(phase)
+        }
+        .alert(String(localized: "Start a new conversation?"), isPresented: $model.confirmingNew) {
+            Button(String(localized: "Start new"), role: .destructive) { withAnimation(veilAnimation) { model.startNew() } }
+            Button(String(localized: "Cancel"), role: .cancel) {}
+        } message: {
+            Text(String(localized: "This conversation isn't saved."))
+        }
         .sheet(isPresented: $showingSettings) { SettingsSheet(style: $model.style, idleStop: $model.idleStop, stream: model.stream, speakerNames: model.speakerNames, store: model.store) }
         .task {
             guard DemoMode.isOn else { return }
+            model.demoApplyPreset()
+            if DemoMode.landscape, let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                scene.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeRight))
+            }
             model.runDemo()
             if DemoMode.opensSettings { showingSettings = true }
+            await runDemoPause()
         }
         .onChange(of: model.state) { _, newState in
             UIAccessibility.post(notification: .announcement, argument: StatusWords.announcement(for: newState))
@@ -266,6 +327,7 @@ struct ContentView: View {
         let token = preparingToken
         switch newState {
         case .preparing:
+            showingVeilHint = false
             preparingStartTime = Date()
             Task {
                 try? await Task.sleep(nanoseconds: UInt64(LaunchAnimationGate.showDelay * 1_000_000_000))
@@ -286,93 +348,104 @@ struct ContentView: View {
         }
     }
 
-    /// Portrait: Settings sits in the top row; while captioning, Stop is a small circle at the bottom right,
-    /// and the bottom button row only exists when it is a big Start / Try again, so captions get the space.
+    /// Portrait: the gear and the status share the top row, so captions start right under it. Start captions sits at
+    /// the bottom middle; while captioning, Stop is a small circle at the bottom right (#102, mock-up 01/02).
     private var portraitLayout: some View {
-        VStack(spacing: 20) {
-            HStack {
-                settingsButton
-                Spacer()
-            }
-            status(font: .largeTitle)
+        VStack(spacing: 12) {
+            topRow
             if developerTools { developerPanel }
-            // Captions use the full height. The one morphing control floats over the bottom edge, and the scroll
-            // content keeps a margin below the newest line so it never sits under the control.
+            // The control floats over the bottom edge; the scroll content keeps a margin so the newest line never
+            // sits under it.
             captions(bottomReserve: 72 + 24)
         }
         .overlay(alignment: .bottom) { controlBar(pillWidth: nil) }
     }
 
-    /// Landscape: a thin top bar (state in the middle, Settings at the right), captions across everything
-    /// below it, and the stop / start control in the bottom-right corner, so text gets the most room.
+    /// Landscape: the same top row, captions across the full width, Start captions at the bottom middle and Stop in
+    /// the bottom-right corner.
     private var landscapeLayout: some View {
-        ZStack(alignment: .bottomTrailing) {
-            VStack(spacing: 8) {
-                ZStack {
-                    status(font: .title3)
-                    HStack { Spacer(); settingsButton }
-                }
-                // Leave the corner free so the control never sits on top of text.
-                captions().padding(.trailing, control.presentation == .compact ? PrimaryControl.compactDiameter + 16 : 236)
-            }
-            controlBar(pillWidth: 220)
+        VStack(spacing: 8) {
+            topRow
+            captions(bottomReserve: 72 + 16)
         }
-        .overlay(alignment: .bottomLeading) { if developerTools { developerPanel.frame(maxWidth: 360) } }
+        .overlay(alignment: .bottom) {
+            GeometryReader { geo in controlBar(pillWidth: min(geo.size.width * 0.47, 440)) }
+        }
+        .overlay(alignment: .bottomLeading) { if developerTools { developerPanel.frame(maxWidth: 360).padding(.bottom, 80) } }
     }
 
-    /// The single bottom control, right-aligned so it shrinks toward the bottom-right corner and grows back out.
-    /// `pillWidth` nil means the full row (portrait).
+    /// The single bottom control. The Start pill is centered; Stop shrinks into the bottom-right corner and grows
+    /// back out. `pillWidth` nil means the full row (portrait).
     private func controlBar(pillWidth: CGFloat?) -> some View {
         GeometryReader { geo in
-            HStack(spacing: 0) {
-                Spacer(minLength: 0)
-                MorphingControl(control: control, fullWidth: pillWidth ?? geo.size.width,
-                                fill: style.text.color, label: style.background.color) {
-                    model.perform(control.action)
-                }
+            MorphingControl(control: control, fullWidth: pillWidth ?? geo.size.width,
+                            fill: style.text.color, label: style.background.color) {
+                model.perform(control.action)
             }
-            .frame(maxHeight: .infinity, alignment: .bottom)
+            .frame(maxWidth: .infinity, maxHeight: .infinity,
+                   alignment: control.presentation == .compact ? .bottomTrailing : .bottom)
         }
         .frame(height: 72)
+        .frame(maxHeight: .infinity, alignment: .bottom)
     }
 
-    private var settingsButton: some View {
-        Button { showingSettings = true } label: { Label("Settings", systemImage: "gearshape").font(.headline) }
-            .buttonStyle(.bordered)
-    }
-
-    private func status(font: Font) -> some View {
-        let headline: String
-        let detail: String?
-        if let activity = model.activity {
-            headline = StatusWords.headline(for: model.state, activity: activity)
-            detail = StatusWords.secondLine(for: model.state, activity: activity)
-        } else {
-            headline = StatusWords.headline(for: model.state)
-            detail = StatusWords.detail(for: model.state)
-        }
-
-        return VStack(spacing: 4) {
-            HStack(spacing: 8) {
-                Text(headline)
-                    .font(font.bold())
-                    .onLongPressGesture(minimumDuration: 1.5) { developerTools.toggle() }
-                if let activity = model.activity, case .listening = model.state {
-                    let dot = StatusDot.select(state: model.state, activity: activity, roomLevelDBFS: model.roomLevelDBFS)
-                    renderStatusDot(dot)
-                }
-                Spacer()
+    /// The gear on the left (icon only, no label or background) with the status centered on the same row.
+    private var topRow: some View {
+        VStack(spacing: 2) {
+            ZStack {
+                statusLine
+                HStack { settingsButton; Spacer() }
             }
-            if let detail {
-                Text(detail).font(.footnote).opacity(0.7)
+            if let detail = statusDetail {
+                Text(detail).font(.footnote).opacity(0.7).multilineTextAlignment(.center)
             }
         }
-        .accessibilityElement(children: .combine)
         .onChange(of: model.activity) { _, newActivity in
             if let activity = newActivity {
                 UIAccessibility.post(notification: .announcement, argument: StatusWords.announcement(for: model.state, activity: activity))
             }
         }
+    }
+
+    /// One place for the gear's color, so the themes ticket (#103) can give each theme its own.
+    private var gearColor: Color { style.text.color }
+
+    private var settingsButton: some View {
+        Button { showingSettings = true } label: {
+            Image(systemName: "gearshape")
+                .font(.title2)
+                .foregroundStyle(gearColor)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(String(localized: "Settings"))
+    }
+
+    private var statusHeadline: String {
+        if let activity = model.activity { return StatusWords.headline(for: model.state, activity: activity) }
+        return StatusWords.headline(for: model.state, hasConversation: model.hasConversation)
+    }
+
+    private var statusDetail: String? {
+        if let activity = model.activity { return StatusWords.secondLine(for: model.state, activity: activity) }
+        return StatusWords.detail(for: model.state)
+    }
+
+    private var statusLine: some View {
+        HStack(spacing: 6) {
+            if let activity = model.activity, case .listening = model.state {
+                renderStatusDot(StatusDot.select(state: model.state, activity: activity, roomLevelDBFS: model.roomLevelDBFS))
+            }
+            Text(statusHeadline)
+                .font(.subheadline.weight(.semibold))
+                .opacity(0.8)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .onLongPressGesture(minimumDuration: 1.5) { developerTools.toggle() }
+        }
+        .padding(.horizontal, 52)   // never under the gear
+        .accessibilityElement(children: .combine)
     }
 
     @ViewBuilder
@@ -404,6 +477,7 @@ struct ContentView: View {
                             let labelState = SpeakerLabeling.state(for: line)
                             if labelState != .none {
                                 speakerLabelRow(for: labelState, speaker: line.speaker, palette: palette, placeholderColor: placeholderColor)
+                                    .trackWords(in: textFrames, key: "label-\(line.id)")
                                     .onAppear {
                                         if labelState == .pending && !showingSpeakerBanner && !SpeakerExplanationStore().hasSeen {
                                             showingSpeakerBanner = true
@@ -413,9 +487,11 @@ struct ContentView: View {
                             if line.isSoundLabel {
                                 Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass).italic()).opacity(line.isFinal ? 1 : style.volatileOpacity)
                                     .accessibilityLabel(line.soundLabel.map { soundLabelA11yLabel(for: $0) } ?? "")
+                                    .trackWords(in: textFrames, key: "text-\(line.id)")
                             } else {
                                 Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass)).opacity(line.isFinal ? 1 : style.volatileOpacity)
                                     .textSelection(.enabled)
+                                    .trackWords(in: textFrames, key: "text-\(line.id)")
                             }
                         }
                         .accessibilityElement(children: .contain)
@@ -424,7 +500,16 @@ struct ContentView: View {
                     }
                 }
             }
+            .coordinateSpace(.named(TextFrames.space))
+            // Paused with the dim cleared: press and hold on empty space (not on words) brings back the dim and
+            // [ Save ] / [ New ]. On words, the hold is the text's own selection.
+            .gesture(HoldLocationGesture { location in
+                guard PauseVeil.isPaused(model.state), model.hasConversation, !textFrames.contains(location) else { return }
+                bringBackVeil()
+            })
             .scrollPosition($position)
+            // Opens on the newest line (a restored conversation too), clear of the control.
+            .defaultScrollAnchor(.bottom, for: .initialOffset)
             .contentMargins(.bottom, bottomReserve, for: .scrollContent)
             .onScrollPhaseChange { _, phase in userDragging = (phase == .interacting || phase == .decelerating) }
             .onScrollGeometryChange(for: Bool.self) { g in
@@ -445,6 +530,22 @@ struct ContentView: View {
                 }
             }
 
+            if model.veil.isVisible(state: model.state, hasConversation: model.hasConversation) {
+                pauseVeil.transition(.opacity)
+            }
+
+            if showingVeilHint {
+                Text(String(localized: "Hold on empty space to bring back Save and New"))
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(style.background.color)
+                    .padding(.horizontal, 16).padding(.vertical, 10)
+                    .background(style.text.color, in: Capsule())
+                    .frame(maxHeight: .infinity, alignment: .bottom)
+                    .padding(.bottom, bottomReserve + 8)   // just above Start, which floats over the captions' bottom
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+            }
+
             if showingSpeakerBanner {
                 VStack(spacing: 12) {
                     Text(SpeakerExplanation.sentence)
@@ -463,6 +564,8 @@ struct ContentView: View {
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
+        .animation(veilAnimation, value: model.veil.isVisible(state: model.state, hasConversation: model.hasConversation))
+        .accessibilityAction(named: String(localized: "Show Save and New")) { bringBackVeil() }
         .alert(String(localized: "Name this speaker"), isPresented: Binding(
             get: { renamingSpeaker != nil },
             set: { if !$0 { renamingSpeaker = nil; nameDraft = "" } }
@@ -488,6 +591,118 @@ struct ContentView: View {
             }
         } message: {
             Text(String(localized: "Enter a custom name for this speaker"))
+        }
+    }
+
+    /// Debug only (DemoMode): the paused states and flows #102's screenshots and recordings show.
+    private func runDemoPause() async {
+        func wait(_ seconds: Double) async { try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000)) }
+        UserDefaults.standard.removeObject(forKey: Self.veilHintKey)   // every demo shows the hint as a first time would
+        // The demo adds its whole conversation at once, right after appearing; land on the newest line as live use does.
+        await wait(0.3); position.scrollTo(edge: .bottom)
+        await wait(0.7); position.scrollTo(edge: .bottom)   // again once the rows have measured themselves
+        if DemoMode.paused { model.demoSetState(.idle) }
+        if DemoMode.saved { model.save() }
+        if DemoMode.veilCleared { clearVeil() }
+        switch DemoMode.flow {
+        case "save":
+            await wait(2); model.demoSetState(.idle)
+            await wait(2); withAnimation(.easeInOut(duration: 0.2)) { model.save() }
+            await wait(3); model.demoSetState(.preparing); model.demoSetState(.listening)
+            await wait(1); model.demoSay("Then let's go Saturday at seven.", speaker: 1)
+            await wait(2); model.demoSetState(.idle)
+        case "clear":
+            model.demoSetState(.idle)
+            await wait(2); clearVeil()
+            await wait(3); bringBackVeil()
+        case "new":
+            model.demoSetState(.idle)
+            await wait(2); model.requestNew()
+            await wait(3); model.confirmingNew = false; withAnimation(veilAnimation) { model.startNew() }
+        default:
+            break
+        }
+    }
+
+    private var veilAnimation: Animation { .easeInOut(duration: reduceMotion ? 0.2 : 0.35) }
+
+    /// The dim over a paused conversation: the captions fade toward the theme's own background (about 86%, mock-up
+    /// 02) and [ Save ] sits over [ New ], centered, each on a plain patch of background so faded words never show
+    /// through the letters. One tap on the dim clears it to scroll and copy.
+    private var pauseVeil: some View {
+        ZStack {
+            style.background.color.opacity(0.86)
+                .contentShape(Rectangle())
+                .onTapGesture { clearVeil() }
+                .accessibilityElement()
+                .accessibilityLabel(String(localized: "Paused conversation"))
+                .accessibilityAddTraits(.isButton)
+                .accessibilityHint(String(localized: "Double tap to show the conversation"))
+            VStack(spacing: 24) {
+                saveButton
+                retroButton(String(localized: "New"), color: style.text.color,
+                            label: String(localized: "Start a new conversation")) { model.requestNew() }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var saveButton: some View {
+        let green = SavedGreen.color(on: style.background).color
+        if model.showingSaveCheck {
+            retroButton(Self.checkMark, color: green, label: String(localized: "Saved"), action: nil)
+        } else {
+            switch model.session.saveButton(lines: model.stream.lines, names: model.speakerNames) {
+            case .save:
+                retroButton(String(localized: "Save"), color: style.text.color, label: String(localized: "Save conversation")) {
+                    withAnimation(.easeInOut(duration: 0.2)) { model.save() }
+                }
+            case .saved:
+                retroButton(String(localized: "Saved"), color: green, label: String(localized: "Conversation saved"), action: nil)
+            case .unavailable:
+                EmptyView()
+            }
+        }
+    }
+
+    /// The retro, literal-text buttons: [ Save ], [ ✔ ], [ Saved ], [ New ]. A nil action shows the state only.
+    /// Without an action it's plain text, not a disabled button: a disabled button is dimmed, and [ Saved ] must
+    /// stay solid green on a solid patch.
+    @ViewBuilder
+    private func retroButton(_ word: String, color: Color, label: String, action: (() -> Void)?) -> some View {
+        // The brackets are the retro frame, not words; the word inside is already localized.
+        let text = Text(verbatim: "[ \(word) ]")
+            .font(.system(.title, design: .monospaced).bold())
+            .foregroundStyle(color)
+            .padding(.horizontal, 14).padding(.vertical, 6)
+            .background(style.background.color)
+            .contentShape(Rectangle())
+            .contentTransition(.opacity)
+        if let action {
+            Button(action: action) { text }
+                .buttonStyle(.plain)
+                .accessibilityLabel(label)
+        } else {
+            text.accessibilityLabel(label)
+        }
+    }
+
+    private static let checkMark = "✔"
+    private static let veilHintLimit = 3
+    private static let veilHintKey = "pauseVeilHintCount"
+
+    private func clearVeil() {
+        withAnimation(veilAnimation) { model.veil.tap(state: model.state) }
+        let shown = UserDefaults.standard.integer(forKey: Self.veilHintKey)
+        guard shown < Self.veilHintLimit else { return }
+        UserDefaults.standard.set(shown + 1, forKey: Self.veilHintKey)
+        withAnimation(veilAnimation) { showingVeilHint = true }
+    }
+
+    private func bringBackVeil() {
+        withAnimation(veilAnimation) {
+            model.veil.holdOnEmptySpace(state: model.state)
+            showingVeilHint = false
         }
     }
 

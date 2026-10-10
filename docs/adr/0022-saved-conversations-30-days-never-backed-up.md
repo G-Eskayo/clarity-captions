@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-10-06), from the #3 design session. Implemented by #8 and #52.
+Accepted (2026-10-06), from the #3 design session. Implemented by #8 and #52. Amended 2026-10-09 by #102 (save on request).
 
 ## Context
 
@@ -29,3 +29,19 @@ but breaks the on-device promise).
 - Private conversations don't accumulate indefinitely.
 - A lost, broken or replaced phone loses its transcripts: accepted as the price of the on-device promise.
 - The 30-day window is fixed, not a setting ([[0013]], [[0019]]: idle stop is the only behavior setting).
+
+## Amendment (2026-10-09, #102): saved on request, not automatically
+
+The owner's v1 design (#96, `docs/design/v1-polish-spec.md` §1) replaces decision 2:
+
+- Stop **pauses** the conversation instead of saving and clearing it. A dim fades in with **[ Save ]** over
+  **[ New ]**; Start captions resumes the **same** conversation.
+- A conversation is saved **only when she taps [ Save ]**. It shows [ ✔ ] then **[ Saved ]** in green, held until
+  the conversation's content changes; saving again updates the same saved conversation.
+- **[ New ]** clears it, and asks first when it isn't saved.
+- Decisions 1, 3 and 4 stand: unlimited scrollback, saved conversations deleted after 30 days, never backed up
+  or synced.
+- New: while she is in another app, the on-screen conversation is written to the phone (excluded from backup) so
+  it survives iOS closing Seal in the background. On a cold launch it comes back paused if she left less than 30
+  minutes ago, and is deleted otherwise (Decision "coldlaunch" on #102, recommended option pending the owner's
+  answer; `ColdLaunchRule.current`). iOS can't tell a swipe-away from a background close, hence the time window.
