@@ -16,6 +16,16 @@ public enum IdleStopSetting: String, CaseIterable, Sendable {
         }
     }
 
+    /// The short form Settings shows on one line (design #96); `title` stays the spoken label.
+    public var shortTitle: String {
+        switch self {
+        case .fiveMinutes: String(localized: "5 min")
+        case .fifteenMinutes: String(localized: "15 min")
+        case .thirtyMinutes: String(localized: "30 min")
+        case .never: String(localized: "Never")
+        }
+    }
+
     public var title: String {
         switch self {
         case .fiveMinutes: String(localized: "5 minutes")

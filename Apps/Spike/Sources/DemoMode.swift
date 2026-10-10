@@ -7,6 +7,8 @@ import Foundation
 ///   -ClarityDemoStatic    shows the whole conversation at once, for repeatable screenshots
 ///   -ClarityDemoSettings  also opens the appearance settings
 ///   -ClarityDemoSettingsSection idleStop   scrolls those settings to a section (simctl can't scroll)
+///   -ClarityDemoTheme night  -ClarityDemoFont serif   start with this look
+///   -ClarityDemoGummy     a screen of gummy buttons pressing by themselves
 /// It feeds the same CaptionStream the real engine feeds, so what you see is the real caption view: speaker colours,
 /// names, line breaks and sound labels. No microphone, speech model or network is involved.
 enum DemoMode {
@@ -18,6 +20,33 @@ enum DemoMode {
         #if DEBUG
         let args = ProcessInfo.processInfo.arguments
         guard let i = args.firstIndex(of: "-ClarityDemoSettingsSection"), i + 1 < args.count else { return nil }
+        return args[i + 1]
+        #else
+        return nil
+        #endif
+    }
+
+    /// `-ClarityDemoTheme <id>` and `-ClarityDemoFont <rawValue>`: start with this look (saved, like a user's choice),
+    /// for screenshots of every theme and lettering. Debug builds only.
+    static var theme: CaptionPreset? { value("-ClarityDemoTheme").flatMap { id in CaptionPreset.all.first { $0.id == id } } }
+    static var font: CaptionFont? { value("-ClarityDemoFont").flatMap(CaptionFont.init(rawValue:)) }
+    /// `-ClarityDemoGummy`: a screen of gummy buttons that press and release by themselves (simctl can't tap).
+    static var gummyDemo: Bool { flag("-ClarityDemoGummy") }
+
+    /// Applies -ClarityDemoTheme / -ClarityDemoFont before the main screen reads the saved style.
+    static func applyLookOverrides() {
+        guard theme != nil || font != nil else { return }
+        let store = CaptionStyleStore()
+        var style = store.load()
+        if let theme { style = style.applying(theme) }
+        if let font { style.font = font }
+        store.save(style)
+    }
+
+    private static func value(_ name: String) -> String? {
+        #if DEBUG
+        let args = ProcessInfo.processInfo.arguments
+        guard let i = args.firstIndex(of: name), i + 1 < args.count else { return nil }
         return args[i + 1]
         #else
         return nil

@@ -1,6 +1,50 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    ", default" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ", default"
+          }
+        }
+      }
+    },
+    "15 min" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "15 min"
+          }
+        }
+      }
+    },
+    "30 min" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "30 min"
+          }
+        }
+      }
+    },
+    "5 min" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 min"
+          }
+        }
+      }
+    },
     "A+" : {
       "extractionState": "manual",
       "localizations": {
@@ -463,6 +507,17 @@
         }
       }
     },
+    "How to use Seal" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How to use Seal"
+          }
+        }
+      }
+    },
     "I can't hear yet" : {
       "extractionState": "manual",
       "localizations": {
@@ -771,6 +826,17 @@
         }
       }
     },
+    "OpenDyslexic was made for people with dyslexia. Atkinson Hyperlegible was designed by the Braille Institute for low vision." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenDyslexic was made for people with dyslexia. Atkinson Hyperlegible was designed by the Braille Institute for low vision."
+          }
+        }
+      }
+    },
     "Opens in Safari" : {
       "extractionState": "manual",
       "localizations": {
@@ -815,6 +881,17 @@
         }
       }
     },
+    "Pressed" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pressed"
+          }
+        }
+      }
+    },
     "Preview of caption text" : {
       "extractionState": "manual",
       "localizations": {
@@ -822,6 +899,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Preview of caption text"
+          }
+        }
+      }
+    },
+    "Preview: Let's book a table for seven." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preview: Let's book a table for seven."
           }
         }
       }
@@ -859,6 +947,17 @@
         }
       }
     },
+    "Resting" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resting"
+          }
+        }
+      }
+    },
     "Rounded" : {
       "extractionState": "manual",
       "localizations": {
@@ -866,6 +965,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rounded"
+          }
+        }
+      }
+    },
+    "Saved conversations are deleted after 30 days." : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved conversations are deleted after 30 days."
           }
         }
       }
@@ -965,6 +1075,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Share as text"
+          }
+        }
+      }
+    },
+    "Show how to use Seal" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show how to use Seal"
           }
         }
       }
@@ -1350,6 +1471,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Jump to latest"
+          }
+        }
+      }
+    },
+    "· default" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "· default"
           }
         }
       }
