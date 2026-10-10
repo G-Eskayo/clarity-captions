@@ -234,6 +234,8 @@ struct ContentView: View {
     @StateObject private var model = CaptionModel()
     /// Developer-only tools (mic mode, diagnostics). Long-press the status text to toggle; never shown by default.
     @State private var developerTools = false
+    /// Debug only (DemoMode `-ClarityDemoFlow start`): presses the Start pill without a finger.
+    @State private var demoPressingStart = false
     @State private var showingSettings = false
     @State private var position = ScrollPosition(edge: .bottom)
     /// Following the newest caption. Stops only when the user drags away; resumes at the bottom or via "Jump to latest".
@@ -391,7 +393,7 @@ struct ContentView: View {
     private func controlBar(pillWidth: CGFloat?) -> some View {
         GeometryReader { geo in
             MorphingControl(control: control, fullWidth: pillWidth ?? geo.size.width,
-                            fill: style.text.color, label: style.background.color) {
+                            fill: style.text, label: style.background, forcePressed: demoPressingStart) {
                 model.perform(control.action)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity,
@@ -419,8 +421,8 @@ struct ContentView: View {
         }
     }
 
-    /// One place for the gear's color, so the themes ticket (#103) can give each theme its own.
-    private var gearColor: Color { style.text.color }
+    /// Each theme's own gear color (design #96, image 6); colors from an older build fall back to the text color.
+    private var gearColor: Color { style.gear.color }
 
     private var settingsButton: some View {
         Button { showingSettings = true } label: {
@@ -683,6 +685,13 @@ struct ContentView: View {
             await wait(1.8)
             if let to = demoPosition("Each of us", end: true) { await demoExtend(to: to) }   // resize back; Copy follows
             await wait(1.8); copySelection()
+        case "start":
+            // simctl can't tap: press the Start pill, let go, then start captioning so it sweeps into Stop.
+            model.demoSetState(.idle)
+            await wait(2); demoPressingStart = true
+            await wait(0.35); demoPressingStart = false
+            await wait(0.25); model.demoSetState(.preparing); model.demoSetState(.listening)
+            await wait(3); model.demoSetState(.idle)
         case "new":
             model.demoSetState(.idle)
             await wait(2); model.requestNew()

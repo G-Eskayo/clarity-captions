@@ -12,7 +12,7 @@ import Foundation
 ///   -ClarityDemoPaused    pauses after the conversation: the dim with [ Save ] / [ New ] (#102)
 ///   -ClarityDemoSaved     paused and saved: [ Saved ] in green
 ///   -ClarityDemoVeilCleared  paused with the dim tapped away, and the hint
-///   -ClarityDemoFlow save|clear|new|copy   plays a flow for screen recordings: pause, save, resume and pause again;
+///   -ClarityDemoFlow save|clear|new|copy|start   plays a flow for screen recordings: pause, save, resume and pause again;
 ///                         tap the dim away and hold to bring it back; [ New ] asking first; select across lines,
 ///                         wait for Copy, resize, copy (#107: simctl can't touch, so the selection is scripted)
 ///   -ClarityDemoSelect    a selection across three captions with its handles and, after half a second, Copy (#107)
