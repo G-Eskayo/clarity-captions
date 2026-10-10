@@ -13,6 +13,30 @@ final class TextFrames {
     func contains(_ point: CGPoint) -> Bool {
         frames.values.contains { $0.insetBy(dx: -6, dy: -6).contains(point) }
     }
+
+    /// The caption text (not a speaker label) under the point, with the same slack (#107: a hold there selects).
+    func captionLine(at point: CGPoint) -> (id: Int, frame: CGRect)? {
+        captionFrames.first { $0.frame.insetBy(dx: -6, dy: -6).contains(point) }
+    }
+
+    /// The caption text nearest the point vertically, for dragging a selection handle into the gap between lines.
+    func nearestCaptionLine(to point: CGPoint) -> (id: Int, frame: CGRect)? {
+        captionFrames.min { distance($0.frame, point) < distance($1.frame, point) }
+    }
+
+    /// Where a caption's text sits now, in the caption viewport.
+    func captionFrame(_ id: Int) -> CGRect? { frames["text-\(id)"] }
+
+    private var captionFrames: [(id: Int, frame: CGRect)] {
+        frames.compactMap { key, frame in
+            guard key.hasPrefix("text-"), let id = Int(key.dropFirst(5)) else { return nil }
+            return (id, frame)
+        }
+    }
+
+    private func distance(_ frame: CGRect, _ point: CGPoint) -> CGFloat {
+        point.y < frame.minY ? frame.minY - point.y : point.y > frame.maxY ? point.y - frame.maxY : 0
+    }
 }
 
 extension View {

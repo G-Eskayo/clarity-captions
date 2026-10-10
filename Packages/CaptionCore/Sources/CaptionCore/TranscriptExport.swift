@@ -6,19 +6,14 @@ public enum TranscriptFormatter {
 
     /// Format lines as plain text, one line per caption, with speaker labels when available.
     public static func plainText(lines: [CaptionLine], speakerNames: SpeakerNames = SpeakerNames()) -> String {
-        lines.map { line in
-            let speaker: String
-            if let sp = line.speaker {
-                if let name = speakerNames.name(for: sp) {
-                    speaker = "\(name): "
-                } else {
-                    speaker = "Speaker \(sp + 1): "
-                }
-            } else {
-                speaker = ""
-            }
-            return speaker + line.text
-        }.joined(separator: "\n")
+        lines.map { speakerPrefix(for: $0, speakerNames: speakerNames) + $0.text }.joined(separator: "\n")
+    }
+
+    /// "Dana: " or "Speaker 2: ", or nothing for a line with no speaker (a sound label). Shared by the export and by
+    /// copying a selection (#107), so the two always read the same.
+    public static func speakerPrefix(for line: CaptionLine, speakerNames: SpeakerNames = SpeakerNames()) -> String {
+        guard let sp = line.speaker else { return "" }
+        return "\(speakerNames.name(for: sp) ?? "Speaker \(sp + 1)"): "
     }
 
     /// Format lines as SubRip SRT: numbered blocks with HH:MM:SS,mmm timestamps.

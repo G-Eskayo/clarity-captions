@@ -309,6 +309,28 @@
         }
       }
     },
+    "Copies the selected words" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copies the selected words"
+          }
+        }
+      }
+    },
+    "Copy" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy"
+          }
+        }
+      }
+    },
     "Copy all text" : {
       "extractionState": "manual",
       "localizations": {

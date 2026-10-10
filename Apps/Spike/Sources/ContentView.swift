@@ -256,6 +256,18 @@ struct ContentView: View {
     @State private var textFrames = TextFrames()
     /// "Hold on empty space to bring back Save and New": shown the first few times the dim is cleared.
     @State private var showingVeilHint = false
+    /// The caption text selected for copying (#107), or nil.
+    @State private var selection: CaptionSelection?
+    /// When the Copy button shows: half a second after the selection stops changing.
+    @State private var copyTiming = CopyButtonTiming()
+    /// Where each caption's characters are, recorded as they draw, so a selection can cross lines.
+    @State private var glyphs = CaptionGlyphs()
+    /// While a handle is dragged: the other end, which stays put.
+    @State private var dragAnchor: CaptionPosition?
+    /// Which handle the finger went down on, decided before the drag moves it.
+    @State private var draggingEdge: SelectionHandle.Edge?
+    /// Follows scrolling while something is selected, so the handles and Copy stay on the words.
+    @State private var selectionScroll: CGFloat = 0
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -469,10 +481,18 @@ struct ContentView: View {
     private func captions(bottomReserve: CGFloat = 0) -> some View {
         let palette = SpeakerPalette.colors(on: style.background, text: style.text).map(\.color)
         let placeholderColor = SpeakerPalette.placeholderColor(on: style.background, text: style.text).color
+        let lines = model.stream.lines
+        let resolved = selection?.resolved(in: lines)
+        let lineIndex = resolved == nil ? [:] : Dictionary(uniqueKeysWithValues: lines.enumerated().map { ($1.id, $0) })
+        let highlight = SelectionColors.highlight(on: style.background).color
+        func selected(_ line: CaptionLine) -> Range<Int>? {
+            guard let resolved, let i = lineIndex[line.id] else { return nil }
+            return resolved.range(forLineAt: i, length: line.text.utf16.count)
+        }
         return ZStack(alignment: .top) {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 16) {
-                    ForEach(model.stream.lines) { line in
+                    ForEach(lines) { line in
                         VStack(alignment: .leading, spacing: 2) {
                             let labelState = SpeakerLabeling.state(for: line)
                             if labelState != .none {
@@ -484,29 +504,51 @@ struct ContentView: View {
                                         }
                                     }
                             }
+                            // Selection is ours, not the system's (#107): it crosses lines and shows only Copy.
+                            let renderer = SelectableCaptionRenderer(lineID: line.id, length: line.text.utf16.count,
+                                                                     selected: selected(line), highlight: highlight, glyphs: glyphs)
                             if line.isSoundLabel {
                                 Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass).italic()).opacity(line.isFinal ? 1 : style.volatileOpacity)
+                                    .textRenderer(renderer)
                                     .accessibilityLabel(line.soundLabel.map { soundLabelA11yLabel(for: $0) } ?? "")
                                     .trackWords(in: textFrames, key: "text-\(line.id)")
                             } else {
                                 Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass)).opacity(line.isFinal ? 1 : style.volatileOpacity)
-                                    .textSelection(.enabled)
+                                    .textRenderer(renderer)
                                     .trackWords(in: textFrames, key: "text-\(line.id)")
                             }
                         }
+                        .onDisappear { glyphs.remove(line.id) }
                         .accessibilityElement(children: .contain)
+                        .accessibilityAction(named: String(localized: "Copy")) { copyLine(line) }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, 8)
                     }
                 }
             }
             .coordinateSpace(.named(TextFrames.space))
-            // Paused with the dim cleared: press and hold on empty space (not on words) brings back the dim and
-            // [ Save ] / [ New ]. On words, the hold is the text's own selection.
+            // Press and hold on caption words selects them for copying (#107), captioning or paused. Paused with the
+            // dim cleared, press and hold on empty space (not on words) brings back the dim and [ Save ] / [ New ].
             .gesture(HoldLocationGesture { location in
+                if let hit = textFrames.captionLine(at: location) {
+                    beginSelection(lineID: hit.id, at: CGPoint(x: location.x - hit.frame.minX, y: location.y - hit.frame.minY))
+                    return
+                }
                 guard PauseVeil.isPaused(model.state), model.hasConversation, !textFrames.contains(location) else { return }
+                clearSelection()
                 bringBackVeil()
             })
+            .gesture(SelectionHandleGesture(canBegin: { point in
+                guard let edge = handle(near: point) else { return false }
+                draggingEdge = edge
+                return true
+            }, onDrag: dragHandle))
+            .simultaneousGesture(SpatialTapGesture().onEnded { tap in
+                if selection != nil, handle(near: tap.location) == nil { clearSelection() }
+            })
+            .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in
+                if selection != nil { selectionScroll = y }
+            }
             .scrollPosition($position)
             // Opens on the newest line (a restored conversation too), clear of the control.
             .defaultScrollAnchor(.bottom, for: .initialOffset)
@@ -517,7 +559,12 @@ struct ContentView: View {
             } action: { _, atBottom in
                 if atBottom { following = true } else if userDragging { following = false }
             }
-            .onChange(of: model.stream.lines) { if following { position.scrollTo(edge: .bottom) } }
+            .onChange(of: model.stream.lines) {
+                // A selection whose words are gone (a new conversation) goes too; while one is held, new captions
+                // don't scroll the words out from under her finger.
+                if let selection, selection.resolved(in: model.stream.lines) == nil { clearSelection() }
+                if AutoScroll.followsNewCaptions(following: following, selecting: selection != nil) { position.scrollTo(edge: .bottom) }
+            }
             .overlay(alignment: .bottom) {
                 if !following {
                     Button {
@@ -529,6 +576,8 @@ struct ContentView: View {
                         .padding(.bottom, 8)
                 }
             }
+
+            if selection != nil { selectionChrome }
 
             if model.veil.isVisible(state: model.state, hasConversation: model.hasConversation) {
                 pauseVeil.transition(.opacity)
@@ -604,6 +653,10 @@ struct ContentView: View {
         if DemoMode.paused { model.demoSetState(.idle) }
         if DemoMode.saved { model.save() }
         if DemoMode.veilCleared { clearVeil() }
+        if DemoMode.select, let from = demoPosition("free for"), let to = demoPosition("own colour", end: true) {
+            await wait(0.4)
+            setSelection(CaptionSelection(anchor: from, focus: to))
+        }
         switch DemoMode.flow {
         case "save":
             await wait(2); model.demoSetState(.idle)
@@ -615,12 +668,53 @@ struct ContentView: View {
             model.demoSetState(.idle)
             await wait(2); clearVeil()
             await wait(3); bringBackVeil()
+        case "copy":
+            // simctl can't touch, so the hold and the handle drag are scripted through the same paths a finger takes.
+            model.demoSetState(.idle)
+            await wait(1); clearVeil()
+            await wait(1.5)
+            if let p = demoPosition("anyone"), let line = model.stream.lines.first(where: { $0.id == p.lineID }),
+               let word = CaptionSelection.word(at: p.offset + 1, in: line) {
+                showingVeilHint = false
+                setSelection(word)
+            }
+            await wait(1.2)                                   // Copy appears half a second after the hold
+            if let to = demoPosition("own colour", end: true) { await demoExtend(to: to) }
+            await wait(1.8)
+            if let to = demoPosition("Each of us", end: true) { await demoExtend(to: to) }   // resize back; Copy follows
+            await wait(1.8); copySelection()
         case "new":
             model.demoSetState(.idle)
             await wait(2); model.requestNew()
             await wait(3); model.confirmingNew = false; withAnimation(veilAnimation) { model.startNew() }
         default:
             break
+        }
+    }
+
+    /// Debug only: where a phrase of the demo conversation sits.
+    private func demoPosition(_ phrase: String, end: Bool = false) -> CaptionPosition? {
+        for line in model.stream.lines {
+            let r = (line.text as NSString).range(of: phrase)
+            if r.location != NSNotFound { return CaptionPosition(lineID: line.id, offset: end ? NSMaxRange(r) : r.location) }
+        }
+        return nil
+    }
+
+    /// Debug only: moves the selection's end toward `target` a few letters at a time, the way a dragged handle does.
+    private func demoExtend(to target: CaptionPosition) async {
+        let lines = model.stream.lines
+        guard let selection, var li = lines.firstIndex(where: { $0.id == selection.focus.lineID }),
+              let ti = lines.firstIndex(where: { $0.id == target.lineID }) else { return }
+        var offset = selection.focus.offset
+        let forward = (li, offset) < (ti, target.offset)
+        while (li, offset) != (ti, target.offset) {
+            offset += forward ? 3 : -3
+            if forward, li < ti, offset >= lines[li].text.utf16.count { li += 1; offset = 0 }
+            if !forward, li > ti, offset <= 0 { li -= 1; offset = lines[li].text.utf16.count }
+            if li == ti { offset = forward ? min(offset, target.offset) : max(offset, target.offset) }
+            setSelection(CaptionSelection(anchor: selection.anchor, focus: CaptionPosition(lineID: lines[li].id, offset: offset)))
+            try? await Task.sleep(for: .milliseconds(45))
         }
     }
 
@@ -704,6 +798,121 @@ struct ContentView: View {
             model.veil.holdOnEmptySpace(state: model.state)
             showingVeilHint = false
         }
+    }
+
+    // MARK: copying (#107)
+
+    /// Press and hold on a caption's words: select the word under the finger.
+    private func beginSelection(lineID: Int, at local: CGPoint) {
+        guard let line = model.stream.lines.first(where: { $0.id == lineID }),
+              let offset = glyphs.offset(at: local, lineID: lineID),
+              let word = CaptionSelection.word(at: offset, in: line) else { return }
+        UISelectionFeedbackGenerator().selectionChanged()
+        showingVeilHint = false
+        setSelection(word)
+    }
+
+    private func setSelection(_ new: CaptionSelection) {
+        selection = new
+        showingVeilHint = false   // the hint is about the dim; while selecting it would sit on her words
+        copyTiming.selectionChanged(at: Date(), isEmpty: new.isEmpty(in: model.stream.lines))
+        // Copy shows once the selection has rested for half a second; a later change just moves it.
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(CopyButtonTiming.settle + 0.02))
+            withAnimation(.easeOut(duration: 0.2)) { _ = copyTiming.update(now: Date()) }
+        }
+    }
+
+    private func clearSelection() {
+        guard selection != nil else { return }
+        selection = nil
+        dragAnchor = nil
+        copyTiming.selectionChanged(at: Date(), isEmpty: true)
+        if following { position.scrollTo(edge: .bottom) }   // catch up on what arrived while selecting
+    }
+
+    private func copySelection() {
+        guard let selection else { return }
+        UIPasteboard.general.string = selection.copyText(lines: model.stream.lines, speakerNames: model.speakerNames)
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        clearSelection()
+    }
+
+    /// VoiceOver's "Copy" on a caption: the whole line, with its speaker, as the transcript export writes it.
+    private func copyLine(_ line: CaptionLine) {
+        UIPasteboard.general.string = TranscriptFormatter.speakerPrefix(for: line, speakerNames: model.speakerNames) + line.text
+    }
+
+    /// The two ends of the selection as carets in the caption viewport, or nil while either is off screen.
+    private func selectionEnds() -> (start: CGRect, end: CGRect)? {
+        let lines = model.stream.lines
+        guard let selection, let r = selection.resolved(in: lines) else { return nil }
+        func caret(_ index: Int, _ offset: Int) -> CGRect? {
+            let line = lines[index]
+            guard let frame = textFrames.captionFrame(line.id),
+                  let caret = glyphs.caret(at: min(offset, line.text.utf16.count), lineID: line.id) else { return nil }
+            return caret.offsetBy(dx: frame.minX, dy: frame.minY)
+        }
+        guard let start = caret(r.startLine, r.startOffset), let end = caret(r.endLine, r.endOffset) else { return nil }
+        return (start, end)
+    }
+
+    /// Which handle a finger at this point is on, with a generous target (44 pt, the minimum for a touch target).
+    private func handle(near point: CGPoint) -> SelectionHandle.Edge? {
+        guard let ends = selectionEnds() else { return nil }
+        func target(_ caret: CGRect, _ edge: SelectionHandle.Edge) -> CGRect {
+            let knob = SelectionHandle.knob
+            let tall = CGRect(x: caret.minX, y: edge == .start ? caret.minY - knob : caret.minY,
+                              width: 0, height: caret.height + knob)
+            return tall.insetBy(dx: -22, dy: -12)
+        }
+        if target(ends.end, .end).contains(point) { return .end }
+        if target(ends.start, .start).contains(point) { return .start }
+        return nil
+    }
+
+    /// Dragging a handle: the other end stays put and this one follows the finger, across lines.
+    private func dragHandle(_ location: CGPoint, finished: Bool) {
+        let lines = model.stream.lines
+        if finished { dragAnchor = nil; draggingEdge = nil; return }
+        guard let selection, let r = selection.resolved(in: lines) else { return }
+        if dragAnchor == nil {
+            let start = CaptionPosition(lineID: lines[r.startLine].id, offset: r.startOffset)
+            let end = CaptionPosition(lineID: lines[r.endLine].id, offset: r.endOffset)
+            dragAnchor = draggingEdge == .start ? end : start
+        }
+        guard let anchor = dragAnchor, let hit = textFrames.nearestCaptionLine(to: location),
+              let offset = glyphs.offset(at: CGPoint(x: location.x - hit.frame.minX, y: location.y - hit.frame.minY), lineID: hit.id)
+        else { return }
+        let moved = CaptionSelection(anchor: anchor, focus: CaptionPosition(lineID: hit.id, offset: offset))
+        if moved != selection, !moved.isEmpty(in: lines) { setSelection(moved) }
+    }
+
+    /// The handles at both ends and, once the selection has rested, one Copy button above it (mock-up 05).
+    private var selectionChrome: some View {
+        GeometryReader { geo in
+            let _ = selectionScroll   // re-place on scroll
+            if let ends = selectionEnds() {
+                let handleColor = SelectionColors.handle(on: style.background).color
+                SelectionHandle(edge: .start, caret: ends.start, color: handleColor)
+                SelectionHandle(edge: .end, caret: ends.end, color: handleColor)
+                if copyTiming.isShown {
+                    // Above the first selected line (mock-up 05). If that's scrolled away, at the top of the visible
+                    // selection: never below it, where it would cover words she hasn't selected.
+                    let y = max(36, ends.start.minY - 46)
+                    Button(action: copySelection) {
+                        Label(String(localized: "Copy"), systemImage: "doc.on.doc")
+                            .font(.title3.bold())
+                            .padding(.horizontal, 26).padding(.vertical, 12)
+                    }
+                    .buttonStyle(GummyButtonStyle(style: style))
+                    .accessibilityHint(String(localized: "Copies the selected words"))
+                    .position(x: geo.size.width / 2, y: y)
+                    .transition(.opacity)
+                }
+            }
+        }
+        .clipped()   // a handle on a line scrolled half away stays within the captions, never over the gear
     }
 
     private func speakerLabelRow(for state: SpeakerLabelState, speaker: Int?, palette: [Color], placeholderColor: Color) -> some View {
