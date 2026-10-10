@@ -12,8 +12,10 @@ import Foundation
 ///   -ClarityDemoPaused    pauses after the conversation: the dim with [ Save ] / [ New ] (#102)
 ///   -ClarityDemoSaved     paused and saved: [ Saved ] in green
 ///   -ClarityDemoVeilCleared  paused with the dim tapped away, and the hint
-///   -ClarityDemoFlow save|clear|new   plays a flow for screen recordings: pause, save, resume and pause again;
-///                         tap the dim away and hold to bring it back; [ New ] asking first
+///   -ClarityDemoFlow save|clear|new|copy   plays a flow for screen recordings: pause, save, resume and pause again;
+///                         tap the dim away and hold to bring it back; [ New ] asking first; select across lines,
+///                         wait for Copy, resize, copy (#107: simctl can't touch, so the selection is scripted)
+///   -ClarityDemoSelect    a selection across three captions with its handles and, after half a second, Copy (#107)
 ///   -ClarityDemoPreset <id>   shows a color preset (e.g. night, paper)
 ///   -ClarityDemoLandscape rotates to landscape (simctl can't rotate)
 /// It feeds the same CaptionStream the real engine feeds, so what you see is the real caption view: speaker colours,
@@ -53,6 +55,7 @@ enum DemoMode {
     static var paused: Bool { flag("-ClarityDemoPaused") || saved || veilCleared }
     static var saved: Bool { flag("-ClarityDemoSaved") }
     static var veilCleared: Bool { flag("-ClarityDemoVeilCleared") }
+    static var select: Bool { flag("-ClarityDemoSelect") }
     static var landscape: Bool { flag("-ClarityDemoLandscape") }
     static var flow: String? { value(after: "-ClarityDemoFlow") }
     static var preset: String? { value(after: "-ClarityDemoPreset") }
