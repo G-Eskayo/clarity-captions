@@ -196,9 +196,10 @@ final class HowToUseTourTests: XCTestCase {
     func testOnlyTheLitControlAnswersOnEachStep() {
         XCTAssertEqual(tour(at: .start).focus, TourFocus(lit: .start, answers: .start, dims: true))
         var two = tour(at: .captions)
-        XCTAssertEqual(two.focus, TourFocus(lit: nil, answers: nil, dims: true), "waiting for a voice: nothing answers")
+        XCTAssertEqual(two.focus, TourFocus(lit: .stop, answers: nil, dims: true),
+                       "waiting for a voice: ✕ shows (round3/01 step 2) but nothing answers")
         two.did(.captionShown)
-        XCTAssertEqual(two.focus, TourFocus(lit: .captions, answers: nil, dims: true))
+        XCTAssertEqual(two.focus, TourFocus(lit: .captionArea, answers: nil, dims: true), "her words lit, nothing answers")
         XCTAssertEqual(tour(at: .pause).focus, TourFocus(lit: .stop, answers: .stop, dims: true))
         var four = tour(at: .save)
         XCTAssertEqual(four.focus, TourFocus(lit: .save, answers: .save, dims: true))

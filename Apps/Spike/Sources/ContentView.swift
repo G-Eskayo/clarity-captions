@@ -1073,7 +1073,9 @@ struct ContentView: View {
         if new.step != old.step { tourOffersExample = false }
         if let previous = old.step, step.rawValue < previous.rawValue { prepareAfterBack(for: step) }
         if step == .captions && new.phase == .waiting && old.step != .captions { scheduleExampleOffer() }
-        if new.phase == .followUp && (old.phase != .followUp || old.step != step) {
+        // A pinned debug still (`-ClarityDemoTour 2b`) holds its follow-up instead of reading on.
+        let pinnedStill = DemoMode.tour.map { $0 != "flow" } ?? false
+        if new.phase == .followUp && (old.phase != .followUp || old.step != step) && !pinnedStill {
             let phaseStep = step
             Task { @MainActor in
                 try? await Task.sleep(for: .seconds(TourTiming.followUpSeconds(for: phaseStep)))
@@ -1132,10 +1134,9 @@ struct ContentView: View {
             if target.rawValue >= TourStep.save.rawValue { model.demoSetState(.idle) }
             if target.rawValue > TourStep.save.rawValue || (target == .save && followUp) { model.save() }
             await wait(1.6)
-            if target == .holdBack { clearVeil() }
-            if target == .gear { showingVeilHint = false }
             let phase: TourPhase = followUp ? .followUp : .waiting
             model.tour = HowToUseTour(step: target, phase: phase)
+            if target == .holdBack { clearVeil() }   // as she'd get here: the dim tapped away during step 5
             return
         }
         model.tour.begin()

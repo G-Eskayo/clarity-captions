@@ -151,8 +151,8 @@ public struct HowToUseTour: Equatable, Sendable {
     public var focus: TourFocus {
         switch (step, phase) {
         case (.start?, _): TourFocus(lit: .start, answers: .start, dims: true)
-        case (.captions?, .followUp): TourFocus(lit: .captions, answers: nil, dims: true)
-        case (.captions?, _): TourFocus(lit: nil, answers: nil, dims: true)
+        case (.captions?, .followUp): TourFocus(lit: .captionArea, answers: nil, dims: true)   // all her words lit
+        case (.captions?, _): TourFocus(lit: .stop, answers: nil, dims: true)   // round3/01 step 2: ✕ shows, nothing answers
         case (.pause?, _): TourFocus(lit: .stop, answers: .stop, dims: true)
         case (.save?, .waiting): TourFocus(lit: .save, answers: .save, dims: true)
         case (.save?, _): TourFocus(lit: .save, answers: nil, dims: true)

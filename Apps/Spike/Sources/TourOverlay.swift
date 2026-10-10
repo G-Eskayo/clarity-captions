@@ -10,9 +10,10 @@ struct TourTargetKey: PreferenceKey {
 }
 
 extension View {
-    /// Marks a real control or area so the tour can light it, or let touches through to it.
+    /// Marks a real control or area so the tour can light it, or let touches through to it. It adds to the marks of
+    /// anything inside it (the caption area holds [ Save ] and the dim), rather than replacing them.
     func tourTarget(_ spot: TourSpot) -> some View {
-        anchorPreference(key: TourTargetKey.self, value: .bounds) { [spot: $0] }
+        transformAnchorPreference(key: TourTargetKey.self, value: .bounds) { marks, anchor in marks[spot] = anchor }
     }
 }
 
@@ -55,13 +56,14 @@ struct TourOverlay: View {
                 let hole = holeRect(in: geo)
                 ZStack(alignment: .topLeading) {
                     if focus.dims { dim(size: geo.size, spotlight: lit) }
-                    blocker(size: geo.size, hole: hole)
+                    blocker(size: geo.size, hole: hole, stillBlocked: stillBlocked(in: geo))
                     if tour.showsWords {
                         words
                             .frame(maxWidth: min(geo.size.width - 48, 420))
-                            .background { if !focus.dims { legibilityGlow } }
+                            .background { if !focus.dims || tour.step == .done { legibilityGlow } }
                             .position(x: geo.size.width / 2,
-                                      y: wordsCenterY(height: geo.size.height, insets: insets, lit: lit))
+                                      y: wordsCenterY(height: geo.size.height, insets: insets, lit: lit,
+                                                      newestWords: anchors[.captions].map { geo[$0] }))
                             .id(WordsID(step: tour.step, phase: tour.phase))
                             .transition(.opacity)
                     }
@@ -91,7 +93,8 @@ struct TourOverlay: View {
             p.addRect(CGRect(origin: .zero, size: size))
             if let spotlight { p.addRoundedRect(in: spotlight, cornerSize: CGSize(width: corner(spotlight), height: corner(spotlight))) }
         }
-        .fill(style.background.color.opacity(0.86), style: FillStyle(eoFill: true))
+        // With nothing lit (the last step), the dim is deeper so the words never sit over faded buttons.
+        .fill(style.background.color.opacity(spotlight == nil ? 0.95 : 0.86), style: FillStyle(eoFill: true))
         .overlay {
             if let spotlight {
                 RoundedRectangle(cornerRadius: corner(spotlight), style: .continuous)
@@ -119,24 +122,35 @@ struct TourOverlay: View {
         return geo[anchor].insetBy(dx: -8, dy: -8)
     }
 
+    /// Controls that sit inside a wide answering area but must not answer: Start floats over the captions' bottom, so
+    /// on steps 5 and 6 (the dim, the empty space) a tap on it, on ✕ or on the gear still stops at the tour.
+    private func stillBlocked(in geo: GeometryProxy) -> [CGRect] {
+        guard focus.answers == .veil || focus.answers == .captionArea else { return [] }
+        return [TourSpot.start, .stop, .gear, .save].compactMap { anchors[$0] }.map { geo[$0].insetBy(dx: -6, dy: -6) }
+    }
+
     /// Stops every touch outside the hole, so only the lit control answers (round3/01: "Nothing else answers").
     @ViewBuilder
-    private func blocker(size: CGSize, hole: CGRect?) -> some View {
+    private func blocker(size: CGSize, hole: CGRect?, stillBlocked: [CGRect]) -> some View {
         if focus.answers != .everything {
-            let shape = HoleShape(hole: hole)
             Color.clear
-                .contentShape(shape, eoFill: true)
+                .contentShape(HoleShape(hole: hole, stillBlocked: stillBlocked), eoFill: true)
                 .onTapGesture {}
                 .onLongPressGesture(minimumDuration: 0.2) {}
                 .accessibilityHidden(true)
         }
     }
 
+    /// The whole screen, less the hole, plus the controls inside the hole that must still not answer (even-odd fill).
     private struct HoleShape: Shape {
         let hole: CGRect?
+        let stillBlocked: [CGRect]
         func path(in rect: CGRect) -> Path {
             var p = Path(rect)
-            if let hole { p.addRect(hole) }
+            if let hole {
+                p.addRect(hole)
+                for blocked in stillBlocked where blocked.intersects(hole) { p.addRect(blocked.intersection(hole)) }
+            }
             return p
         }
     }
@@ -163,7 +177,7 @@ struct TourOverlay: View {
                 .fixedSize(horizontal: false, vertical: true)
             if offersExample && tour.step == .captions && tour.phase == .waiting {
                 RetroWords(word: String(localized: "Show an example"), color: style.text.color,
-                           background: style.background.color, label: String(localized: "Show an example"),
+                           background: style.background.color, size: .title3, label: String(localized: "Show an example"),
                            action: onExample)
                     .padding(.top, 6)
                     .transition(.opacity)
@@ -203,28 +217,36 @@ struct TourOverlay: View {
     private var legibilityGlow: some View {
         style.background.color
             .opacity(0.9)
-            .padding(-22)
-            .blur(radius: 18)
+            .padding(-34)
+            .blur(radius: 30)
             .allowsHitTesting(false)
     }
 
     /// Next to the lit control (above it when it's low on the screen, as for Start and ✕), otherwise where the mock-up
     /// puts each step's words.
-    private func wordsCenterY(height: CGFloat, insets: EdgeInsets, lit: CGRect?) -> CGFloat {
+    private func wordsCenterY(height: CGFloat, insets: EdgeInsets, lit: CGRect?, newestWords: CGRect?) -> CGFloat {
         let half: CGFloat = tour.step == .done ? 150 : 75
-        if let lit, tour.step != .save {
+        // "That's you.": just under her newest words (round3/01, "2, after").
+        if tour.step == .captions, tour.phase == .followUp, let newestWords {
+            return min(newestWords.maxY + 36 + half, height - insets.bottom - 110 - half)
+        }
+        // Start and ✕: right next to them. Elsewhere: where the mock-up puts the words.
+        if let lit, tour.step == .start || tour.step == .pause {
             let below = lit.maxY + 20 + half
             if below + half <= height - insets.bottom - 110 { return below }
             return max(insets.top + 70 + half, lit.minY - 20 - half)
         }
         let fraction: CGFloat
         switch (tour.step, tour.phase) {
+        case (.captions?, .followUp): fraction = 0.56   // just under her words (round3/01, "2, after")
         case (.captions?, _): fraction = 0.45
-        case (.save?, _): fraction = 0.70
-        case (.gear?, .inSettings): fraction = 0.80
-        case (.clearDim?, _), (.holdBack?, _), (.gear?, _): fraction = 0.66
+        case (.gear?, .inSettings): fraction = 0.92   // out of Settings' way, at the bottom
+        case (.save?, _), (.clearDim?, _), (.gear?, _): fraction = 0.75   // below [ Save ] / [ New ]
+        case (.holdBack?, _): fraction = 0.64
         case (.done?, _), (.start?, _), (.pause?, _), (nil, _): fraction = 0.52
         }
+        // Settings has no Start pill at the bottom, so the words can sit right down there, clear of its rows.
+        if tour.step == .gear, tour.phase == .inSettings { return height - insets.bottom - 16 - half }
         return min(height * fraction, height - insets.bottom - 110 - half)
     }
 
