@@ -839,6 +839,30 @@ struct ContentView: View {
         default:
             break
         }
+        // The UI audit (2026-10-10): one state each, as she'd meet it.
+        switch DemoMode.show {
+        case "banner": showingSpeakerBanner = true
+        case "preparing": model.demoSetState(.preparing); showPreparingAnimation = true
+        case "confirmnew": model.demoSetState(.idle); await wait(1); model.requestNew()
+        case "namespeaker": renamingSpeaker = 0
+        case "jump": following = false
+        case "canthear": model.demoSetState(.listening); model.activity = .cantHearAnything
+        case "failed": model.demoSetState(.failed(String(localized: "The microphone stopped. Tap Start captions to try again.")))
+        case "quiet": model.demoSetState(.pausedQuiet(minutes: 5))
+        case "tour4save":
+            // What follows [ Save ] while the tour is on step 4: the tour moves on to its next card.
+            model.demoSetState(.idle)
+            model.tour = HowToUseTour(step: .saveOrNew)
+            await wait(2.5); withAnimation(.easeInOut(duration: 0.2)) { model.save() }
+        case "savebeta":
+            // A beta install (Xcode counts), no tour: pause, [ Save ], then [ New ].
+            await BetaFeedbackCenter.shared.ensureResolved()
+            model.demoSetState(.listening)
+            await wait(1); model.demoSetState(.idle)
+            await wait(2); withAnimation(.easeInOut(duration: 0.2)) { model.save() }
+            await wait(3); model.requestNew()
+        default: break
+        }
     }
 
     /// Debug only: where a phrase of the demo conversation sits.

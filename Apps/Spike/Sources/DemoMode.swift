@@ -29,10 +29,13 @@ import Foundation
 ///   -ClarityDemoBetaNotice  the one-time test-version notice (06), even if it was seen
 ///   -ClarityDemoBetaPreview opens Settings' "What will be sent" (04)
 ///   -ClarityDemoFlow rate|feedback   pause, [ New ], tap 8 and the card fades; or Settings → preview → Messages
+///   -ClarityDemoShow <id>  one state for the UI audit (2026-10-10; simctl can't tap): banner, preparing, confirmnew,
+///                         namespeaker, jump, canthear, failed, quiet, tour4save, savebeta
+///   -ClarityDemoSettingsPush saved|credits|deleteall   Settings opened on a sub-screen (with -ClarityDemoSettings)
 /// It feeds the same CaptionStream the real engine feeds, so what you see is the real caption view: speaker colours,
 /// names, line breaks and sound labels. No microphone, speech model or network is involved.
 enum DemoMode {
-    static var isOn: Bool { flag("-ClarityDemo") || isStatic || tour != nil }
+    static var isOn: Bool { flag("-ClarityDemo") || isStatic || tour != nil || show != nil }
     static var isStatic: Bool { flag("-ClarityDemoStatic") }
     static var opensSettings: Bool { flag("-ClarityDemoSettings") }
     /// The section id to scroll Settings to, from `-ClarityDemoSettingsSection <id>`. Debug builds only.
@@ -73,6 +76,8 @@ enum DemoMode {
     static var launch: String? { value(after: "-ClarityDemoLaunch") }
     /// `-ClarityDemoTour flow` plays the whole how-to-use tour; `-ClarityDemoTour <1-6>` shows one step (#108).
     static var tour: String? { value(after: "-ClarityDemoTour") }
+    static var show: String? { value(after: "-ClarityDemoShow") }
+    static var settingsPush: String? { value(after: "-ClarityDemoSettingsPush") }
     static var forcesBeta: Bool { flag("-ClarityDemoBeta") || betaSeed || betaCard || betaNotice || betaPreview || flow == "rate" || flow == "feedback" }
     static var betaSeed: Bool { flag("-ClarityDemoBetaSeed") || betaPreview || flow == "feedback" }
     static var betaCard: Bool { flag("-ClarityDemoBetaCard") || betaNote }
@@ -88,11 +93,11 @@ enum DemoMode {
         guard let kind = launch else { return nil }
         let state = LaunchDemoState(ready: kind == "ordinary")
         return FirstRunSystem(
-            microphone: { .granted },
+            microphone: { kind == "welcome" ? .undetermined : kind == "micdenied" ? .denied : .granted },
             requestMicrophone: {},
             speechModelInstalled: { state.installed },
-            speechSupport: { .supported },
-            hasSeenWelcome: { true },
+            speechSupport: { kind == "unsupported" ? .unsupportedDevice : .supported },
+            hasSeenWelcome: { kind != "welcome" },
             markWelcomeSeen: {},
             speakerModelWarm: { state.warm },
             warmUpSpeakerModel: {

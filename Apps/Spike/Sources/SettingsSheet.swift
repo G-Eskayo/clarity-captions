@@ -12,6 +12,8 @@ struct SettingsSheet: View {
     let stream: CaptionStream
     let speakerNames: SpeakerNames
     let store: SavedConversationStoring?
+    /// Debug only (UI audit): Settings opened on a sub-screen, from `-ClarityDemoSettingsPush`.
+    @State private var demoPushed = DemoMode.settingsPush != nil
     /// "Show how to use Seal" (#108): replays the tour once Settings closes. Not while captioning: the tour walks her
     /// through starting.
     var canShowTour: Bool = true
@@ -60,6 +62,7 @@ struct SettingsSheet: View {
             }
             .containerBackground(style.background.color, for: .navigation)
             .toolbar(.hidden, for: .navigationBar)
+            .navigationDestination(isPresented: $demoPushed) { demoDestination }
         }
         .tint(style.gear.color)
         .preferredColorScheme(style.background.isDark ? .dark : .light)
@@ -301,5 +304,16 @@ struct SettingsSheet: View {
         }
         .font(.body.weight(.semibold))
         .foregroundStyle(style.gear.color)
+    }
+}
+
+extension SettingsSheet {
+    /// Debug only (UI audit, 2026-10-10): the sub-screen `-ClarityDemoSettingsPush` names.
+    @ViewBuilder var demoDestination: some View {
+        switch DemoMode.settingsPush {
+        case "credits": AboutCreditsView()
+        default:
+            if let store { SavedConversationsView(store: store) }
+        }
     }
 }

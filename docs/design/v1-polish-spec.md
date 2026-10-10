@@ -89,3 +89,24 @@ simulator screenshots after). This is a hard rule.
 - Open: how it hands off into the main screen: **Glide** (the seal shrinks and glides down into the bottom-middle
   Start button, which grows out of it) or **Dive** (the seal dives down and the main screen washes up). Chosen on
   #99, which is updated to land in the #96 main screen.
+
+## Round 2 (2026-10-10): one screen, fades only
+
+From the owner's testing of v1 on his iPhone. These rules apply to everything, existing and new; the audit
+(`docs/design/ui-audit-2026-10-10.md`) lists what breaks them today, and the round-2 mock-ups
+(`docs/design/mocks/round2/`) show the proposals.
+
+1. **One screen.** The app should feel like one page the whole time. No sheets or cards sliding up, no screens
+   pushing in from the side, no system navigation bars. Settings, saved conversations and credits replace the
+   captions on the same background.
+2. **Fades only.** Every change of what's on screen is a fade: the current content fades out, the new content fades
+   in (about 0.25 s each). No slides, no scaling, no bouncing cards. (The gummy button squish and the launch
+   animation are motion of an element, not a transition between screens.)
+3. **No boxes or borders.** No bordered cards, banners, alert boxes or system pop-ups the app controls. Questions
+   are asked in place, in the retro words style ([ Start new ] / [ Keep it ]). Words that need separating from the
+   captions sit on the dim, with a plain patch of the theme's background where needed (no outline). Apple's own
+   permission prompts and the Messages/share sheet are the only exceptions, because iOS draws them.
+4. **Nothing on screen that isn't in an approved mock-up.** Every screen, overlay, hint, animation and question
+   must appear in an approved mock-up or in the images of an approved PR. Builders ask (a Decision in the PR)
+   instead of adding one.
+5. **The tour is done, not read.** Each step that asks for an action moves on only when she actually does it.

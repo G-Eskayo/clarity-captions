@@ -45,6 +45,7 @@ struct SavedConversationsView: View {
             }
             .task {
                 await loadConversations()
+                if DemoMode.settingsPush == "deleteall" { confirmDeleteAll = true }   // debug only: the UI audit
             }
         }
         .confirmationDialog(

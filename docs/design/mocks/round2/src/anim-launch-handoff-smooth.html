@@ -1,0 +1,51 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+@font-face { font-family: 'OpenDyslexic'; src: url('../../2026-10-09/src/fonts/OpenDyslexic-Regular.woff') format('woff'); font-weight: 400; }
+@font-face { font-family: 'OpenDyslexic'; src: url('../../2026-10-09/src/fonts/OpenDyslexic-Bold.woff') format('woff'); font-weight: 700; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif; background: #E9E4DA; color: #1b1b1b; }
+.board { padding: 36px; display: flex; flex-direction: column; gap: 22px; }
+.board h1 { font-size: 26px; font-weight: 800; color: #0F3F3C; }
+.board .sub { font-size: 15px; color: #3d4b4a; max-width: 1250px; line-height: 1.45; }
+.row { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+.cap { font-size: 14px; color: #2a3534; margin-top: 10px; max-width: 402px; line-height: 1.4; }
+.cap b { color: #0F3F3C; }
+.phone { position: relative; width: 402px; height: 874px; border-radius: 54px; overflow: hidden; box-shadow: 0 0 0 10px #1b1d1f, 0 18px 40px rgba(0,0,0,.25); flex: none; }
+.island { position: absolute; top: 11px; left: 50%; width: 124px; height: 36px; transform: translateX(-50%); background: #000; border-radius: 20px; z-index: 90; }
+.statusbar { position: absolute; top: 18px; left: 34px; right: 30px; display: flex; justify-content: space-between; font-weight: 600; font-size: 16px; z-index: 80; }
+.layer { position: absolute; inset: 0; padding: 62px 20px 34px; }
+.topbar { position: relative; height: 64px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 600; }
+.gear { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; display: grid; place-items: center; }
+.captions { font-family: 'OpenDyslexic', sans-serif; font-size: 22px; line-height: 1.5; margin-top: 10px; display: flex; flex-direction: column; gap: 16px; }
+.spk { font-family: system-ui, sans-serif; font-size: 14px; font-weight: 800; margin-bottom: 1px; }
+.btn { border: none; font-weight: 800; letter-spacing: .03em; display: inline-flex; align-items: center; justify-content: center; }
+.retro { font-family: 'SF Mono', Menlo, ui-monospace, monospace; font-weight: 700; font-size: 26px; white-space: pre; }
+.say { font-size: 20px; font-weight: 800; line-height: 1.3; }
+.small { font-size: 16px; line-height: 1.45; }
+.sec { font-size: 13px; font-weight: 800; letter-spacing: .04em; margin: 16px 0 8px; opacity: .7; }
+.rule { height: 1px; margin: 10px 0; }
+.tag { position: absolute; z-index: 95; font-size: 13px; font-weight: 700; background: #FFF6D8; color: #5b3a00; border: 2px solid #E0A400; border-radius: 10px; padding: 6px 10px; max-width: 220px; line-height: 1.3; }
+.frame-no { font-size: 13px; font-weight: 800; color: #0F3F3C; margin-bottom: 6px; }
+ body{background:#E9E4DA;padding:20px;width:462px;height:934px}</style></head><body><div class="phone" style="background:#FAF5E6"><div class="island"></div><div class="statusbar" style="color:#141419"><span>9:41</span><span>●●●● ▮</span></div><div style="position:absolute;inset:0"><div class="layer" style=""><div class="topbar" style="color:#141419"><div class="gear"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#14514B" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div><span style="opacity:.75">Ready</span></div><div class="captions" style="color:#141419;opacity:1"></div></div><div class="btn" style="position:absolute;left:20px;right:20px;bottom:40px;height:64px;border-radius:32px;font-size:21px;z-index:30;background:#141419;color:#FAF5E6;box-shadow:0 3px 0 #565659;">Start captions</div></div>
+    <div id="green" style="position:absolute;inset:0;background:#1F998B;z-index:40"></div>
+    <div id="pool" style="position:absolute;z-index:41;left:201px;top:520px;width:0;height:0;border-radius:50%;background:#1F998B;transform:translate(-50%,-50%)"></div>
+    <img id="seal" src="./seal-nobg.svg" style="position:absolute;z-index:45;left:201px;top:400px;width:230px;transform:translate(-50%,-50%)">
+    <div id="rings" style="position:absolute;inset:0;z-index:44;pointer-events:none"></div></div><script>const ease=(x)=>x<0?0:x>1?1:x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2; const seg=(t,a,b)=>ease((t-a)/(b-a));
+  const rings=document.getElementById('rings'); for(let i=0;i<3;i++){const r=document.createElement('div');r.style.cssText='position:absolute;left:201px;top:520px;border:3px solid #1F998B;border-radius:50%;transform:translate(-50%,-50%);opacity:0';rings.appendChild(r)}
+  const drops=[]; for(let i=0;i<9;i++){const d=document.createElement('div');d.style.cssText='position:absolute;width:10px;height:10px;border-radius:50%;background:#1F998B;opacity:0;left:201px;top:520px';rings.appendChild(d);drops.push(d)}
+  window.render=(t)=>{
+    const g=document.getElementById('green'), pool=document.getElementById('pool'), seal=document.getElementById('seal');
+    // 0–1.0 s: the green irises continuously from full screen down to a 120 px pool behind the seal (no cut).
+    const ir=seg(t,0,1.0); const R=580*(1-ir)+60*ir;   // starts just past the farthest corner, so the shrink is visible from frame one
+    g.style.clipPath='circle('+R+'px at 201px 520px)';
+    // 0.9–1.5 s: crouch then an arcing jump with stretch, landing into the pool with squash.
+    const crouch=seg(t,.85,1.0)-seg(t,1.0,1.1); const jump=seg(t,1.05,1.55);
+    const x=201, y=400+120*jump-110*Math.sin(Math.PI*jump), s=1-0.55*jump;
+    const sy=1-0.12*crouch+0.15*Math.sin(Math.PI*jump), sx=1+0.10*crouch-0.08*Math.sin(Math.PI*jump);
+    seal.style.transform='translate(-50%,-50%) scale('+(s*sx)+','+(s*sy)+')'; seal.style.top=y+'px'; seal.style.left=x+'px';
+    seal.style.opacity=1-seg(t,1.5,1.62);
+    // 1.5–1.9 s: splash droplets arc out and fall; the pool closes.
+    const sp=seg(t,1.5,2.0); drops.forEach((d,i)=>{const a=-Math.PI*(0.15+0.7*i/8); const r=70*sp; d.style.left=(201+Math.cos(a)*r-5)+'px'; d.style.top=(520+Math.sin(a)*r+60*sp*sp-5)+'px'; d.style.opacity=t<1.5?0:1-seg(t,1.85,2.1)});
+    g.style.opacity=1-seg(t,1.55,1.9);
+    // 1.6–3.2 s: three rings ripple out and fade over the main screen.
+    [...rings.children].slice(0,3).forEach((r,i)=>{const k=seg(t,1.6+0.18*i,3.0+0.18*i); const D=40+520*k; r.style.width=D+'px'; r.style.height=D+'px'; r.style.opacity=t<1.6+0.18*i?0:0.8*(1-k)});
+  }</script></body></html>
