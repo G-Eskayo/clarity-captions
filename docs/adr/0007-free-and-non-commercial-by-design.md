@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-09-08)
+Accepted (2026-09-08). **Superseded 2026-10-10:** v1 ships as a one-time $4.99 purchase; see "2026-10-10: paid at $4.99" below.
 
 ## Context
 
@@ -41,3 +41,15 @@ leaving what others do with a fork as their own call (a permissive license like 
   monetize (to fund a feature, cover App Store fees, etc.) should treat this ADR as the answer,
   not a question to reopen casually — reversing it needs the same kind of direct, deliberate
   conversation that created it, not a quiet feature-by-feature drift.
+
+## 2026-10-10: paid at $4.99
+
+The owner chose to sell v1 for a one-time **$4.99** (no ads, no subscriptions, no in-app purchases), enrolled in
+Apple's Small Business Program (15% commission). In his words: the regular paid option, because the app "is perfect
+how it is" and he doesn't want to change it (a tip jar would need in-app purchase code), and "maybe if the app does
+well, the small business program might get me recognized".
+
+- The app itself is unchanged; only the support page's cost answer and the listing's price change.
+- His mother gets it free through an App Store promo code; his father and beta testers use TestFlight (free).
+- The earlier reasoning above is kept as history. Revisit pricing (free, tip, or price change) with real tester and
+  sales data; App Store Connect allows changing the price at any time.
