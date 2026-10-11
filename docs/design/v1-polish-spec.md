@@ -110,3 +110,15 @@ From the owner's testing of v1 on his iPhone. These rules apply to everything, e
    must appear in an approved mock-up or in the images of an approved PR. Builders ask (a Decision in the PR)
    instead of adding one.
 5. **The tour is done, not read.** Each step that asks for an action moves on only when she actually does it.
+
+## v1.0 UI/UX baseline (frozen 2026-10-10)
+
+The owner tested `main` at 03dd90f on his iPhone and approved it as the release UI: "I am really happy with this
+current build on my phone and I am willing to release that to the world. Keep what we have now in stone as THE
+baseline for UI/UX." Git tag: `v1.0-ui-baseline`.
+
+- This build's look, layout, wording and motion are the reference. Anything that changes what a person sees or how
+  it moves needs the owner's explicit approval with mock-ups first and screenshots/recordings after, compared
+  against this tag.
+- Work from here focuses on quality: caption accuracy, lag, speaker-label stability, battery and heat, measured with
+  real data from beta testers (ADR 0023) and fixed in the engine, not the UI.
