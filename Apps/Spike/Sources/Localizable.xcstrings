@@ -331,13 +331,13 @@
         }
       }
     },
-    "Captions need it. Open Settings and turn on Microphone for Seal." : {
+    "Captions need it. Open Settings and turn on Microphone for Seal Speak." : {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Captions need it. Open Settings and turn on Microphone for Seal."
+            "value": "Captions need it. Open Settings and turn on Microphone for Seal Speak."
           }
         }
       }
@@ -1581,17 +1581,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Search conversations"
-          }
-        }
-      }
-    },
-    "Seal tells voices apart as people talk." : {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Seal tells voices apart as people talk."
           }
         }
       }
