@@ -66,7 +66,7 @@ public struct FirstRunCopy: Equatable, Sendable {
                          button: String(localized: "Continue"))
         case .microphoneDenied:
             FirstRunCopy(title: String(localized: "The microphone is off."),
-                         message: String(localized: "Captions need it. Open Settings and turn on Microphone for Seal."),
+                         message: String(localized: "Captions need it. Open Settings and turn on Microphone for Seal Speak."),
                          button: String(localized: "Open Settings"))
         case .speechModel:
             FirstRunCopy(title: String(localized: "Learning English"),

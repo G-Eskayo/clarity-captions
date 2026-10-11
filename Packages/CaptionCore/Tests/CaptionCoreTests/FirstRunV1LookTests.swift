@@ -24,7 +24,7 @@ final class FirstRunV1LookTests: XCTestCase {
     func testMicrophoneOffWordsAreTheApprovedOnes() {
         let c = FirstRunCopy.for(.microphoneDenied)
         XCTAssertEqual(c.title, "The microphone is off.")
-        XCTAssertEqual(c.message, "Captions need it. Open Settings and turn on Microphone for Seal.")
+        XCTAssertEqual(c.message, "Captions need it. Open Settings and turn on Microphone for Seal Speak.")
         XCTAssertEqual(c.button, "Open Settings")
     }
 
