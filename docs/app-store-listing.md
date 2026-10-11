@@ -21,7 +21,7 @@ Rules this text follows (docs/app-store-compliance.md, App Review Guidelines 1.4
 
 | Field | Limit | Text | Length |
 |---|---|---|---|
-| Name | 30 | Seal | 4 |
+| Name | 30 | Seal Speak | 10 |
 | Subtitle | 30 | Captions for conversations | 26 |
 | Promotional text | 170 | Follow the conversation at the table. Seal captions what people nearby say, starts a new line when the voice changes, and works with no internet. No ads, no account. | 165 |
 | Keywords | 100 | `deaf,hard of hearing,subtitles,speech to text,transcribe,transcript,offline,accessibility,talk,live` | 99 |
@@ -32,9 +32,9 @@ Rules this text follows (docs/app-store-compliance.md, App Review Guidelines 1.4
 | Marketing URL | | Optional, leave empty until #44 | |
 | Copyright | | 2026 Gil Brandon Eskayo | |
 
-The store name is "Seal" (owner, 2026-10-09). Store names must be unique: if App Store Connect
-refuses it when the record is created, fall back to a longer form such as "Seal Captions". "Live
-Captions" is avoided because it is also the name of an Apple feature (Guideline 5.2.5).
+The store name is **Seal Speak** (owner, App Store Connect 2026-10-10; plain "Seal" was taken). It is also the name
+under the icon on the home screen: at 10 characters it shows in full, which the owner wanted. "Live Captions" is
+avoided because it is also the name of an Apple feature (Guideline 5.2.5).
 Keywords skip words already in the name and subtitle (Apple indexes those),
 so "captions" and "conversation" are not repeated.
 
@@ -117,10 +117,10 @@ Expected result: **4+**.
 Paste into App Review Information → Notes. Plain, short and specific: reviewers read many apps a day.
 
 ```text
-Seal shows live captions of nearby conversation for deaf and hard-of-hearing people. Everything runs on the device: Apple's SpeechAnalyzer turns speech into text, and a bundled Core ML model (FluidAudio, Sortformer) labels changes of speaker (Speaker 1, Speaker 2); it doesn't identify anyone. No account, no network service, no analytics, no ads, no in-app purchases. Seal does not use any external AI service, so no AI data-sharing consent is needed.
+Seal Speak shows live captions of nearby conversation for deaf and hard-of-hearing people. Everything runs on the device: Apple's SpeechAnalyzer turns speech into text, and a bundled Core ML model (FluidAudio, Sortformer) labels changes of speaker (Speaker 1, Speaker 2); it doesn't identify anyone. No account, no network service, no analytics, no ads, no in-app purchases. Seal does not use any external AI service, so no AI data-sharing consent is needed.
 
 HOW TO TRY IT (about 1 minute)
-1. Open Seal. The first screen explains what it does; tap through it and allow the Microphone.
+1. Open Seal Speak. The first screen explains what it does; tap through it and allow the Microphone.
 2. The first launch may download Apple's English speech files (a few seconds on Wi-Fi). After that the app works in airplane mode.
 3. Tap Start and talk, or play a podcast or video near the device. Captions appear as people talk. When a second voice speaks, a new "Speaker 2" line starts.
 4. Tap ✕ to pause, then [ Save ] keeps it on the device for 30 days (Settings → Saved conversations), where it can be deleted.
@@ -183,5 +183,5 @@ review notes don't mention them:
 3. v1 is iPhone and iPad only; the Mac app comes later.
 4. v1 keeps the screen awake while captioning (#83) instead of background captioning (ADR 0020 deferred),
    so the background-audio review paragraph above is not used.
-5. Store name: Seal.
+5. Store name: Seal Speak (App Store Connect, 2026-10-10; "Seal" was taken). Also the home-screen name.
 6. Still open: EU trader status under the Digital Services Act, answered in App Store Connect.

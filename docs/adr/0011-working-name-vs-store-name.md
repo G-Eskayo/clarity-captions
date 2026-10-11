@@ -4,6 +4,7 @@
 
 Accepted (2026-10-02). Amended 2026-10-05: the store name is chosen, see "Chosen name" below.
 Amended 2026-10-06: the bundle ID is chosen, see "Bundle ID" below.
+Amended 2026-10-10: the final store and home-screen name is **Seal Speak**, see "Final name" below.
 
 ## Context
 
@@ -56,3 +57,12 @@ The owner chose **`com.gileskayo.captions`**.
   their own suffix.
 - **Universal purchase: yes**, confirming ADR 0010's preference. iPad and Mac versions, when they
   come, join this same App Store record and bundle ID instead of becoming separate apps.
+
+## Final name (2026-10-10)
+
+When the App Store Connect record was created, plain "Seal" was already taken. The record was briefly named "Seal
+Captioning", then renamed the same day to **Seal Speak**, which App Store Connect accepted. The owner chose it as
+more marketable, and because at 10 characters the full name shows under the icon on the home screen (iOS cuts
+longer names, e.g. "Seal Captio…"). Seal Speak is both the store name and the home-screen name (`APP_DISPLAY_NAME`).
+The bundle ID (`com.gileskayo.captions`) and SKU are unchanged. Whether sentences inside the app and on the web
+pages say "Seal" or "Seal Speak" is a separate decision (the rename PR).
