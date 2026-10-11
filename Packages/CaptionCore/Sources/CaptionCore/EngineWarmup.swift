@@ -23,7 +23,7 @@ public final class EngineWarmup {
     }
 
     /// The speech model, the speaker model, the sound classifier (TranscriptionEngine.prepare).
-    public static let steps = 3
+    nonisolated public static let steps = 3
 
     public private(set) var state: State = .idle {
         didSet { if state != oldValue { onChange(state) } }
@@ -51,15 +51,18 @@ public final class EngineWarmup {
         generation += 1
         let mine = generation
         state = .preparing(step: 0)
-        Task { [weak self] in
+        // Held strongly for the few seconds the load takes, so the step callback captures an immutable reference
+        // (a captured `weak var self` is a data race under Swift 6 / Xcode 27). `generation` already discards a load
+        // that finishes after it stopped being wanted.
+        Task { [self] in
             do {
                 try await made.prepare { step in
-                    Task { @MainActor [weak self] in self?.stepFinished(step, generation: mine) }
+                    Task { @MainActor in self.stepFinished(step, generation: mine) }
                 }
-                self?.finished(generation: mine, ok: true)
+                finished(generation: mine, ok: true)
             } catch {
                 await made.stop()
-                self?.finished(generation: mine, ok: false)
+                finished(generation: mine, ok: false)
             }
         }
     }
