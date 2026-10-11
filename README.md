@@ -4,7 +4,7 @@
 
 Live captions of the conversation around you, on an iPhone, with no network once the system speech
 model is installed. Built for a deaf mother who should not need a service connection to follow
-dinner. The App Store name will be **Seal** ([ADR 0011](docs/adr/0011-working-name-vs-store-name.md)).
+dinner. The App Store name is **Seal Captioning** (shown as **Seal** under the icon) ([ADR 0011](docs/adr/0011-working-name-vs-store-name.md)).
 
 **Status: working spike, not released.** Runs on an iPhone 17 Pro; target is the intended user's
 iPhone 17 by **2026-10-25**; TestFlight first ([ADR 0009](docs/adr/0009-testflight-then-app-store-distribution.md)).

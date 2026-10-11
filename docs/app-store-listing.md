@@ -21,7 +21,7 @@ Rules this text follows (docs/app-store-compliance.md, App Review Guidelines 1.4
 
 | Field | Limit | Text | Length |
 |---|---|---|---|
-| Name | 30 | Seal | 4 |
+| Name | 30 | Seal Captioning | 15 |
 | Subtitle | 30 | Captions for conversations | 26 |
 | Promotional text | 170 | Follow the conversation at the table. Seal captions what people nearby say, starts a new line when the voice changes, and works with no internet. No ads, no account. | 165 |
 | Keywords | 100 | `deaf,hard of hearing,subtitles,speech to text,transcribe,transcript,offline,accessibility,talk,live` | 99 |
@@ -32,10 +32,10 @@ Rules this text follows (docs/app-store-compliance.md, App Review Guidelines 1.4
 | Marketing URL | | Optional, leave empty until #44 | |
 | Copyright | | 2026 Gil Brandon Eskayo | |
 
-The store name is "Seal" (owner, 2026-10-09). Store names must be unique: if App Store Connect
-refuses it when the record is created, fall back to a longer form such as "Seal Captions". "Live
-Captions" is avoided because it is also the name of an Apple feature (Guideline 5.2.5).
-Keywords skip words already in the name and subtitle (Apple indexes those),
+The store name is **Seal Captioning** (App Store Connect record created 2026-10-10; plain "Seal" was taken).
+The name under the icon on the home screen stays **Seal** (`APP_DISPLAY_NAME`): iOS cuts home-screen names at about
+12 characters, and the app calls itself Seal throughout. "Live Captions" is avoided because it is also the name of an
+Apple feature (Guideline 5.2.5). Keywords skip words already in the name and subtitle (Apple indexes those),
 so "captions" and "conversation" are not repeated.
 
 ### Description (limit 4,000)
@@ -183,5 +183,5 @@ review notes don't mention them:
 3. v1 is iPhone and iPad only; the Mac app comes later.
 4. v1 keeps the screen awake while captioning (#83) instead of background captioning (ADR 0020 deferred),
    so the background-audio review paragraph above is not used.
-5. Store name: Seal.
+5. Store name: Seal Captioning ("Seal" was taken in App Store Connect, 2026-10-10). Home-screen name: Seal.
 6. Still open: EU trader status under the Digital Services Act, answered in App Store Connect.

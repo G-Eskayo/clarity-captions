@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-10-02). Amended 2026-10-05: the store name is chosen, see "Chosen name" below.
+Accepted (2026-10-02). Amended 2026-10-05: the store name is chosen, see "Chosen name" below. Amended 2026-10-10: the store name is **Seal Captioning**, see "Final store name".
 Amended 2026-10-06: the bundle ID is chosen, see "Bundle ID" below.
 
 ## Context
@@ -56,3 +56,10 @@ The owner chose **`com.gileskayo.captions`**.
   their own suffix.
 - **Universal purchase: yes**, confirming ADR 0010's preference. iPad and Mac versions, when they
   come, join this same App Store record and bundle ID instead of becoming separate apps.
+
+## Final store name (2026-10-10)
+
+When the App Store Connect record was created, plain "Seal" was already taken, so the owner registered **Seal
+Captioning**. The short name **Seal** stays as the home-screen label and how the app refers to itself; the store name
+now also says what it does, which helps search (the earlier discoverability concern). Bundle ID unchanged:
+`com.gileskayo.captions`.
