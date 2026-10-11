@@ -108,7 +108,7 @@ Expected result: **4+**.
 | Export compliance: does the app use encryption? | **No** beyond what iOS itself provides. The app makes no network calls. Add `ITSAppUsesNonExemptEncryption = NO` to the app's Info.plist so TestFlight stops asking on every upload. |
 | Content rights: does the app contain third-party content? | **Yes, and it has the rights to use it:** bundled Sortformer model (CC BY 4.0) and FluidAudio (Apache 2.0), credited in-app and in NOTICE.md (#21). |
 | Is this app a regulated medical device? (if asked) | **No.** |
-| Price | Free (tier 0); no in-app purchases |
+| Price | $4.99 (one-time); no in-app purchases. Needs the Paid Applications Agreement, banking and tax info, and the App Store Small Business Program (15% commission) |
 | Availability | All countries where English captions are useful; owner's call. EU needs the trader-status answer (open question below). |
 | Sign-in required? | **No** |
 
