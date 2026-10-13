@@ -13,7 +13,7 @@ the tester's own optional note.
   "schema": 1,
   "app": { "version": "1.0", "build": "42", "environment": "sandbox" },
   "device": { "model": "iPhone15,4", "os": "iOS 26.1", "lowPowerModeSeen": false },
-  "settings": { "theme": "paper", "lettering": "openDyslexic", "textSize": "large", "quietStop": "5min" },
+  "settings": { "theme": "paper", "lettering": "openDyslexic", "textSize": "large", "quietStop": "fiveMinutes" },
   "sentAt": "2026-10-12T18:04:00-06:00",
   "conversations": [
     {
@@ -45,6 +45,8 @@ the tester's own optional note.
 | `rewriteRate` | Share of caption words changed after first appearing; an accuracy proxy | `CaptionStream` volatile → final |
 | `speakers` | Distinct speaker labels shown, and live relabels per minute | `SpeakerLabelSmoother` |
 | `launchToStartSeconds`, `startToFirstCaptionSeconds` | Speed to useful | launch sequence, `TranscriptionEngine` startup laps |
+| `rating` + `ratingSkipped` | `rating: null` with `ratingSkipped: false` means the conversation was sent before the rating card appeared: *unrated*, not skipped | rating card |
+| `settings.quietStop` | `fiveMinutes`, `fifteenMinutes`, `thirtyMinutes`, `never` | `IdleStop` |
 | `ending.kind` | `userStop`, `quietStop`, `failure` (with `reason`, the plain-language text), `stuck`, `appClosed` | `CaptionSessionController`, `IdleStop`, `FailureReason` |
 | `battery` | Battery drop scaled to 30 minutes; highest `ProcessInfo.thermalState` | `UIDevice.batteryLevel`, `ProcessInfo` |
 | `micLevel` | Room loudness summary, never audio | `AudioLevel`, `ListeningActivityTracker` |
