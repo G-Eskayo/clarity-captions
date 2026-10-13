@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-10-09, design PR #111); implemented by #112. Design: `docs/design/mocks/beta-feedback/`; report
+Accepted (2026-10-09, design PR #111); implemented by #112. Receiving side: ADR 0024. Design: `docs/design/mocks/beta-feedback/`; report
 format: `docs/beta/metrics-schema.md`; building a TestFlight build: `docs/beta/testflight.md`.
 
 ## Context
