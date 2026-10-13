@@ -13,7 +13,7 @@ the tester's own optional note.
   "schema": 1,
   "app": { "version": "1.0", "build": "42", "environment": "sandbox" },
   "device": { "model": "iPhone15,4", "os": "iOS 26.1", "lowPowerModeSeen": false },
-  "settings": { "theme": "paper", "lettering": "openDyslexic", "textSize": "large", "quietStop": "5min" },
+  "settings": { "theme": "paper", "lettering": "openDyslexic", "textSize": "large", "quietStop": "fiveMinutes" },
   "sentAt": "2026-10-12T18:04:00-06:00",
   "conversations": [
     {
@@ -45,6 +45,8 @@ the tester's own optional note.
 | `rewriteRate` | Share of caption words changed after first appearing; an accuracy proxy | `CaptionStream` volatile → final |
 | `speakers` | Distinct speaker labels shown, and live relabels per minute | `SpeakerLabelSmoother` |
 | `launchToStartSeconds`, `startToFirstCaptionSeconds` | Speed to useful | launch sequence, `TranscriptionEngine` startup laps |
+| `rating` + `ratingSkipped` | `rating: null` with `ratingSkipped: false` means the conversation was sent before the rating card appeared: *unrated*, not skipped | rating card |
+| `settings.quietStop` | `fiveMinutes`, `fifteenMinutes`, `thirtyMinutes`, `never` | `IdleStop` |
 | `ending.kind` | `userStop`, `quietStop`, `failure` (with `reason`, the plain-language text), `stuck`, `appClosed` | `CaptionSessionController`, `IdleStop`, `FailureReason` |
 | `battery` | Battery drop scaled to 30 minutes; highest `ProcessInfo.thermalState` | `UIDevice.batteryLevel`, `ProcessInfo` |
 | `micLevel` | Room loudness summary, never audio | `AudioLevel`, `ListeningActivityTracker` |
@@ -54,14 +56,17 @@ report of about 1 MB, well within an iMessage attachment.
 
 ## How MARVIN ingests reports
 
-Texts arrive in the owner's Messages and sync to his Mac, where attachments are stored under
-`~/Library/Messages/Attachments/`. A small MARVIN job finds new `seal-feedback-*.json` files there and:
+Decision: ADR 0024. Texts arrive in the owner's Messages and sync to the Mac Mini, where attachments are stored
+under `~/Library/Messages/Attachments/`. A MARVIN job on the Mini finds new `seal-feedback-*.json` files there and:
 
 1. validates each against this schema (`schema: 1`) and skips duplicates by conversation `id`
-2. appends them to a local dataset (e.g. `~/.claude/seal-beta/reports.jsonl`)
-3. summarises per build and per device: median rating, lag p95, rewrite rate, relabels, stop reasons, battery
-4. files or updates clarity-captions tickets when a threshold is crossed (e.g. lag p95 > 2 s on a device class,
-   any `stuck` ending, a rating ≤ 4 with a note), quoting only the measurements and the tester's note
+2. appends them to a private local dataset (`~/.claude/seal-beta/reports.jsonl`), never the repo
+3. summarises **per device model** (plain name, then split by build) and per build: report count, median rating,
+   lag p50/p95, rewrite rate, relabels, endings, battery and thermal state, shown in the MARVIN dashboard
+4. files or updates clarity-captions tickets when a threshold is crossed (lag p95 > 2 s on a device model, any
+   `stuck` ending, median rating ≤ 4 on a device model from at least 2 reports), quoting **only measurements,
+   device and build**, never the tester's note or anything that identifies the sender
 
 Reading `~/Library/Messages` needs Full Disk Access for the process that runs the job (macOS privacy protection);
-the owner grants that once. The job never reads message text, only `seal-feedback-*.json` attachments.
+the owner grants that once. The job never reads message text, only `seal-feedback-*.json` attachments. TestFlight's
+own screenshot feedback and crash reports join the same per-device view later (ADR 0024, decision 6).
