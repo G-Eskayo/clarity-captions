@@ -53,3 +53,15 @@ jobs:
           xcodegen generate
           xcodebuild -project CaptionSpike.xcodeproj -scheme CaptionSpike \
             -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+
+  site:
+    name: Website checks (site/)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Nothing phones home, honest claims, contrast, links, demo logic
+        run: node scripts/check-site.mjs
