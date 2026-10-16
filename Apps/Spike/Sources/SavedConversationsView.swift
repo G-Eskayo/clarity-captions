@@ -5,6 +5,8 @@ import SwiftUI
 /// with one thin line between them, a plain underlined search line, and the delete questions asked in place in retro
 /// words. "‹ Settings" fades back; a row fades into the conversation.
 struct SavedConversationsPage: View {
+    /// "Settings", or "Captions" when it was opened from the list icon on the main screen (#137).
+    var backTitle: String = String(localized: "Settings")
     let store: SavedConversationStoring
     let style: CaptionStyle
     let onBack: () -> Void
@@ -20,7 +22,7 @@ struct SavedConversationsPage: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            PageHeader(style: style, title: String(localized: "Saved"), backTitle: String(localized: "Settings"), onBack: onBack)
+            PageHeader(style: style, title: String(localized: "Saved"), backTitle: backTitle, onBack: onBack)
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     Text("Kept for 30 days, then deleted.")

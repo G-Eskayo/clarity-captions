@@ -212,16 +212,10 @@ final class CaptionModel: ObservableObject {
         reportCaptionShown()
     }
 
-    /// Step 2's "That's you." comes a beat after the first caption, so she sees her words first.
-    private var captionBeatPending = false
+    /// Words appeared. Tour v3 doesn't move on by itself (#137); kept so the tour hears it.
     private func reportCaptionShown() {
-        guard tour.step == .captions, !captionBeatPending else { return }
-        captionBeatPending = true
-        Task { @MainActor in
-            try? await Task.sleep(for: .seconds(TourTiming.captionSeenSeconds))
-            captionBeatPending = false
-            tour.did(.captionShown)
-        }
+        guard tour.step == .captions else { return }
+        tour.did(.captionShown)
     }
 
     /// After the tour: a conversation that is nothing but the example goes, so it never lingers or gets kept.
@@ -319,6 +313,8 @@ struct ContentView: View {
     /// Round 2 (#118): the app is one screen. Which page shows; the page actually drawn (it changes at the midpoint of
     /// the fade, so the current page fades out before the next fades in); and the fade itself.
     @State private var nav = ScreenNavigator()
+    /// Height of the soft fade under the status row (#117 topedge); the first caption line starts below it (#137).
+    static let captionsTopFade: CGFloat = 56
     @State private var shownScreen: AppScreen = .captions
     @State private var pageOpacity: Double = 1
     @State private var position = ScrollPosition(edge: .bottom)
@@ -507,7 +503,8 @@ struct ContentView: View {
                          onOpen: { screen in go { $0.open(screen) } })
         case .saved:
             if let store = model.store {
-                SavedConversationsPage(store: store, style: style, onBack: { go { $0.back() } },
+                SavedConversationsPage(backTitle: nav.savedOpenedFromCaptions ? String(localized: "Captions") : String(localized: "Settings"),
+                                       store: store, style: style, onBack: { go { $0.back() } },
                                        onOpen: { id in go { $0.open(.savedConversation(id)) } })
                     .padding(.horizontal, 16)
             }
@@ -576,7 +573,7 @@ struct ContentView: View {
         VStack(spacing: 2) {
             ZStack {
                 statusLine
-                HStack { settingsButton; Spacer() }
+                HStack { settingsButton; Spacer(); savedButton }
             }
             if let detail = statusDetail {
                 Text(detail).font(.footnote).opacity(0.7).multilineTextAlignment(.center)
@@ -606,6 +603,22 @@ struct ContentView: View {
         .buttonStyle(.plain)
         .tourTarget(.gear)
         .accessibilityLabel(String(localized: "Settings"))
+    }
+
+    /// Option A (#137, approved 2026-10-15): Saved conversations one tap away, opposite the gear, same color and size.
+    private var savedButton: some View {
+        Button {
+            go { $0.openSavedFromCaptions() }
+        } label: {
+            Image(systemName: "list.bullet")
+                .font(.title2)
+                .foregroundStyle(gearColor)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .tourTarget(.savedList)
+        .accessibilityLabel(String(localized: "Saved conversations"))
     }
 
     private var statusHeadline: String {
@@ -667,6 +680,8 @@ struct ContentView: View {
         return ZStack(alignment: .top) {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 16) {
+                    // The first line starts below the top fade (#137: "Speaker 1 needs top padding").
+                    Color.clear.frame(height: Self.captionsTopFade - 16).accessibilityHidden(true)
                     ForEach(lines) { line in
                         VStack(alignment: .leading, spacing: 2) {
                             let labelState = SpeakerLabeling.state(for: line)
@@ -701,7 +716,7 @@ struct ContentView: View {
             // Captions scrolling up under the status row fade out softly instead of being cut in half (#117 topedge).
             .mask {
                 VStack(spacing: 0) {
-                    LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom).frame(height: 56)
+                    LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom).frame(height: Self.captionsTopFade)
                     Rectangle()
                 }
             }
@@ -880,11 +895,9 @@ struct ContentView: View {
         case "canthear": model.demoSetState(.listening); model.activity = .cantHearAnything
         case "failed": model.demoSetState(.failed(String(localized: "The microphone stopped. Tap Start captions to try again.")))
         case "quiet": model.demoSetState(.pausedQuiet(minutes: 5))
-        case "tour4save":
-            // [ Save ] while the tour is on step 4: [ ✔ ] → [ Saved ] plays out, then "Saved." fades in (#121).
-            model.demoSetState(.idle)
-            model.tour = HowToUseTour(step: .save)
-            await wait(2.5); withAnimation(.easeInOut(duration: 0.2)) { model.save() }
+        case "savedfromcaptions":
+            // The list icon at the top right (#137, option A): Saved opens straight from the captions.
+            await wait(1); go { $0.openSavedFromCaptions() }
         case "savebeta":
             // A beta install (Xcode counts), no tour: pause, [ Save ], then [ New ].
             await BetaFeedbackCenter.shared.ensureResolved()
@@ -1044,6 +1057,7 @@ struct ContentView: View {
                         onBack: { withAnimation(veilAnimation) { model.tour.back() } },
                         onSkip: { withAnimation(veilAnimation) { model.tour.skip() } },
                         onDone: { withAnimation(veilAnimation) { model.tour.did(.tappedDone) } },
+                        onNext: { withAnimation(veilAnimation) { model.tour.did(.tappedNext) } },
                         onExample: { withAnimation { model.showTourExample() } })
                 .transition(.opacity)
         }
@@ -1072,16 +1086,10 @@ struct ContentView: View {
         }
         if new.step != old.step { tourOffersExample = false }
         if let previous = old.step, step.rawValue < previous.rawValue { prepareAfterBack(for: step) }
-        if step == .captions && new.phase == .waiting && old.step != .captions { scheduleExampleOffer() }
-        // A pinned debug still (`-ClarityDemoTour 2b`) holds its follow-up instead of reading on.
-        let pinnedStill = DemoMode.tour.map { $0 != "flow" } ?? false
-        if new.phase == .followUp && (old.phase != .followUp || old.step != step) && !pinnedStill {
-            let phaseStep = step
-            Task { @MainActor in
-                try? await Task.sleep(for: .seconds(TourTiming.followUpSeconds(for: phaseStep)))
-                guard model.tour.step == phaseStep, model.tour.phase == .followUp else { return }
-                withAnimation(veilAnimation) { model.tour.did(.followUpRead) }
-            }
+        if step == .captions && old.step != .captions {
+            // Next without starting (#137): show the two-voice example so step 2 has words to point at.
+            let captioning = model.state == .listening || model.state == .preparing
+            if !captioning && !model.hasConversation { withAnimation { model.showTourExample() } } else { scheduleExampleOffer() }
         }
     }
 
@@ -1092,16 +1100,9 @@ struct ContentView: View {
         switch step {
         case .start:
             if listening { model.perform(.stop) }
-        case .captions, .pause:
-            if !listening { model.perform(.start) }
-        case .save, .clearDim:
-            if !model.veil.isVisible(state: model.state, hasConversation: model.hasConversation) { bringBackVeil() }
-            if step == .save, model.session.saveButton(lines: model.stream.lines, names: model.speakerNames) == .saved {
-                model.tour.alreadySaved()
-            }
-        case .holdBack:
-            if model.veil.isVisible(state: model.state, hasConversation: model.hasConversation) { clearVeil() }
-        case .gear, .done:
+        case .captions:
+            if !listening && !model.hasConversation { model.showTourExample() }
+        case .pause, .done:
             break
         }
     }
@@ -1110,7 +1111,7 @@ struct ContentView: View {
     private func scheduleExampleOffer() {
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(TourExample.quietSeconds))
-            guard model.tour.step == .captions, model.tour.phase == .waiting, !model.hasConversation else { return }
+            guard model.tour.step == .captions, !model.hasConversation else { return }
             let captioning = model.state == .listening || model.state == .preparing
             withAnimation { tourOffersExample = TourExample.offersExample(secondsWithoutCaption: TourExample.quietSeconds, isCaptioning: captioning) }
         }
@@ -1126,38 +1127,25 @@ struct ContentView: View {
         func stop() { model.tour.did(.tappedStop); model.demoSetState(.idle) }
         await wait(0.6)
         if let pin = DemoMode.tour, pin != "flow" {
-            let followUp = pin.hasSuffix("b")
             guard let n = Int(pin.filter(\.isNumber)), let target = TourStep(rawValue: n - 1) else { return }
-            // A still of one step, with the screen set up the way she'd reach it.
-            if target.rawValue >= TourStep.captions.rawValue { model.demoSetState(.preparing); model.demoSetState(.listening) }
-            if target.rawValue > TourStep.captions.rawValue || (target == .captions && followUp) { model.showTourExample() }
-            if target.rawValue >= TourStep.save.rawValue { model.demoSetState(.idle) }
-            if target.rawValue > TourStep.save.rawValue || (target == .save && followUp) { model.save() }
+            // A still of one step (1-4), with the screen set up the way she'd reach it.
+            if target.rawValue >= TourStep.captions.rawValue { model.demoSetState(.preparing); model.demoSetState(.listening); model.showTourExample() }
+            if target == .done { model.demoSetState(.idle) }
             await wait(1.6)
-            let phase: TourPhase = followUp ? .followUp : .waiting
-            model.tour = HowToUseTour(step: target, phase: phase)
-            if target == .holdBack { clearVeil() }   // as she'd get here: the dim tapped away during step 5
+            model.tour = HowToUseTour(step: target)
             return
         }
         model.tour.begin()
         await wait(3)
         start()                                                    // 1: Start captions
         await wait(2.5)
-        withAnimation { model.showTourExample() }                  // 2: words appear, then "That's you."
-        await wait(TourTiming.captionSeenSeconds + TourTiming.followUpSeconds(for: .captions) + 0.6)
-        stop()                                                     // 3: the X pauses
+        withAnimation { model.showTourExample() }                  // 2: words appear; she reads, then Next
+        await wait(4)
+        withAnimation(veilAnimation) { model.tour.did(.tappedNext) }
         await wait(3)
-        withAnimation(.easeInOut(duration: 0.2)) { model.save() }  // 4: [ Save ] -> [ Saved ], then "Saved."
-        await wait(1.2 + TourTiming.followUpSeconds(for: .save) + 0.6)
-        clearVeil()                                                // 5: a tap on the dim clears it
-        await wait(3)
-        bringBackVeil()                                            // 6: holding an empty spot brings it back
-        await wait(3)
-        model.tour.did(.openedSettings); go { $0.gearTapped() }    // 7: the gear, Settings fades in...
-        await wait(3)
-        model.tour.did(.closedSettings); go { $0.gearTapped() }    //    ...and the gear again comes back
-        await wait(4.5)
-        withAnimation(veilAnimation) { model.tour.did(.tappedDone) } // 8: [ Done ]
+        stop()                                                     // 3: the X pauses (and moves on)
+        await wait(4)
+        withAnimation(veilAnimation) { model.tour.did(.tappedDone) } // 4: [ Done ]
     }
 
     // MARK: copying (#107)

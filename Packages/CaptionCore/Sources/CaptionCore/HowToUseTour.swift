@@ -1,38 +1,35 @@
 import Foundation
 
-/// The how-to-use tour v2 (#121; approved in #120, mock-ups round3/01-02, flow from #117): eight steps on the real
-/// screen. Each step moves on only when she really does it: there is no Next on an action step, and nothing but the lit
-/// control answers. Back and Skip tour are on every step; only the last has a button, [ Done ]. Copy and [ New ] aren't
-/// taught (copy works like every other app, and practising [ New ] would wipe her practice); the last step mentions them.
+/// The how-to-use tour v3 (#137; approved 2026-10-15, mock-ups round4/01). Four steps the person controls: every step
+/// but the last has [ Next ›], and the real action (Start, ✕) moves its step on too. Nothing is on a timer and nothing
+/// is hidden after a few seconds. Back and Skip tour are on every step; the last has [ Done ].
+/// Replaces tour v2 (#121), whose action-only steps looked frozen when the action wasn't obvious (TestFlight build 3:
+/// "it wasn't on a timer, just hung").
 public enum TourStep: Int, CaseIterable, Equatable, Sendable {
-    case start, captions, pause, save, clearDim, holdBack, gear, done
+    case start, captions, pause, done
 
-    /// Whether `action` is the one that moves this step on from `phase`.
-    static func completes(_ step: TourStep, phase: TourPhase, _ action: TourAction) -> Bool {
-        switch (step, phase, action) {
-        case (.start, .waiting, .tappedStart), (.captions, .waiting, .captionShown), (.captions, .followUp, .followUpRead),
-             (.pause, .waiting, .tappedStop), (.save, .waiting, .tappedSave), (.save, .savingMoment, .saveMomentFinished),
-             (.save, .followUp, .followUpRead), (.clearDim, .waiting, .clearedDim), (.holdBack, .waiting, .restoredDim),
-             (.gear, .waiting, .openedSettings), (.gear, .inSettings, .closedSettings), (.done, .waiting, .tappedDone):
-            true
-        default:
-            false
+    /// Whether `action` moves this step on.
+    static func completes(_ step: TourStep, _ action: TourAction) -> Bool {
+        switch (step, action) {
+        case (.start, .tappedStart), (.pause, .tappedStop), (.done, .tappedDone): true
+        case (.start, .tappedNext), (.captions, .tappedNext), (.pause, .tappedNext): true
+        default: false
         }
     }
 }
 
-/// Where a step is. Two steps have a second moment: her words appearing brings "That's you." (step 2), and [ Save ]
-/// plays [ ✔ ] → [ Saved ] before "Saved." (step 4). Step 7 waits while Settings is open.
+/// Kept for callers; tour v3 has a single phase (no follow-up beats, no waiting inside Settings).
 public enum TourPhase: Equatable, Sendable {
-    case waiting, savingMoment, followUp, inSettings
+    case waiting
 }
 
-/// Something that happened on the real screen, reported to the tour.
+/// Something that happened on the real screen, reported to the tour. Tour v3 acts on tappedStart, tappedStop,
+/// tappedNext and tappedDone; the rest are still reported by the app and ignored.
 public enum TourAction: Equatable, Sendable {
     case tappedStart, captionShown, tappedStop, tappedSave, saveMomentFinished, clearedDim, restoredDim,
-         openedSettings, closedSettings, tappedDone
-    /// The reading beat after a follow-up's words.
-    case followUpRead
+         openedSettings, closedSettings, tappedDone, followUpRead
+    /// [ Next ›], on every step but the last.
+    case tappedNext
 }
 
 /// The words a step shows, straight on the dim (no card).
@@ -48,16 +45,15 @@ public struct TourWords: Equatable, Sendable {
 /// The parts of the real screen the tour points at.
 public enum TourSpot: Hashable, Sendable {
     case start, stop, save, gear, captions
-    /// The pause dim itself (step 5: "the whole dim is lit").
+    /// The list icon at the top right (#137): lit with the gear on the last step, which names both.
+    case savedList
     case veil
-    /// The captions' empty space, where holding brings the dim back (step 6).
     case captionArea
-    /// Everything works (Settings, while step 7 waits for her to come back).
     case everything
 }
 
-/// What's lit and what answers on a step. `lit` gets the spotlight; touches pass only to `answers`; `dims` says whether
-/// the tour lays its own dim over the screen (steps 5 and 6 use the pause dim and the captions themselves instead).
+/// What's lit and what answers on a step. `lit` gets the spotlight; touches pass only to `answers` (plus the tour's own
+/// Next, Back, Skip and Done); `dims` says whether the tour lays its own dim over the screen.
 public struct TourFocus: Equatable, Sendable {
     public let lit: TourSpot?
     public let answers: TourSpot?
@@ -72,10 +68,8 @@ public struct TourFocus: Equatable, Sendable {
 public struct HowToUseTour: Equatable, Sendable {
     public enum Ending: Equatable, Sendable { case finished, skipped }
 
-    /// The step on screen, or nil when the tour isn't running.
     public private(set) var step: TourStep?
     public private(set) var phase: TourPhase = .waiting
-    /// How the last run ended; nil while running or before the first run.
     public private(set) var ending: Ending?
 
     public init(step: TourStep? = nil, phase: TourPhase = .waiting) {
@@ -85,43 +79,34 @@ public struct HowToUseTour: Equatable, Sendable {
 
     public var isRunning: Bool { step != nil }
     public var canGoBack: Bool { (step?.rawValue ?? 0) > 0 }
-    /// Only the last step has a button to finish; every other step waits for the real action.
+    /// [ Next ›] on every step but the last.
+    public var hasNextButton: Bool { isRunning && step != .done }
+    /// [ Done ] only on the last.
     public var hasDoneButton: Bool { step == .done }
-    /// "3 of 8".
+    /// "3 of 4".
     public var progress: String {
         let number = (step?.rawValue ?? 0) + 1
         let total = TourStep.allCases.count
         return String(localized: "\(number) of \(total)")
     }
-    /// The words are off only while [ ✔ ] → [ Saved ] plays.
-    public var showsWords: Bool { isRunning && phase != .savingMoment }
+    /// Words are always shown while the tour runs: nothing disappears on a timer.
+    public var showsWords: Bool { isRunning }
 
-    /// Starts (or restarts, for a replay) at the first step.
     public mutating func begin() {
         step = .start
         phase = .waiting
         ending = nil
     }
 
-    /// Something happened on the real screen; the tour moves on only if it's what this step and phase wait for.
     public mutating func did(_ action: TourAction) {
-        guard let step, TourStep.completes(step, phase: phase, action) else { return }
-        switch (step, phase) {
-        case (.captions, .waiting), (.save, .savingMoment):
-            phase = .followUp
-        case (.save, .waiting):
-            phase = .savingMoment
-        case (.gear, .waiting):
-            phase = .inSettings
-        default:
-            advance(from: step)
+        guard let step, TourStep.completes(step, action) else { return }
+        phase = .waiting
+        if let following = TourStep(rawValue: step.rawValue + 1) {
+            self.step = following
+        } else {
+            self.step = nil
+            ending = .finished
         }
-    }
-
-    /// Back on the Save step after it was already saved (nothing new said since): straight to "Saved.".
-    public mutating func alreadySaved() {
-        guard step == .save, phase == .waiting else { return }
-        phase = .followUp
     }
 
     public mutating func back() {
@@ -137,80 +122,31 @@ public struct HowToUseTour: Equatable, Sendable {
         ending = .skipped
     }
 
-    private mutating func advance(from current: TourStep) {
-        phase = .waiting
-        if let following = TourStep(rawValue: current.rawValue + 1) {
-            step = following
-        } else {
-            step = nil
-            ending = .finished
-        }
-    }
-
-    /// What's lit and what answers right now (round3/01: "Only Start is lit. Nothing else answers.").
     public var focus: TourFocus {
-        switch (step, phase) {
-        case (.start?, _): TourFocus(lit: .start, answers: .start, dims: true)
-        case (.captions?, .followUp): TourFocus(lit: .captionArea, answers: nil, dims: true)   // all her words lit
-        case (.captions?, _): TourFocus(lit: .stop, answers: nil, dims: true)   // round3/01 step 2: ✕ shows, nothing answers
-        case (.pause?, _): TourFocus(lit: .stop, answers: .stop, dims: true)
-        case (.save?, .waiting): TourFocus(lit: .save, answers: .save, dims: true)
-        case (.save?, _): TourFocus(lit: .save, answers: nil, dims: true)
-        case (.clearDim?, _): TourFocus(lit: nil, answers: .veil, dims: false)
-        case (.holdBack?, _): TourFocus(lit: nil, answers: .captionArea, dims: false)
-        case (.gear?, .inSettings): TourFocus(lit: nil, answers: .everything, dims: false)
-        case (.gear?, _): TourFocus(lit: .gear, answers: .gear, dims: true)
-        case (.done?, _), (nil, _): TourFocus(lit: nil, answers: nil, dims: true)
+        switch step {
+        case .start?: TourFocus(lit: .start, answers: .start, dims: true)
+        case .captions?: TourFocus(lit: .captionArea, answers: nil, dims: true)
+        case .pause?: TourFocus(lit: .stop, answers: .stop, dims: true)
+        case .done?: TourFocus(lit: .gear, answers: nil, dims: true)
+        case nil: TourFocus(lit: nil, answers: nil, dims: true)
         }
     }
 
-    /// The approved words (#120, every step "keep as drafted").
+    /// The approved words (round4/01). The last step names where saved conversations are (option A, top right).
     public var words: TourWords {
-        switch (step, phase) {
-        case (.start?, _):
+        switch step {
+        case .start?:
             TourWords(title: String(localized: "Set the phone flat on the table."),
                       message: String(localized: "Between you and whoever's talking. Then tap Start captions."))
-        case (.captions?, .followUp):
-            TourWords(title: String(localized: "That's you."),
-                      message: String(localized: "Each voice gets its own line and label. Seal goes by the sound of the voice, so it can mix people up. It doesn't know who anyone is."))
-        case (.captions?, _):
-            TourWords(title: String(localized: "Say something."),
-                      message: String(localized: "Your words show up here as you talk."))
-        case (.pause?, _):
+        case .captions?:
+            TourWords(title: String(localized: "Words show up here as people talk."),
+                      message: String(localized: "A new voice gets its own line. Seal goes by the sound of the voice, so it can mix people up. Scroll up any time to reread."))
+        case .pause?:
             TourWords(title: String(localized: "Tap ✕ to pause."),
-                      message: String(localized: "Nothing gets lost. Start captions picks up where you left off."))
-        case (.save?, .followUp):
-            TourWords(title: String(localized: "Saved."),
-                      message: String(localized: "It stays green until somebody says something new."))
-        case (.save?, _):
-            TourWords(title: String(localized: "Tap [ Save ]."),
-                      message: String(localized: "Keeps it on this phone for 30 days."))
-        case (.clearDim?, _):
-            TourWords(title: String(localized: "Tap anywhere on the dim."),
-                      message: String(localized: "It clears so you can read and scroll back."))
-        case (.holdBack?, _):
-            TourWords(title: String(localized: "Hold an empty spot."),
-                      message: String(localized: "The buttons come back."))
-        case (.gear?, _):
-            TourWords(title: String(localized: "Tap the gear."),
-                      message: String(localized: "Colors, text size and lettering. Tap it again to come back."))
-        case (.done?, _), (nil, _):
+                      message: String(localized: "[ Save ] keeps the conversation on this phone for 30 days. [ New ] starts a clean page."))
+        case .done?, nil:
             TourWords(title: String(localized: "That's it."),
-                      message: String(localized: "[ New ] clears the screen for the next conversation. It asks once first.\n\nHold on any words to copy them.\n\nIf it goes quiet for a while, captions pause on their own.\n\nYou can replay this in Settings."))
-        }
-    }
-}
-
-/// The tour's beats. The app waits these out; the model only hears `followUpRead` when they're over.
-public enum TourTiming {
-    /// After her first words show, how long before "That's you." replaces "Say something." (she sees her words first).
-    public static let captionSeenSeconds: Double = 1.2
-
-    /// How long a follow-up's words stay before the next step fades in.
-    public static func followUpSeconds(for step: TourStep) -> Double {
-        switch step {
-        case .captions: 6.0   // "That's you." is the longest message
-        default: 3.5          // "Saved."
+                      message: String(localized: "The gear has colors, text size and lettering. Your saved conversations are at the top right.\n\nYou can replay this in Settings."))
         }
     }
 }

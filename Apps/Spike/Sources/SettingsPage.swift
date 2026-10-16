@@ -100,15 +100,30 @@ struct SettingsPage: View {
         .padding(.horizontal, 16)
     }
 
+    /// A live sample drawn exactly as a caption looks on the main screen (#137: "displays exactly as it will when it
+    /// closes out of Settings"): a heading saying what it is, then a speaker label and words. No border or box.
     private var preview: some View {
-        Text("Preview: Let's book a table for seven.")
-            .font(style.font(for: SystemTextSizeCategory(dynamicTypeSize)))
-            .lineSpacing(4)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 4)
-            .padding(.top, 16)
-            .padding(.bottom, 6)
-            .accessibilityLabel("Preview of caption text")
+        let palette = SpeakerPalette.colors(on: style.background, text: style.text).map(\.color)
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("How your captions will look")
+                .font(.footnote.weight(.heavy))
+                .textCase(.uppercase)
+                .opacity(0.7)
+                .accessibilityAddTraits(.isHeader)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(String(localized: "Speaker 1"))
+                    .font(.headline)
+                    .foregroundStyle(palette[0])
+                Text("Let's book a table for seven.")
+                    .font(style.font(for: SystemTextSizeCategory(dynamicTypeSize)))
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(String(localized: "Sample caption: Speaker 1, Let's book a table for seven."))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 4)
+        .padding(.top, 16)
+        .padding(.bottom, 6)
     }
 
     private func section<C: View>(_ title: LocalizedStringKey, first: Bool = false, note: String? = nil, @ViewBuilder _ content: () -> C) -> some View {
