@@ -27,6 +27,8 @@ public enum AppScreen: Hashable, Sendable {
 /// Which page is showing, and the only ways to move between them (mock-ups round2/01–02).
 public struct ScreenNavigator: Equatable, Sendable {
     public private(set) var current: AppScreen
+    /// Saved conversations opened from the captions' list icon (#137, option A) go back to the captions, not Settings.
+    private var savedFromCaptions = false
 
     public init(_ start: AppScreen = .captions) { current = start }
 
@@ -48,16 +50,35 @@ public struct ScreenNavigator: Equatable, Sendable {
     /// Opens a page from the page it lives on; anything else is ignored, so a stray call can't jump around.
     public mutating func open(_ screen: AppScreen) {
         guard screen.parent == current else { return }
+        if screen == .saved { savedFromCaptions = false }
         current = screen
     }
 
-    /// One step back.
+    /// Whether Saved was opened from the captions' list icon, so its back word says "Captions".
+    public var savedOpenedFromCaptions: Bool { savedFromCaptions }
+
+    /// The list icon at the top right of the captions (#137): Saved conversations in one tap. Only from the captions.
+    public mutating func openSavedFromCaptions() {
+        guard current == .captions else { return }
+        savedFromCaptions = true
+        current = .saved
+    }
+
+    /// One step back. Saved goes back to wherever it was opened from.
     public mutating func back() {
+        if current == .saved && savedFromCaptions {
+            savedFromCaptions = false
+            current = .captions
+            return
+        }
         if let parent = current.parent { current = parent }
     }
 
     /// Straight back to the captions, e.g. to start the tour from Settings.
-    public mutating func close() { current = .captions }
+    public mutating func close() {
+        savedFromCaptions = false
+        current = .captions
+    }
 }
 
 /// A question asked in place, in the retro words style, instead of a pop-up box ([ Start new ] / [ Keep it ],

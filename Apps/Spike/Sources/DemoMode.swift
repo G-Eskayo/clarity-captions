@@ -18,7 +18,7 @@ import Foundation
 ///   -ClarityDemoSelect    a selection across three captions with its handles and, after half a second, Copy (#107)
 ///   -ClarityDemoPreset <id>   shows a color preset (e.g. night, paper)
 ///   -ClarityDemoLandscape rotates to landscape (simctl can't rotate)
-///   -ClarityDemoTour flow|1-8|2b|4b   the how-to-use tour v2 (#121): the whole tour done by a scripted user
+///   -ClarityDemoTour flow|1-4   the how-to-use tour v3 (#137): the whole tour done by a scripted user
 ///                         (simctl can't tap), or one step as a still
 ///   -ClarityDemoLaunch ordinary|first|fail   runs the real launch animation and first-run flow with a pretend system
 ///                         (#104): ordinary = everything ready; first = a slow speech download, then the warm-up,
@@ -31,7 +31,7 @@ import Foundation
 ///   -ClarityDemoBetaNotice  the one-time test-version notice (06), even if it was seen
 ///   -ClarityDemoBetaPreview opens Settings' "What will be sent" (04)
 ///   -ClarityDemoFlow rate|feedback   pause, [ New ], tap 8 and the card fades; or Settings → preview → Messages
-///   -ClarityDemoShow <id>  one state for the UI audit (2026-10-10; simctl can't tap): banner, preparing, confirmnew,
+///   -ClarityDemoShow <id>  one state for the UI audit (2026-10-10; simctl can't tap): savedfromcaptions (#137), banner, preparing, confirmnew,
 ///                         namespeaker, jump, canthear, failed, quiet, tour4save, savebeta
 ///   -ClarityDemoSettingsPush saved|credits|deleteall   Settings opened on a sub-screen (with -ClarityDemoSettings)
 /// It feeds the same CaptionStream the real engine feeds, so what you see is the real caption view: speaker colours,
@@ -160,17 +160,19 @@ enum DemoMode {
         case sound(SoundLabelKind)
     }
 
-    static let speakers = [0: "Gil", 1: "Dana"]
+    /// No names: naming speakers is out of v1, and the demo feeds screenshots, store images and the website (#137).
+    static let speakers: [Int: String] = [:]
 
+    /// Honest by construction (docs/design/honest-claims-2026-10-10.md): Speaker 1 / Speaker 2, no price, no promise
+    /// to know who is talking. The same conversation as the website demo (site/seal-data.js).
     static let script: [Step] = [
-        .line(speaker: 0, text: "Happy birthday, Mom. Watch the screen while we talk."),
-        .line(speaker: 1, text: "It's catching every word, even from across the table."),
-        .line(speaker: 0, text: "And it works in airplane mode. Nothing leaves the phone."),
+        .line(speaker: 0, text: "Is it on? Say something so we can see."),
+        .line(speaker: 1, text: "Hi. My words are showing up on the screen."),
+        .line(speaker: 0, text: "It works in airplane mode too. Nothing leaves the phone."),
         .sound(.laughter),
-        .line(speaker: 1, text: "So no more paying every month just to follow a conversation?"),
-        .line(speaker: 0, text: "Not a cent. It's yours, and it's free for anyone who needs it."),
-        .line(speaker: 1, text: "Each of us gets our own colour, so you know who's talking."),
-        .line(speaker: 0, text: "Okay, what should we try first"),
+        .line(speaker: 1, text: "And it starts a new line when someone else talks?"),
+        .line(speaker: 0, text: "When the voice changes, yes. It can mix up voices that sound alike."),
+        .line(speaker: 1, text: "Good to know. So what should we try first"),
     ]
 }
 

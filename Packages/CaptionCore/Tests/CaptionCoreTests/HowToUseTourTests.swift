@@ -1,248 +1,149 @@
 import XCTest
 @testable import CaptionCore
 
-/// The how-to-use tour v2 (#121; approved in #120, mock-ups round3/01-02, flow from #117): eight steps on the real
-/// screen. Each step moves on only when she really does it; there is no Next on an action step. Back and Skip tour are
-/// on every step, and only the last one has a button to finish.
+/// The how-to-use tour v3 (#137; approved 2026-10-15 from TestFlight build 3 feedback, mock-ups round4/01): four steps
+/// the person controls. Every step but the last has [ Next ›], and the real action moves it on too. Nothing is on a
+/// timer. Back and Skip tour stay; only the last step has [ Done ].
 final class HowToUseTourTests: XCTestCase {
 
-    /// Walks a fresh tour to `step`, doing each real action on the way.
     private func tour(at step: TourStep) -> HowToUseTour {
         var tour = HowToUseTour()
         tour.begin()
-        let path: [TourAction] = [.tappedStart, .captionShown, .followUpRead, .tappedStop, .tappedSave, .saveMomentFinished,
-                                  .followUpRead, .clearedDim, .restoredDim, .openedSettings, .closedSettings]
-        for action in path where tour.step != step { tour.did(action) }
+        while tour.step != step, tour.step != nil { tour.did(.tappedNext) }
         XCTAssertEqual(tour.step, step)
         return tour
     }
 
-    // MARK: order and advancing on the real action
+    // MARK: four steps, in the mock-up's order
 
-    func testEightStepsInTheMockUpsOrder() {
-        XCTAssertEqual(TourStep.allCases, [.start, .captions, .pause, .save, .clearDim, .holdBack, .gear, .done])
+    func testFourStepsInTheMockUpsOrder() {
+        XCTAssertEqual(TourStep.allCases, [.start, .captions, .pause, .done])
+        XCTAssertEqual(tour(at: .pause).progress, "3 of 4")
     }
 
-    func testDoingEachRealActionWalksTheWholeTour() {
-        var tour = HowToUseTour()
-        tour.begin()
-        XCTAssertEqual(tour.step, .start); XCTAssertEqual(tour.phase, .waiting)
-        tour.did(.tappedStart);        XCTAssertEqual(tour.step, .captions)
-        tour.did(.captionShown);       XCTAssertEqual(tour.step, .captions); XCTAssertEqual(tour.phase, .followUp)
-        tour.did(.followUpRead);       XCTAssertEqual(tour.step, .pause)
-        tour.did(.tappedStop);         XCTAssertEqual(tour.step, .save)
-        tour.did(.tappedSave);         XCTAssertEqual(tour.step, .save); XCTAssertEqual(tour.phase, .savingMoment)
-        tour.did(.saveMomentFinished); XCTAssertEqual(tour.step, .save); XCTAssertEqual(tour.phase, .followUp)
-        tour.did(.followUpRead);       XCTAssertEqual(tour.step, .clearDim)
-        tour.did(.clearedDim);         XCTAssertEqual(tour.step, .holdBack)
-        tour.did(.restoredDim);        XCTAssertEqual(tour.step, .gear)
-        tour.did(.openedSettings);     XCTAssertEqual(tour.step, .gear); XCTAssertEqual(tour.phase, .inSettings)
-        tour.did(.closedSettings);     XCTAssertEqual(tour.step, .done)
-        tour.did(.tappedDone)
-        XCTAssertNil(tour.step)
-        XCTAssertEqual(tour.ending, .finished)
-    }
-
-    func testEarlyActionsForLaterStepsAreIgnoredOnEveryStep() {
-        let all: [TourAction] = [.tappedStart, .captionShown, .followUpRead, .tappedStop, .tappedSave, .saveMomentFinished,
-                                 .clearedDim, .restoredDim, .openedSettings, .closedSettings, .tappedDone]
-        for step in TourStep.allCases {
-            let start = tour(at: step)
-            for action in all where !TourStep.completes(step, phase: .waiting, action) {
-                var t = start
-                t.did(action)
-                XCTAssertEqual(t.step, step, "\(action) must not move the tour off \(step)")
-                XCTAssertEqual(t.phase, .waiting, "\(action) must not change \(step)'s phase")
-            }
-        }
-    }
-
-    func testNothingButReadingMovesAFollowUpOn() {
-        var t = tour(at: .captions)
-        t.did(.captionShown)
-        for action in [TourAction.tappedStart, .tappedStop, .tappedSave, .clearedDim, .openedSettings, .tappedDone] {
-            t.did(action)
-            XCTAssertEqual(t.step, .captions); XCTAssertEqual(t.phase, .followUp)
-        }
-        t.did(.followUpRead)
-        XCTAssertEqual(t.step, .pause)
-    }
-
-    func testSavesGreenMomentFinishesBeforeItsWordsAndBeforeStepFive() {
-        var t = tour(at: .save)
-        t.did(.tappedSave)
-        XCTAssertEqual(t.phase, .savingMoment)
-        XCTAssertFalse(t.showsWords, "[ ✔ ] → [ Saved ] plays out first, with no words over it")
-        t.did(.followUpRead)                      // a reading beat can't skip the green moment
-        XCTAssertEqual(t.step, .save); XCTAssertEqual(t.phase, .savingMoment)
-        t.did(.saveMomentFinished)
-        XCTAssertEqual(t.phase, .followUp)
-        XCTAssertTrue(t.showsWords)
-        XCTAssertEqual(t.words, TourWords(title: "Saved.", message: "It stays green until somebody says something new."))
-        t.did(.followUpRead)
-        XCTAssertEqual(t.step, .clearDim)
-    }
-
-    func testAlreadySavedGoesStraightToTheSavedWords() {
-        var t = tour(at: .save)
-        t.alreadySaved()
-        XCTAssertEqual(t.phase, .followUp)
-        var other = tour(at: .pause)
-        other.alreadySaved()                      // only means something on the Save step
-        XCTAssertEqual(other.step, .pause); XCTAssertEqual(other.phase, .waiting)
-    }
-
-    func testTheGearStepEndsWhenSheComesBackNotWhenSettingsOpens() {
-        var t = tour(at: .gear)
-        t.did(.closedSettings)                    // can't come back before going
-        XCTAssertEqual(t.phase, .waiting)
-        t.did(.openedSettings)
-        XCTAssertEqual(t.step, .gear); XCTAssertEqual(t.phase, .inSettings)
-        t.did(.closedSettings)
-        XCTAssertEqual(t.step, .done)
-    }
-
-    func testActionsDoNothingWhenTheTourIsntRunning() {
+    func testNextWalksTheWholeTourOnItsOwn() {
+        // "Show it all and let the user dictate when to go forward."
         var t = HowToUseTour()
-        t.did(.tappedStart)
+        t.begin()
+        for expected in [TourStep.captions, .pause, .done] {
+            t.did(.tappedNext)
+            XCTAssertEqual(t.step, expected)
+        }
+        XCTAssertEqual(t.step, .done)
+        t.did(.tappedNext)                       // the last step has no Next: Next does nothing there
+        XCTAssertEqual(t.step, .done)
+        t.did(.tappedDone)
         XCTAssertNil(t.step)
-        XCTAssertNil(t.ending)
+        XCTAssertEqual(t.ending, .finished)
     }
 
-    func testDoingTheSameThingTwiceOnlyAdvancesOnce() {
+    func testTheRealActionAlsoMovesItsStepOn() {
         var t = HowToUseTour()
         t.begin()
         t.did(.tappedStart)
-        t.did(.tappedStart)
         XCTAssertEqual(t.step, .captions)
+        t.did(.tappedNext)
+        t.did(.tappedStop)
+        XCTAssertEqual(t.step, .done)
     }
 
-    // MARK: Back and Skip on every step; [ Done ] only on the last
-
-    func testBackGoesToTheStepBeforeAndWaitsForItsActionAgain() {
-        var t = tour(at: .clearDim)
-        t.back()
-        XCTAssertEqual(t.step, .save); XCTAssertEqual(t.phase, .waiting)
-        t.back(); XCTAssertEqual(t.step, .pause)
-        t.back(); XCTAssertEqual(t.step, .captions)
-        t.back(); XCTAssertEqual(t.step, .start)
-        t.back(); XCTAssertEqual(t.step, .start, "Back on the first step stays put")
-        XCTAssertFalse(t.canGoBack)
-    }
-
-    func testBackFromAFollowUpOrSettingsGoesToThePreviousStep() {
+    func testWordsAppearingDoNotMoveOnByThemselves() {
+        // Step 2 stays until she taps Next: nothing reads on, nothing is timed.
         var t = tour(at: .captions)
-        t.did(.captionShown)
-        t.back()
-        XCTAssertEqual(t.step, .start); XCTAssertEqual(t.phase, .waiting)
-        var g = tour(at: .gear)
-        g.did(.openedSettings)
-        g.back()
-        XCTAssertEqual(g.step, .holdBack); XCTAssertEqual(g.phase, .waiting)
-    }
-
-    func testEveryStepButTheFirstHasBack() {
-        for step in TourStep.allCases {
-            XCTAssertEqual(tour(at: step).canGoBack, step != .start, "\(step)")
+        for action in [TourAction.captionShown, .followUpRead, .tappedSave, .saveMomentFinished, .clearedDim, .restoredDim,
+                       .openedSettings, .closedSettings] {
+            t.did(action)
+            XCTAssertEqual(t.step, .captions, "\(action) must not move step 2 on")
         }
     }
 
-    func testSkipEndsTheTourFromAnyStepAndPhase() {
+    func testActionsForOtherStepsAreIgnored() {
+        var t = tour(at: .start)
+        t.did(.tappedStop)
+        t.did(.tappedDone)
+        XCTAssertEqual(t.step, .start)
+        t = tour(at: .pause)
+        t.did(.tappedStart)
+        XCTAssertEqual(t.step, .pause)
+    }
+
+    func testEveryStepButTheLastHasNextAndOnlyTheLastHasDone() {
+        for step in TourStep.allCases {
+            let t = tour(at: step)
+            XCTAssertEqual(t.hasNextButton, step != .done, "\(step)")
+            XCTAssertEqual(t.hasDoneButton, step == .done, "\(step)")
+            XCTAssertTrue(t.showsWords, "words are never hidden on a timer (\(step))")
+        }
+    }
+
+    func testNothingInTheTourIsTimed() {
+        // The follow-up beats that hid words after a few seconds are gone with tour v2.
+        for step in TourStep.allCases { XCTAssertEqual(tour(at: step).phase, .waiting) }
+    }
+
+    // MARK: Back, Skip, replay
+
+    func testEveryStepButTheFirstHasBackAndBackGoesOneStep() {
+        XCTAssertFalse(tour(at: .start).canGoBack)
+        var t = tour(at: .done)
+        XCTAssertTrue(t.canGoBack)
+        t.back()
+        XCTAssertEqual(t.step, .pause)
+    }
+
+    func testSkipEndsTheTourFromAnyStep() {
         for step in TourStep.allCases {
             var t = tour(at: step)
             t.skip()
             XCTAssertNil(t.step)
             XCTAssertEqual(t.ending, .skipped)
         }
-        var mid = tour(at: .save)
-        mid.did(.tappedSave)
-        mid.skip()
-        XCTAssertEqual(mid.ending, .skipped)
     }
 
-    func testOnlyTheLastStepHasAFinishButton() {
-        for step in TourStep.allCases {
-            XCTAssertEqual(tour(at: step).hasDoneButton, step == .done, "\(step)")
-        }
-        var t = tour(at: .gear)
-        t.did(.tappedDone)                        // there is no Next to press on an action step
-        XCTAssertEqual(t.step, .gear)
-    }
-
-    func testNothingMovesAfterTheTourEnds() {
-        var t = tour(at: .done)
-        t.did(.tappedDone)
+    func testNothingMovesWhenTheTourIsntRunning() {
+        var t = HowToUseTour()
+        t.did(.tappedNext)
         t.did(.tappedStart)
-        t.back()
         XCTAssertNil(t.step)
-        XCTAssertEqual(t.ending, .finished)
-    }
-
-    func testCountsEightSteps() {
-        XCTAssertEqual(tour(at: .start).progress, "1 of 8")
-        XCTAssertEqual(tour(at: .done).progress, "8 of 8")
+        XCTAssertNil(t.ending)
     }
 
     func testReplayStartsAgainFromTheFirstStep() {
         var t = tour(at: .done)
         t.did(.tappedDone)
         t.begin()
-        XCTAssertEqual(t.step, .start); XCTAssertEqual(t.phase, .waiting)
+        XCTAssertEqual(t.step, .start)
         XCTAssertNil(t.ending)
     }
 
-    // MARK: only the lit control answers
+    // MARK: what's lit, and the words
 
-    func testOnlyTheLitControlAnswersOnEachStep() {
+    func testWhatIsLitOnEachStep() {
         XCTAssertEqual(tour(at: .start).focus, TourFocus(lit: .start, answers: .start, dims: true))
-        var two = tour(at: .captions)
-        XCTAssertEqual(two.focus, TourFocus(lit: .stop, answers: nil, dims: true),
-                       "waiting for a voice: ✕ shows (round3/01 step 2) but nothing answers")
-        two.did(.captionShown)
-        XCTAssertEqual(two.focus, TourFocus(lit: .captionArea, answers: nil, dims: true), "her words lit, nothing answers")
+        XCTAssertEqual(tour(at: .captions).focus, TourFocus(lit: .captionArea, answers: nil, dims: true))
         XCTAssertEqual(tour(at: .pause).focus, TourFocus(lit: .stop, answers: .stop, dims: true))
-        var four = tour(at: .save)
-        XCTAssertEqual(four.focus, TourFocus(lit: .save, answers: .save, dims: true))
-        four.did(.tappedSave)
-        XCTAssertEqual(four.focus, TourFocus(lit: .save, answers: nil, dims: true), "no second tap during the green moment")
-        XCTAssertEqual(tour(at: .clearDim).focus, TourFocus(lit: nil, answers: .veil, dims: false), "the whole dim is lit")
-        XCTAssertEqual(tour(at: .holdBack).focus, TourFocus(lit: nil, answers: .captionArea, dims: false))
-        var seven = tour(at: .gear)
-        XCTAssertEqual(seven.focus, TourFocus(lit: .gear, answers: .gear, dims: true))
-        seven.did(.openedSettings)
-        XCTAssertEqual(seven.focus, TourFocus(lit: nil, answers: .everything, dims: false), "Settings works while she looks")
-        XCTAssertEqual(tour(at: .done).focus, TourFocus(lit: nil, answers: nil, dims: true))
+        XCTAssertEqual(tour(at: .done).focus, TourFocus(lit: .gear, answers: nil, dims: true))
     }
 
-    // MARK: the approved words (#120, every step "keep as drafted")
-
-    func testTheWordsAreExactlyTheApprovedOnes() {
+    func testTheWordsAreTheApprovedOnes() {
         XCTAssertEqual(tour(at: .start).words, TourWords(title: "Set the phone flat on the table.",
-                                                         message: "Between you and whoever's talking. Then tap Start captions."))
-        var two = tour(at: .captions)
-        XCTAssertEqual(two.words, TourWords(title: "Say something.", message: "Your words show up here as you talk."))
-        two.did(.captionShown)
-        XCTAssertEqual(two.words, TourWords(title: "That's you.",
-                                            message: "Each voice gets its own line and label. Seal goes by the sound of the voice, so it can mix people up. It doesn't know who anyone is."))
-        XCTAssertEqual(tour(at: .pause).words, TourWords(title: "Tap ✕ to pause.",
-                                                         message: "Nothing gets lost. Start captions picks up where you left off."))
-        XCTAssertEqual(tour(at: .save).words, TourWords(title: "Tap [ Save ].", message: "Keeps it on this phone for 30 days."))
-        XCTAssertEqual(tour(at: .clearDim).words, TourWords(title: "Tap anywhere on the dim.",
-                                                            message: "It clears so you can read and scroll back."))
-        XCTAssertEqual(tour(at: .holdBack).words, TourWords(title: "Hold an empty spot.", message: "The buttons come back."))
-        XCTAssertEqual(tour(at: .gear).words, TourWords(title: "Tap the gear.",
-                                                        message: "Colors, text size and lettering. Tap it again to come back."))
-        XCTAssertEqual(tour(at: .done).words, TourWords(title: "That's it.",
-                                                        message: "[ New ] clears the screen for the next conversation. It asks once first.\n\nHold on any words to copy them.\n\nIf it goes quiet for a while, captions pause on their own.\n\nYou can replay this in Settings."))
+                                                       message: "Between you and whoever's talking. Then tap Start captions."))
+        XCTAssertEqual(tour(at: .captions).words.title, "Words show up here as people talk.")
+        XCTAssertTrue(tour(at: .captions).words.message.contains("so it can mix people up"))
+        XCTAssertEqual(tour(at: .pause).words.title, "Tap ✕ to pause.")
+        XCTAssertTrue(tour(at: .pause).words.message.contains("30 days"))
+        XCTAssertEqual(tour(at: .done).words.title, "That's it.")
+        XCTAssertTrue(tour(at: .done).words.message.contains("You can replay this in Settings."))
+    }
+
+    func testTheLastStepDoesNotExplainTheObvious() {
+        // "you don't really need to explain the obvious UI elements"
+        let text = tour(at: .done).words.message.lowercased()
+        for obvious in ["copy", "hold on", "goes quiet"] { XCTAssertFalse(text.contains(obvious), obvious) }
     }
 
     func testNoWordPromisesToKnowWhoIsSpeaking() {
-        // Honest claims (#120): Seal tells voices apart; it doesn't know who anyone is, and naming is gone in v1.
-        var t = tour(at: .captions)
-        t.did(.captionShown)
-        var all = [t.words]
-        for step in TourStep.allCases { all.append(tour(at: step).words) }
-        let text = all.map { "\($0.title) \($0.message)" }.joined(separator: " ").lowercased()
+        let text = TourStep.allCases.map { let w = tour(at: $0).words; return "\(w.title) \(w.message)" }.joined(separator: " ").lowercased()
         for overclaim in ["who is speaking", "who's speaking", "name ", "names", "identif", "recogni"] {
             XCTAssertFalse(text.contains(overclaim), "tour words must not say \"\(overclaim)\"")
         }
@@ -301,12 +202,6 @@ final class HowToUseTourTests: XCTestCase {
         XCTAssertFalse(TourExample.offersExample(secondsWithoutCaption: 2, isCaptioning: true))
         XCTAssertTrue(TourExample.offersExample(secondsWithoutCaption: TourExample.quietSeconds, isCaptioning: true))
         XCTAssertFalse(TourExample.offersExample(secondsWithoutCaption: 60, isCaptioning: false))
-    }
-
-    func testFollowUpsGiveTimeToRead() {
-        // "That's you." is the longest message; it gets the longer reading beat.
-        XCTAssertGreaterThan(TourTiming.followUpSeconds(for: .captions), TourTiming.followUpSeconds(for: .save))
-        XCTAssertGreaterThanOrEqual(TourTiming.followUpSeconds(for: .save), 3)
     }
 
     // MARK: seen, on the device only

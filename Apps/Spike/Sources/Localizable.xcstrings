@@ -2431,6 +2431,116 @@
           }
         }
       }
+    },
+    "How your captions will look" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How your captions will look"
+          }
+        }
+      }
+    },
+    "Let's book a table for seven." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Let's book a table for seven."
+          }
+        }
+      }
+    },
+    "Sample caption: Speaker 1, Let's book a table for seven." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sample caption: Speaker 1, Let's book a table for seven."
+          }
+        }
+      }
+    },
+    "Next ›" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next ›"
+          }
+        }
+      }
+    },
+    "Next" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next"
+          }
+        }
+      }
+    },
+    "Captions" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captions"
+          }
+        }
+      }
+    },
+    "Words show up here as people talk." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Words show up here as people talk."
+          }
+        }
+      }
+    },
+    "A new voice gets its own line. Seal goes by the sound of the voice, so it can mix people up. Scroll up any time to reread." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A new voice gets its own line. Seal goes by the sound of the voice, so it can mix people up. Scroll up any time to reread."
+          }
+        }
+      }
+    },
+    "[ Save ] keeps the conversation on this phone for 30 days. [ New ] starts a clean page." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "[ Save ] keeps the conversation on this phone for 30 days. [ New ] starts a clean page."
+          }
+        }
+      }
+    },
+    "The gear has colors, text size and lettering. Your saved conversations are at the top right.\n\nYou can replay this in Settings." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The gear has colors, text size and lettering. Your saved conversations are at the top right.\n\nYou can replay this in Settings."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

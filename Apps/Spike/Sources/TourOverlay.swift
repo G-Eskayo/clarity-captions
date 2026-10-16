@@ -41,6 +41,7 @@ struct TourOverlay: View {
     let onBack: () -> Void
     let onSkip: () -> Void
     let onDone: () -> Void
+    let onNext: () -> Void
     let onExample: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -53,9 +54,11 @@ struct TourOverlay: View {
             let insets = outer.safeAreaInsets
             GeometryReader { geo in
                 let lit = focus.lit.flatMap { anchors[$0] }.map { geo[$0].insetBy(dx: -8, dy: -8) }
+                // The last step names the gear and the saved list, so both are lit (#137).
+                let alsoLit = tour.step == .done ? anchors[.savedList].map { geo[$0].insetBy(dx: -8, dy: -8) } : nil
                 let hole = holeRect(in: geo)
                 ZStack(alignment: .topLeading) {
-                    if focus.dims { dim(size: geo.size, spotlight: lit) }
+                    if focus.dims { dim(size: geo.size, spotlights: [lit, alsoLit].compactMap { $0 }) }
                     blocker(size: geo.size, hole: hole, stillBlocked: stillBlocked(in: geo))
                     if tour.showsWords {
                         words
@@ -69,7 +72,7 @@ struct TourOverlay: View {
                     }
                     skipButton
                         .frame(maxWidth: .infinity, alignment: .trailing)
-                        .padding(.top, insets.top + 4)
+                        .padding(.top, insets.top + 56)   // a row below the top bar, clear of the list icon (#137)
                         .padding(.trailing, 20)
                 }
                 .animation(fade, value: lit)
@@ -88,12 +91,13 @@ struct TourOverlay: View {
 
     /// The theme's own background faded over the screen (like the pause dim), with the lit control cut out and a soft
     /// edge around it instead of a frame. Drawing only: touches are handled by the blocker.
-    private func dim(size: CGSize, spotlight: CGRect?) -> some View {
-        Path { p in
+    private func dim(size: CGSize, spotlights: [CGRect]) -> some View {
+        let spotlight = spotlights.first
+        return Path { p in
             p.addRect(CGRect(origin: .zero, size: size))
-            if let spotlight { p.addRoundedRect(in: spotlight, cornerSize: CGSize(width: corner(spotlight), height: corner(spotlight))) }
+            for s in spotlights { p.addRoundedRect(in: s, cornerSize: CGSize(width: corner(s), height: corner(s))) }
         }
-        // With nothing lit (the last step), the dim is deeper so the words never sit over faded buttons.
+        // With nothing lit, the dim is deeper so the words never sit over faded buttons.
         .fill(style.background.color.opacity(spotlight == nil ? 0.95 : 0.86), style: FillStyle(eoFill: true))
         .overlay {
             if let spotlight {
@@ -175,12 +179,18 @@ struct TourOverlay: View {
                 .multilineTextAlignment(.center)
                 .opacity(0.85)
                 .fixedSize(horizontal: false, vertical: true)
-            if offersExample && tour.step == .captions && tour.phase == .waiting {
+            if offersExample && tour.step == .captions {
                 RetroWords(word: String(localized: "Show an example"), color: style.text.color,
                            background: style.background.color, size: .title3, label: String(localized: "Show an example"),
                            action: onExample)
                     .padding(.top, 6)
                     .transition(.opacity)
+            }
+            // Tour v3 (#137): Next on every step but the last; the real action moves it on too. Nothing is timed.
+            if tour.hasNextButton {
+                RetroWords(word: String(localized: "Next ›"), color: style.text.color, background: style.background.color,
+                           label: String(localized: "Next"), action: onNext)
+                    .padding(.top, 8)
             }
             if tour.hasDoneButton {
                 RetroWords(word: String(localized: "Done"), color: style.text.color, background: style.background.color,
@@ -225,28 +235,18 @@ struct TourOverlay: View {
     /// Next to the lit control (above it when it's low on the screen, as for Start and ✕), otherwise where the mock-up
     /// puts each step's words.
     private func wordsCenterY(height: CGFloat, insets: EdgeInsets, lit: CGRect?, newestWords: CGRect?) -> CGFloat {
-        let half: CGFloat = tour.step == .done ? 150 : 75
-        // "That's you.": just under her newest words (round3/01, "2, after").
-        if tour.step == .captions, tour.phase == .followUp, let newestWords {
-            return min(newestWords.maxY + 36 + half, height - insets.bottom - 110 - half)
-        }
-        // Start and ✕: right next to them. Elsewhere: where the mock-up puts the words.
+        let half: CGFloat = tour.step == .done ? 120 : 100   // room for the words and [ Next ›] / [ Done ]
+        // Start and ✕: right next to them (above, since they sit low on the screen).
         if let lit, tour.step == .start || tour.step == .pause {
             let below = lit.maxY + 20 + half
             if below + half <= height - insets.bottom - 110 { return below }
             return max(insets.top + 70 + half, lit.minY - 20 - half)
         }
-        let fraction: CGFloat
-        switch (tour.step, tour.phase) {
-        case (.captions?, .followUp): fraction = 0.56   // just under her words (round3/01, "2, after")
-        case (.captions?, _): fraction = 0.45
-        case (.gear?, .inSettings): fraction = 0.92   // out of Settings' way, at the bottom
-        case (.save?, _), (.clearDim?, _), (.gear?, _): fraction = 0.75   // below [ Save ] / [ New ]
-        case (.holdBack?, _): fraction = 0.64
-        case (.done?, _), (.start?, _), (.pause?, _), (nil, _): fraction = 0.52
+        // Step 2: just under the newest words, so they stay readable above the explanation.
+        if tour.step == .captions, let newestWords {
+            return min(newestWords.maxY + 36 + half, height - insets.bottom - 110 - half)
         }
-        // Settings has no Start pill at the bottom, so the words can sit right down there, clear of its rows.
-        if tour.step == .gear, tour.phase == .inSettings { return height - insets.bottom - 16 - half }
+        let fraction: CGFloat = tour.step == .captions ? 0.6 : 0.5
         return min(height * fraction, height - insets.bottom - 110 - half)
     }
 
