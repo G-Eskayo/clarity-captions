@@ -54,14 +54,11 @@ struct RetroWords: View {
     let color: Color
     let background: Color
     var size: Font.TextStyle = .title
-    /// The words this one slot cycles through ([ Save ] → [ ✔ ] → [ Saved ]): the brackets are sized for the widest
-    /// and stay put while the word crossfades inside (fluidity pass, owner 2026-10-20).
-    var reserving: [String] = []
     let label: String
     let action: (() -> Void)?
 
     var body: some View {
-        let text = RetroWordsText(word: word, color: color, background: background, size: size, reserving: reserving)
+        let text = RetroWordsText(word: word, color: color, background: background, size: size)
         if let action {
             Button(action: action) { text }
                 .buttonStyle(.plain)
@@ -78,17 +75,20 @@ struct RetroWordsText: View {
     let color: Color
     let background: Color
     var size: Font.TextStyle = .title
-    var reserving: [String] = []
 
     var body: some View {
-        // The brackets are the retro frame, not words; the word inside is already localized. Only the word changes,
-        // crossfading in place, so the brackets never jump to a new width mid-fade.
+        // The brackets are the retro frame, not words; the word inside is already localized. When the word changes
+        // ([ Save ] → [ ✔ ] → [ Saved ]) the brackets ease to the new width, the patch with them, while the old word
+        // fades out and the new one fades in (owner, 2026-10-20: keep the shrink-and-grow, make it flow). An invisible
+        // copy of the word sets the width, so it animates; the visible words sit on top and never push the layout.
         HStack(spacing: 0) {
             Text(verbatim: "[ ")
-            ZStack {
-                ForEach(reserving, id: \.self) { Text(verbatim: $0).hidden() }
-                Text(verbatim: word).id(word).transition(Fluid.wordSwap(false))
-            }
+            Text(verbatim: word)
+                .hidden()
+                .overlay {
+                    ZStack { Text(verbatim: word).id(word).transition(Fluid.wordSwap(false)) }
+                        .fixedSize()
+                }
             Text(verbatim: " ]")
         }
         .font(.system(size, design: .monospaced).bold())

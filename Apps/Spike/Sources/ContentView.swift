@@ -1036,8 +1036,8 @@ struct ContentView: View {
         }
     }
 
-    /// [ Save ] → [ ✔ ] → [ Saved ] is one view whose word changes, so it crossfades in place inside brackets that
-    /// never move (fluidity pass); three separate views swapped whole and looked choppy.
+    /// [ Save ] → [ ✔ ] → [ Saved ] is one view whose word changes: the brackets ease narrower for ✔ and wider for
+    /// Saved while the word fades out and in (fluidity pass); three separate views swapped whole and looked choppy.
     @ViewBuilder
     private var saveButton: some View {
         let green = SavedGreen.color(on: style.background).color
@@ -1047,7 +1047,6 @@ struct ContentView: View {
             let save = !model.showingSaveCheck && button == .save
             RetroWords(word: model.showingSaveCheck ? Self.checkMark : save ? words[0] : words[2],
                        color: save ? style.text.color : green, background: style.background.color,
-                       reserving: words,
                        label: save ? String(localized: "Save conversation")
                                    : model.showingSaveCheck ? String(localized: "Saved") : String(localized: "Conversation saved"),
                        action: save ? { withAnimation(Fluid.quick(reduceMotion)) { model.save() } } : nil)
