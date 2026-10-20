@@ -94,22 +94,68 @@
   .d-stop:active { transform: scaleX(1.06) scaleY(.9) translateY(2px); box-shadow: 0 1px 0 var(--d-lip); }
   .d-stop svg { width: 20px; height: 20px; }
   @media (prefers-reduced-motion: reduce) { .d-btn:active, .d-stop:active { transform: translateX(-50%); } .d-stop:active { transform: none; } }
-  .d-veil { position: absolute; inset: 88px 0 96px; background: color-mix(in srgb, var(--d-bg) 86%, transparent); display: flex; flex-direction: column;
-            align-items: center; justify-content: center; gap: 18px; }
-  .d-retro { border: 0; background: none; color: var(--d-text); font: 700 24px/1 'SF Mono', Menlo, monospace; letter-spacing: .02em; cursor: pointer; padding: 8px 12px; }
+  /* Fades only, like the app (FluidTiming): an element is on, or off with data-off, and fades between the two. */
+  .f[data-off] { opacity: 0; visibility: hidden; pointer-events: none; }
+  /* Visible at once when fading in (so focus can land), hidden only once a fade out has finished. */
+  .phone[data-ready="2"] .f { transition: opacity .35s ease, visibility 0s; }
+  .phone[data-ready="2"] .f[data-off] { transition: opacity .35s ease, visibility 0s .35s; }
+  /* The dim lands first and its words follow; going away, the words leave first and the dim lifts more slowly. */
+  .d-veil { position: absolute; inset: 88px 0 96px; background: color-mix(in srgb, var(--d-bg) 86%, transparent); display: grid; place-items: center; }
+  .d-veil > * { grid-area: 1 / 1; }
+  .phone[data-ready="2"] .d-veil { transition: opacity .45s ease, visibility 0s; }
+  .phone[data-ready="2"] .d-veil[data-off] { transition: opacity .45s ease .08s, visibility 0s .53s; }
+  .phone[data-ready="2"] .d-veil .d-words { transition: opacity .2s ease .18s, visibility 0s; }
+  .phone[data-ready="2"] .d-veil .d-words[data-off], .phone[data-ready="2"] .d-veil[data-off] .d-words { transition: opacity .2s ease, visibility 0s .2s; }
+  .d-veil[data-off] .d-words { opacity: 0; }
+  @media (prefers-reduced-motion: reduce) {
+    .phone[data-ready="2"] .f, .phone[data-ready="2"] .d-veil, .phone[data-ready="2"] .d-veil .d-words { transition-duration: .2s, 0s; }
+  }
+  .d-words { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+  .d-q { text-align: center; font: 15px/1.4 system-ui, sans-serif; padding: 0 20px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .d-q strong { font-size: 18px; }
+  .d-q .d-retro { font-size: 20px; }
+  /* [ word ] buttons, each on a feathered patch of background (no box) so dimmed words never show through. */
+  .d-retro { border: 0; color: var(--d-text); font: 700 24px/1 ui-monospace, 'SF Mono', Menlo, monospace; letter-spacing: .02em; cursor: pointer;
+             padding: 14px 24px; white-space: pre; background: radial-gradient(ellipse closest-side, var(--d-bg) 60%, transparent 100%); }
   .d-retro.d-saved { color: var(--d-saved); }
-  .d-settings { position: absolute; inset: 0; background: var(--d-bg); padding: 44px 20px 20px; overflow-y: auto; font: 15px/1.4 system-ui, sans-serif; }
+  .d-retro[aria-disabled="true"] { cursor: default; }
+  .rw { display: inline-block; position: relative; text-align: center; white-space: pre; }
+  .rw-probe { position: absolute; left: 0; top: 0; visibility: hidden; white-space: pre; }
+  .d-page { position: absolute; inset: 0; background: var(--d-bg); overflow-y: auto; font: 15px/1.4 system-ui, sans-serif; display: flex; flex-direction: column; }
+  .d-page-title { text-align: center; font: 800 17px/1.2 system-ui, sans-serif; }
+  .d-body { padding: 4px 20px 24px; }
   .d-settings h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; opacity: .7; margin: 18px 0 8px; }
   .d-settings .row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .d-note { margin: 8px 0 0; font-size: 13px; opacity: .75; }
+  .d-preview { padding: 6px 0 4px; font-family: var(--d-font); font-size: var(--d-size); line-height: 1.4; }
+  .d-preview .d-spk { color: var(--d-s1); }
   .swatch { width: 38px; height: 38px; border-radius: 50%; cursor: pointer; font: 700 15px/1 system-ui; border: 2px solid transparent; }
   .swatch[aria-pressed="true"] { border-color: var(--d-gear); box-shadow: 0 0 0 2px var(--d-bg) inset; }
   .chip { border: 2px solid transparent; background: color-mix(in srgb, var(--d-text) 8%, transparent); color: var(--d-text); border-radius: 999px;
           padding: 8px 14px; font: 600 14px/1 system-ui; cursor: pointer; }
+  .chip small { font: 700 11px/1 system-ui; opacity: .7; }
   .chip[aria-pressed="true"] { border-color: var(--d-gear); }
   .chip:disabled { opacity: .4; cursor: default; }
-  .d-done { margin-top: 22px; position: static; transform: none; }
+  .d-about a { display: block; color: var(--d-gear); font-weight: 600; padding: 4px 0; }
+  .d-done { margin-top: 4px; position: static; transform: none; }
   .d-done:active { transform: scaleX(1.06) scaleY(.9) translateY(2px); }
-  .demo-hint { font-size: .9rem; color: var(--muted); text-align: center; max-width: 22rem; margin: 0; }
+  .d-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 38px 12px 6px; min-height: 88px; }
+  .d-back { justify-self: start; border: 0; background: none; color: var(--d-gear); font: 600 16px/1 system-ui, sans-serif; padding: 12px 4px; cursor: pointer; }
+  .d-muted { margin: 4px 0 12px; opacity: .75; }
+  .d-search input { width: 100%; border: 0; border-bottom: 1px solid color-mix(in srgb, var(--d-text) 18%, transparent); background: none; color: var(--d-text);
+                    font: 15px/1.4 system-ui, sans-serif; padding: 8px 0; }
+  .d-search input::placeholder { color: color-mix(in srgb, var(--d-text) 60%, transparent); }
+  .d-row { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid color-mix(in srgb, var(--d-text) 12%, transparent); background: none;
+           color: var(--d-text); padding: 12px 0; font: inherit; cursor: pointer; }
+  .d-row strong { display: block; font-size: 16px; font-weight: 800; }
+  .d-row span { display: block; font-size: 14px; opacity: .75; }
+  .d-transcript { flex: 1; padding: 8px 20px 40px; font-family: var(--d-font); font-size: var(--d-size); line-height: 1.5; display: flex; flex-direction: column; gap: 14px; }
+  .d-transcript:focus-visible, .d-captions:focus-visible { outline-offset: -3px; }
+  .d-one-veil { inset: 88px 0 0; }
+  .d-hint { position: absolute; left: 50%; bottom: 92px; transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px); text-align: center;
+            background: var(--d-text); color: var(--d-bg); border-radius: 20px; padding: 8px 14px; font: 600 13px/1.35 system-ui, sans-serif; z-index: 5; pointer-events: none; }
+  .d-copy { position: absolute; left: 50%; bottom: 140px; transform: translateX(-50%); z-index: 5; font-size: 20px; }
+  .demo-hint { font-size: .9rem; color: var(--muted); text-align: center; max-width: 24rem; margin: 0; }
   [hidden] { display: none !important; }
 
   /* ── sections ───────────────────────────────────────────────── */
@@ -128,8 +174,11 @@
   ul.ticks li::before { content: ''; position: absolute; left: .2rem; top: .45em; width: .75rem; height: .75rem; border-radius: 50%; background: var(--teal); }
   .why { display: grid; gap: 1rem; max-width: 50rem; }
   .why .card p.src { margin-top: .5rem; font-size: .9rem; color: var(--muted); }
-  .limits { max-width: 46rem; }
-  .limits li { margin-bottom: .6rem; }
+  .faq { max-width: 46rem; }
+  .faq h3 { font-size: 1.1rem; margin: 1.6rem 0 .3rem; }
+  .faq h3:first-child { margin-top: 0; }
+  .faq p { margin: 0; }
+  .grid3 + .grid3 { margin-top: 1.25rem; }
   footer { border-top: 1px solid var(--rule); padding: 2rem 0 3rem; color: var(--muted); font-size: .95rem; }
   footer nav { display: flex; flex-wrap: wrap; gap: 1.25rem; margin-bottom: .75rem; }
   .mascot { width: 96px; height: auto; display: block; margin-bottom: .5rem; }
@@ -145,9 +194,10 @@
     </picture>
     <span class="name">Seal Speak</span>
     <nav aria-label="On this page">
-      <a href="#how">How it works</a>
+      <a href="#how">What it does</a>
       <a href="#private">Privacy</a>
-      <a href="#why">Why it looks this way</a>
+      <a href="#faq">Questions</a>
+      <a href="#next">Coming next</a>
       <a href="support.html">Support</a>
     </nav>
   </header>
@@ -158,14 +208,15 @@
     <div class="hero">
       <div>
         <h1>Follow the conversation at the table.</h1>
-        <p class="lede">Seal Speak shows what people around you are saying, as they say it, in large clear text. Captions are made on your iPhone, so it works with no internet.</p>
+        <p class="lede">Seal Speak shows what the people around you are saying, as they say it, in large clear text. It all happens on your iPhone, so it works with no internet.</p>
         <span class="gummy soon" role="note" aria-label="Coming soon to the App Store">
           Coming soon to the App Store
         </span>
-        <span class="soon-note">For iPhone and iPad with iOS 26 or later. English captions for now.</span>
+        <span class="soon-note">For iPhone 12 or newer with iOS 26 or later. English captions for now.</span>
         <ul class="facts" aria-label="At a glance">
           <li>Made on your phone</li>
           <li>Works with no internet</li>
+          <li>$4.99 once, no subscription</li>
           <li>No account</li>
           <li>No ads</li>
         </ul>
@@ -178,67 +229,151 @@
               <button class="d-gear" data-gear aria-label="Settings" aria-expanded="false">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
               </button>
-              <div class="d-status"><span class="dot" aria-hidden="true"></span><span data-status>Listening</span><span class="d-status-sub" data-status-sub hidden>No one is talking right now</span></div>
-              <span></span>
+              <div class="d-status"><span class="dot" aria-hidden="true"></span><span data-status>Ready</span><span class="d-status-sub" data-status-sub hidden>No one is talking right now</span></div>
+              <button class="d-gear" data-list aria-label="Saved conversations">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.2" fill="currentColor" stroke="none"/></svg>
+              </button>
             </div>
 
             <!-- Without JavaScript this static conversation is what shows; demo.js replaces it. -->
-            <div class="d-captions" data-captions aria-hidden="true">
+            <div class="d-captions" data-captions aria-label="Captions">
               <div class="d-line"><div class="d-spk d-s1">Speaker 1</div><span>Is it on? Say something so we can see.</span></div>
               <div class="d-line"><div class="d-spk d-s2">Speaker 2</div><span>Hi. My words are showing up on the screen.</span></div>
               <div class="d-line"><div class="d-spk d-s1">Speaker 1</div><span>It works in airplane mode too. Nothing leaves the phone.</span></div>
-              <div class="d-line d-sound">[Laughter]</div>
+              <div class="d-line d-sound"><span>[Laughter]</span></div>
               <div class="d-line"><div class="d-spk d-s2">Speaker 2</div><span class="d-vol">And it starts a new line when someone</span></div>
             </div>
             <div class="sr-only" aria-live="polite" data-live></div>
 
-            <div class="d-veil" data-veil hidden>
-              <button class="d-retro" data-save>[ Save ]</button>
-              <button class="d-retro" data-new>[ New ]</button>
+            <div class="d-veil f" data-veil data-off>
+              <div class="d-words f" data-veil-words>
+                <button class="d-retro" data-save><span aria-hidden="true">[ </span><span class="rw"><span class="rw-t">Save</span></span><span aria-hidden="true"> ]</span></button>
+                <button class="d-retro" data-new aria-label="Start a new conversation"><span aria-hidden="true">[ </span><span class="rw"><span class="rw-t">New</span></span><span aria-hidden="true"> ]</span></button>
+                <button class="sr-only" data-veil-read>Show the conversation</button>
+              </div>
+              <div class="d-q f" data-new-q data-off role="group" aria-label="Start a new conversation?">
+                <strong>Start a new conversation?</strong>
+                <span>This one isn't saved.</span>
+                <button class="d-retro" data-new-yes>[ Start new ]</button>
+                <button class="d-retro" data-new-no>[ Keep it ]</button>
+              </div>
             </div>
-            <button class="d-btn" data-start hidden>Start captions</button>
-            <button class="d-stop" data-stop hidden aria-label="Pause captions">
+            <button class="d-btn f" data-start data-off>Start captions</button>
+            <button class="d-stop f" data-stop data-off aria-label="Pause captions">
               <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg>
             </button>
 
-            <div class="d-settings" data-settings hidden role="dialog" aria-label="Settings">
-              <h3 id="d-colours">Colours</h3>
-              <div class="row" role="group" aria-labelledby="d-colours">
-                <button class="swatch" data-theme="paper" style="background:#FAF5E6;color:#141419" aria-label="Paper">Aa</button>
-                <button class="swatch" data-theme="seaglass" style="background:#DCEFEA;color:#0D2F2C" aria-label="Sea glass">Aa</button>
-                <button class="swatch" data-theme="peach" style="background:#FBE8D2;color:#2B1A10" aria-label="Peach">Aa</button>
-                <button class="swatch" data-theme="charcoal" style="background:#2B2D31;color:#ECE6D9" aria-label="Charcoal">Aa</button>
-                <button class="swatch" data-theme="night" style="background:#1D2536;color:#E9E3D5" aria-label="Night">Aa</button>
-                <button class="swatch" data-theme="harbor" style="background:#173331;color:#ECE4D3" aria-label="Harbor">Aa</button>
+            <div class="d-page d-settings f" data-settings data-off role="dialog" aria-label="Settings">
+              <div class="d-top">
+                <button class="d-gear" data-done aria-label="Back to captions">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                </button>
+                <div class="d-page-title">Settings</div>
+                <span></span>
               </div>
-              <h3 id="d-lettering">Lettering</h3>
-              <div class="row" role="group" aria-labelledby="d-lettering">
-                <button class="chip" data-lettering="opendyslexic" style="font-family:'OpenDyslexic'">OpenDyslexic</button>
-                <button class="chip" data-lettering="atkinson" style="font-family:'Atkinson Hyperlegible'">Atkinson Hyperlegible</button>
-                <button class="chip" data-lettering="standard">Standard</button>
+              <div class="d-body">
+                <h3 id="d-preview-h">How your captions will look</h3>
+                <div class="d-preview" aria-labelledby="d-preview-h"><div class="d-spk">Speaker 1</div>Let's book a table for seven.</div>
+                <h3 id="d-colors">Colors</h3>
+                <div class="row" role="group" aria-labelledby="d-colors">
+                  <button class="swatch" data-theme="paper" style="background:#FAF5E6;color:#141419" aria-label="Paper">Aa</button>
+                  <button class="swatch" data-theme="seaglass" style="background:#DCEFEA;color:#0D2F2C" aria-label="Sea Glass">Aa</button>
+                  <button class="swatch" data-theme="peach" style="background:#FBE8D2;color:#2B1A10" aria-label="Peach">Aa</button>
+                  <button class="swatch" data-theme="charcoal" style="background:#2B2D31;color:#ECE6D9" aria-label="Charcoal">Aa</button>
+                  <button class="swatch" data-theme="night" style="background:#1D2536;color:#E9E3D5" aria-label="Night">Aa</button>
+                  <button class="swatch" data-theme="harbor" style="background:#173331;color:#ECE4D3" aria-label="Harbor">Aa</button>
+                </div>
+                <h3 id="d-size">Size</h3>
+                <div class="row" role="group" aria-labelledby="d-size">
+                  <button class="chip" data-smaller aria-label="Smaller text">A−</button>
+                  <button class="chip" data-bigger aria-label="Larger text">A+</button>
+                </div>
+                <h3 id="d-lettering">Lettering</h3>
+                <div class="row" role="group" aria-labelledby="d-lettering">
+                  <button class="chip" data-lettering="opendyslexic" style="font-family:'OpenDyslexic'">OpenDyslexic <small>· default</small></button>
+                  <button class="chip" data-lettering="atkinson" style="font-family:'Atkinson Hyperlegible'">Atkinson Hyperlegible</button>
+                  <button class="chip" data-lettering="standard">Standard</button>
+                  <button class="chip" data-lettering="rounded" style="font-family:ui-rounded,'SF Pro Rounded',system-ui">Rounded</button>
+                  <button class="chip" data-lettering="serif" style="font-family:ui-serif,'New York',Georgia,serif">Serif</button>
+                  <button class="chip" data-lettering="typewriter" style="font-family:ui-monospace,'SF Mono',Menlo,monospace">Typewriter</button>
+                </div>
+                <p class="d-note">OpenDyslexic was made for people with dyslexia. Atkinson Hyperlegible was designed by the Braille Institute for low vision.</p>
+                <h3 id="d-quiet">Stop when it's quiet</h3>
+                <div class="row" role="group" aria-labelledby="d-quiet">
+                  <button class="chip" data-quiet="0" aria-label="5 minutes">5 min</button>
+                  <button class="chip" data-quiet="1" aria-label="15 minutes">15 min</button>
+                  <button class="chip" data-quiet="2" aria-label="30 minutes">30 min</button>
+                  <button class="chip" data-quiet="3">Never</button>
+                </div>
+                <h3>How to use Seal</h3>
+                <button class="d-btn d-done" data-tour>Show how to use Seal</button>
+                <p class="d-note" data-tour-note></p>
+                <h3>About</h3>
+                <div class="d-about">
+                  <a href="privacy.html">Privacy policy</a>
+                  <a href="support.html">Help and contact</a>
+                </div>
               </div>
-              <h3 id="d-size">Text size</h3>
-              <div class="row" role="group" aria-labelledby="d-size">
-                <button class="chip" data-smaller aria-label="Smaller text">A−</button>
-                <button class="chip" data-bigger aria-label="Bigger text">A+</button>
-              </div>
-              <button class="d-btn d-done" data-done>Done</button>
             </div>
+
+            <div class="d-page f" data-saved-list data-off role="dialog" aria-label="Saved conversations">
+              <div class="d-head"><button class="d-back" data-saved-back>‹ Captions</button><div class="d-page-title">Saved</div><span></span></div>
+              <div class="d-body">
+                <p class="d-muted">Kept for 30 days, then deleted.</p>
+                <p class="d-muted" data-saved-empty hidden>Conversations you save show up here.</p>
+                <label class="d-search"><span class="sr-only">Search saved conversations</span><input type="search" data-saved-search placeholder="Search"></label>
+                <div data-saved-rows></div>
+              </div>
+            </div>
+
+            <div class="d-page f" data-saved-one data-off role="dialog" aria-label="Saved conversation">
+              <div class="d-head"><button class="d-back" data-one-back>‹ Saved</button><div class="d-page-title" data-one-title></div><span></span></div>
+              <div class="d-transcript" data-one-text tabindex="-1" aria-label="Saved conversation text"></div>
+              <div class="d-veil d-one-veil f" data-one-veil>
+                <div class="d-words f" data-one-words>
+                  <button class="d-retro" data-share aria-label="Share this conversation">[ Share ]</button>
+                  <button class="d-retro" data-delete aria-label="Delete this conversation">[ Delete ]</button>
+                  <button class="sr-only" data-one-read>Show the conversation</button>
+                </div>
+                <div class="d-q f" data-del-q data-off role="group" aria-label="Delete this conversation?">
+                  <strong>Delete this conversation?</strong>
+                  <span>This can't be undone.</span>
+                  <button class="d-retro" data-del-yes>[ Delete ]</button>
+                  <button class="d-retro" data-del-no>[ Keep ]</button>
+                </div>
+              </div>
+            </div>
+
+            <button class="d-retro d-copy f" data-copy data-off aria-label="Copy the selected words">[ Copy ]</button>
+            <p class="d-hint f" data-hint data-off role="status"></p>
           </div>
         </div>
-        <p class="demo-hint">This demo plays a made-up conversation. Tap <strong>Start captions</strong>, tap ✕ to pause, and try the gear for colours, lettering and size.</p>
+        <p class="demo-hint">This demo plays a made-up conversation. Tap <strong>Start captions</strong>, then ✕ to pause. Try [&nbsp;Save&nbsp;], tap the dim to read, open the list icon for saved conversations, and the gear for Settings.</p>
       </div>
     </div>
   </div>
 
+  <section class="band" id="story" aria-labelledby="story-h">
+    <div class="wrap">
+      <h2 id="story-h">Why I made Seal Speak</h2>
+      <!-- STORY PLACEHOLDER (#142): this section waits for the owner's own words. Don't write or paraphrase it for him. -->
+      <p class="intro">Story coming soon.</p>
+    </div>
+  </section>
+
   <section class="band" id="how" aria-labelledby="how-h">
     <div class="wrap">
-      <h2 id="how-h">How it works</h2>
-      <p class="intro">One big button. Nothing to set up each time.</p>
+      <h2 id="how-h">What it does</h2>
+      <p class="intro">One screen and one button to start. Nothing to set up each time.</p>
       <div class="grid3">
-        <div class="card"><span class="step-n" aria-hidden="true">1</span><h3>Put your phone on the table</h3><p>Open Seal Speak and tap Start captions.</p></div>
-        <div class="card"><span class="step-n" aria-hidden="true">2</span><h3>Read along</h3><p>Words appear as people talk. When the voice changes, Seal starts a new line and labels it Speaker 1, Speaker 2. Sounds like laughter or a doorbell show up as short labels.</p></div>
-        <div class="card"><span class="step-n" aria-hidden="true">3</span><h3>Pause, save or start fresh</h3><p>Tap ✕ to pause. [ Save ] keeps the conversation on your phone for 30 days; [ New ] starts a clean page.</p></div>
+        <div class="card"><span class="step-n" aria-hidden="true">1</span><h3>Put your phone on the table</h3><p>Open Seal Speak and tap Start captions. Words show up as people talk.</p></div>
+        <div class="card"><span class="step-n" aria-hidden="true">2</span><h3>Read along</h3><p>When the voice changes, Seal starts a new line and labels it Speaker 1 or Speaker 2. Sounds like laughter or a doorbell show up as short labels.</p></div>
+        <div class="card"><span class="step-n" aria-hidden="true">3</span><h3>Pause when you need to</h3><p>Tap ✕ and the words dim, with [&nbsp;Save&nbsp;] and [&nbsp;New&nbsp;] on top. Tap the dim to scroll back and reread. Hold an empty spot to bring the buttons back.</p></div>
+      </div>
+      <div class="grid3">
+        <div class="card"><h3>Copy a few words</h3><p>Hold a word to select it, drag the handles to take in more, then tap [&nbsp;Copy&nbsp;]. Paste it into a message or a note.</p></div>
+        <div class="card"><h3>Keep a conversation</h3><p>Tap [&nbsp;Save&nbsp;]. Your saved conversations are behind the list icon at the top right. Each one stays on your phone for 30 days, then it's deleted.</p></div>
+        <div class="card"><h3>Share it if you want</h3><p>Open a saved conversation and tap [&nbsp;Share&nbsp;] to send the text to Notes, Messages, Mail, Files or AirDrop. [&nbsp;Delete&nbsp;] gets rid of it now.</p></div>
       </div>
     </div>
   </section>
@@ -248,10 +383,10 @@
       <h2 id="private-h">Private by design</h2>
       <p class="intro">A conversation holds other people's words. They stay on your phone.</p>
       <ul class="ticks">
-        <li>Captions are made on your device. Audio is never recorded or sent anywhere.</li>
+        <li>Captions are made on your iPhone. Audio is never recorded or sent anywhere.</li>
         <li>Works with no internet connection after a one-time setup, including in airplane mode.</li>
         <li>No account, no ads, no tracking.</li>
-        <li>Saved conversations stay on your phone for 30 days, and you can delete any of them sooner. Read the <a href="privacy.html">privacy policy</a>.</li>
+        <li>Saved conversations stay on your phone for 30 days and aren't backed up to iCloud. You can delete any of them sooner. Read the <a href="privacy.html">privacy policy</a>.</li>
       </ul>
     </div>
   </section>
@@ -259,9 +394,10 @@
   <section class="band" id="easy" aria-labelledby="easy-h">
     <div class="wrap">
       <h2 id="easy-h">Made to be easy to read</h2>
+      <p class="intro">Everything on screen fades in and out. Nothing slides around while you read.</p>
       <div class="grid3">
         <div class="card"><h3>Large text</h3><p>Follows your phone's text size, with A− and A+ to go bigger or smaller.</p></div>
-        <div class="card"><h3>Six colour themes</h3><p>Three light and three dark. Every one keeps strong contrast between the words and the background.</p></div>
+        <div class="card"><h3>Six color themes</h3><p>Three light and three dark. Every one keeps strong contrast between the words and the background.</p></div>
         <div class="card"><h3>Six letterings</h3><p>OpenDyslexic, Atkinson Hyperlegible, Standard, Rounded, Serif and Typewriter. Pick whichever is most comfortable.</p></div>
       </div>
     </div>
@@ -274,12 +410,12 @@
       <div class="why">
         <div class="card">
           <h3>Contrast between light and dark matters most</h3>
-          <p>Readers with low vision read better with strong brightness contrast than with colour contrast alone. So every theme is built for brightness contrast, and a test makes sure each one reaches at least 7:1.</p>
+          <p>Readers with low vision read better with strong brightness contrast than with color contrast alone. So every theme is built for brightness contrast, and a test makes sure each one reaches at least 7:1.</p>
           <p class="src">Source: Legge et al. (1990), <a href="https://legge.dl8.umn.edu/sites/legge.psych.umn.edu/files/files/media/legge90_psychophysics_of_reading._xi._comparing_luminance_and_color_contrast.pdf"><cite>Psychophysics of reading XI</cite></a>.</p>
         </div>
         <div class="card">
-          <h3>You choose the size, lettering and colours</h3>
-          <p>Caption size, lettering, spacing and the contrast between caption and background all affect how easy captions are to read. Seal lets you change the size, the lettering and the colours.</p>
+          <h3>You choose the size, lettering and colors</h3>
+          <p>Caption size, lettering, spacing and the contrast between caption and background all affect how easy captions are to read. Seal lets you change the size, the lettering and the colors.</p>
           <p class="src">Source: a caption readability study with older TV viewers, <a href="https://reposit.sun.ac.jp/dspace/handle/10561/231">Sun Repository</a>.</p>
         </div>
         <div class="card">
@@ -300,15 +436,42 @@
     </div>
   </section>
 
-  <section class="band" id="limits" aria-labelledby="limits-h">
+  <section class="band" id="faq" aria-labelledby="faq-h">
     <div class="wrap">
-      <h2 id="limits-h">Good to know</h2>
-      <ul class="limits">
-        <li>Captions are made by a computer and can contain mistakes, names most of all. For anything important, check with the person speaking.</li>
-        <li>Seal goes by the sound of the voice, so it can mix people up, especially voices that sound alike. It doesn't know who anyone is.</li>
-        <li>Captions are in English for now. Seal needs an iPhone or iPad with iOS 26 or later.</li>
-        <li>Seal Speak is not a medical device.</li>
+      <h2 id="faq-h">Questions</h2>
+      <div class="faq">
+        <h3>What does it cost?</h3>
+        <p>$4.99, once. No subscription, no in-app purchases, no ads.</p>
+        <h3>Does it need the internet?</h3>
+        <p>Only once. The first time you start, your iPhone may download Apple's speech files. After that it captions with no connection at all, airplane mode included.</p>
+        <h3>Does it record or upload conversations?</h3>
+        <p>No. Sound is turned into text on your phone and the audio isn't kept. Text is only kept if you tap [&nbsp;Save&nbsp;], and it stays on your phone.</p>
+        <h3>Which phones does it work on?</h3>
+        <p>iPhone 12 or newer with iOS 26 or later. It's iPhone only for now, and captions are in English.</p>
+        <h3>Does it recognize people?</h3>
+        <p>No. Seal goes by the sound of the voice and labels lines Speaker 1 and Speaker 2. It can mix people up, especially voices that sound alike, and it doesn't know anyone's name.</p>
+        <h3>How accurate are the captions?</h3>
+        <p>Captions are made by a computer and can contain mistakes, names most of all. For anything important, check with the person speaking.</p>
+        <h3>How long are saved conversations kept?</h3>
+        <p>30 days, then they're deleted on their own. They aren't backed up to iCloud. Open one from the list icon and tap [&nbsp;Delete&nbsp;] to remove it sooner.</p>
+        <h3>What if I forget to stop it?</h3>
+        <p>Seal stops by itself after 5 minutes with no one talking. In Settings you can change that to 15 or 30 minutes, or never.</p>
+        <h3>Is Seal Speak a medical device?</h3>
+        <p>No. Seal Speak is not a medical device. It's an app that shows conversation as text.</p>
+      </div>
+      <p class="intro" style="margin-top:2rem">More answers on the <a href="support.html">support page</a>.</p>
+    </div>
+  </section>
+
+  <section class="band" id="next" aria-labelledby="next-h">
+    <div class="wrap">
+      <h2 id="next-h">What's coming next</h2>
+      <p class="intro">These are planned. They're not in the app yet, and there are no dates.</p>
+      <ul class="ticks">
+        <li><strong>Choose your language.</strong> Captions are English only today. Picking another language is planned.</li>
+        <li><strong>Live translation on the phone.</strong> Read what someone says in your own language, worked out on the iPhone like the captions are. Planned.</li>
       </ul>
+      <p class="intro" style="margin-top:2rem">Seal Speak's code is public. You can see what's being worked on, or report a problem, on <a href="https://github.com/G-Eskayo/clarity-captions">GitHub</a>.</p>
     </div>
   </section>
 </main>
@@ -319,6 +482,7 @@
     <nav aria-label="Footer">
       <a href="support.html">Support</a>
       <a href="privacy.html">Privacy policy</a>
+      <a href="https://github.com/G-Eskayo/clarity-captions">GitHub</a>
       <a href="mailto:gil.eskayo@icloud.com">Contact</a>
     </nav>
     <p>Seal Speak is made by Gil Eskayo. © 2026.</p>
