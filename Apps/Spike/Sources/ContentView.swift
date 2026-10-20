@@ -665,12 +665,18 @@ struct ContentView: View {
             if let activity = model.activity, case .listening = model.state {
                 renderStatusDot(StatusDot.select(state: model.state, activity: activity, roomLevelDBFS: model.roomLevelDBFS))
             }
-            Text(statusHeadline)
-                .font(.subheadline.weight(.semibold))
-                .opacity(0.8)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .onLongPressGesture(minimumDuration: 1.5) { developerTools.toggle() }
+            // Each status word is its own view, so a change fades out then in, in one spot, instead of morphing
+            // letter by letter ("Listening" into "Paused" smeared; fluidity pass). The ZStack keeps both in that spot.
+            ZStack {
+                Text(statusHeadline)
+                    .id(statusHeadline)
+                    .transition(Fluid.wordSwap(reduceMotion))
+            }
+            .font(.subheadline.weight(.semibold))
+            .opacity(0.8)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .onLongPressGesture(minimumDuration: 1.5) { developerTools.toggle() }
         }
         .padding(.horizontal, 52)   // never under the gear
         .accessibilityElement(children: .combine)
@@ -806,9 +812,7 @@ struct ContentView: View {
 
             if selection != nil { selectionChrome }
 
-            if model.veil.isVisible(state: model.state, hasConversation: model.hasConversation) {
-                pauseVeil.transition(.opacity)
-            }
+            pauseVeil
 
             if showingVeilHint {
                 Text(String(localized: "Hold on empty space to bring back Save and New"))
@@ -987,16 +991,25 @@ struct ContentView: View {
     /// The dim over a paused conversation: the captions fade toward the theme's own background (about 86%, mock-up
     /// 02) and [ Save ] sits over [ New ], centered, each on a plain patch of background so faded words never show
     /// through the letters. One tap on the dim clears it to scroll and copy.
+    private var veilShowing: Bool { model.veil.isVisible(state: model.state, hasConversation: model.hasConversation) }
+
     private var pauseVeil: some View {
+        DimLayer(visible: veilShowing,
+                 color: style.background.color, reduceMotion: reduceMotion, onTap: { clearVeil() }) { pauseVeilWords }
+    }
+
+    /// What sits on the dim: [ Save ] over [ New ], or [ New ]'s question in their place.
+    private var pauseVeilWords: some View {
         ZStack {
-            style.background.color.opacity(0.86)
-                .contentShape(Rectangle())
-                .onTapGesture { clearVeil() }
-                .tourTarget(.veil)
+            // The tour finds the dim and [ Save ] only while they're showing (the dim is always in the tree now).
+            Color.clear
+                .modifier(TourTargetIf(target: .veil, active: veilShowing))
                 .accessibilityElement()
                 .accessibilityLabel(String(localized: "Paused conversation"))
                 .accessibilityAddTraits(.isButton)
                 .accessibilityHint(String(localized: "Double tap to show the conversation"))
+                .accessibilityAction { clearVeil() }
+                .allowsHitTesting(false)
             if model.newQuestion.isAsking {
                 InPlaceQuestionView(style: style,
                                     title: String(localized: "Start a new conversation?"),
@@ -1014,7 +1027,7 @@ struct ContentView: View {
                 // While the rating question shows over a paused conversation, [ Save ] / [ New ] step aside so its
                 // words sit on a plain dim (round2/04), not over ghosted buttons.
                 VStack(spacing: 24) {
-                    saveButton.tourTarget(.save)
+                    saveButton.modifier(TourTargetIf(target: .save, active: veilShowing))
                     retroButton(String(localized: "New"), color: style.text.color,
                                 label: String(localized: "Start a new conversation")) { withAnimation(veilAnimation) { model.requestNew() } }
                 }
@@ -1023,22 +1036,21 @@ struct ContentView: View {
         }
     }
 
+    /// [ Save ] → [ ✔ ] → [ Saved ] is one view whose word changes, so it crossfades in place inside brackets that
+    /// never move (fluidity pass); three separate views swapped whole and looked choppy.
     @ViewBuilder
     private var saveButton: some View {
         let green = SavedGreen.color(on: style.background).color
-        if model.showingSaveCheck {
-            retroButton(Self.checkMark, color: green, label: String(localized: "Saved"), action: nil)
-        } else {
-            switch model.session.saveButton(lines: model.stream.lines, names: model.speakerNames) {
-            case .save:
-                retroButton(String(localized: "Save"), color: style.text.color, label: String(localized: "Save conversation")) {
-                    withAnimation(Fluid.quick(reduceMotion)) { model.save() }
-                }
-            case .saved:
-                retroButton(String(localized: "Saved"), color: green, label: String(localized: "Conversation saved"), action: nil)
-            case .unavailable:
-                EmptyView()
-            }
+        let words = [String(localized: "Save"), Self.checkMark, String(localized: "Saved")]
+        let button = model.session.saveButton(lines: model.stream.lines, names: model.speakerNames)
+        if model.showingSaveCheck || button != .unavailable {
+            let save = !model.showingSaveCheck && button == .save
+            RetroWords(word: model.showingSaveCheck ? Self.checkMark : save ? words[0] : words[2],
+                       color: save ? style.text.color : green, background: style.background.color,
+                       reserving: words,
+                       label: save ? String(localized: "Save conversation")
+                                   : model.showingSaveCheck ? String(localized: "Saved") : String(localized: "Conversation saved"),
+                       action: save ? { withAnimation(Fluid.quick(reduceMotion)) { model.save() } } : nil)
         }
     }
 

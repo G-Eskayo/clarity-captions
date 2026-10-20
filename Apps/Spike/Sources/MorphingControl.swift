@@ -30,14 +30,26 @@ struct MorphingControl: View {
     var body: some View {
         Button(action: action) {
             ZStack {
-                Text(control.title)
-                    .font(.title.bold())
-                    .foregroundStyle(label.color)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .padding(.horizontal, 12)
-                    .opacity(compact ? 0 : 1)
-                    .scaleEffect(compact ? 0.6 : 1)
+                // The label keeps the pill's full width while the pill sweeps into a circle, fades out faster than
+                // the sweep, and comes back only once the pill has mostly grown, so it's never squeezed into "S…" or
+                // clipped to "tart captions" (fluidity pass, owner 2026-10-20). The container holds that timing; inside
+                // it each word is its own view, so "Start captions" → "Getting ready…" fades out then in instead of
+                // morphing letter by letter.
+                ZStack {
+                    Text(control.title)
+                        .id(control.title)
+                        .transition(Fluid.wordSwap(reduceMotion))
+                }
+                .font(.title.bold())
+                .foregroundStyle(label.color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .padding(.horizontal, 12)
+                .frame(width: fullWidth)
+                // Only the fade and scale are delayed; the label's position moves with the pill (else it slides in).
+                .animation(Fluid.quick(reduceMotion).delay(compact ? 0 : FluidTiming.pillLabelInDelay)) {
+                    $0.opacity(compact ? 0 : 1).scaleEffect(compact ? 0.6 : 1)
+                }
                 Image(systemName: "xmark")
                     .font(.title2.bold())
                     .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
@@ -47,6 +59,7 @@ struct MorphingControl: View {
                     .rotationEffect(.degrees(compact ? 0 : -90))
             }
             .frame(width: compact ? diameter : fullWidth, height: compact ? diameter : pillHeight)
+            .clipShape(shape)
             .background(compact ? stopRed : fill.color, in: shape)
             .contentShape(shape)
         }
@@ -56,7 +69,7 @@ struct MorphingControl: View {
         .accessibilityLabel(control.accessibilityLabel)
         // Reduce Motion: a plain quick crossfade instead of the sweep.
         .animation(reduceMotion ? .easeInOut(duration: 0.15) : .spring(response: 0.5, dampingFraction: 0.78), value: control.presentation)
-        .animation(Fluid.quick(reduceMotion), value: control.title)
+        .animation(Fluid.quick(reduceMotion), value: control.title)   // drives the label's word swap
     }
 }
 

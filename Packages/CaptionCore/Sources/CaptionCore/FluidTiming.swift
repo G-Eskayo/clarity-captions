@@ -22,6 +22,31 @@ public enum FluidTiming {
         reduceMotion ? Page(out: 0.15, inDelay: 0.05, in: 0.2) : Page(out: 0.24, inDelay: 0.1, in: 0.32)
     }
 
+    /// A dim with words on it ([ Save ] / [ New ], [ Share ] / [ Delete ]). Going away, the words leave first and the
+    /// dim lifts more slowly, so the text under it comes up gradually; coming back, the dim lands first and the words
+    /// follow. Fading both together made the dim seem to vanish in one frame while the words lingered (owner, "choppy").
+    public struct Dim: Equatable, Sendable {
+        public let dim: Double
+        public let words: Double
+        public let wordsInDelay: Double
+        public let dimOutDelay: Double
+    }
+
+    public static func dim(reduceMotion: Bool) -> Dim {
+        reduceMotion ? Dim(dim: 0.2, words: 0.12, wordsInDelay: 0.08, dimOutDelay: 0.04)
+                     : Dim(dim: 0.45, words: 0.2, wordsInDelay: 0.18, dimOutDelay: 0.08)
+    }
+
+    /// A single small word changing (the status row, the word inside [ ]): out, then in. A crossfade of two words in
+    /// one spot reads as a smear at that size.
+    public static func wordSwap(reduceMotion: Bool) -> (out: Double, inDelay: Double, in: Double) {
+        reduceMotion ? (0.08, 0.06, 0.1) : (0.12, 0.1, 0.18)
+    }
+
+    /// The Start pill's label waits this long before fading in as the circle sweeps back into a pill, so a half-grown
+    /// pill never shows a clipped "rt captions".
+    public static let pillLabelInDelay: Double = 0.3
+
     /// [ ✔ ] stays this long, then eases into [ Saved ].
     public static let saveCheckHold: Double = 0.7
     /// The whole [ Save ] → [ ✔ ] → [ Saved ] moment; the tour's "Saved." waits for it (#121).

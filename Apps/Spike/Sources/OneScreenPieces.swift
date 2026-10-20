@@ -11,6 +11,39 @@ enum Fluid {
     static func curve(_ duration: Double, _ reduceMotion: Bool) -> Animation {
         reduceMotion ? .easeInOut(duration: duration) : .smooth(duration: duration)
     }
+
+    /// One small word replacing another in the same spot: out, then in.
+    static func wordSwap(_ reduceMotion: Bool) -> AnyTransition {
+        let w = FluidTiming.wordSwap(reduceMotion: reduceMotion)
+        return .asymmetric(insertion: .opacity.animation(curve(w.in, reduceMotion).delay(w.inDelay)),
+                           removal: .opacity.animation(curve(w.out, reduceMotion)))
+    }
+}
+
+/// A dim with words on it, timed as two layers (FluidTiming.dim): leaving, words first then the dim lifts slowly;
+/// arriving, the dim first then the words. Always in the tree so each layer can keep its own timing.
+struct DimLayer<Words: View>: View {
+    let visible: Bool
+    let color: Color
+    let reduceMotion: Bool
+    let onTap: () -> Void
+    @ViewBuilder let words: () -> Words
+
+    var body: some View {
+        let t = FluidTiming.dim(reduceMotion: reduceMotion)
+        ZStack {
+            color.opacity(0.86)
+                .contentShape(Rectangle())
+                .onTapGesture(perform: onTap)
+                .opacity(visible ? 1 : 0)
+                .animation(.easeInOut(duration: t.dim).delay(visible ? 0 : t.dimOutDelay), value: visible)
+            words()
+                .opacity(visible ? 1 : 0)
+                .animation(Fluid.curve(t.words, reduceMotion).delay(visible ? t.wordsInDelay : 0), value: visible)
+        }
+        .allowsHitTesting(visible)
+        .accessibilityHidden(!visible)
+    }
 }
 
 /// The retro, literal-text words: [ Save ], [ New ], [ Start new ], [ Keep it ], [ Delete all ]. A nil action shows
@@ -21,11 +54,14 @@ struct RetroWords: View {
     let color: Color
     let background: Color
     var size: Font.TextStyle = .title
+    /// The words this one slot cycles through ([ Save ] → [ ✔ ] → [ Saved ]): the brackets are sized for the widest
+    /// and stay put while the word crossfades inside (fluidity pass, owner 2026-10-20).
+    var reserving: [String] = []
     let label: String
     let action: (() -> Void)?
 
     var body: some View {
-        let text = RetroWordsText(word: word, color: color, background: background, size: size)
+        let text = RetroWordsText(word: word, color: color, background: background, size: size, reserving: reserving)
         if let action {
             Button(action: action) { text }
                 .buttonStyle(.plain)
@@ -42,16 +78,34 @@ struct RetroWordsText: View {
     let color: Color
     let background: Color
     var size: Font.TextStyle = .title
+    var reserving: [String] = []
 
     var body: some View {
-        // The brackets are the retro frame, not words; the word inside is already localized.
-        Text(verbatim: "[ \(word) ]")
-            .font(.system(size, design: .monospaced).bold())
-            .foregroundStyle(color)
-            .padding(.horizontal, 14).padding(.vertical, 6)
-            .background(background)
-            .contentShape(Rectangle())
-            .contentTransition(.opacity)
+        // The brackets are the retro frame, not words; the word inside is already localized. Only the word changes,
+        // crossfading in place, so the brackets never jump to a new width mid-fade.
+        HStack(spacing: 0) {
+            Text(verbatim: "[ ")
+            ZStack {
+                ForEach(reserving, id: \.self) { Text(verbatim: $0).hidden() }
+                Text(verbatim: word).id(word).transition(Fluid.wordSwap(false))
+            }
+            Text(verbatim: " ]")
+        }
+        .font(.system(size, design: .monospaced).bold())
+        .foregroundStyle(color)
+        .padding(.horizontal, 14).padding(.vertical, 6)
+        .background(FeatheredPatch(color: background))
+        .contentShape(Rectangle())
+    }
+}
+
+/// The plain patch behind [ words ] so faded text never shows through the letters: solid behind them, fading out
+/// at every edge so it never reads as a box (owner, 2026-10-20).
+struct FeatheredPatch: View {
+    let color: Color
+
+    var body: some View {
+        Capsule().fill(color).padding(-8).blur(radius: 8).allowsHitTesting(false)
     }
 }
 

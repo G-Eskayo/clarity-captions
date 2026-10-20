@@ -149,7 +149,10 @@ struct SavedConversationPage: View {
                                 .padding(.bottom, 40)
                         }
                     }
-                    if veil.isVisible, conversation != nil { veilLayer.transition(.opacity) }
+                    if conversation != nil {
+                        DimLayer(visible: veil.isVisible, color: style.background.color, reduceMotion: reduceMotion,
+                                 onTap: { clearVeil() }) { veilWords }
+                    }
                     if showingHint {
                         // Same look as the paused screen's hint; shown the first time the dim is cleared, ever.
                         Text(String(localized: "Hold words to copy. Hold empty space to bring back Share and Delete."))
@@ -176,14 +179,14 @@ struct SavedConversationPage: View {
         }
     }
 
-    /// The dim over the words (about 86% of the theme's background, as on a paused conversation) with [ Share ] over
+    /// What sits on the dim (DimLayer, about 86% of the theme's background, as on a paused conversation): [ Share ] over
     /// [ Delete ], centered. One tap on the dim clears it; a tap while Delete is asking answers it like [ Keep ].
-    private var veilLayer: some View {
+    private var veilWords: some View {
         ZStack {
-            style.background.color.opacity(0.86)
-                .contentShape(Rectangle())
-                .onTapGesture { clearVeil() }
+            Color.clear
+                .allowsHitTesting(false)
                 .accessibilityElement()
+                .accessibilityAction { clearVeil() }
                 .accessibilityLabel(String(localized: "Saved conversation"))
                 .accessibilityAddTraits(.isButton)
                 .accessibilityHint(String(localized: "Double tap to show the conversation"))
