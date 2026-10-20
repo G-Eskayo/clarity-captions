@@ -126,6 +126,7 @@ struct SavedConversationPage: View {
     let onBack: () -> Void
     @State private var conversation: SavedConversation?
     @State private var question = InPlaceQuestion<SavedListQuestion>()
+    @State private var selecting = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -134,10 +135,15 @@ struct SavedConversationPage: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     if let conversation {
-                        SavedTranscriptText(transcript: conversation.transcript, style: style)
+                        SavedTranscriptText(transcript: conversation.transcript, style: style) { selecting = $0 }
                             .padding(.top, 18)
-                            .zIndex(1)   // [ Copy ] floats over [ Share ] when it sits under the selection
+                            .zIndex(1)   // [ Copy ] can sit where [ Share ] was
+                        // While words are selected, [ Share ] and [ Delete ] fade out (owner, 2026-10-20).
                         delete.padding(.top, 30)
+                            .opacity(selecting ? 0 : 1)
+                            .allowsHitTesting(!selecting)
+                            .accessibilityHidden(selecting)
+                            .animation(.easeInOut(duration: 0.2), value: selecting)
                     }
                 }
                 .padding(.horizontal, 8)

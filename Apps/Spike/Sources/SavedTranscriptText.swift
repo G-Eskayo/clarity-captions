@@ -8,6 +8,8 @@ import UIKit
 struct SavedTranscriptText: View {
     let transcript: String
     let style: CaptionStyle
+    /// Told when a selection starts and ends, so the page can fade [ Share ] and [ Delete ] out meanwhile (owner, #139).
+    var onSelectingChange: (Bool) -> Void = { _ in }
     @State private var selection: CaptionSelection?
     @State private var copyTiming = CopyButtonTiming()
     @State private var textFrames = TextFrames()
@@ -48,6 +50,7 @@ struct SavedTranscriptText: View {
         .simultaneousGesture(SpatialTapGesture().onEnded { tap in
             if selection != nil, handle(near: tap.location) == nil { clearSelection() }
         })
+        .onChange(of: selection != nil) { _, selecting in onSelectingChange(selecting) }
         .task {
             // Debug only: a held selection for the #139 screenshot (simctl can't press and hold).
             guard DemoMode.select, let first = lines.first, let second = lines.dropFirst().first else { return }
