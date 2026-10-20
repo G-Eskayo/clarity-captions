@@ -47,8 +47,17 @@ public enum FluidTiming {
     /// pill never shows a clipped "rt captions".
     public static let pillLabelInDelay: Double = 0.3
 
+    /// [ Save ] → [ ✔ ] → [ Saved ]: the brackets ease narrower, then wider, over this long. Slower than other small
+    /// changes so the shrink-and-grow reads as a motion, not a snap (owner, 2026-10-20: "slowed down a smidge").
+    public static func saveMorph(reduceMotion: Bool) -> Double { reduceMotion ? 0.2 : 0.4 }
+
+    /// The word inside the brackets during that moment: out, then in, landing as the brackets finish.
+    public static func bracketWordSwap(reduceMotion: Bool) -> (out: Double, inDelay: Double, in: Double) {
+        reduceMotion ? (0.08, 0.08, 0.12) : (0.16, 0.16, 0.26)
+    }
+
     /// [ ✔ ] stays this long, then eases into [ Saved ].
     public static let saveCheckHold: Double = 0.7
     /// The whole [ Save ] → [ ✔ ] → [ Saved ] moment; the tour's "Saved." waits for it (#121).
-    public static let saveMoment: Double = 1.05
+    public static let saveMoment: Double = 1.15
 }

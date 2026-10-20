@@ -12,6 +12,16 @@ enum Fluid {
         reduceMotion ? .easeInOut(duration: duration) : .smooth(duration: duration)
     }
 
+    /// The brackets' width during [ Save ] → [ ✔ ] → [ Saved ].
+    static func saveMorph(_ reduceMotion: Bool) -> Animation { curve(FluidTiming.saveMorph(reduceMotion: reduceMotion), reduceMotion) }
+
+    /// The word inside [ ] changing: out, then in, timed to the brackets.
+    static func bracketWordSwap(_ reduceMotion: Bool) -> AnyTransition {
+        let w = FluidTiming.bracketWordSwap(reduceMotion: reduceMotion)
+        return .asymmetric(insertion: .opacity.animation(curve(w.in, reduceMotion).delay(w.inDelay)),
+                           removal: .opacity.animation(curve(w.out, reduceMotion)))
+    }
+
     /// One small word replacing another in the same spot: out, then in.
     static func wordSwap(_ reduceMotion: Bool) -> AnyTransition {
         let w = FluidTiming.wordSwap(reduceMotion: reduceMotion)
@@ -75,6 +85,7 @@ struct RetroWordsText: View {
     let color: Color
     let background: Color
     var size: Font.TextStyle = .title
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         // The brackets are the retro frame, not words; the word inside is already localized. When the word changes
@@ -86,7 +97,7 @@ struct RetroWordsText: View {
             Text(verbatim: word)
                 .hidden()
                 .overlay {
-                    ZStack { Text(verbatim: word).id(word).transition(Fluid.wordSwap(false)) }
+                    ZStack { Text(verbatim: word).id(word).transition(Fluid.bracketWordSwap(reduceMotion)) }
                         .fixedSize()
                 }
             Text(verbatim: " ]")

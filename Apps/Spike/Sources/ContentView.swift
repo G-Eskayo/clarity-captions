@@ -172,7 +172,7 @@ final class CaptionModel: ObservableObject {
             }
             try? await Task.sleep(for: .seconds(FluidTiming.saveCheckHold))
             // [ ✔ ] eases into [ Saved ]; before the fluidity pass it snapped (owner, 2026-10-20).
-            withAnimation(Fluid.quick(UIAccessibility.isReduceMotionEnabled)) { showingSaveCheck = false }
+            withAnimation(Fluid.saveMorph(UIAccessibility.isReduceMotionEnabled)) { showingSaveCheck = false }
             // The tour's "Saved." waits until [ ✔ ] → [ Saved ] has played out (#121).
             try? await Task.sleep(for: .seconds(FluidTiming.saveMoment - FluidTiming.saveCheckHold))
             tour.did(.saveMomentFinished)
@@ -854,7 +854,7 @@ struct ContentView: View {
         switch DemoMode.flow {
         case "save":
             await wait(2); model.demoSetState(.idle)
-            await wait(2); withAnimation(Fluid.quick(reduceMotion)) { model.save() }
+            await wait(2); withAnimation(Fluid.saveMorph(reduceMotion)) { model.save() }
             await wait(3); model.demoSetState(.preparing); model.demoSetState(.listening)
             await wait(1); model.demoSay("Then let's go Saturday at seven.", speaker: 1)
             await wait(2); model.demoSetState(.idle)
@@ -936,7 +936,7 @@ struct ContentView: View {
             await BetaFeedbackCenter.shared.ensureResolved()
             model.demoSetState(.listening)
             await wait(1); model.demoSetState(.idle)
-            await wait(2); withAnimation(Fluid.quick(reduceMotion)) { model.save() }
+            await wait(2); withAnimation(Fluid.saveMorph(reduceMotion)) { model.save() }
             await wait(3); model.requestNew()
         default: break
         }
@@ -1049,7 +1049,7 @@ struct ContentView: View {
                        color: save ? style.text.color : green, background: style.background.color,
                        label: save ? String(localized: "Save conversation")
                                    : model.showingSaveCheck ? String(localized: "Saved") : String(localized: "Conversation saved"),
-                       action: save ? { withAnimation(Fluid.quick(reduceMotion)) { model.save() } } : nil)
+                       action: save ? { withAnimation(Fluid.saveMorph(reduceMotion)) { model.save() } } : nil)
         }
     }
 

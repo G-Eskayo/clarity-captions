@@ -29,6 +29,17 @@ final class FluidTimingTests: XCTestCase {
         XCTAssertLessThan(FluidTiming.page(reduceMotion: true).total, FluidTiming.page(reduceMotion: false).total)
     }
 
+    func testTheSaveMomentIsSlowerThanOtherSmallChanges() {
+        // Owner, 2026-10-20: the shrink-and-grow "just needs to be slowed down a smidge".
+        XCTAssertGreaterThanOrEqual(FluidTiming.saveMorph(reduceMotion: false), FluidTiming.quick(reduceMotion: false) * 1.6)
+        let w = FluidTiming.bracketWordSwap(reduceMotion: false)
+        XCTAssertGreaterThanOrEqual(w.inDelay, w.out, "the old word is gone before the new one starts")
+        XCTAssertEqual(w.inDelay + w.in, FluidTiming.saveMorph(reduceMotion: false), accuracy: 0.05,
+                       "the word lands as the brackets finish")
+        XCTAssertGreaterThanOrEqual(FluidTiming.saveMoment, FluidTiming.saveCheckHold + FluidTiming.saveMorph(reduceMotion: false))
+        XCTAssertLessThan(FluidTiming.saveMorph(reduceMotion: true), FluidTiming.saveMorph(reduceMotion: false))
+    }
+
     func testSaveMomentHoldsTheCheckLongEnoughToSee() {
         // [ ✔ ] stays readable, then eases into [ Saved ]; the tour waits for the whole moment (#121).
         XCTAssertGreaterThanOrEqual(FluidTiming.saveCheckHold, 0.6)
