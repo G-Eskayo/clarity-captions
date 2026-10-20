@@ -170,10 +170,11 @@ final class CaptionModel: ObservableObject {
                 session = before
                 diag = "Save failed: \(error)"
             }
-            try? await Task.sleep(nanoseconds: 700_000_000)
-            showingSaveCheck = false
+            try? await Task.sleep(for: .seconds(FluidTiming.saveCheckHold))
+            // [ ✔ ] eases into [ Saved ]; before the fluidity pass it snapped (owner, 2026-10-20).
+            withAnimation(Fluid.quick(UIAccessibility.isReduceMotionEnabled)) { showingSaveCheck = false }
             // The tour's "Saved." waits until [ ✔ ] → [ Saved ] has played out (#121).
-            try? await Task.sleep(nanoseconds: 350_000_000)
+            try? await Task.sleep(for: .seconds(FluidTiming.saveMoment - FluidTiming.saveCheckHold))
             tour.did(.saveMomentFinished)
         }
     }
@@ -317,6 +318,9 @@ struct ContentView: View {
     static let captionsTopFade: CGFloat = 56
     @State private var shownScreen: AppScreen = .captions
     @State private var pageOpacity: Double = 1
+    /// The page fading out while the next fades in (fluidity pass): both are drawn for a moment, never a blank screen.
+    @State private var leavingScreen: AppScreen?
+    @State private var leavingOpacity: Double = 0
     @State private var position = ScrollPosition(edge: .bottom)
     /// Following the newest caption. Stops only when the user drags away; resumes at the bottom or via "Jump to latest".
     @State private var following = true
@@ -370,13 +374,17 @@ struct ContentView: View {
             // to Settings); only the drawn page takes touches and is read by VoiceOver.
             Group { landscape ? AnyView(landscapeLayout) : AnyView(portraitLayout) }
                 .padding()
-                .opacity(shownScreen == .captions ? pageOpacity : 0)
+                .opacity(opacity(of: .captions))
                 .allowsHitTesting(shownScreen == .captions)
                 .accessibilityHidden(shownScreen != .captions)
-            if shownScreen != .captions {
-                page(shownScreen)
+            // Keyed by screen, so the page that's leaving keeps its state while it fades.
+            ForEach([leavingScreen, shownScreen].compactMap { $0 }.filter { $0 != .captions }, id: \.self) { screen in
+                page(screen)
                     .padding(.top, 8)
-                    .opacity(pageOpacity)
+                    .opacity(opacity(of: screen))
+                    .allowsHitTesting(screen == shownScreen)
+                    .accessibilityHidden(screen != shownScreen)
+                    .zIndex(screen == shownScreen ? 1 : 0)
             }
             // Beta installs only (ADR 0023): the rating question after a conversation, and the one-time notice. Since
             // round 2 (mock-up round2/04) their words sit straight on the dim, no card, and they only fade.
@@ -470,19 +478,35 @@ struct ContentView: View {
 
     // MARK: one screen (#118)
 
-    /// Changes the page: the current page fades out, then the next fades in (about 0.25 s each, spec "Round 2").
+    /// Changes the page: the next page starts fading in while the current one fades out, so the screen is never blank
+    /// (fluidity pass, owner 2026-10-20; round 2 faded fully out, then in). Fades only.
     private func go(_ change: (inout ScreenNavigator) -> Void) {
         var next = nav
         change(&next)
         guard next != nav else { return }
         nav = next
-        let half = PageFade.half(reduceMotion: reduceMotion)
-        withAnimation(.easeInOut(duration: half)) { pageOpacity = 0 }
-        Task { @MainActor in
-            try? await Task.sleep(for: .seconds(half))
-            shownScreen = nav.current
-            withAnimation(.easeInOut(duration: half)) { pageOpacity = 1 }
+        let t = FluidTiming.page(reduceMotion: reduceMotion)
+        leavingScreen = shownScreen
+        leavingOpacity = pageOpacity
+        shownScreen = nav.current
+        pageOpacity = 0
+        let leaving = leavingScreen
+        // The swap above must draw before the fades start; in the same update SwiftUI merges them and the old page
+        // snaps out (measured: a blank ~150 ms gap in the recording).
+        DispatchQueue.main.async {
+            withAnimation(Fluid.curve(t.out, reduceMotion)) { leavingOpacity = 0 }
+            withAnimation(Fluid.curve(t.in, reduceMotion).delay(t.inDelay)) { pageOpacity = 1 }
         }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(t.total + 0.05))
+            if leavingScreen == leaving { leavingScreen = nil }
+        }
+    }
+
+    private func opacity(of screen: AppScreen) -> Double {
+        if screen == shownScreen { return pageOpacity }
+        if screen == leavingScreen { return leavingOpacity }
+        return 0
     }
 
     @ViewBuilder
@@ -497,7 +521,7 @@ struct ContentView: View {
                              // "Show how to use Seal": back to the captions, then the tour starts there.
                              go { $0.close() }
                              Task { @MainActor in
-                                 try? await Task.sleep(for: .seconds(PageFade.half(reduceMotion: reduceMotion) * 2))
+                                 try? await Task.sleep(for: .seconds(FluidTiming.page(reduceMotion: reduceMotion).total))
                                  withAnimation(veilAnimation) { model.tour.begin() }
                              }
                          },
@@ -777,7 +801,7 @@ struct ContentView: View {
                         .transition(.opacity)
                     }
                 }
-                .animation(.easeInOut(duration: 0.25), value: following)
+                .animation(Fluid.fade(reduceMotion), value: following)
             }
 
             if selection != nil { selectionChrome }
@@ -826,7 +850,7 @@ struct ContentView: View {
         switch DemoMode.flow {
         case "save":
             await wait(2); model.demoSetState(.idle)
-            await wait(2); withAnimation(.easeInOut(duration: 0.2)) { model.save() }
+            await wait(2); withAnimation(Fluid.quick(reduceMotion)) { model.save() }
             await wait(3); model.demoSetState(.preparing); model.demoSetState(.listening)
             await wait(1); model.demoSay("Then let's go Saturday at seven.", speaker: 1)
             await wait(2); model.demoSetState(.idle)
@@ -908,7 +932,7 @@ struct ContentView: View {
             await BetaFeedbackCenter.shared.ensureResolved()
             model.demoSetState(.listening)
             await wait(1); model.demoSetState(.idle)
-            await wait(2); withAnimation(.easeInOut(duration: 0.2)) { model.save() }
+            await wait(2); withAnimation(Fluid.quick(reduceMotion)) { model.save() }
             await wait(3); model.requestNew()
         default: break
         }
@@ -958,7 +982,7 @@ struct ContentView: View {
         }
     }
 
-    private var veilAnimation: Animation { .easeInOut(duration: reduceMotion ? 0.2 : 0.35) }
+    private var veilAnimation: Animation { Fluid.fade(reduceMotion) }
 
     /// The dim over a paused conversation: the captions fade toward the theme's own background (about 86%, mock-up
     /// 02) and [ Save ] sits over [ New ], centered, each on a plain patch of background so faded words never show
@@ -1008,7 +1032,7 @@ struct ContentView: View {
             switch model.session.saveButton(lines: model.stream.lines, names: model.speakerNames) {
             case .save:
                 retroButton(String(localized: "Save"), color: style.text.color, label: String(localized: "Save conversation")) {
-                    withAnimation(.easeInOut(duration: 0.2)) { model.save() }
+                    withAnimation(Fluid.quick(reduceMotion)) { model.save() }
                 }
             case .saved:
                 retroButton(String(localized: "Saved"), color: green, label: String(localized: "Conversation saved"), action: nil)
@@ -1172,15 +1196,18 @@ struct ContentView: View {
         // Copy shows once the selection has rested for half a second; a later change just moves it.
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(CopyButtonTiming.settle + 0.02))
-            withAnimation(.easeOut(duration: 0.2)) { _ = copyTiming.update(now: Date()) }
+            withAnimation(Fluid.quick(reduceMotion)) { _ = copyTiming.update(now: Date()) }
         }
     }
 
     private func clearSelection() {
         guard selection != nil else { return }
-        selection = nil
+        // The highlight, handles and [ Copy ] fade together; before the fluidity pass they vanished at once.
+        withAnimation(Fluid.quick(reduceMotion)) {
+            selection = nil
+            copyTiming.selectionChanged(at: Date(), isEmpty: true)
+        }
         dragAnchor = nil
-        copyTiming.selectionChanged(at: Date(), isEmpty: true)
         if following { position.scrollTo(edge: .bottom) }   // catch up on what arrived while selecting
     }
 

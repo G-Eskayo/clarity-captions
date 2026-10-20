@@ -3,9 +3,14 @@ import SwiftUI
 
 // Round 2 (#118, design #117): pieces shared by every page of the one screen. No boxes, no borders, fades only.
 
-/// How long each half of a page change takes: the current page fades out, then the next fades in (spec "Round 2").
-enum PageFade {
-    static func half(reduceMotion: Bool) -> Double { reduceMotion ? 0.15 : 0.25 }
+/// The fluidity pass (owner, 2026-10-20): every fade on SwiftUI's smooth curve, which carries on from wherever it is
+/// when interrupted instead of jumping. Timings live in FluidTiming (CaptionCore, tested). Reduce Motion: short and plain.
+enum Fluid {
+    static func fade(_ reduceMotion: Bool) -> Animation { curve(FluidTiming.fade(reduceMotion: reduceMotion), reduceMotion) }
+    static func quick(_ reduceMotion: Bool) -> Animation { curve(FluidTiming.quick(reduceMotion: reduceMotion), reduceMotion) }
+    static func curve(_ duration: Double, _ reduceMotion: Bool) -> Animation {
+        reduceMotion ? .easeInOut(duration: duration) : .smooth(duration: duration)
+    }
 }
 
 /// The retro, literal-text words: [ Save ], [ New ], [ Start new ], [ Keep it ], [ Delete all ]. A nil action shows

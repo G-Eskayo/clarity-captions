@@ -20,6 +20,7 @@ struct SavedTranscriptText: View {
     @State private var glyphs = CaptionGlyphs()
     @State private var dragAnchor: CaptionPosition?
     @State private var draggingEdge: SelectionHandle.Edge?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var lines: [CaptionLine] { SavedConversationExport.lines(from: transcript) }
 
@@ -83,13 +84,13 @@ struct SavedTranscriptText: View {
         // Copy shows once the selection has rested for half a second; a later change just moves it.
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(CopyButtonTiming.settle + 0.02))
-            withAnimation(.easeOut(duration: 0.2)) { _ = copyTiming.update(now: Date()) }
+            withAnimation(Fluid.quick(reduceMotion)) { _ = copyTiming.update(now: Date()) }
         }
     }
 
     private func clearSelection() {
         guard selection != nil else { return }
-        withAnimation(.easeOut(duration: 0.2)) {
+        withAnimation(Fluid.quick(reduceMotion)) {
             selection = nil
             copyTiming.selectionChanged(at: Date(), isEmpty: true)
         }

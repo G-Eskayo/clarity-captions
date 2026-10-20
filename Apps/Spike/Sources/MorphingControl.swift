@@ -56,7 +56,7 @@ struct MorphingControl: View {
         .accessibilityLabel(control.accessibilityLabel)
         // Reduce Motion: a plain quick crossfade instead of the sweep.
         .animation(reduceMotion ? .easeInOut(duration: 0.15) : .spring(response: 0.5, dampingFraction: 0.78), value: control.presentation)
-        .animation(.easeInOut(duration: 0.2), value: control.title)
+        .animation(Fluid.quick(reduceMotion), value: control.title)
     }
 }
 

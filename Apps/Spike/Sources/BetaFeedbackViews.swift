@@ -112,7 +112,7 @@ struct RatingCardView: View {
     private var links: some View {
         HStack {
             Button("Add a note") {
-                withAnimation(.easeInOut(duration: 0.2)) { noting = true }
+                withAnimation(Fluid.quick(reduceMotion)) { noting = true }
                 noteFocused = true
             }
             .foregroundStyle(style.gear.color)

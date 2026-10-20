@@ -47,7 +47,7 @@ struct SavedConversationsPage: View {
             }
         }
         .foregroundStyle(style.text.color)
-        .animation(.easeInOut(duration: 0.25), value: question)
+        .animation(Fluid.fade(false), value: question)
         .task {
             await load()
             if DemoMode.settingsPush == "deleteall" { question.ask(.deleteAll) }   // debug only: the UI audit
@@ -131,7 +131,7 @@ struct SavedConversationPage: View {
     @State private var showingHint = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private static let hintKey = "savedVeilHintCount"
-    private var veilAnimation: Animation { .easeInOut(duration: reduceMotion ? 0.2 : 0.35) }
+    private var veilAnimation: Animation { Fluid.fade(reduceMotion) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -168,7 +168,7 @@ struct SavedConversationPage: View {
             }
         }
         .foregroundStyle(style.text.color)
-        .animation(.easeInOut(duration: 0.25), value: question)
+        .animation(Fluid.fade(reduceMotion), value: question)
         .task {
             conversation = (try? await store.all())?.first { $0.id == id }
             if DemoMode.veilCleared || DemoMode.select { _ = veil.tap(hintsShownBefore: 1) }
