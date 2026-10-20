@@ -1,5 +1,6 @@
 import CaptionCore
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Saved conversations on the one screen (#118, mock-up round2/02): the same background as everything else, plain rows
 /// with one thin line between them, a plain underlined search line, and the delete questions asked in place in retro
@@ -165,12 +166,36 @@ struct SavedConversationPage: View {
                                     },
                                     onNo: { question.keep() })
             } else {
-                RetroWords(word: String(localized: "Delete"), color: mutedColor(style), background: style.background.color,
-                           label: String(localized: "Delete this conversation")) { question.ask(.delete(id)) }
+                VStack(spacing: 14) {   // side by side, two .title words wrap on an iPhone
+                    if let conversation, SavedConversationExport.canShare(conversation) {
+                        // #139: Apple's share sheet, the one exception on this page. Notes gets the text; Files a .txt.
+                        ShareLink(item: SavedTranscript(conversation: conversation),
+                                  preview: SharePreview(SavedConversationExport.fileName(for: conversation))) {
+                            RetroWordsText(word: String(localized: "Share"), color: mutedColor(style),
+                                           background: style.background.color)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(String(localized: "Share this conversation"))
+                    }
+                    RetroWords(word: String(localized: "Delete"), color: mutedColor(style), background: style.background.color,
+                               label: String(localized: "Delete this conversation")) { question.ask(.delete(id)) }
+                }
             }
         }
         .frame(maxWidth: .infinity)
         .transition(.opacity)
+    }
+}
+
+/// A saved conversation as [ Share ] hands it out (#139): plain text first, so Notes and Messages paste it inline,
+/// then a dated .txt for Files and AirDrop.
+struct SavedTranscript: Transferable {
+    let conversation: SavedConversation
+
+    static var transferRepresentation: some TransferRepresentation {
+        ProxyRepresentation { SavedConversationExport.text(for: $0.conversation) }
+        DataRepresentation(exportedContentType: .plainText) { SavedConversationExport.data(for: $0.conversation) }
+            .suggestedFileName { SavedConversationExport.fileName(for: $0.conversation) }
     }
 }
 

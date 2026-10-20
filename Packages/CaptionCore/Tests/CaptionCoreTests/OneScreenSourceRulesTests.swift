@@ -41,6 +41,13 @@ final class OneScreenSourceRulesTests: XCTestCase {
         XCTAssertEqual(occurrences(of: ".fullScreenCover(", in: files), [])
     }
 
+    /// #139 (owner, 2026-10-20): [ Share ] on one saved conversation opens Apple's share sheet. Nowhere else.
+    func testTheOnlyShareLinkIsOnASavedConversation() throws {
+        let links = occurrences(of: "ShareLink(", in: try appSources())
+        XCTAssertEqual(links.count, 1, "\(links)")
+        XCTAssertTrue(links.allSatisfy { $0.hasPrefix("SavedConversationsView.swift") }, "\(links)")
+    }
+
     func testOnlyApplesOwnSheetsRemain() throws {
         let sheets = occurrences(of: ".sheet(", in: try appSources())
         XCTAssertEqual(sheets.count, 2, "only the Messages compose sheet and the share sheet: \(sheets)")

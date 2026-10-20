@@ -441,6 +441,11 @@ struct ContentView: View {
                 nav.gearTapped()
                 switch DemoMode.settingsPush {
                 case "saved", "deleteall": nav.open(.saved)
+                case "conversation":   // #139: one saved conversation, for the [ Share ] screenshot
+                    nav.open(.saved)
+                    if let newest = try? await model.store?.all().max(by: { $0.savedAt < $1.savedAt }) {
+                        nav.open(.savedConversation(newest.id))
+                    }
                 case "credits": nav.open(.credits)
                 case "license": nav.open(.credits); nav.open(.licenseText)
                 default: break

@@ -20,14 +20,7 @@ struct RetroWords: View {
     let action: (() -> Void)?
 
     var body: some View {
-        // The brackets are the retro frame, not words; the word inside is already localized.
-        let text = Text(verbatim: "[ \(word) ]")
-            .font(.system(size, design: .monospaced).bold())
-            .foregroundStyle(color)
-            .padding(.horizontal, 14).padding(.vertical, 6)
-            .background(background)
-            .contentShape(Rectangle())
-            .contentTransition(.opacity)
+        let text = RetroWordsText(word: word, color: color, background: background, size: size)
         if let action {
             Button(action: action) { text }
                 .buttonStyle(.plain)
@@ -35,6 +28,25 @@ struct RetroWords: View {
         } else {
             text.accessibilityLabel(label)
         }
+    }
+}
+
+/// How [ word ] is drawn, for RetroWords and for controls that aren't a Button ([ Share ] is a ShareLink, #139).
+struct RetroWordsText: View {
+    let word: String
+    let color: Color
+    let background: Color
+    var size: Font.TextStyle = .title
+
+    var body: some View {
+        // The brackets are the retro frame, not words; the word inside is already localized.
+        Text(verbatim: "[ \(word) ]")
+            .font(.system(size, design: .monospaced).bold())
+            .foregroundStyle(color)
+            .padding(.horizontal, 14).padding(.vertical, 6)
+            .background(background)
+            .contentShape(Rectangle())
+            .contentTransition(.opacity)
     }
 }
 
