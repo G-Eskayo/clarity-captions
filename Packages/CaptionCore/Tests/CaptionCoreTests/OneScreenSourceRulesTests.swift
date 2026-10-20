@@ -48,6 +48,12 @@ final class OneScreenSourceRulesTests: XCTestCase {
         XCTAssertTrue(links.allSatisfy { $0.hasPrefix("SavedConversationsView.swift") }, "\(links)")
     }
 
+    /// #139: conversation words are selected with our own handles and [ Copy ], live or saved, never the system's menu.
+    func testConversationWordsNeverUseSystemTextSelection() throws {
+        let uses = occurrences(of: ".textSelection(", in: try appSources())
+        XCTAssertTrue(uses.allSatisfy { $0.hasPrefix("AboutCreditsView.swift") }, "\(uses)")
+    }
+
     func testOnlyApplesOwnSheetsRemain() throws {
         let sheets = occurrences(of: ".sheet(", in: try appSources())
         XCTAssertEqual(sheets.count, 2, "only the Messages compose sheet and the share sheet: \(sheets)")

@@ -68,3 +68,68 @@ final class SavedConversationExportTests: XCTestCase {
         XCTAssertEqual(String(data: SavedConversationExport.data(for: c), encoding: .utf8), "Speaker 1: שלום\n")
     }
 }
+
+/// #139: a saved conversation is selected and copied with the same gestures as live captions, so its text becomes lines.
+final class SavedTranscriptLinesTests: XCTestCase {
+    private let transcript = "Speaker 1: Morning, how was the drive?\nSpeaker 2: Not bad, traffic on 36."
+
+    func testOneLinePerTranscriptLineWithTheTextAsSaved() {
+        let lines = SavedConversationExport.lines(from: transcript)
+        XCTAssertEqual(lines.map(\.text), ["Speaker 1: Morning, how was the drive?", "Speaker 2: Not bad, traffic on 36."])
+        XCTAssertEqual(Set(lines.map(\.id)).count, 2)
+        XCTAssertTrue(lines.allSatisfy { $0.isFinal && $0.speaker == nil && !$0.isSoundLabel })
+    }
+
+    func testBlankLinesAreSkipped() {
+        XCTAssertEqual(SavedConversationExport.lines(from: "\nA\n\n  \nB\n").map(\.text), ["A", "B"])
+        XCTAssertEqual(SavedConversationExport.lines(from: "").count, 0)
+    }
+
+    func testCopyingAcrossLinesKeepsEachSpeakerOnce() {
+        let lines = SavedConversationExport.lines(from: transcript)
+        let all = CaptionSelection(anchor: CaptionPosition(lineID: lines[0].id, offset: 0),
+                                   focus: CaptionPosition(lineID: lines[1].id, offset: lines[1].text.utf16.count))
+        XCTAssertEqual(all.copyText(lines: lines), transcript)
+    }
+
+    func testCopyingAWordGivesJustTheWord() {
+        let lines = SavedConversationExport.lines(from: transcript)
+        let offset = (lines[1].text as NSString).range(of: "traffic").location
+        let word = CaptionSelection.word(at: offset + 2, in: lines[1])
+        XCTAssertEqual(word?.copyText(lines: lines), "traffic")
+    }
+
+    func testEmojiAndHebrewSurviveTheRoundTrip() {
+        let text = "Speaker 1: שלום 👋🏽 friend"
+        let lines = SavedConversationExport.lines(from: text)
+        let all = CaptionSelection(anchor: CaptionPosition(lineID: lines[0].id, offset: 0),
+                                   focus: CaptionPosition(lineID: lines[0].id, offset: lines[0].text.utf16.count))
+        XCTAssertEqual(all.copyText(lines: lines), text)
+    }
+}
+
+/// #139: [ Copy ] sits above the selection like on the live screen; on a saved page's first line there's no room
+/// above, so it goes just under the selection's last line instead of being cut off over the selected words.
+final class SavedCopyPlacementTests: XCTestCase {
+    func testAboveWhenThereIsRoom() {
+        XCTAssertEqual(SavedConversationExport.copyButtonCenterY(selectionTop: 200, selectionBottom: 260), 154)
+    }
+
+    func testBelowTheLastLineWhenTheTopHasNoRoom() {
+        XCTAssertEqual(SavedConversationExport.copyButtonCenterY(selectionTop: 10, selectionBottom: 120), 166)
+    }
+
+    func testExactlyEnoughRoomStaysAbove() {
+        XCTAssertEqual(SavedConversationExport.copyButtonCenterY(selectionTop: 72, selectionBottom: 100), 26)
+    }
+
+    func testNeverOverlapsTheSelectionEitherWay() {
+        for top in stride(from: CGFloat(0), through: 300, by: 7) {
+            let bottom = top + 40
+            let y = SavedConversationExport.copyButtonCenterY(selectionTop: top, selectionBottom: bottom)
+            let half = SavedConversationExport.copyButtonHalfHeight
+            XCTAssertTrue(y + half <= top || y - half >= bottom, "top \(top): \(y)")
+            XCTAssertGreaterThanOrEqual(y - half, 0, "cut off at top \(top)")
+        }
+    }
+}

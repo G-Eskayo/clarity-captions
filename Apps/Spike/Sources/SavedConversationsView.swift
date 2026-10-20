@@ -134,11 +134,9 @@ struct SavedConversationPage: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     if let conversation {
-                        Text(conversation.transcript)
-                            .font(.body)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        SavedTranscriptText(transcript: conversation.transcript, style: style)
                             .padding(.top, 18)
-                            .textSelection(.enabled)
+                            .zIndex(1)   // [ Copy ] floats over [ Share ] when it sits under the selection
                         delete.padding(.top, 30)
                     }
                 }

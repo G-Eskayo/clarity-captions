@@ -14,6 +14,25 @@ public enum SavedConversationExport {
         Data(text(for: conversation).utf8)
     }
 
+    /// The saved text as caption lines, so it's selected and copied with the live captions' gestures. Each line
+    /// already reads "Speaker 1: …", so it has no speaker of its own and copying never names it twice.
+    public static func lines(from transcript: String) -> [CaptionLine] {
+        transcript.components(separatedBy: .newlines)
+            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            .enumerated()
+            .map { CaptionLine(id: $0.offset, committed: [CaptionWord(text: $0.element, emphasis: .normal)], tail: nil) }
+    }
+
+    /// Half of [ Copy ]'s height, and how far its center sits from the selection (46, as on the live screen).
+    public static let copyButtonHalfHeight: CGFloat = 26
+    static let copyButtonOffset: CGFloat = 46
+
+    /// Where [ Copy ]'s center goes: above the selection when it fits, else just under the selection's last line.
+    public static func copyButtonCenterY(selectionTop: CGFloat, selectionBottom: CGFloat) -> CGFloat {
+        let above = selectionTop - copyButtonOffset
+        return above - copyButtonHalfHeight >= 0 ? above : selectionBottom + copyButtonOffset
+    }
+
     /// "Seal Speak 2026-10-18 09.02.txt": fixed digits whatever the locale, sorts by date in Files, no "/" or ":".
     public static func fileName(for conversation: SavedConversation, timeZone: TimeZone = .current) -> String {
         var calendar = Calendar(identifier: .gregorian)
