@@ -42,3 +42,20 @@ public enum SavedConversationExport {
         return "Seal Speak \(stamp).txt"
     }
 }
+
+/// A saved conversation opens like a paused one (owner, #139): dimmed, with [ Share ] over [ Delete ]. A tap clears the
+/// dim to read and copy; a press-and-hold on empty space brings it back. The hint about that shows once, ever.
+public struct SavedConversationVeil: Equatable, Sendable {
+    public private(set) var isVisible = true
+
+    public init() {}
+
+    /// Clears the dim. True when this is the first clear ever, so the page shows its hint.
+    public mutating func tap(hintsShownBefore: Int) -> Bool {
+        guard isVisible else { return false }
+        isVisible = false
+        return hintsShownBefore == 0
+    }
+
+    public mutating func holdOnEmptySpace() { isVisible = true }
+}

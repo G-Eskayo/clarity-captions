@@ -133,3 +133,41 @@ final class SavedCopyPlacementTests: XCTestCase {
         }
     }
 }
+
+/// #139 (owner, 2026-10-20): a saved conversation opens like a paused one: dimmed, [ Share ] over [ Delete ]. A tap
+/// clears the dim; a hold on empty space brings it back; the hint about that shows the first time only, ever.
+final class SavedConversationVeilTests: XCTestCase {
+    func testOpensDimmed() {
+        XCTAssertTrue(SavedConversationVeil().isVisible)
+    }
+
+    func testTapClearsAndHoldOnEmptySpaceBringsItBack() {
+        var veil = SavedConversationVeil()
+        _ = veil.tap(hintsShownBefore: 0)
+        XCTAssertFalse(veil.isVisible)
+        veil.holdOnEmptySpace()
+        XCTAssertTrue(veil.isVisible)
+    }
+
+    func testHintOnlyTheFirstTimeEver() {
+        var veil = SavedConversationVeil()
+        XCTAssertTrue(veil.tap(hintsShownBefore: 0), "first clear ever shows the hint")
+        veil.holdOnEmptySpace()
+        XCTAssertFalse(veil.tap(hintsShownBefore: 1), "never again once shown")
+        var fresh = SavedConversationVeil()
+        XCTAssertFalse(fresh.tap(hintsShownBefore: 5))
+    }
+
+    func testTappingAnAlreadyClearPageDoesNothing() {
+        var veil = SavedConversationVeil()
+        _ = veil.tap(hintsShownBefore: 0)
+        XCTAssertFalse(veil.tap(hintsShownBefore: 0), "no hint from a tap that cleared nothing")
+        XCTAssertFalse(veil.isVisible)
+    }
+
+    func testHoldWhileDimmedChangesNothing() {
+        var veil = SavedConversationVeil()
+        veil.holdOnEmptySpace()
+        XCTAssertTrue(veil.isVisible)
+    }
+}

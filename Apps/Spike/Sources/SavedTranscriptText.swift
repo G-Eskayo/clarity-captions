@@ -8,8 +8,12 @@ import UIKit
 struct SavedTranscriptText: View {
     let transcript: String
     let style: CaptionStyle
-    /// Told when a selection starts and ends, so the page can fade [ Share ] and [ Delete ] out meanwhile (owner, #139).
-    var onSelectingChange: (Bool) -> Void = { _ in }
+    /// Tall enough to fill the page, so a hold below the last line is a hold on empty space.
+    var minHeight: CGFloat = 0
+    /// While the page's dim is up, a selection can't stay underneath it.
+    var dimmed = false
+    /// A press-and-hold on empty space (not on words) brings back the dim with [ Share ] / [ Delete ] (owner, #139).
+    var onHoldEmptySpace: () -> Void = {}
     @State private var selection: CaptionSelection?
     @State private var copyTiming = CopyButtonTiming()
     @State private var textFrames = TextFrames()
@@ -36,10 +40,16 @@ struct SavedTranscriptText: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
+        .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .topLeading)
+        .contentShape(Rectangle())
         .coordinateSpace(.named(TextFrames.space))
         .overlay { if selection != nil { selectionChrome } }
         .gesture(HoldLocationGesture { location in
-            guard let hit = textFrames.captionLine(at: location) else { return }
+            guard let hit = textFrames.captionLine(at: location) else {
+                clearSelection()
+                onHoldEmptySpace()
+                return
+            }
             beginSelection(lineID: hit.id, at: CGPoint(x: location.x - hit.frame.minX, y: location.y - hit.frame.minY))
         })
         .gesture(SelectionHandleGesture(canBegin: { point in
@@ -50,7 +60,7 @@ struct SavedTranscriptText: View {
         .simultaneousGesture(SpatialTapGesture().onEnded { tap in
             if selection != nil, handle(near: tap.location) == nil { clearSelection() }
         })
-        .onChange(of: selection != nil) { _, selecting in onSelectingChange(selecting) }
+        .onChange(of: dimmed) { _, dimmed in if dimmed { clearSelection() } }
         .task {
             // Debug only: a held selection for the #139 screenshot (simctl can't press and hold).
             guard DemoMode.select, let first = lines.first, let second = lines.dropFirst().first else { return }

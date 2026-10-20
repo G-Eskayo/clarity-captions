@@ -126,68 +126,116 @@ struct SavedConversationPage: View {
     let onBack: () -> Void
     @State private var conversation: SavedConversation?
     @State private var question = InPlaceQuestion<SavedListQuestion>()
-    @State private var selecting = false
+    // Opens like a paused conversation (owner, #139): dimmed, [ Share ] over [ Delete ]. Debug flags start it clear.
+    @State private var veil = SavedConversationVeil()
+    @State private var showingHint = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private static let hintKey = "savedVeilHintCount"
+    private var veilAnimation: Animation { .easeInOut(duration: reduceMotion ? 0.2 : 0.35) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             PageHeader(style: style, title: conversation.map { SavedDates.title($0.savedAt) } ?? "",
                        backTitle: String(localized: "Saved"), onBack: onBack)
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    if let conversation {
-                        SavedTranscriptText(transcript: conversation.transcript, style: style) { selecting = $0 }
-                            .padding(.top, 18)
-                            .zIndex(1)   // [ Copy ] can sit where [ Share ] was
-                        // While words are selected, [ Share ] and [ Delete ] fade out (owner, 2026-10-20).
-                        delete.padding(.top, 30)
-                            .opacity(selecting ? 0 : 1)
-                            .allowsHitTesting(!selecting)
-                            .accessibilityHidden(selecting)
-                            .animation(.easeInOut(duration: 0.2), value: selecting)
+            GeometryReader { geo in
+                ZStack {
+                    ScrollView {
+                        if let conversation {
+                            SavedTranscriptText(transcript: conversation.transcript, style: style,
+                                                minHeight: max(0, geo.size.height - 58), dimmed: veil.isVisible,
+                                                onHoldEmptySpace: bringBackVeil)
+                                .padding(.top, 18)
+                                .padding(.horizontal, 8)
+                                .padding(.bottom, 40)
+                        }
+                    }
+                    if veil.isVisible, conversation != nil { veilLayer.transition(.opacity) }
+                    if showingHint {
+                        // Same look as the paused screen's hint; shown the first time the dim is cleared, ever.
+                        Text(String(localized: "Hold words to copy. Hold empty space to bring back Share and Delete."))
+                            .font(.footnote.weight(.semibold))
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(style.background.color)
+                            .padding(.horizontal, 16).padding(.vertical, 10)
+                            .background(style.text.color, in: Capsule())
+                            .padding(.horizontal, 16)
+                            .frame(maxHeight: .infinity, alignment: .bottom)
+                            .padding(.bottom, 24)
+                            .allowsHitTesting(false)
+                            .transition(.opacity)
                     }
                 }
-                .padding(.horizontal, 8)
-                .padding(.bottom, 40)
             }
         }
         .foregroundStyle(style.text.color)
         .animation(.easeInOut(duration: 0.25), value: question)
-        .task { conversation = (try? await store.all())?.first { $0.id == id } }
+        .task {
+            conversation = (try? await store.all())?.first { $0.id == id }
+            if DemoMode.veilCleared || DemoMode.select { _ = veil.tap(hintsShownBefore: 1) }
+            if DemoMode.veilCleared { showingHint = true }
+        }
     }
 
-    @ViewBuilder private var delete: some View {
-        Group {
+    /// The dim over the words (about 86% of the theme's background, as on a paused conversation) with [ Share ] over
+    /// [ Delete ], centered. One tap on the dim clears it; a tap while Delete is asking answers it like [ Keep ].
+    private var veilLayer: some View {
+        ZStack {
+            style.background.color.opacity(0.86)
+                .contentShape(Rectangle())
+                .onTapGesture { clearVeil() }
+                .accessibilityElement()
+                .accessibilityLabel(String(localized: "Saved conversation"))
+                .accessibilityAddTraits(.isButton)
+                .accessibilityHint(String(localized: "Double tap to show the conversation"))
             if question.isAsking {
                 InPlaceQuestionView(style: style,
                                     title: String(localized: "Delete this conversation?"),
                                     message: String(localized: "This can't be undone."),
                                     yes: String(localized: "Delete"), yesIsDestructive: true,
-                                    no: String(localized: "Keep"),
+                                    no: String(localized: "Keep"), stacked: true,
                                     onYes: {
                                         if case .delete(let target) = question.confirm() {
                                             Task { try? await store.delete(id: target); onBack() }
                                         }
                                     },
                                     onNo: { question.keep() })
+                    .transition(.opacity)
             } else {
-                VStack(spacing: 14) {   // side by side, two .title words wrap on an iPhone
+                VStack(spacing: 24) {
                     if let conversation, SavedConversationExport.canShare(conversation) {
                         // #139: Apple's share sheet, the one exception on this page. Notes gets the text; Files a .txt.
                         ShareLink(item: SavedTranscript(conversation: conversation),
                                   preview: SharePreview(SavedConversationExport.fileName(for: conversation))) {
-                            RetroWordsText(word: String(localized: "Share"), color: mutedColor(style),
+                            RetroWordsText(word: String(localized: "Share"), color: style.text.color,
                                            background: style.background.color)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel(String(localized: "Share this conversation"))
                     }
-                    RetroWords(word: String(localized: "Delete"), color: mutedColor(style), background: style.background.color,
+                    RetroWords(word: String(localized: "Delete"), color: style.text.color, background: style.background.color,
                                label: String(localized: "Delete this conversation")) { question.ask(.delete(id)) }
                 }
+                .transition(.opacity)
             }
         }
-        .frame(maxWidth: .infinity)
-        .transition(.opacity)
+    }
+
+    private func clearVeil() {
+        let hintsShown = UserDefaults.standard.integer(forKey: Self.hintKey)
+        withAnimation(veilAnimation) {
+            question.keep()
+            if veil.tap(hintsShownBefore: hintsShown) {
+                UserDefaults.standard.set(hintsShown + 1, forKey: Self.hintKey)
+                showingHint = true
+            }
+        }
+    }
+
+    private func bringBackVeil() {
+        withAnimation(veilAnimation) {
+            veil.holdOnEmptySpace()
+            showingHint = false
+        }
     }
 }
 

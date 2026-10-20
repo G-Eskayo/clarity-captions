@@ -2531,13 +2531,13 @@
         }
       }
     },
-    "The gear has colors, text size and lettering. Your saved conversations are at the top right.\n\nYou can replay this in Settings." : {
+    "The gear has colors, text size and lettering. Your saved conversations are at the top right. Open one to share it, or hold on words to copy.\n\nYou can replay this in Settings." : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The gear has colors, text size and lettering. Your saved conversations are at the top right.\n\nYou can replay this in Settings."
+            "value" : "The gear has colors, text size and lettering. Your saved conversations are at the top right. Open one to share it, or hold on words to copy.\n\nYou can replay this in Settings."
           }
         }
       }
