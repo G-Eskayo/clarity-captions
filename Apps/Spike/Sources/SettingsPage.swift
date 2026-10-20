@@ -30,13 +30,16 @@ struct SettingsPage: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
+                        // Saved sits at the top so it's easy to find (owner, 2026-10-20, #139).
+                        section("Saved", first: true, note: String(localized: "Saved conversations are deleted after 30 days.")) { savedRow }.id("saved")
                         preview
+                            .padding(.top, 18)
+                            .overlay(alignment: .top) { Rectangle().fill(rule).frame(height: 1) }
                         section("Colors", first: true) { colorsRow }
                         section("Size") { sizeRow }
                         section("Lettering", note: String(localized: "OpenDyslexic was made for people with dyslexia. Atkinson Hyperlegible was designed by the Braille Institute for low vision.")) { letteringRows }
                             .id("lettering")
                         section("Stop when it's quiet") { idleStopRow }.id("idleStop")
-                        section("Saved", note: String(localized: "Saved conversations are deleted after 30 days.")) { savedRow }.id("saved")
                         if beta.isOn { testVersionSection.id("betaFeedback") }
                         if showsTourReplay { section("How to use Seal") { tourRow }.id("tour") }
                         section("About") { aboutRows }.id("about")
