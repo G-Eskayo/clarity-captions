@@ -18,7 +18,6 @@ struct SettingsPage: View {
     /// Opens one of Settings' own pages.
     let onOpen: (AppScreen) -> Void
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @State private var savedCount: Int?
     /// Beta installs only (ADR 0023): the "Test version" section.
     @ObservedObject private var beta = BetaFeedbackCenter.shared
 
@@ -30,13 +29,14 @@ struct SettingsPage: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
+                        // No Saved section: saved conversations live at the top right of the captions, one tap away, and
+                        // two ways in felt redundant (owner, 2026-10-20, #139).
                         preview
                         section("Colors", first: true) { colorsRow }
                         section("Size") { sizeRow }
                         section("Lettering", note: String(localized: "OpenDyslexic was made for people with dyslexia. Atkinson Hyperlegible was designed by the Braille Institute for low vision.")) { letteringRows }
                             .id("lettering")
                         section("Stop when it's quiet") { idleStopRow }.id("idleStop")
-                        section("Saved", note: String(localized: "Saved conversations are deleted after 30 days.")) { savedRow }.id("saved")
                         if beta.isOn { testVersionSection.id("betaFeedback") }
                         if showsTourReplay { section("How to use Seal") { tourRow }.id("tour") }
                         section("About") { aboutRows }.id("about")
@@ -59,7 +59,6 @@ struct SettingsPage: View {
             }
         }
         .tint(style.gear.color)
-        .task { savedCount = try? await store?.all().count }
     }
 
     // MARK: pieces
@@ -241,20 +240,6 @@ struct SettingsPage: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(option.title + (selected ? String(localized: ", selected") : ""))
             }
-    }
-
-    @ViewBuilder private var savedRow: some View {
-        let row = HStack {
-            Text("Saved conversations").fontWeight(.semibold)
-            Spacer()
-            Text(savedCount.map { "\($0) ›" } ?? "›").foregroundStyle(muted)
-        }
-        .contentShape(Rectangle())
-        if store != nil {
-            Button { onOpen(.saved) } label: { row }.buttonStyle(.plain)
-        } else {
-            row.opacity(0.5)
-        }
     }
 
     /// Mock-up 03: TestFlight installs only, between Saved and How to use Seal.

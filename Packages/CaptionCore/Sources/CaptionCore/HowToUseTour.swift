@@ -146,7 +146,7 @@ public struct HowToUseTour: Equatable, Sendable {
                       message: String(localized: "[ Save ] keeps the conversation on this phone for 30 days. [ New ] starts a clean page."))
         case .done?, nil:
             TourWords(title: String(localized: "That's it."),
-                      message: String(localized: "The gear has colors, text size and lettering. Your saved conversations are at the top right.\n\nYou can replay this in Settings."))
+                      message: String(localized: "The gear has colors, text size and lettering. Your saved conversations are at the top right. Open one to share it, or hold on words to copy.\n\nYou can replay this in Settings."))
         }
     }
 }

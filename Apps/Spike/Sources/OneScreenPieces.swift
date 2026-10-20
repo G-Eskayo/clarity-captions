@@ -3,9 +3,57 @@ import SwiftUI
 
 // Round 2 (#118, design #117): pieces shared by every page of the one screen. No boxes, no borders, fades only.
 
-/// How long each half of a page change takes: the current page fades out, then the next fades in (spec "Round 2").
-enum PageFade {
-    static func half(reduceMotion: Bool) -> Double { reduceMotion ? 0.15 : 0.25 }
+/// The fluidity pass (owner, 2026-10-20): every fade on SwiftUI's smooth curve, which carries on from wherever it is
+/// when interrupted instead of jumping. Timings live in FluidTiming (CaptionCore, tested). Reduce Motion: short and plain.
+enum Fluid {
+    static func fade(_ reduceMotion: Bool) -> Animation { curve(FluidTiming.fade(reduceMotion: reduceMotion), reduceMotion) }
+    static func quick(_ reduceMotion: Bool) -> Animation { curve(FluidTiming.quick(reduceMotion: reduceMotion), reduceMotion) }
+    static func curve(_ duration: Double, _ reduceMotion: Bool) -> Animation {
+        reduceMotion ? .easeInOut(duration: duration) : .smooth(duration: duration)
+    }
+
+    /// The brackets' width during [ Save ] → [ ✔ ] → [ Saved ].
+    static func saveMorph(_ reduceMotion: Bool) -> Animation { curve(FluidTiming.saveMorph(reduceMotion: reduceMotion), reduceMotion) }
+
+    /// The word inside [ ] changing: out, then in, timed to the brackets.
+    static func bracketWordSwap(_ reduceMotion: Bool) -> AnyTransition {
+        let w = FluidTiming.bracketWordSwap(reduceMotion: reduceMotion)
+        return .asymmetric(insertion: .opacity.animation(curve(w.in, reduceMotion).delay(w.inDelay)),
+                           removal: .opacity.animation(curve(w.out, reduceMotion)))
+    }
+
+    /// One small word replacing another in the same spot: out, then in.
+    static func wordSwap(_ reduceMotion: Bool) -> AnyTransition {
+        let w = FluidTiming.wordSwap(reduceMotion: reduceMotion)
+        return .asymmetric(insertion: .opacity.animation(curve(w.in, reduceMotion).delay(w.inDelay)),
+                           removal: .opacity.animation(curve(w.out, reduceMotion)))
+    }
+}
+
+/// A dim with words on it, timed as two layers (FluidTiming.dim): leaving, words first then the dim lifts slowly;
+/// arriving, the dim first then the words. Always in the tree so each layer can keep its own timing.
+struct DimLayer<Words: View>: View {
+    let visible: Bool
+    let color: Color
+    let reduceMotion: Bool
+    let onTap: () -> Void
+    @ViewBuilder let words: () -> Words
+
+    var body: some View {
+        let t = FluidTiming.dim(reduceMotion: reduceMotion)
+        ZStack {
+            color.opacity(0.86)
+                .contentShape(Rectangle())
+                .onTapGesture(perform: onTap)
+                .opacity(visible ? 1 : 0)
+                .animation(.easeInOut(duration: t.dim).delay(visible ? 0 : t.dimOutDelay), value: visible)
+            words()
+                .opacity(visible ? 1 : 0)
+                .animation(Fluid.curve(t.words, reduceMotion).delay(visible ? t.wordsInDelay : 0), value: visible)
+        }
+        .allowsHitTesting(visible)
+        .accessibilityHidden(!visible)
+    }
 }
 
 /// The retro, literal-text words: [ Save ], [ New ], [ Start new ], [ Keep it ], [ Delete all ]. A nil action shows
@@ -20,21 +68,57 @@ struct RetroWords: View {
     let action: (() -> Void)?
 
     var body: some View {
-        // The brackets are the retro frame, not words; the word inside is already localized.
-        let text = Text(verbatim: "[ \(word) ]")
-            .font(.system(size, design: .monospaced).bold())
-            .foregroundStyle(color)
-            .padding(.horizontal, 14).padding(.vertical, 6)
-            .background(background)
-            .contentShape(Rectangle())
-            .contentTransition(.opacity)
-        if let action {
-            Button(action: action) { text }
-                .buttonStyle(.plain)
-                .accessibilityLabel(label)
-        } else {
-            text.accessibilityLabel(label)
+        // Always the same view, tappable or not: switching between a Button and plain text swapped the whole view, so
+        // [ Save ] → [ ✔ ] jumped while [ ✔ ] → [ Saved ] eased (owner, 2026-10-20: "the fade in and out should be the
+        // same"). Without an action it just ignores taps and isn't announced as a button; never .disabled, which dims.
+        Button { action?() } label: {
+            RetroWordsText(word: word, color: color, background: background, size: size)
         }
+        .buttonStyle(.plain)
+        .allowsHitTesting(action != nil)
+        .accessibilityLabel(label)
+        .accessibilityRemoveTraits(action == nil ? .isButton : [])
+    }
+}
+
+/// How [ word ] is drawn, for RetroWords and for controls that aren't a Button ([ Share ] is a ShareLink, #139).
+struct RetroWordsText: View {
+    let word: String
+    let color: Color
+    let background: Color
+    var size: Font.TextStyle = .title
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        // The brackets are the retro frame, not words; the word inside is already localized. When the word changes
+        // ([ Save ] → [ ✔ ] → [ Saved ]) the brackets ease to the new width, the patch with them, while the old word
+        // fades out and the new one fades in (owner, 2026-10-20: keep the shrink-and-grow, make it flow). An invisible
+        // copy of the word sets the width, so it animates; the visible words sit on top and never push the layout.
+        HStack(spacing: 0) {
+            Text(verbatim: "[ ")
+            Text(verbatim: word)
+                .hidden()
+                .overlay {
+                    ZStack { Text(verbatim: word).id(word).transition(Fluid.bracketWordSwap(reduceMotion)) }
+                        .fixedSize()
+                }
+            Text(verbatim: " ]")
+        }
+        .font(.system(size, design: .monospaced).bold())
+        .foregroundStyle(color)
+        .padding(.horizontal, 14).padding(.vertical, 6)
+        .background(FeatheredPatch(color: background))
+        .contentShape(Rectangle())
+    }
+}
+
+/// The plain patch behind [ words ] so faded text never shows through the letters: solid behind them, fading out
+/// at every edge so it never reads as a box (owner, 2026-10-20).
+struct FeatheredPatch: View {
+    let color: Color
+
+    var body: some View {
+        Capsule().fill(color).padding(-8).blur(radius: 8).allowsHitTesting(false)
     }
 }
 

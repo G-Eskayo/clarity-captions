@@ -134,12 +134,16 @@ final class HowToUseTourTests: XCTestCase {
         XCTAssertTrue(tour(at: .pause).words.message.contains("30 days"))
         XCTAssertEqual(tour(at: .done).words.title, "That's it.")
         XCTAssertTrue(tour(at: .done).words.message.contains("You can replay this in Settings."))
+        // #139 (owner, 2026-10-20): the tour says how to get a saved conversation out.
+        XCTAssertTrue(tour(at: .done).words.message.contains("Open one to share it, or hold on words to copy."))
     }
 
     func testTheLastStepDoesNotExplainTheObvious() {
         // "you don't really need to explain the obvious UI elements"
+        // "copy" and "hold on" left this list 2026-10-20: a tester didn't find copying on a saved conversation, so the
+        // owner asked for the tour to say it (#139).
         let text = tour(at: .done).words.message.lowercased()
-        for obvious in ["copy", "hold on", "goes quiet"] { XCTAssertFalse(text.contains(obvious), obvious) }
+        for obvious in ["goes quiet"] { XCTAssertFalse(text.contains(obvious), obvious) }
     }
 
     func testNoWordPromisesToKnowWhoIsSpeaking() {

@@ -47,7 +47,7 @@ struct TourOverlay: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var focus: TourFocus { tour.focus }
-    private var fade: Animation { .easeInOut(duration: reduceMotion ? 0.2 : 0.35) }
+    private var fade: Animation { Fluid.fade(reduceMotion) }
 
     var body: some View {
         GeometryReader { outer in

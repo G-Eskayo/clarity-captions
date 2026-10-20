@@ -170,7 +170,7 @@ struct FirstRunView: View {
             }
         }
         .foregroundStyle(style.text.color)
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: screenID)
+        .animation(reduceMotion ? nil : Fluid.fade(false), value: screenID)
         .onChange(of: model.step) { _, newStep in
             UIAccessibility.post(notification: .screenChanged, argument: FirstRunCopy.for(newStep).title)
         }
