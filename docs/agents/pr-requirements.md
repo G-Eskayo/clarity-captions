@@ -46,3 +46,7 @@ by hand without one looks like nothing happened and tickets that are really done
 ## Image links
 
 Link PR images by commit, not by branch: `https://raw.githubusercontent.com/G-Eskayo/clarity-captions/<commit sha>/docs/images/pr/<n>/<name>.png`. Branch links get cached, so a replaced image keeps showing the old picture on GitHub and in the MARVIN dashboard (#140). Put every image the owner must approve in the PR description, not only in a comment.
+
+## Screens that need a tap
+
+`simctl` can't tap, but an XCUITest can. For a screenshot behind a tap (a share sheet, for example), generate a throwaway project from a copy of `project.yml` with a `bundle.ui-testing` target, launch with the demo flags, `tap()` the element by its accessibility label, and save `XCUIScreen.main.screenshot()`. Delete the throwaway project afterwards. This is how #140's share sheet was captured.
