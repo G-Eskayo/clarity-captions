@@ -68,14 +68,16 @@ struct RetroWords: View {
     let action: (() -> Void)?
 
     var body: some View {
-        let text = RetroWordsText(word: word, color: color, background: background, size: size)
-        if let action {
-            Button(action: action) { text }
-                .buttonStyle(.plain)
-                .accessibilityLabel(label)
-        } else {
-            text.accessibilityLabel(label)
+        // Always the same view, tappable or not: switching between a Button and plain text swapped the whole view, so
+        // [ Save ] → [ ✔ ] jumped while [ ✔ ] → [ Saved ] eased (owner, 2026-10-20: "the fade in and out should be the
+        // same"). Without an action it just ignores taps and isn't announced as a button; never .disabled, which dims.
+        Button { action?() } label: {
+            RetroWordsText(word: word, color: color, background: background, size: size)
         }
+        .buttonStyle(.plain)
+        .allowsHitTesting(action != nil)
+        .accessibilityLabel(label)
+        .accessibilityRemoveTraits(action == nil ? .isButton : [])
     }
 }
 
