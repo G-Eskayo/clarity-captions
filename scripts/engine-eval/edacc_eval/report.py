@@ -210,7 +210,8 @@ def _latency_section(lat: dict) -> list[str]:
            "| Engine | Streaming method | Time to correct word, median | p95 | Time to first text, median | p95 | "
            "Words timed | Words right in final |", "|---|---|---:|---:|---:|---:|---:|---:|"]
     for lab, e in sorted(lat["engines"].items(), key=lambda kv: kv[1]["median"] if not math.isnan(kv[1]["median"]) else 1e9):
-        out.append(f"| {lab} | {e.get('method', '')} | {_secs(e['median'])} | {_secs(e['p95'])} | "
+        shown = f"{lab} † (dropped after shard 1)" if lab.split(" (")[0] in DROPPED else lab
+        out.append(f"| {shown} | {e.get('method', '')} | {_secs(e['median'])} | {_secs(e['p95'])} | "
                    f"{_secs(e['first_text_median'])} | {_secs(e['first_text_p95'])} | {e['words']} | "
                    f"{_pct(e['final_correct_share'])} |")
     out.append("")
