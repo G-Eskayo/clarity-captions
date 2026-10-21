@@ -36,7 +36,8 @@ provenance are in the evidence log (E9). The audio is never committed (ignore ru
 appears on a public page.
 
 Excluded before running: segments whose transcript is `IGNORE_TIME_SEGMENT_IN_SCORING` (123), and segments whose
-reference is empty after normalization (tag-only segments such as `<NO-SPEECH>` or `<DTMF>`). Long segments (641
+reference is empty after normalization (1,485 tag-only or filler-only segments such as `<NO-SPEECH>`, `<DTMF>` or a
+lone "mm"). That leaves **17,529 segments, 31.5 hours, 32 accents, 122 speakers**. Long segments (641
 over 30 s, the longest 9 minutes) stay in: real conversations are long, and every engine handles long input.
 
 ## Machines and engines
@@ -56,7 +57,7 @@ The shard maker decodes each segment (32 kHz WAV in the parquet files), resample
 (polyphase, `scipy.signal.resample_poly`), and assigns segments to shards **stratified by accent**: within each
 accent, segments are sorted by clip id and dealt round-robin across shards. Every shard is a small sample of the
 whole corpus, so shard 1 already gives a (noisy) per-accent table. Shard count = ceil(total hours / target hours),
-target 1 hour, so about 33 shards of about 580 segments (about 115 MB of audio each).
+target 1 hour: **32 shards** of about 548 segments (about 115 MB of audio each).
 
 Each shard is a directory: `audio/<clip_id>.wav` and `manifest.jsonl`, one line per clip:
 `clip_id, file, split, speaker, accent, l1, gender, reference, audio_seconds`. Clip ids are
@@ -128,7 +129,7 @@ each cell, because one speaker's segments are correlated. Cells with fewer than 
   one file, about 700 MB).
 - Runner: O(clips x engines x repeats) transcriptions; resume reads the shard's result file once, O(lines).
 - Scorer: O(total result lines + words^2 per clip for alignment) per cycle; it rebuilds from all result files each
-  cycle (about 33 cycles), which is a few seconds per cycle at this corpus size. Bootstrap is O(B x speakers) per
+  cycle (32 cycles), which is a few seconds per cycle at this corpus size. Bootstrap is O(B x speakers) per
   cell over precomputed per-speaker error counts.
 - Disk: 2012 box about 6.5 GB corpus + about 4 GB shards; M4 holds one shard (about 115 MB) plus models (about
   3 GB).
