@@ -125,6 +125,48 @@ each cell, because one speaker's segments are correlated. Cells with fewer than 
 **Speed**: real-time factor = processing seconds / audio seconds over all repeats (lower is faster), also shown as
 "x real time" (audio / processing). Processing time excludes model loading.
 
+## Live latency
+
+Added 2026-10-21 at the owner's request: "how fast are the words correctly generating after they have been said?"
+Real-time factor on files doesn't answer that, so a second, smaller run feeds audio as if live.
+
+- **Sample:** shard 1 (already accent-stratified, about 1 hour), clips up to 30 s (the growing window below
+  re-decodes the whole clip, and 30 s is Whisper's window). Not the full corpus.
+- **Clock:** seconds since the clip's first sample was fed, the same reference as the app's `FedWallTime` /
+  `CaptionUpdate.lagSeconds` (`TranscriptionEngine.swift`, `WordLagTracker`, `docs/perf/caption-latency-baseline.md`).
+  The app's lag measures when the recognizer's own word end-times show up; this one also requires the word to be
+  *right*.
+- **Apple SpeechAnalyzer** streams natively: fed in real time in 100 ms buffers with the app's options
+  (`volatileResults`, `fastResults`), model prepared before the first buffer (as the app does). The text on screen
+  after each result follows the app's rule: finals accumulate, the latest volatile result replaces the tail.
+- **Parakeet (FluidAudio) and WhisperKit** aren't streaming in a form the app would use. FluidAudio 0.17.5's
+  `SlidingWindowAsrManager` only emits once 11 s of chunk plus 2 s of right context exist (a 13 s floor), so both
+  use the **standard growing window**: re-decode all audio heard so far, starting the next decode as soon as the last
+  one finishes and at least 0.5 s of new audio exists. This is simulated, not waited out: a decode starting at time t
+  sees audio up to t and its text appears at t + the measured compute time (`GrowingWindow.simulate`, unit-tested).
+  Fresh decoder state per decode.
+- **When each word was said:** EdAcc gives segment bounds, not word times. Word times come from Parakeet TDT v2's
+  offline token timestamps (TDT predicts token durations, so its times are acoustic, typically within one 80 ms
+  frame), aligned to the reference words by minimum edit distance; reference words without a timed partner are
+  spread evenly over the gap between their neighbours. Forced alignment with a separate aligner (e.g. wav2vec2/MMS)
+  would be more neutral but adds a PyTorch stack for a small gain at this resolution. Caveat: Parakeet is measured
+  against its own timing engine.
+- **Metrics:** *time to correct word* = time of the first update in which the word is aligned correctly, minus the
+  time it ended; only words that are right in the final text count. *Time to first text* = first non-empty update
+  minus the end of the first spoken word. Median and p95 per engine.
+- **Mac, not iPhone:** these run on the M4 Mac mini. The ranking should carry over; absolute numbers need a phone
+  check later.
+- sherpa-onnx's Parakeet model is offline (non-streaming), so it isn't in the latency run.
+
+## Sharing sherpa-onnx between the minis
+
+sherpa-onnx is the slowest engine on the 2012 mini (about 0.43 real-time factor, about 15 hours per full pass), so the
+M4 can take sherpa-onnx shards once its own engines finish. Both machines pull from one queue on the 2012 mini:
+`claims/shard-NNN/` is created with `mkdir` (atomic), first come first served; a host restarting takes back its own
+unfinished claim first; `done` marks completion. The M4 runs the same sherpa-onnx version (1.13.8) and model
+(Parakeet TDT 0.6B v2 int8); a cross-machine check confirms identical text before results are mixed. Result lines
+record the host, and the speed table splits by machine.
+
 ## Complexity
 
 - Shard maker: one pass over the corpus, O(clips) time, streams one parquet file at a time (memory bounded by

@@ -221,3 +221,74 @@ public enum SilencePadding {
         samples.count >= minimum ? samples : samples + [Float](repeating: 0, count: minimum - samples.count)
     }
 }
+
+// MARK: - Streaming latency (#145)
+
+public struct StreamUpdate: Codable, Equatable, Sendable {
+    /// Seconds since the first audio sample was fed (the clip's own clock, like the app's FedWallTime).
+    public let t: Double
+    /// The full text on screen after this update.
+    public let text: String
+
+    public init(t: Double, text: String) { self.t = t; self.text = text }
+}
+
+/// The standard sliding (growing) window for engines that aren't natively streaming: re-decode all audio heard so
+/// far, starting the next decode as soon as the previous one finishes and at least `hop` seconds of new audio
+/// exist. Time is simulated: a decode that starts at t sees audio up to min(t, duration) and its text shows at
+/// t + measured compute. The last decode always covers the whole clip.
+public enum GrowingWindow {
+    public static func simulate(duration: Double, hop: Double,
+                                decode: (Double) async throws -> (text: String, compute: Double)) async rethrows -> [StreamUpdate] {
+        var updates: [StreamUpdate] = []
+        var t = min(hop, duration)
+        while true {
+            let a = min(t, duration)
+            let (text, compute) = try await decode(a)
+            let shown = t + compute
+            updates.append(StreamUpdate(t: shown, text: text))
+            if a >= duration { break }
+            t = max(shown, min(a + hop, duration))
+        }
+        return updates
+    }
+}
+
+/// What the app shows from SpeechTranscriber: finalized results accumulate; the latest volatile result replaces
+/// the previous volatile tail.
+public struct DisplayedText: Sendable {
+    private var finals: [String] = []
+    private var volatile = ""
+
+    public init() {}
+
+    public mutating func apply(_ text: String, isFinal: Bool) -> String {
+        if isFinal { finals.append(text); volatile = "" } else { volatile = text }
+        return (finals + [volatile]).filter { !$0.isEmpty }.joined(separator: " ")
+    }
+}
+
+public struct TimedWord: Codable, Equatable, Sendable {
+    public let word: String
+    public let start: Double
+    public let end: Double
+
+    enum CodingKeys: String, CodingKey { case word = "w", start, end }
+}
+
+public enum WordTiming {
+    /// Sub-word tokens -> words: a token starting with "▁" or a space begins a new word.
+    public static func group(_ tokens: [(String, Double, Double)]) -> [TimedWord] {
+        var words: [TimedWord] = []
+        for (tok, start, end) in tokens {
+            let boundary = tok.hasPrefix("▁") || tok.hasPrefix(" ")
+            let piece = tok.trimmingCharacters(in: CharacterSet(charactersIn: "▁ "))
+            if boundary || words.isEmpty {
+                if !piece.isEmpty { words.append(TimedWord(word: piece, start: start, end: end)) }
+            } else if let last = words.popLast() {
+                words.append(TimedWord(word: last.word + piece, start: last.start, end: end))
+            }
+        }
+        return words
+    }
+}

@@ -69,6 +69,8 @@ class Score:
     clips_done: dict[str, int]
     models: dict[str, dict]
     load_stats: dict = field(default_factory=dict)
+    speed_by_host: dict = field(default_factory=dict)
+    latency: dict = field(default_factory=dict)
 
 
 def _labels(rows: list[dict]) -> dict[tuple[str, str], str]:
@@ -100,6 +102,7 @@ def score(manifest_rows: list[dict], result_rows: list[dict]) -> Score:
     # hyps[label][clip][repeat] = text
     hyps: dict[str, dict[str, dict[int, str]]] = defaultdict(lambda: defaultdict(dict))
     speed_acc: dict[str, list[float]] = defaultdict(lambda: [0.0, 0.0, 0])
+    host_acc: dict[tuple[str, str], list[float]] = defaultdict(lambda: [0.0, 0.0, 0])
     models: dict[str, dict] = {}
     for r in rows:
         lab = label_of[(r["engine"], str(r["model"]))]
@@ -108,6 +111,8 @@ def score(manifest_rows: list[dict], result_rows: list[dict]) -> Score:
         acc[0] += float(r["audio_seconds"])
         acc[1] += float(r["processing_seconds"])
         acc[2] += 1
+        hacc = host_acc[(lab, str(r.get("host", "")))]
+        hacc[0] += float(r["audio_seconds"]); hacc[1] += float(r["processing_seconds"]); hacc[2] += 1
         models[lab] = {"engine": r["engine"], "model": str(r["model"]), "engine_version": str(r.get("engine_version", ""))}
 
     compared = sorted(c for c in clips if labels and all(c in hyps[lab] for lab in labels))
@@ -145,10 +150,11 @@ def score(manifest_rows: list[dict], result_rows: list[dict]) -> Score:
         determinism[lab] = det
 
     speed = {lab: Speed(*speed_acc[lab]) for lab in labels}
+    speed_by_host = {k: Speed(*v) for k, v in host_acc.items()}
     return Score(labels=labels, overall=overall, by_accent=by_accent, determinism=determinism, speed=speed,
                  clips_compared=len(compared),
                  audio_seconds_compared=sum(float(clips[c].get("audio_seconds", 0)) for c in compared),
-                 clips_done={lab: len(hyps[lab]) for lab in labels}, models=models)
+                 clips_done={lab: len(hyps[lab]) for lab in labels}, models=models, speed_by_host=speed_by_host)
 
 
 def _pct(x: float) -> str:
@@ -159,6 +165,30 @@ def _verdict(w: float) -> str:
     if math.isnan(w):
         return ""
     return "good" if w <= GOOD else "acceptable" if w <= ACCEPTABLE else "above target"
+
+
+def _secs(x: float) -> str:
+    return "–" if x is None or math.isnan(x) else f"{x:.2f} s"
+
+
+def _latency_section(lat: dict) -> list[str]:
+    if not lat or not lat.get("engines"):
+        return []
+    out = ["## Live latency (streaming sample)", "",
+           f"{lat['clips']} clips ({lat['audio_seconds'] / 60:.0f} min of audio, shard 1, clips up to 30 s) fed as if "
+           "live. **Time to correct word** = when a word first appears correctly (and is still right in the final "
+           "text) minus when it was said. **Time to first text** = first words on screen minus the end of the "
+           "first spoken word. Method: [engine-accuracy-design.md](engine-accuracy-design.md#live-latency).", "",
+           "**Mac numbers, not iPhone numbers.** These ran on the M4 Mac mini. The ranking should carry over; "
+           "absolute latency needs a check on the phone.", "",
+           "| Engine | Streaming method | Time to correct word, median | p95 | Time to first text, median | p95 | "
+           "Words timed | Words right in final |", "|---|---|---:|---:|---:|---:|---:|---:|"]
+    for lab, e in sorted(lat["engines"].items(), key=lambda kv: kv[1]["median"] if not math.isnan(kv[1]["median"]) else 1e9):
+        out.append(f"| {lab} | {e.get('method', '')} | {_secs(e['median'])} | {_secs(e['p95'])} | "
+                   f"{_secs(e['first_text_median'])} | {_secs(e['first_text_p95'])} | {e['words']} | "
+                   f"{_pct(e['final_correct_share'])} |")
+    out.append("")
+    return out
 
 
 def build_report(s: Score, meta: dict) -> str:
@@ -228,11 +258,16 @@ def build_report(s: Score, meta: dict) -> str:
     out += ["## Speed", "",
             "Over every repeat. Real-time factor = processing time / audio time (lower is faster). Model loading is "
             "excluded. Apple-side engines ran on the M4 Mac mini; sherpa-onnx on the 2012 Mac mini's CPU.", "",
-            "| Engine | Real-time factor | x real time | Audio processed (h) | Result lines |", "|---|---:|---:|---:|---:|"]
+            "| Engine | Machine | Real-time factor | x real time | Audio processed (h) | Result lines |",
+            "|---|---|---:|---:|---:|---:|"]
     for lab in order:
-        sp = s.speed[lab]
-        out.append(f"| {lab} | {sp.rtf:.4f} | {sp.x_realtime:.1f}x | {sp.audio_seconds / 3600:.2f} | {sp.lines} |")
+        hosts = sorted(h for (l, h) in s.speed_by_host if l == lab) or [""]
+        for h in hosts:
+            sp = s.speed_by_host.get((lab, h), s.speed[lab])
+            out.append(f"| {lab} | {h or '–'} | {sp.rtf:.4f} | {sp.x_realtime:.1f}x | {sp.audio_seconds / 3600:.2f} | "
+                       f"{sp.lines} |")
     out.append("")
+    out += _latency_section(s.latency)
 
     out += ["## Engines and models", "", "| Engine | Model | Version | Clips done |", "|---|---|---|---:|"]
     for lab in order:
@@ -259,6 +294,12 @@ def write_report(shards_dir: Path, results_dir: Path, out: Path, json_out: Path 
             manifest_rows += read_manifest(shards_dir / name)
     s = score(manifest_rows, rows)
     s.load_stats = asdict(stats)
+    for lat_file in sorted((results_dir / "latency").glob("latency-shard-*.jsonl")):
+        from .latency import analyze
+        from .shards import read_manifest as _rm
+        shard_name = lat_file.stem[len("latency-"):]
+        if (shards_dir / shard_name).exists():
+            s.latency = analyze(lat_file, _rm(shards_dir / shard_name))
     md = build_report(s, meta={"shards_done": len(shards_with_results), "shards_total": index["n_shards"],
                                "load_stats": asdict(stats)})
     Path(out).write_text(md + "\n", encoding="utf-8")
@@ -269,6 +310,7 @@ def write_report(shards_dir: Path, results_dir: Path, out: Path, json_out: Path 
             "by_accent": {k: {a: asdict(c) for a, c in v.items()} for k, v in s.by_accent.items()},
             "determinism": {k: asdict(v) for k, v in s.determinism.items()},
             "speed": {k: {**asdict(v), "rtf": v.rtf, "x_realtime": v.x_realtime} for k, v in s.speed.items()},
-            "models": s.models, "load_stats": s.load_stats,
+            "models": s.models, "load_stats": s.load_stats, "latency": s.latency,
+            "speed_by_host": {f"{k[0]} @ {k[1]}": {**asdict(v), "rtf": v.rtf} for k, v in s.speed_by_host.items()},
         }, indent=2, default=lambda x: None) + "\n", encoding="utf-8")
     return s

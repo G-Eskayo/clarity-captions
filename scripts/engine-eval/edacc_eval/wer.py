@@ -80,3 +80,41 @@ def bootstrap_ci(groups: Mapping[str, tuple[int, int]], n_boot: int = 1000, seed
     lo = stats[int(math.floor((alpha / 2) * (len(stats) - 1)))]
     hi = stats[int(math.ceil((1 - alpha / 2) * (len(stats) - 1)))]
     return lo, hi
+
+
+def align_pairs(reference: list[str], hypothesis: list[str]) -> list[tuple[int | None, int | None]]:
+    """Minimum-edit alignment path as (ref index or None, hyp index or None) pairs: equal/substitution pairs carry
+    both, deletions carry only ref, insertions only hyp. Same tie order as align_counts. O(R*H) time and space."""
+    R, H = len(reference), len(hypothesis)
+    cost = [[0] * (H + 1) for _ in range(R + 1)]
+    for i in range(R + 1):
+        cost[i][0] = i
+    for j in range(H + 1):
+        cost[0][j] = j
+    for i in range(1, R + 1):
+        ri = reference[i - 1]
+        row, prev = cost[i], cost[i - 1]
+        for j in range(1, H + 1):
+            if ri == hypothesis[j - 1]:
+                row[j] = prev[j - 1]
+            else:
+                row[j] = 1 + min(prev[j - 1], prev[j], row[j - 1])
+    pairs: list[tuple[int | None, int | None]] = []
+    i, j = R, H
+    while i > 0 or j > 0:
+        if i > 0 and j > 0 and reference[i - 1] == hypothesis[j - 1] and cost[i][j] == cost[i - 1][j - 1]:
+            pairs.append((i - 1, j - 1)); i -= 1; j -= 1
+        elif i > 0 and j > 0 and cost[i][j] == cost[i - 1][j - 1] + 1:
+            pairs.append((i - 1, j - 1)); i -= 1; j -= 1
+        elif i > 0 and cost[i][j] == cost[i - 1][j] + 1:
+            pairs.append((i - 1, None)); i -= 1
+        else:
+            pairs.append((None, j - 1)); j -= 1
+    pairs.reverse()
+    return pairs
+
+
+def matched_reference(reference: list[str], hypothesis: list[str]) -> set[int]:
+    """Reference word indices that the hypothesis gets exactly right under the minimum-edit alignment."""
+    return {i for i, j in align_pairs(reference, hypothesis)
+            if i is not None and j is not None and reference[i] == hypothesis[j]}

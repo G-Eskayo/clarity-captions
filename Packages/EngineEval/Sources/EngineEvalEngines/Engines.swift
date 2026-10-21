@@ -118,12 +118,19 @@ public final class ParakeetFileTranscriber: FileTranscriber {
     }
 
     public func transcribe(_ url: URL) async throws -> String {
+        try await transcribe(samples: try converter.resampleAudioFile(url))
+    }
+
+    /// 16 kHz mono samples; clips under FluidAudio's 1 s minimum get trailing silence.
+    public func transcribe(samples: [Float]) async throws -> String {
+        try await transcribeWithTimings(samples: samples).text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    public func transcribeWithTimings(samples: [Float]) async throws -> ASRResult {
         guard let manager else { throw NSError(domain: "EngineEval", code: 2) }
         var state = TdtDecoderState.make(decoderLayers: decoderLayers)  // fresh per clip: clips are independent
-        let samples = SilencePadding.padded(try converter.resampleAudioFile(url),
-                                            toAtLeast: ASRConstants.minimumRequiredSamples(forSampleRate: 16000))
-        let result = try await manager.transcribe(samples, decoderState: &state)
-        return result.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let padded = SilencePadding.padded(samples, toAtLeast: ASRConstants.minimumRequiredSamples(forSampleRate: 16000))
+        return try await manager.transcribe(padded, decoderState: &state)
     }
 }
 
@@ -154,6 +161,12 @@ public final class WhisperKitFileTranscriber: FileTranscriber {
     public func transcribe(_ url: URL) async throws -> String {
         guard let kit else { throw NSError(domain: "EngineEval", code: 3) }
         let results = try await kit.transcribe(audioPath: url.path, decodeOptions: options)
+        return results.map(\.text).joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    public func transcribe(samples: [Float]) async throws -> String {
+        guard let kit else { throw NSError(domain: "EngineEval", code: 3) }
+        let results = try await kit.transcribe(audioArray: samples, decodeOptions: options)
         return results.map(\.text).joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

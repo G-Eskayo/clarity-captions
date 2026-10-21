@@ -82,3 +82,29 @@ def test_report_renders_tables(tmp_path):
     assert "Irish English" in md and "Kenyan English" in md
     assert "15%" in md and "30%" in md
     assert "nan" not in md.lower()
+
+
+def test_write_report_with_latency_and_hosts(tmp_path):
+    from edacc_eval.report import write_report
+    shards = tmp_path / "shards"; (shards / "shard-001").mkdir(parents=True)
+    (shards / "index.json").write_text(json.dumps({"n_shards": 2, "shards": ["shard-001", "shard-002"]}))
+    (shards / "shard-001" / "manifest.jsonl").write_text(
+        "\n".join(json.dumps(m | {"file": f"audio/{m['clip_id']}.wav"}) for m in manifest_rows()) + "\n")
+    res = tmp_path / "results"; (res / "latency").mkdir(parents=True)
+    rows = []
+    for host in ("m4", "old"):
+        for c, h in (("c1", "hello there"), ("c2", "i have three kids"), ("c3", "good morning")):
+            rows.append(r(c, "sherpa", h) | {"host": host, "repeat": 1 if host == "m4" else 2})
+    (res / "sherpa-shard-001.jsonl").write_text("\n".join(json.dumps(x) for x in rows) + "\n")
+    lat = [{"kind": "timing", "clip_id": "c1", "words": [{"w": "hello", "start": 0.1, "end": 0.5},
+                                                         {"w": "there", "start": 0.6, "end": 1.0}]},
+           {"kind": "stream", "clip_id": "c1", "engine": "e", "model": "m", "method": "growing window",
+            "updates": [{"t": 0.8, "text": "hello"}, {"t": 1.4, "text": "hello there"}]}]
+    (res / "latency" / "latency-shard-001.jsonl").write_text("\n".join(json.dumps(x) for x in lat) + "\n")
+    out = tmp_path / "r.md"
+    s = write_report(shards, res, out, tmp_path / "r.json")
+    md = out.read_text()
+    assert "| sherpa | m4 |" in md and "| sherpa | old |" in md
+    assert "Live latency" in md and "Mac numbers, not iPhone numbers" in md
+    assert s.latency["engines"]["e (m)"]["median"] == 0.35
+    assert "nan" not in md.lower()

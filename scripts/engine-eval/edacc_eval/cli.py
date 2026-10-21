@@ -30,6 +30,20 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--out", type=Path, required=True)
     r.add_argument("--json-out", type=Path)
 
+    c = sub.add_parser("claim", help="atomically claim the next sherpa-onnx shard; prints its number or nothing")
+    c.add_argument("--root", type=Path, required=True)
+    c.add_argument("--total", type=int, required=True)
+    c.add_argument("--host", required=True)
+    c.add_argument("--first", type=int, default=1)
+    d = sub.add_parser("claim-done", help="mark a claimed shard finished")
+    d.add_argument("--root", type=Path, required=True)
+    d.add_argument("--shard", type=int, required=True)
+
+    m = sub.add_parser("compare", help="identical-text check for one engine across two result files")
+    m.add_argument("a", type=Path)
+    m.add_argument("b", type=Path)
+    m.add_argument("--engine", default="sherpa-onnx")
+
     a = p.parse_args(argv)
     if a.cmd == "build-shards":
         from .shards import build_shards
@@ -40,6 +54,17 @@ def main(argv: list[str] | None = None) -> int:
     elif a.cmd == "report":
         from .report import write_report
         write_report(a.shards, a.results, a.out, a.json_out)
+    elif a.cmd == "claim":
+        from .claims import claim_next
+        k = claim_next(a.root, a.total, a.host, a.first)
+        if k is not None:
+            print(k)
+    elif a.cmd == "claim-done":
+        from .claims import mark_done
+        mark_done(a.root, a.shard)
+    elif a.cmd == "compare":
+        from .results import compare_hypotheses
+        print(json.dumps(compare_hypotheses([a.a], [a.b], a.engine), indent=2))
     return 0
 
 

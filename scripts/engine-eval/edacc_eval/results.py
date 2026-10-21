@@ -77,3 +77,14 @@ def load_results(paths: Iterable[Path]) -> tuple[list[dict], LoadStats]:
 def done_keys(path: Path) -> set[ResultKey]:
     rows, _ = load_results([path])
     return {key_of(r) for r in rows}
+
+
+def compare_hypotheses(a: Iterable[Path], b: Iterable[Path], engine: str) -> dict:
+    """Same engine on two machines: for clips both ran (repeat 1), how many gave identical text?"""
+    ra, _ = load_results(a)
+    rb, _ = load_results(b)
+    ha = {r["clip_id"]: r["hypothesis"] for r in ra if r["engine"] == engine and int(r["repeat"]) == 1}
+    hb = {r["clip_id"]: r["hypothesis"] for r in rb if r["engine"] == engine and int(r["repeat"]) == 1}
+    common = sorted(set(ha) & set(hb))
+    differ = [c for c in common if ha[c] != hb[c]]
+    return {"compared": len(common), "identical": len(common) - len(differ), "differ": differ}

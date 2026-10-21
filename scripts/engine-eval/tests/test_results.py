@@ -75,3 +75,13 @@ def test_non_object_json_is_corrupt(tmp_path):
     p = write(tmp_path, "r.jsonl", ["[1,2]", "42", line()])
     rows, stats = load_results([p])
     assert len(rows) == 1 and stats.corrupt == 2
+
+
+def test_compare_hypotheses_across_machines(tmp_path):
+    from edacc_eval.results import compare_hypotheses
+    a = write(tmp_path, "a.jsonl", [line("c1", engine="s", hyp="x"), line("c2", engine="s", hyp="y"),
+                                    line("c3", engine="s", hyp="z")])
+    b = write(tmp_path, "b.jsonl", [line("c1", engine="s", hyp="x"), line("c2", engine="s", hyp="Y"),
+                                    line("c9", engine="s", hyp="q"), line("c1", engine="other", hyp="no")])
+    r = compare_hypotheses([a], [b], "s")
+    assert r == {"compared": 2, "identical": 1, "differ": ["c2"]}
