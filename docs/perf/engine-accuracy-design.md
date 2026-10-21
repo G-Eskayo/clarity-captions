@@ -156,6 +156,9 @@ Real-time factor on files doesn't answer that, so a second, smaller run feeds au
   minus the end of the first spoken word. Median and p95 per engine.
 - **Mac, not iPhone:** these run on the M4 Mac mini. The ranking should carry over; absolute numbers need a phone
   check later.
+- **Load check:** midway through the Apple run the M4's engine processes were reniced to +15 so other work could
+  run. Re-running Apple on the first 60 clips at nice +15 gave the same latency to the hundredth of a second (median
+  0.655 s, p95 1.50 s in both runs), so the renice didn't change the numbers.
 - sherpa-onnx's Parakeet model is offline (non-streaming), so it isn't in the latency run.
 
 ## Sharing sherpa-onnx between the minis
@@ -199,10 +202,13 @@ CAPTION_ENGINE_EVAL=1 swift test --package-path Packages/EngineEval --filter Eng
 The corpus run, once the shards exist on the 2012 mini (`python -m edacc_eval.cli build-shards`):
 
 ```bash
-# 2012 mini: sherpa-onnx over shards FIRST..LAST with N repeats (nohup, resumable)
+# M4 mini, from the repo worktree: Apple-side engines on shards 2..32 with N repeats, then sherpa-onnx on the
+# same shards from the shared claim queue (nohup, nice +15, Terminal window, resumable)
+EVAL_SHERPA=1 EVAL_SHERPA_FIRST=2 EVAL_SHERPA_LAST=32 EVAL_SHERPA_REPEATS=N scripts/engine-eval/m4-launch.sh 2 31 N
+# Optional, not recommended (x86 text differs, see above): the 2012 mini also works the sherpa queue
 ~/edacc-eval/tool/linux-sherpa-launch.sh 2 32 N
-# M4 mini, from the repo worktree: shards FIRST.. for MAX shards with N repeats (nohup, Terminal window)
-scripts/engine-eval/m4-launch.sh 2 31 N
+# One shard's extras (cross-machine check, extra engines, latency sample)
+EVAL_DRIVER=m4-shard-extras.sh scripts/engine-eval/m4-launch.sh K 1 1
 ```
 
 Rerunning either command after a stop resumes where it left off. Progress: `~/edacc-eval/status.txt` and

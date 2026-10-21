@@ -17,7 +17,7 @@ ENGINES="${EVAL_ENGINES:-apple,parakeet-v2,parakeet-ultra,whisperkit}"
 # Phase 2 (optional): once its own engines are done, the M4 helps with sherpa-onnx from the shared claim queue.
 SHERPA="${EVAL_SHERPA:-0}"; SHERPA_FIRST="${EVAL_SHERPA_FIRST:-1}"; SHERPA_LAST="${EVAL_SHERPA_LAST:-32}"
 SHERPA_REPEATS="${EVAL_SHERPA_REPEATS:-$REPEATS}"; SHERPA_THREADS="${EVAL_SHERPA_THREADS:-8}"
-HOST="$(hostname -s)"
+HOST="$(scutil --get LocalHostName 2>/dev/null || hostname -s)"
 BIN="$REPO/Packages/EngineEval/.build/release/engine-eval"
 STATUS="$WORK/status.txt"
 mkdir -p "$WORK/shards" "$WORK/results" "$WORK/done" "$WORK/report" "$WORK/logs"

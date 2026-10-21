@@ -284,7 +284,9 @@ def build_report(s: Score, meta: dict) -> str:
 
     out += ["## Speed", "",
             "Over every repeat. Real-time factor = processing time / audio time (lower is faster). Model loading is "
-            "excluded. Apple-side engines ran on the M4 Mac mini; sherpa-onnx on the 2012 Mac mini's CPU.", "",
+            "excluded. Machine is the hostname each result line recorded: the M4 Mac mini shows as gils-mac-mini.local "
+            "(Swift) or Mac (Python), the 2012 Mac mini as mac-mini-2012. All engines ran at low priority (nice +15) "
+            "alongside other work, so treat speed as indicative.", "",
             "| Engine | Machine | Real-time factor | x real time | Audio processed (h) | Result lines |",
             "|---|---|---:|---:|---:|---:|"]
     for lab in order:

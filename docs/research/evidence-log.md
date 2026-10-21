@@ -128,3 +128,16 @@ caveat), **Internal** (process detail, not for marketing).
 - **Confidence:** Strong (official model cards).
 - **Drives:** #145; any engine switch would add its notice to `NOTICE.md` and the credits screen.
 - **Public use:** Yes.
+
+## E11. Shard 1 of the engine accuracy test: which engine follows accents best
+- **Source:** our own measurement, [docs/perf/engine-accuracy-comparison.md](../perf/engine-accuracy-comparison.md)
+  (#145; shard 1 = 548 EdAcc segments, 1.1 h, 120 speakers, all 32 accent groups, 5 repeats per engine; live-latency
+  sample of 526 clips on the M4 Mac mini).
+- **What we took:** Parakeet Ultra via FluidAudio had the lowest word error rate (13.3%, 95% CI 11.8–15.0%) against
+  Apple SpeechAnalyzer's 17.4% (15.5–19.4%), lower on almost every accent with enough speakers to say, and it also
+  put correct words on screen sooner (median 0.24 s vs 0.67 s after the word was said). Parakeet v2 15.7%, sherpa-onnx
+  16.3%, WhisperKit large-v3 turbo 23.5% (it returns nothing for most sub-second clips under its default no-speech
+  gate; 19.8% with the gate off). Every engine except WhisperKit gave identical text on all five repeats.
+- **Confidence:** Ours (one shard of 32; Mac, not iPhone; accent cells with few speakers are wide).
+- **Drives:** whether to test Parakeet on the phone next (#145 follow-up); the full-corpus run.
+- **Public use:** Careful (say "on a public accented-conversation corpus, in our test"; wait for the full run).
