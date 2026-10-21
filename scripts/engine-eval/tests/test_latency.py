@@ -84,3 +84,40 @@ def test_summarize():
     assert s["words"] == 3 and s["median"] == pytest.approx(0.4)
     assert s["first_text_median"] == pytest.approx(0.3) and s["clips"] == 2
     assert s["final_correct_share"] == pytest.approx(3 / 4)
+
+
+def test_growing_window_matches_swift_semantics():
+    from edacc_eval.latency import growing_window
+    asked = []
+    ups = growing_window(1.2, 0.5, lambda a: (asked.append(a), (f"t{a}", 0.1))[1])
+    assert asked == [0.5, 1.0, 1.2]
+    assert [round(t, 9) for t, _ in ups] == [0.6, 1.1, 1.3]
+    asked.clear()
+    ups = growing_window(3.0, 0.5, lambda a: (asked.append(a), ("x", 1.0))[1])
+    assert asked == [0.5, 1.5, 2.5, 3.0] and [t for t, _ in ups] == [1.5, 2.5, 3.5, 4.5]
+    asked.clear()
+    growing_window(0.3, 0.5, lambda a: (asked.append(a), ("y", 0.05))[1])
+    assert asked == [0.3]
+
+
+def test_stream_latency_runner_resumes_and_writes_lines(tmp_path):
+    import json
+    from edacc_eval.sherpa_run import stream_latency_loop
+    d = tmp_path / "shard-001"; (d / "audio").mkdir(parents=True)
+    rows = [{"clip_id": "a", "file": "audio/a.wav", "audio_seconds": 1.0},
+            {"clip_id": "b", "file": "audio/b.wav", "audio_seconds": 40.0}]  # over the 30 s cap: skipped
+    out = tmp_path / "lat.jsonl"
+    calls = []
+
+    def decode(samples, n):
+        calls.append(n); return "hi"
+    load = lambda p: [0.0] * 16000
+    stream_latency_loop(rows, d, out, decode=decode, load=load, engine="sherpa-onnx", model="m", hop=0.5,
+                        max_clip_seconds=30)
+    lines = [json.loads(l) for l in out.read_text().splitlines()]
+    assert len(lines) == 1 and lines[0]["kind"] == "stream" and lines[0]["clip_id"] == "a"
+    assert lines[0]["updates"][-1]["text"] == "hi" and calls == [8000, 16000]
+    calls.clear()
+    stream_latency_loop(rows, d, out, decode=decode, load=load, engine="sherpa-onnx", model="m", hop=0.5,
+                        max_clip_seconds=30)
+    assert calls == []  # resumed: nothing to redo

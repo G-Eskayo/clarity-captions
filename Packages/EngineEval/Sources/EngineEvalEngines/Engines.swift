@@ -22,7 +22,8 @@ public enum EngineID: String, CaseIterable, Sendable {
     /// under the defaults). Not part of the default engine list.
     case whisperkitNoGate = "whisperkit-nogate"
 
-    public static var defaults: [EngineID] { [.apple, .parakeetV2, .parakeetUltra, .whisperkit] }
+    /// WhisperKit was dropped after shard 1 (owner, 2026-10-21); it stays selectable with --engines.
+    public static var defaults: [EngineID] { [.apple, .parakeetV2, .parakeetUltra] }
 }
 
 public struct EngineVersions: Sendable {

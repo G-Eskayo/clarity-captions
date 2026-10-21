@@ -90,6 +90,23 @@ def clip_latency(ref: list[str], ref_times: list[tuple[float, float]],
     return ClipLatency(lat, first_text, len(final_ok), len(ref))
 
 
+def growing_window(duration: float, hop: float, decode) -> list[tuple[float, str]]:
+    """Same as Swift's GrowingWindow.simulate: re-decode all audio so far; the next decode starts when the last one
+    finished and at least `hop` s of new audio exist; a decode starting at t sees audio up to min(t, duration) and
+    shows its text at t + compute. decode(audio_end) -> (text, compute_seconds). The last decode covers the clip."""
+    updates: list[tuple[float, str]] = []
+    t = min(hop, duration)
+    while True:
+        a = min(t, duration)
+        text, compute = decode(a)
+        shown = t + compute
+        updates.append((shown, text))
+        if a >= duration:
+            break
+        t = max(shown, min(a + hop, duration))
+    return updates
+
+
 def percentile(values: list[float], p: float) -> float:
     if not values:
         return math.nan

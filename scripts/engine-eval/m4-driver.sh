@@ -13,7 +13,7 @@ REPO="${EVAL_REPO:?EVAL_REPO must point at the clarity-captions worktree}"
 REPEATS="${EVAL_REPEATS:-1}"
 FIRST="${EVAL_FIRST:-1}"
 MAX_SHARDS="${EVAL_MAX_SHARDS:-1}"
-ENGINES="${EVAL_ENGINES:-apple,parakeet-v2,parakeet-ultra,whisperkit}"
+ENGINES="${EVAL_ENGINES:-apple,parakeet-v2,parakeet-ultra}"  # WhisperKit dropped after shard 1
 # Phase 2 (optional): once its own engines are done, the M4 helps with sherpa-onnx from the shared claim queue.
 SHERPA="${EVAL_SHERPA:-0}"; SHERPA_FIRST="${EVAL_SHERPA_FIRST:-1}"; SHERPA_LAST="${EVAL_SHERPA_LAST:-32}"
 SHERPA_REPEATS="${EVAL_SHERPA_REPEATS:-$REPEATS}"; SHERPA_THREADS="${EVAL_SHERPA_THREADS:-8}"

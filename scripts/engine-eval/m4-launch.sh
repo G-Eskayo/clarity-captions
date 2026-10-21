@@ -10,7 +10,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 export EVAL_REPO="$(cd "$HERE/../.." && pwd)"
 export EVAL_WORK="$HOME/edacc-eval"
 export EVAL_FIRST="$1" EVAL_MAX_SHARDS="$2" EVAL_REPEATS="$3"
-export EVAL_ENGINES="${4:-apple,parakeet-v2,parakeet-ultra,whisperkit}"
+export EVAL_ENGINES="${4:-apple,parakeet-v2,parakeet-ultra}"  # WhisperKit dropped after shard 1
 export EVAL_SHERPA="${EVAL_SHERPA:-0}" EVAL_SHERPA_FIRST="${EVAL_SHERPA_FIRST:-1}" EVAL_SHERPA_LAST="${EVAL_SHERPA_LAST:-32}"
 export EVAL_SHERPA_REPEATS="${EVAL_SHERPA_REPEATS:-$3}" EVAL_SHERPA_THREADS="${EVAL_SHERPA_THREADS:-8}"
 mkdir -p "$EVAL_WORK/logs"

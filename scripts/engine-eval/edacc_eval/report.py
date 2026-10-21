@@ -15,7 +15,13 @@ from .normalize import normalize
 from .results import load_results
 from .wer import Counts, align_counts, bootstrap_ci, pooled_wer
 
-GOOD, ACCEPTABLE = 0.15, 0.30  # docs/testing/test-plan.md targets
+GOOD, ACCEPTABLE = 0.15, 0.30
+# Engines stopped partway (owner decision 2026-10-21). They keep their rows, scored on the clips they ran, and never
+# shrink the set of clips the active engines are compared on.
+DROPPED = {
+    "whisperkit": "dropped after shard 1: slowest, least accurate, Apple-only (no Android path); scored on shard 1 only",
+    "whisperkit-nogate": "diagnostic, shard 1 only (WhisperKit dropped after shard 1)",
+}  # docs/testing/test-plan.md targets
 MIN_SPEAKERS = 3
 LENGTH_BUCKETS = [("under 1 s", 0.0, 1.0), ("1-5 s", 1.0, 5.0), ("5-30 s", 5.0, 30.0), ("over 30 s", 30.0, float("inf"))]
 
@@ -80,6 +86,7 @@ class Score:
     speed_by_host: dict = field(default_factory=dict)
     latency: dict = field(default_factory=dict)
     by_length: dict = field(default_factory=dict)
+    notes: dict = field(default_factory=dict)
 
 
 def _labels(rows: list[dict]) -> dict[tuple[str, str], str]:
@@ -102,7 +109,8 @@ def _cell(counts_by_speaker: dict[str, list[Counts]]) -> Cell:
                 clips=len(flat), speakers=len(counts_by_speaker))
 
 
-def score(manifest_rows: list[dict], result_rows: list[dict]) -> Score:
+def score(manifest_rows: list[dict], result_rows: list[dict], dropped: dict | None = None) -> Score:
+    dropped = DROPPED if dropped is None else dropped
     clips = {m["clip_id"]: m for m in manifest_rows}
     rows = [r for r in result_rows if r["clip_id"] in clips]
     label_of = _labels(rows)
@@ -124,8 +132,10 @@ def score(manifest_rows: list[dict], result_rows: list[dict]) -> Score:
         hacc[0] += float(r["audio_seconds"]); hacc[1] += float(r["processing_seconds"]); hacc[2] += 1
         models[lab] = {"engine": r["engine"], "model": str(r["model"]), "engine_version": str(r.get("engine_version", ""))}
 
-    compared = sorted(c for c in clips if labels and all(c in hyps[lab] for lab in labels))
-    ref_norm = {c: normalize(clips[c]["reference"]) for c in compared}
+    active = [lab for lab in labels if models[lab]["engine"] not in dropped] or labels
+    compared = sorted(c for c in clips if active and all(c in hyps[lab] for lab in active))
+    clip_sets = {lab: compared if lab in active else sorted(c for c in clips if c in hyps[lab]) for lab in labels}
+    ref_norm = {c: normalize(clips[c]["reference"]) for lab in labels for c in clip_sets[lab]}
 
     overall: dict[str, Cell] = {}
     by_accent: dict[str, dict[str, Cell]] = {}
@@ -137,7 +147,7 @@ def score(manifest_rows: list[dict], result_rows: list[dict]) -> Score:
         per_repeat: dict[int, list[Counts]] = defaultdict(list)
         per_length: dict[str, dict[str, list[Counts]]] = defaultdict(lambda: defaultdict(list))
         det = Determinism()
-        for c in compared:
+        for c in clip_sets[lab]:
             reps = hyps[lab][c]
             first = reps[min(reps)]
             counts = align_counts(ref_norm[c], normalize(first))
@@ -165,7 +175,8 @@ def score(manifest_rows: list[dict], result_rows: list[dict]) -> Score:
 
     speed = {lab: Speed(*speed_acc[lab]) for lab in labels}
     speed_by_host = {k: Speed(*v) for k, v in host_acc.items()}
-    return Score(labels=labels, overall=overall, by_accent=by_accent, determinism=determinism, speed=speed,
+    notes = {lab: dropped[models[lab]["engine"]] for lab in labels if lab not in active}
+    return Score(notes=notes, labels=labels, overall=overall, by_accent=by_accent, determinism=determinism, speed=speed,
                  clips_compared=len(compared),
                  audio_seconds_compared=sum(float(clips[c].get("audio_seconds", 0)) for c in compared),
                  clips_done={lab: len(hyps[lab]) for lab in labels}, models=models, speed_by_host=speed_by_host,
@@ -230,20 +241,23 @@ def build_report(s: Score, meta: dict) -> str:
     out += ["## Overall", "",
             "| Engine | WER | 95% CI | vs target | Sub | Del | Ins | Ref words | Clips | Speakers | Speed (x real time) |",
             "|---|---:|---|---|---:|---:|---:|---:|---:|---:|---:|"]
-    for lab in sorted(s.labels, key=lambda l: s.overall[l].wer):
+    for lab in sorted(s.labels, key=lambda l: (l in s.notes, s.overall[l].wer)):
         c, sp = s.overall[lab], s.speed[lab]
         xr = "–" if math.isnan(sp.x_realtime) else f"{sp.x_realtime:.1f}x"
-        out.append(f"| {lab} | {_pct(c.wer)} | {_pct(c.ci_low)} – {_pct(c.ci_high)} | {_verdict(c.wer)} | {c.sub} | "
+        shown = f"{lab} ({s.notes[lab]})" if lab in s.notes else lab
+        out.append(f"| {shown} | {_pct(c.wer)} | {_pct(c.ci_low)} – {_pct(c.ci_high)} | {_verdict(c.wer)} | {c.sub} | "
                    f"{c.dele} | {c.ins} | {c.n} | {c.clips} | {c.speakers} | {xr} |")
     out.append("")
 
     accents = sorted({a for lab in s.labels for a in s.by_accent[lab]},
                      key=lambda a: -max(s.by_accent[l][a].n for l in s.labels if a in s.by_accent[l]))
-    order = sorted(s.labels, key=lambda l: s.overall[l].wer)
+    order = sorted(s.labels, key=lambda l: (l in s.notes, s.overall[l].wer))
+    head = [f"{l} †" if l in s.notes else l for l in order]
     out += ["## By accent", "",
             "WER per engine (95% CI). Accents with fewer than 3 speakers in the sample are marked *; their intervals "
             "say little.", "",
-            "| Accent | Speakers | Ref words | " + " | ".join(order) + " |",
+            "† dropped after shard 1; its cells cover shard 1 only." if s.notes else "", "",
+            "| Accent | Speakers | Ref words | " + " | ".join(head) + " |",
             "|---|---:|---:|" + "---|" * len(order)]
     for a in accents:
         ref = s.by_accent[order[0]].get(a)
@@ -259,7 +273,7 @@ def build_report(s: Score, meta: dict) -> str:
     out += ["## By clip length", "",
             "EdAcc is cut into segments; 28% are under a second (\"yeah\", \"right\"). Engines differ most on those, "
             "and in a live conversation they would arrive inside continuous audio rather than alone.", "",
-            "| Clip length | Ref words | " + " | ".join(order) + " |", "|---|---:|" + "---|" * len(order)]
+            "| Clip length | Ref words | " + " | ".join(head) + " |", "|---|---:|" + "---|" * len(order)]
     for name, _, _ in LENGTH_BUCKETS:
         ref = s.by_length.get(order[0], {}).get(name)
         if ref is None:

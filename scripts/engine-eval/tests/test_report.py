@@ -122,3 +122,16 @@ def test_by_length_buckets():
     assert s.by_length["a"]["1-5 s"].wer == 0.0
     md = build_report(s, meta={"shards_done": 1, "shards_total": 2})
     assert "## By clip length" in md and "| under 1 s |" in md
+
+
+def test_dropped_engine_does_not_shrink_the_comparison():
+    from edacc_eval import report
+    man = manifest_rows()
+    rows = [r(c, "a", h) for c, h in (("c1", "hello there"), ("c2", "i have three kids"), ("c3", "good morning"))]
+    rows.append(r("c1", "whisperkit", "hello"))  # dropped engine only ran on c1
+    s = score(man, rows, dropped={"whisperkit": "dropped after shard 1: slow"})
+    assert s.clips_compared == 3                     # active engines decide the common clips
+    assert s.overall["whisperkit"].clips == 1 and s.overall["whisperkit"].wer == 0.5
+    md = build_report(s, meta={"shards_done": 2, "shards_total": 2})
+    assert "dropped after shard 1: slow" in md
+    assert report.DROPPED.get("whisperkit")           # the real config marks WhisperKit dropped

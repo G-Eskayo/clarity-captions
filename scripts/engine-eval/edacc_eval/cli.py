@@ -44,6 +44,14 @@ def main(argv: list[str] | None = None) -> int:
     m.add_argument("b", type=Path)
     m.add_argument("--engine", default="sherpa-onnx")
 
+    sl = sub.add_parser("sherpa-latency", help="growing-window live-latency lines for sherpa-onnx on one shard")
+    sl.add_argument("--shard-dir", type=Path, required=True)
+    sl.add_argument("--out", type=Path, required=True)
+    sl.add_argument("--model-dir", type=Path, required=True)
+    sl.add_argument("--threads", type=int, default=8)
+    sl.add_argument("--hop", type=float, default=0.5)
+    sl.add_argument("--max-clip-seconds", type=float, default=30.0)
+
     a = p.parse_args(argv)
     if a.cmd == "build-shards":
         from .shards import build_shards
@@ -62,6 +70,9 @@ def main(argv: list[str] | None = None) -> int:
     elif a.cmd == "claim-done":
         from .claims import mark_done
         mark_done(a.root, a.shard)
+    elif a.cmd == "sherpa-latency":
+        from .sherpa_run import run_latency
+        print(f"sherpa latency clips run: {run_latency(a.shard_dir, a.out, a.model_dir, a.threads, a.hop, a.max_clip_seconds)}")
     elif a.cmd == "compare":
         from .results import compare_hypotheses
         print(json.dumps(compare_hypotheses([a.a], [a.b], a.engine), indent=2))

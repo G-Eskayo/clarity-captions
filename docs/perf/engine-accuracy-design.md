@@ -125,6 +125,15 @@ each cell, because one speaker's segments are correlated. Cells with fewer than 
 **Speed**: real-time factor = processing seconds / audio seconds over all repeats (lower is faster), also shown as
 "x real time" (audio / processing). Processing time excludes model loading.
 
+## Engines after shard 1
+
+**WhisperKit was dropped after shard 1** (owner, 2026-10-21): it was the slowest (12x real time on the M4) and the
+least accurate (23.5%, 19.8% with its no-speech filter off), and it is Apple-only, so it gives no path to Android.
+Its shard 1 rows stay in the report, marked, and scored on shard 1 only; dropped engines never shrink the set of
+clips the remaining engines are compared on. Counterpoint: Whisper was the only multilingual engine tested, so it
+may come back for the non-English / live-translate work. That would be a separate test, with Parakeet v3 as the
+other multilingual candidate. Shards 2-32 run Apple, Parakeet v2, Parakeet Ultra and sherpa-onnx, one run per clip.
+
 ## Live latency
 
 Added 2026-10-21 at the owner's request: "how fast are the words correctly generating after they have been said?"
@@ -159,7 +168,9 @@ Real-time factor on files doesn't answer that, so a second, smaller run feeds au
 - **Load check:** midway through the Apple run the M4's engine processes were reniced to +15 so other work could
   run. Re-running Apple on the first 60 clips at nice +15 gave the same latency to the hundredth of a second (median
   0.655 s, p95 1.50 s in both runs), so the renice didn't change the numbers.
-- sherpa-onnx's Parakeet model is offline (non-streaming), so it isn't in the latency run.
+- **sherpa-onnx** runs the same growing window in Python on the M4 (`edacc_eval.latency.growing_window`, the same
+  semantics as Swift's `GrowingWindow.simulate`, both tested), against the same reference word times and the same
+  526 clips, with 8 threads.
 
 ## Sharing sherpa-onnx between the minis
 
