@@ -18,6 +18,11 @@ public protocol FileTranscriber: AnyObject {
 
 public enum EngineID: String, CaseIterable, Sendable {
     case apple, parakeetV2 = "parakeet-v2", parakeetUltra = "parakeet-ultra", whisperkit
+    /// Diagnostic variant: WhisperKit with its no-speech and first-token gates off (short clips come back empty
+    /// under the defaults). Not part of the default engine list.
+    case whisperkitNoGate = "whisperkit-nogate"
+
+    public static var defaults: [EngineID] { [.apple, .parakeetV2, .parakeetUltra, .whisperkit] }
 }
 
 public struct EngineVersions: Sendable {
@@ -41,6 +46,8 @@ public func makeTranscriber(_ id: EngineID, modelsDir: URL, versions: EngineVers
                                                         modelsDir: modelsDir, fluidAudio: versions.fluidAudio)
     case .whisperkit: return WhisperKitFileTranscriber(model: whisperModel, modelsDir: modelsDir,
                                                        packageVersion: versions.whisperKit)
+    case .whisperkitNoGate: return WhisperKitFileTranscriber(model: whisperModel, modelsDir: modelsDir,
+                                                             packageVersion: versions.whisperKit, gates: false)
     }
 }
 
@@ -138,17 +145,24 @@ public final class ParakeetFileTranscriber: FileTranscriber {
 
 public final class WhisperKitFileTranscriber: FileTranscriber {
     public static let defaultModel = "openai_whisper-large-v3-v20240930_turbo"
-    public let engine = "whisperkit"
+    public let engine: String
     public let model: String
     public let version: String
     private let modelsDir: URL
     private var kit: WhisperKit?
-    /// English, transcribe, WhisperKit's default decoding (temperature 0 with its standard fallback).
-    private let options = DecodingOptions(verbose: false, task: .transcribe, language: "en", detectLanguage: false)
+    /// English, transcribe, WhisperKit's default decoding (temperature 0 with its standard fallback); with
+    /// `gates: false` the no-speech and first-token log-prob gates are off.
+    private let options: DecodingOptions
 
-    public init(model: String, modelsDir: URL, packageVersion: String) {
+    public init(model: String, modelsDir: URL, packageVersion: String, gates: Bool = true) {
         self.model = model; self.modelsDir = modelsDir
-        version = "argmax-oss-swift \(packageVersion), language en, default decoding"
+        engine = gates ? "whisperkit" : "whisperkit-nogate"
+        options = gates
+            ? DecodingOptions(verbose: false, task: .transcribe, language: "en", detectLanguage: false)
+            : DecodingOptions(verbose: false, task: .transcribe, language: "en", detectLanguage: false,
+                              firstTokenLogProbThreshold: nil, noSpeechThreshold: nil)
+        version = "argmax-oss-swift \(packageVersion), language en, "
+            + (gates ? "default decoding" : "default decoding but noSpeechThreshold and firstTokenLogProbThreshold off")
     }
 
     public func load() async throws {

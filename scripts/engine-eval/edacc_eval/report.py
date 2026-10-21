@@ -17,6 +17,14 @@ from .wer import Counts, align_counts, bootstrap_ci, pooled_wer
 
 GOOD, ACCEPTABLE = 0.15, 0.30  # docs/testing/test-plan.md targets
 MIN_SPEAKERS = 3
+LENGTH_BUCKETS = [("under 1 s", 0.0, 1.0), ("1-5 s", 1.0, 5.0), ("5-30 s", 5.0, 30.0), ("over 30 s", 30.0, float("inf"))]
+
+
+def length_bucket(seconds: float) -> str:
+    for name, lo, hi in LENGTH_BUCKETS:
+        if lo <= seconds < hi or (hi == 30.0 and seconds == 30.0):
+            return name
+    return LENGTH_BUCKETS[-1][0]
 
 
 @dataclass
@@ -71,6 +79,7 @@ class Score:
     load_stats: dict = field(default_factory=dict)
     speed_by_host: dict = field(default_factory=dict)
     latency: dict = field(default_factory=dict)
+    by_length: dict = field(default_factory=dict)
 
 
 def _labels(rows: list[dict]) -> dict[tuple[str, str], str]:
@@ -121,10 +130,12 @@ def score(manifest_rows: list[dict], result_rows: list[dict]) -> Score:
     overall: dict[str, Cell] = {}
     by_accent: dict[str, dict[str, Cell]] = {}
     determinism: dict[str, Determinism] = {}
+    by_length: dict[str, dict[str, Cell]] = {}
     for lab in labels:
         per_speaker: dict[str, list[Counts]] = defaultdict(list)
         per_accent: dict[str, dict[str, list[Counts]]] = defaultdict(lambda: defaultdict(list))
         per_repeat: dict[int, list[Counts]] = defaultdict(list)
+        per_length: dict[str, dict[str, list[Counts]]] = defaultdict(lambda: defaultdict(list))
         det = Determinism()
         for c in compared:
             reps = hyps[lab][c]
@@ -133,6 +144,7 @@ def score(manifest_rows: list[dict], result_rows: list[dict]) -> Score:
             spk = clips[c].get("speaker", c)
             per_speaker[spk].append(counts)
             per_accent[clips[c].get("accent", "unknown")][spk].append(counts)
+            per_length[length_bucket(float(clips[c].get("audio_seconds", 0)))][spk].append(counts)
             if len(reps) > 1:
                 det.clips += 1
                 texts = list(reps.values())
@@ -143,18 +155,21 @@ def score(manifest_rows: list[dict], result_rows: list[dict]) -> Score:
                     per_repeat[rep].append(align_counts(ref_norm[c], normalize(text)))
         overall[lab] = _cell(per_speaker)
         by_accent[lab] = {acc: _cell(spk) for acc, spk in per_accent.items()}
+        by_length_lab = {b: _cell(spk) for b, spk in per_length.items()}
         full = [rep for rep, cs in per_repeat.items() if len(cs) == det.clips]
         if det.clips and full:
             wers = [pooled_wer(per_repeat[rep]) for rep in full]
             det.wer_min, det.wer_max = min(wers), max(wers)
         determinism[lab] = det
+        by_length[lab] = by_length_lab
 
     speed = {lab: Speed(*speed_acc[lab]) for lab in labels}
     speed_by_host = {k: Speed(*v) for k, v in host_acc.items()}
     return Score(labels=labels, overall=overall, by_accent=by_accent, determinism=determinism, speed=speed,
                  clips_compared=len(compared),
                  audio_seconds_compared=sum(float(clips[c].get("audio_seconds", 0)) for c in compared),
-                 clips_done={lab: len(hyps[lab]) for lab in labels}, models=models, speed_by_host=speed_by_host)
+                 clips_done={lab: len(hyps[lab]) for lab in labels}, models=models, speed_by_host=speed_by_host,
+                 by_length=by_length)
 
 
 def _pct(x: float) -> str:
@@ -239,6 +254,18 @@ def build_report(s: Score, meta: dict) -> str:
             c = s.by_accent[lab].get(a)
             cells.append("–" if c is None else f"{_pct(c.wer)} ({_pct(c.ci_low)}–{_pct(c.ci_high)})")
         out.append(f"| {a}{mark} | {spk} | {ref.n if ref else 0} | " + " | ".join(cells) + " |")
+    out.append("")
+
+    out += ["## By clip length", "",
+            "EdAcc is cut into segments; 28% are under a second (\"yeah\", \"right\"). Engines differ most on those, "
+            "and in a live conversation they would arrive inside continuous audio rather than alone.", "",
+            "| Clip length | Ref words | " + " | ".join(order) + " |", "|---|---:|" + "---|" * len(order)]
+    for name, _, _ in LENGTH_BUCKETS:
+        ref = s.by_length.get(order[0], {}).get(name)
+        if ref is None:
+            continue
+        cells = [_pct(s.by_length[lab][name].wer) if name in s.by_length.get(lab, {}) else "–" for lab in order]
+        out.append(f"| {name} | {ref.n} | " + " | ".join(cells) + " |")
     out.append("")
 
     out += ["## Determinism (repeats)", "",

@@ -24,7 +24,7 @@ final class EngineAccuracySmokeTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: wav) }
         let models = URL(fileURLWithPath: ProcessInfo.processInfo.environment["CAPTION_ENGINE_MODELS"]
             ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("edacc-eval/models").path)
-        for id in EngineID.allCases {
+        for id in EngineID.allCases {  // includes the no-gate WhisperKit variant
             let t = makeTranscriber(id, modelsDir: models, versions: EngineVersions(fluidAudio: "test", whisperKit: "test"))
             do {
                 try await t.load()

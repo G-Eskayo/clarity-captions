@@ -108,3 +108,17 @@ def test_write_report_with_latency_and_hosts(tmp_path):
     assert "Live latency" in md and "Mac numbers, not iPhone numbers" in md
     assert s.latency["engines"]["e (m)"]["median"] == 0.35
     assert "nan" not in md.lower()
+
+
+def test_by_length_buckets():
+    from edacc_eval.report import length_bucket
+    assert [length_bucket(x) for x in (0.2, 1.0, 4.99, 5.0, 30.0, 30.01)] == \
+        ["under 1 s", "1-5 s", "1-5 s", "5-30 s", "5-30 s", "over 30 s"]
+    man = manifest_rows()
+    man[0]["audio_seconds"] = 0.5
+    rows = [r("c1", "a", ""), r("c2", "a", "i have three kids"), r("c3", "a", "good morning")]
+    s = score(man, rows)
+    assert s.by_length["a"]["under 1 s"].wer == 1.0
+    assert s.by_length["a"]["1-5 s"].wer == 0.0
+    md = build_report(s, meta={"shards_done": 1, "shards_total": 2})
+    assert "## By clip length" in md and "| under 1 s |" in md

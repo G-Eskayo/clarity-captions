@@ -29,7 +29,7 @@ guard let shardPath = arg("--shard-dir", args), let resultsPath = arg("--results
 let shardDir = URL(fileURLWithPath: shardPath)
 let results = URL(fileURLWithPath: resultsPath)
 let repeats = Int(arg("--repeats", args) ?? "1") ?? 1
-let engineIDs = (arg("--engines", args) ?? EngineID.allCases.map(\.rawValue).joined(separator: ","))
+let engineIDs = (arg("--engines", args) ?? EngineID.defaults.map(\.rawValue).joined(separator: ","))
     .split(separator: ",").map { s -> EngineID in
         guard let id = EngineID(rawValue: String(s)) else { fail("unknown engine \(s)") }
         return id
