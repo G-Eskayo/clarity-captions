@@ -160,12 +160,20 @@ Real-time factor on files doesn't answer that, so a second, smaller run feeds au
 
 ## Sharing sherpa-onnx between the minis
 
-sherpa-onnx is the slowest engine on the 2012 mini (about 0.43 real-time factor, about 15 hours per full pass), so the
-M4 can take sherpa-onnx shards once its own engines finish. Both machines pull from one queue on the 2012 mini:
+sherpa-onnx is the slowest engine on the 2012 mini (real-time factor 0.37, about 12 hours per full pass), so the M4
+can take sherpa-onnx shards once its own engines finish. Both machines can pull from one queue on the 2012 mini:
 `claims/shard-NNN/` is created with `mkdir` (atomic), first come first served; a host restarting takes back its own
-unfinished claim first; `done` marks completion. The M4 runs the same sherpa-onnx version (1.13.8) and model
-(Parakeet TDT 0.6B v2 int8); a cross-machine check confirms identical text before results are mixed. Result lines
-record the host, and the speed table splits by machine.
+unfinished claim first; `done` marks completion (`linux-claim.sh`, `claims.py`, tested). Result lines record the host
+and the speed table splits by machine.
+
+**Cross-machine check (shard 1, 548 clips, repeat 1):** the same sherpa-onnx (1.13.8) and model (Parakeet TDT 0.6B
+v2 int8) gave identical text on only 426 clips (77.7%; 93 differ after normalizing). Thread count is not the cause
+(4 and 8 threads on the M4 are identical on all 548); the arm64 and x86-64 ONNX Runtime kernels round differently and
+greedy decoding flips some words. The WER is the same to 0.04 points (16.34% M4, 16.37% 2012), so mixing would not
+move the score, but the results are not bit-identical. Since the M4 also runs sherpa-onnx about 12 times faster
+(31x real time with 8 threads, vs 2.7x), **the M4 runs all sherpa-onnx shards** and the 2012 mini keeps the corpus,
+the shards, the queue and the scoring. The 2012 mini's shard 1 run is kept in `check/` as the x86 Linux reference
+(deterministic across repeats, 2.7x real time on an Ivy Bridge i7), which also feeds #43's Android question.
 
 ## Complexity
 

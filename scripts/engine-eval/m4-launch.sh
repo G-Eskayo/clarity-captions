@@ -16,7 +16,8 @@ export EVAL_SHERPA_REPEATS="${EVAL_SHERPA_REPEATS:-$3}" EVAL_SHERPA_THREADS="${E
 mkdir -p "$EVAL_WORK/logs"
 rm -f "$EVAL_WORK/status.txt"
 # EVAL_DRIVER picks the loop: m4-driver.sh (the cycles, default) or m4-shard-extras.sh (one shard's extras).
-nohup "$HERE/${EVAL_DRIVER:-m4-driver.sh}" >> "$EVAL_WORK/logs/driver.log" 2>&1 < /dev/null &
+# Low priority (nice +15) so dashboard merge gates and interactive work win the CPU.
+nohup nice -n 15 "$HERE/${EVAL_DRIVER:-m4-driver.sh}" >> "$EVAL_WORK/logs/driver.log" 2>&1 < /dev/null &
 echo "driver pid $!"
 cp "$HERE/m4-watch.sh" "$EVAL_WORK/engine-eval-watch.command"
 chmod +x "$EVAL_WORK/engine-eval-watch.command"

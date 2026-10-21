@@ -6,5 +6,5 @@ export PATH=/usr/bin:/bin
 export SHERPA_FIRST="$1" SHERPA_LAST="$2" SHERPA_REPEATS="$3" SHERPA_THREADS="${4:-4}"
 ROOT="$HOME/edacc-eval"
 mkdir -p "$ROOT/logs"
-nohup "$ROOT/tool/linux-sherpa-driver.sh" >> "$ROOT/logs/sherpa.log" 2>&1 < /dev/null &
+nohup nice -n 15 "$ROOT/tool/linux-sherpa-driver.sh" >> "$ROOT/logs/sherpa.log" 2>&1 < /dev/null &
 echo "sherpa driver pid $!"

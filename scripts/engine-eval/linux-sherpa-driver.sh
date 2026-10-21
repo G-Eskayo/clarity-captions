@@ -15,7 +15,7 @@ while true; do
   [ -z "$k" ] && break
   name=$(printf 'shard-%03d' "$k")
   echo "$(date -Is) sherpa $name start (repeats $REPEATS)"
-  if nice -n 10 "$ROOT/venv/bin/python" -m edacc_eval.cli sherpa --shard-dir "$ROOT/shards/$name" \
+  if "$ROOT/venv/bin/python" -m edacc_eval.cli sherpa --shard-dir "$ROOT/shards/$name" \
       --results "$ROOT/results/sherpa-$name.jsonl" --model-dir "$MODEL" --repeats "$REPEATS" --threads "$THREADS" \
       --status "$ROOT/sherpa-status.json"; then
     "$ROOT/tool/linux-claim.sh" done "$k"
