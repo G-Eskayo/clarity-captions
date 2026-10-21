@@ -220,7 +220,7 @@ public struct LatencyRunner {
             try FileManager.default.createDirectory(at: out.deletingLastPathComponent(), withIntermediateDirectories: true)
             FileManager.default.createFile(atPath: out.path, contents: nil)
         }
-        let fh = try FileHandle(forWritingTo: out)
+        let fh = try FileHandle(forUpdating: out)  // read + write: the trailing-newline check reads one byte
         defer { try? fh.close() }
         // A crash mid-write leaves a partial line; start on a fresh one.
         let end = try fh.seekToEnd()
