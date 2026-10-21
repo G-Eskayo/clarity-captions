@@ -73,6 +73,16 @@ Notes for the owner:
 - "Works with no internet connection after a one-time setup" matches CONTEXT.md's precise wording
   (Apple's language files may download once).
 
+## Version 1.1: iPad (#147)
+
+The owner approved the iPad and iPhone Duo look on the simulator on 2026-10-21. Changes to the 1.0 listing:
+
+- **What's New** (limit 4,000): "Seal Speak now runs on iPad, with the captions using the whole screen. It also works on iPhone Duo, folded or open."
+- **Description, last line:** "Captions are in English for now. Requires iPhone 12 or newer, or an iPad with an A14 chip or newer." (tier 1 in docs/research/device-compatibility.md)
+- **Screenshots:** add the 13-inch iPad set (2752 × 2064, landscape): captions in Paper and Harbor, paused with [ Save ], Settings.
+- **Before submitting:** a pass on a real iPad (C1 below). App Review tests universal apps on iPad.
+- **Site:** change "iPhone only for now" on index.html and support.html only once 1.1 is on the store.
+
 ## App Privacy (the "nutrition label")
 
 App Store Connect → App Privacy → Get Started.
