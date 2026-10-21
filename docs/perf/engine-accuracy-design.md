@@ -222,7 +222,9 @@ EVAL_SHERPA=1 EVAL_SHERPA_FIRST=2 EVAL_SHERPA_LAST=32 EVAL_SHERPA_REPEATS=N scri
 EVAL_DRIVER=m4-shard-extras.sh scripts/engine-eval/m4-launch.sh K 1 1
 ```
 
-Rerunning either command after a stop resumes where it left off. Progress: `~/edacc-eval/status.txt` and
+Rerunning either command after a stop resumes where it left off. The live report is
+`~/edacc-eval/report/engine-accuracy-comparison.md` on both minis; it is copied into the repo by a commit, never
+written into a checkout by the drivers (that would block `git pull` on the M4). Progress: `~/edacc-eval/status.txt` and
 `status-engine.json` on the M4, `~/edacc-eval/sherpa-status.json` on the 2012 mini; logs in `~/edacc-eval/logs/`.
 
 ## Not in this ticket

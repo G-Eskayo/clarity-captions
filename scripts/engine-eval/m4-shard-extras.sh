@@ -50,8 +50,7 @@ rsync -a "$WORK/results/apple-$name.jsonl" "$REMOTE:edacc-eval/results/"
 ssh "$REMOTE" 'mkdir -p edacc-eval/results/latency'
 [ -f "$WORK/results/latency/latency-$name.jsonl" ] && rsync -a "$WORK/results/latency/latency-$name.jsonl" "$REMOTE:edacc-eval/results/latency/"
 ssh "$REMOTE" 'edacc-eval/tool/linux-score.sh'
-rsync -a "$REMOTE:edacc-eval/report/engine-accuracy-comparison.md" "$WORK/report/" \
-  && cp "$WORK/report/engine-accuracy-comparison.md" "$REPO/docs/perf/engine-accuracy-comparison.md"
+rsync -a "$REMOTE:edacc-eval/report/engine-accuracy-comparison.md" "$WORK/report/"
 rm -rf "$WORK/shards/$name"
 status "FINISHED"
 echo "$(date '+%F %T') EXTRAS-DONE"

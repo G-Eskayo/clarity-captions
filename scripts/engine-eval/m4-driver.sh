@@ -53,8 +53,7 @@ for k in $(seq "$FIRST" "$LAST"); do
   status "$k" "$i" "pushing results and re-scoring"
   rsync -a "$WORK/results/apple-$name.jsonl" "$REMOTE:edacc-eval/results/" || echo "push results failed (kept locally)"
   ssh "$REMOTE" 'edacc-eval/tool/linux-score.sh' || echo "re-score failed"
-  rsync -a "$REMOTE:edacc-eval/report/engine-accuracy-comparison.md" "$WORK/report/" \
-    && cp "$WORK/report/engine-accuracy-comparison.md" "$REPO/docs/perf/engine-accuracy-comparison.md"
+  rsync -a "$REMOTE:edacc-eval/report/engine-accuracy-comparison.md" "$WORK/report/"
 
   rm -rf "$WORK/shards/$name"
   if [ "$rc" -eq 0 ]; then touch "$marker"; else echo "$name finished with engine errors (rc $rc); rerun resumes it"; fi
@@ -77,8 +76,7 @@ if [ "$SHERPA" = "1" ]; then
       echo "sherpa $name failed; stopping (rerun resumes)"; break
     fi
     ssh "$REMOTE" 'edacc-eval/tool/linux-score.sh' || echo "re-score failed"
-    rsync -a "$REMOTE:edacc-eval/report/engine-accuracy-comparison.md" "$WORK/report/" \
-      && cp "$WORK/report/engine-accuracy-comparison.md" "$REPO/docs/perf/engine-accuracy-comparison.md"
+    rsync -a "$REMOTE:edacc-eval/report/engine-accuracy-comparison.md" "$WORK/report/"
     rm -rf "$WORK/shards/$name"
     echo "$(date '+%F %T') sherpa $name done on $HOST"
   done
