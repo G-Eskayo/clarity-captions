@@ -58,6 +58,7 @@ Task {
             let t = makeTranscriber(id, modelsDir: modelsDir, versions: versions, whisperModel: whisperModel)
             let r = try await runner.run(t, clips: present)
             print("ENGINE-EVAL-RESULT \(t.engine) \(t.model) done \(r.done) errors \(r.errors)")
+            if r.errors > 0 { exitCode = 1 }  // the driver won't mark the shard done; a rerun retries the failures
         } catch {
             print("ENGINE-EVAL-ERROR \(id.rawValue) failed: \(error)")
             exitCode = 1

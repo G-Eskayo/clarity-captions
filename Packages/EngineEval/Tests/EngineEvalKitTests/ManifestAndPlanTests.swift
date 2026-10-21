@@ -86,3 +86,19 @@ final class ManifestAndPlanTests: XCTestCase {
         XCTAssertNil(PackagePins.version(of: "fluidaudio", resolvedFile: dir.appendingPathComponent("missing")))
     }
 }
+
+final class SilencePaddingTests: XCTestCase {
+    func testPadsShortClipWithTrailingSilence() {
+        XCTAssertEqual(SilencePadding.padded([0.5, -0.5], toAtLeast: 5), [0.5, -0.5, 0, 0, 0])
+    }
+
+    func testEmptyClipBecomesAllSilence() {
+        XCTAssertEqual(SilencePadding.padded([], toAtLeast: 3), [0, 0, 0])
+    }
+
+    func testLongEnoughClipUnchanged() {
+        XCTAssertEqual(SilencePadding.padded([1, 2, 3], toAtLeast: 3), [1, 2, 3])
+        XCTAssertEqual(SilencePadding.padded([1, 2, 3, 4], toAtLeast: 3), [1, 2, 3, 4])
+        XCTAssertEqual(SilencePadding.padded([1], toAtLeast: 0), [1])
+    }
+}

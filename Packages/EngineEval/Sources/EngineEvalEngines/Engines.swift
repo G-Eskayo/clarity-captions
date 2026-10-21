@@ -1,5 +1,6 @@
 import AVFoundation
 import CaptionCore
+import EngineEvalKit
 import FluidAudio
 import Foundation
 import Speech
@@ -100,6 +101,7 @@ public final class ParakeetFileTranscriber: FileTranscriber {
     private let modelsDir: URL
     private var manager: AsrManager?
     private var decoderLayers = 2
+    private let converter = AudioConverter()
 
     public init(version: AsrModelVersion, name: String, modelsDir: URL, fluidAudio: String) {
         asrVersion = version; model = name; self.modelsDir = modelsDir
@@ -118,7 +120,9 @@ public final class ParakeetFileTranscriber: FileTranscriber {
     public func transcribe(_ url: URL) async throws -> String {
         guard let manager else { throw NSError(domain: "EngineEval", code: 2) }
         var state = TdtDecoderState.make(decoderLayers: decoderLayers)  // fresh per clip: clips are independent
-        let result = try await manager.transcribe(url, decoderState: &state)
+        let samples = SilencePadding.padded(try converter.resampleAudioFile(url),
+                                            toAtLeast: ASRConstants.minimumRequiredSamples(forSampleRate: 16000))
+        let result = try await manager.transcribe(samples, decoderState: &state)
         return result.text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

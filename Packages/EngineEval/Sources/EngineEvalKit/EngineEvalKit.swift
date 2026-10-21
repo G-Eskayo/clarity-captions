@@ -213,3 +213,11 @@ public enum PackagePins {
         return (state?["version"] as? String) ?? (state?["revision"] as? String)
     }
 }
+
+/// Parakeet (FluidAudio) refuses clips shorter than its minimum (1 s); about 28% of EdAcc segments are shorter
+/// (mostly "yeah", "mm"). Trailing silence lets it hear them without changing what was said.
+public enum SilencePadding {
+    public static func padded(_ samples: [Float], toAtLeast minimum: Int) -> [Float] {
+        samples.count >= minimum ? samples : samples + [Float](repeating: 0, count: minimum - samples.count)
+    }
+}

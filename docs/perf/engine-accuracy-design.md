@@ -114,7 +114,9 @@ Known residual mismatches, accepted and small: "dash" spoken in the reference vs
 years like "twenty twenty" vs `2020`, "one hundred and five" vs `105`.
 
 **WER** = (S + D + I) / N per engine x accent and overall, via word-level Levenshtein alignment, pooled (total
-errors over total reference words, not a mean of per-clip rates). Only clips that every engine finished are
+errors over total reference words, not a mean of per-clip rates). Parakeet via FluidAudio refuses clips shorter
+than 1 s (4,868 of 17,529 segments, mostly "yeah" and "mm"), so the harness pads those with trailing silence to
+1 s for Parakeet only; silence adds no words. Only clips that every engine finished are
 compared, so every engine is scored on the same words. The primary score uses repeat 1.
 
 **Confidence intervals**: 95% percentile bootstrap, 1,000 resamples, resampling **speakers** (not clips) within
@@ -133,6 +135,28 @@ each cell, because one speaker's segments are correlated. Cells with fewer than 
   cell over precomputed per-speaker error counts.
 - Disk: 2012 box about 6.5 GB corpus + about 4 GB shards; M4 holds one shard (about 115 MB) plus models (about
   3 GB).
+
+## Running it
+
+Tests (no network, temp dirs only):
+
+```bash
+cd scripts/engine-eval && python3 -m pytest          # normalizer, WER, shards, resume, report
+swift test --package-path Packages/EngineEval --filter EngineEvalKitTests
+CAPTION_ENGINE_EVAL=1 swift test --package-path Packages/EngineEval --filter EngineAccuracySmoke  # opt-in, downloads models
+```
+
+The corpus run, once the shards exist on the 2012 mini (`python -m edacc_eval.cli build-shards`):
+
+```bash
+# 2012 mini: sherpa-onnx over shards FIRST..LAST with N repeats (nohup, resumable)
+~/edacc-eval/tool/linux-sherpa-launch.sh 2 32 N
+# M4 mini, from the repo worktree: shards FIRST.. for MAX shards with N repeats (nohup, Terminal window)
+scripts/engine-eval/m4-launch.sh 2 31 N
+```
+
+Rerunning either command after a stop resumes where it left off. Progress: `~/edacc-eval/status.txt` and
+`status-engine.json` on the M4, `~/edacc-eval/sherpa-status.json` on the 2012 mini; logs in `~/edacc-eval/logs/`.
 
 ## Not in this ticket
 
