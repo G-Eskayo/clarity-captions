@@ -4,7 +4,7 @@
 
 export const THEMES = [
   { id: 'paper', name: 'Paper', dark: false, bg: '#FAF5E6', text: '#141419', gear: '#14514B', speakers: ['#14514B', '#7A350C'], saved: '#12512F' },
-  { id: 'seaglass', name: 'Sea glass', dark: false, bg: '#DCEFEA', text: '#0D2F2C', gear: '#0B4842', speakers: ['#0B4842', '#6E2E0A'], saved: '#12512F' },
+  { id: 'seaglass', name: 'Sea Glass', dark: false, bg: '#DCEFEA', text: '#0D2F2C', gear: '#0B4842', speakers: ['#0B4842', '#6E2E0A'], saved: '#12512F' },
   { id: 'peach', name: 'Peach', dark: false, bg: '#FBE8D2', text: '#2B1A10', gear: '#6E2E0A', speakers: ['#0B4842', '#6E2E0A'], saved: '#12512F' },
   { id: 'charcoal', name: 'Charcoal', dark: true, bg: '#2B2D31', text: '#ECE6D9', gear: '#E2D9C6', speakers: ['#93DCD1', '#F2C994'], saved: '#9BE3B4' },
   { id: 'night', name: 'Night', dark: true, bg: '#1D2536', text: '#E9E3D5', gear: '#C9D6F2', speakers: ['#93DCD1', '#F2C994'], saved: '#9BE3B4' },
@@ -14,8 +14,14 @@ export const THEMES = [
 export const LETTERING = [
   { id: 'opendyslexic', name: 'OpenDyslexic', css: "'OpenDyslexic', system-ui, sans-serif" },
   { id: 'atkinson', name: 'Atkinson Hyperlegible', css: "'Atkinson Hyperlegible', system-ui, sans-serif" },
-  { id: 'standard', name: 'Standard', css: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }
+  { id: 'standard', name: 'Standard', css: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
+  { id: 'rounded', name: 'Rounded', css: "ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif" },
+  { id: 'serif', name: 'Serif', css: "ui-serif, 'New York', Georgia, 'Times New Roman', serif" },
+  { id: 'typewriter', name: 'Typewriter', css: "ui-monospace, 'SF Mono', Menlo, Consolas, monospace" }
 ]
+
+// Settings' one behavior setting (IdleStop.swift): stop captioning after this long with no one talking.
+export const IDLE_STOP = ['5 min', '15 min', '30 min', 'Never']
 
 // The app's five text-size steps (CaptionStyle.swift), on a 22px base like the mock-ups.
 export const SIZES = [0.75, 0.875, 1, 1.15, 1.35]
@@ -31,4 +37,13 @@ export const SCRIPT = [
   { speaker: 1, text: 'And it starts a new line when someone else talks?' },
   { speaker: 0, text: 'When the voice changes, yes. It can mix up voices that sound alike.' },
   { speaker: 1, text: 'Good to know. So what should we try first', unfinished: true }
+]
+
+// One made-up conversation already in the demo's Saved list, so [ Share ] and [ Delete ] can be tried right away.
+// Saved "yesterday" relative to whenever the page is opened.
+export const SAVED_EXAMPLE = [
+  { speaker: 0, text: 'Did you two decide on the trip yet?' },
+  { speaker: 1, text: "We're leaning toward the coast. Late May, if the weather holds." },
+  { sound: 'Laughter' },
+  { speaker: 0, text: "Send me the dates and I'll look at trains." }
 ]

@@ -1,7 +1,7 @@
 // Checks for the website in site/ (#44), no dependencies: node scripts/check-site.mjs
 // 1. Nothing phones home: every script, stylesheet, image, font and CSS url() is local (or a data: URL).
 // 2. Honest claims (docs/design/honest-claims-2026-10-10.md): no "who is speaking", naming speakers, speed promises,
-//    reading or hearing benefits, "free" or a price on the marketing page.
+//    reading or hearing benefits, "free", or any price other than the real one ($4.99, once: ADR 0007) on the marketing page.
 // 3. Contrast: every demo theme's caption text and speaker colours reach 7:1 (the app's rule); the page's own text,
 //    muted text and links reach 4.5:1 on their backgrounds, in light and dark.
 // 4. Links and anchors: local files exist; every #anchor has a target.
@@ -9,8 +9,8 @@
 import { readFileSync, existsSync, readdirSync } from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { THEMES, SCRIPT } from '../site/seal-data.js'
-import { chunksOf, blocksFor, lip } from '../site/demo.js'
+import { THEMES, SCRIPT, LETTERING, SAVED_EXAMPLE } from '../site/seal-data.js'
+import { chunksOf, blocksFor, lip, transcriptOf, previewOf, savedTitle } from '../site/demo.js'
 
 const SITE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'site')
 const failures = []
@@ -44,7 +44,7 @@ const BANNED = [
   [/name (each|the|a|your) (speaker|voice)|naming speakers|give .{0,20} a name/i, 'mentions naming speakers (removed in v1)'],
   [/within (a|one) second|instant(ly)? caption|real[- ]time accuracy|100 ?%|every word/i, 'promises speed or accuracy'],
   [/improves? (your )?reading|helps? (you )?(read|hear)|hearing loss|treat|cure|better hearing/i, 'makes a reading or hearing claim'],
-  [/\bfree\b|\$\s?\d|\d+(\.\d+)? ?(usd|dollars)/i, 'mentions price or "free" (App Store placeholder only)']
+  [/\bfree\b|\$\s?(?!4\.99\b)\d|\d+(\.\d+)? ?(usd|dollars)/i, 'mentions "free" or a price other than $4.99']
 ]
 const pageText = visible(read('index.html')) + ' ' + SCRIPT.map((s) => s.text || s.sound).join(' ')
 for (const [re, why] of BANNED) {
@@ -56,6 +56,7 @@ check(/can (contain|get|make) mistakes|can mix (people|up)/i.test(pageText), 'in
 // The banned patterns must catch real claims and spare honest disclaimers.
 check(BANNED[0][0].test('Seal shows who is speaking') && !BANNED[0][0].test("It doesn't know who anyone is"), 'BANNED[0] self-test')
 check(BANNED[4][0].test('Free for everyone') && !BANNED[4][0].test('freedom'), 'BANNED[4] self-test')
+check(BANNED[4][0].test('Only $2.99') && BANNED[4][0].test('$4.999') && !BANNED[4][0].test('$4.99 once'), 'BANNED[4] allows only the real price')
 check(!SCRIPT.some((s) => s.speaker !== undefined && s.speaker > 1), 'demo uses only Speaker 1 and 2')
 
 // 3. contrast
@@ -103,6 +104,11 @@ check(b[b.length - 1].final === false, 'blocksFor: the last, unfinished line sta
 check(b.slice(0, -1).every((x) => x.sound || x.final), 'blocksFor: earlier lines are final')
 check(blocksFor(SCRIPT, 1, 'Hi. My')[1]?.text === 'Hi. My' && blocksFor(SCRIPT, 1, 'Hi. My')[1].final === false, 'blocksFor: a partial line is still-changing')
 check(blocksFor(SCRIPT, 3, 'x').length === 3, 'blocksFor: no partial is drawn for a sound label')
+check(LETTERING.length === 6 && LETTERING[0].id === 'opendyslexic', 'six letterings, OpenDyslexic first (the default)')
+check(transcriptOf(SAVED_EXAMPLE).split('\n')[0] === 'Speaker 1: Did you two decide on the trip yet?' && transcriptOf(SAVED_EXAMPLE).includes('\n[Laughter]\n'), 'transcriptOf: "Speaker N: " lines, sound labels bare')
+check(previewOf(SAVED_EXAMPLE).length === 71 && previewOf(SAVED_EXAMPLE).endsWith('…') && previewOf([{ speaker: 0, text: 'Hi.' }]) === 'Speaker 1: Hi.', 'previewOf: cut at 70 characters with an ellipsis')
+const at = new Date(2026, 9, 20, 15, 5)
+check(savedTitle(new Date(2026, 9, 20, 8, 56), at) === 'Today, 8:56 AM' && savedTitle(new Date(2026, 9, 19, 19, 12), at) === 'Yesterday, 7:12 PM' && savedTitle(new Date(2026, 9, 14, 9, 0), at) === 'Oct 14, 9:00 AM', `savedTitle: Today / Yesterday / date (got ${savedTitle(new Date(2026, 9, 14, 9, 0), at)})`)
 check(lip('#141419') === '#565659', `lip: dark fill lightens 28% (got ${lip('#141419')})`)
 check(lip('#E9E3D5') === '#a8a399', `lip: light fill darkens 28% (got ${lip('#E9E3D5')})`)
 
