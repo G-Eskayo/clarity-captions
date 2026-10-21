@@ -90,3 +90,41 @@ caveat), **Internal** (process detail, not for marketing).
 - **Confidence:** Ours (synthetic voices; real-device check pending).
 - **Drives:** SpeakerLabelSmoother (#94); open decision on adding a speaker-embedding model.
 - **Public use:** Careful (good "how we measure" story; don't overstate accuracy).
+
+## E9. EdAcc: accented conversations with checked transcripts
+- **Source:** Sanabria, Bogoychev, Markl, Carmantini, Klejch & Bell (2023), *The Edinburgh International Accents of
+  English Corpus: Towards the Democratization of English ASR*, ICASSP. [arXiv 2303.18110](https://arxiv.org/abs/2303.18110) ·
+  [Edinburgh DataShare, doi:10.7488/ds/7914](https://doi.org/10.7488/ds/7914) (handle 10283/8983) ·
+  Hugging Face mirror [`edinburghcstr/edacc`](https://huggingface.co/datasets/edinburghcstr/edacc) (test + validation,
+  6.95 GB parquet, 19,137 segments, 32.7 h after segmentation, 32 accent groups, 122 speakers).
+- **License:** CC BY-SA (the current DataShare record ships `CC_BY_SA_license_text.txt`; checked 2026-10-21). An earlier
+  DataShare record was withdrawn over a license change, so this current record is the one we rely on. The Hugging Face
+  card states no license of its own; we treat the mirror as carrying the DataShare license.
+- **What we took:** two-person conversations, human transcripts and per-speaker accent and first-language labels: the
+  closest public match to Seal's sit-down use. The paper reports every model degrading on accents (the best, Whisper
+  large, averaged 19.7% WER versus 2.7% on clean US read speech), worst on Jamaican, Indonesian, Nigerian and Kenyan
+  English.
+- **Handling:** downloaded with the owner's approval (2026-10-21) to the 2012 Mac mini only; the audio never goes in the
+  repo (ignore rules) or on any public page. Only aggregate scores are published.
+- **Confidence:** Strong (peer-reviewed corpus).
+- **Drives:** #145 engine accuracy test ([design](../perf/engine-accuracy-design.md), [results](../perf/engine-accuracy-comparison.md)).
+- **Public use:** Careful (cite the corpus and aggregate WER; never quote or play its audio).
+
+## E10. Speech engines compared in #145, and their licenses
+- **Source:** model cards and repos, checked 2026-10-21:
+  Apple SpeechAnalyzer / SpeechTranscriber (system framework, en-US asset via AssetInventory);
+  [FluidAudio](https://github.com/FluidInference/FluidAudio) 0.17.5 (Apache-2.0) running
+  [`FluidInference/parakeet-tdt-0.6b-v2-coreml`](https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v2-coreml) (CC BY 4.0,
+  from [`nvidia/parakeet-tdt-0.6b-v2`](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2)) and
+  [`FluidInference/parakeet-ultra-coreml`](https://huggingface.co/FluidInference/parakeet-ultra-coreml) (CC BY 4.0, from
+  [`moondream/parakeet-ultra`](https://huggingface.co/moondream/parakeet-ultra));
+  [WhisperKit / argmax-oss-swift](https://github.com/argmaxinc/argmax-oss-swift) (MIT) running
+  `openai_whisper-large-v3-v20240930_turbo` from [`argmaxinc/whisperkit-coreml`](https://huggingface.co/argmaxinc/whisperkit-coreml)
+  (MIT, from [`openai/whisper-large-v3-turbo`](https://huggingface.co/openai/whisper-large-v3-turbo));
+  [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) 1.13.8 (Apache-2.0) running
+  `sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8` (CC BY 4.0, from NVIDIA's Parakeet TDT 0.6B v2).
+- **What we took:** every candidate runs fully on device and has a license that allows use in a free app with
+  attribution (CC BY 4.0 needs credit in the app's notices if shipped).
+- **Confidence:** Strong (official model cards).
+- **Drives:** #145; any engine switch would add its notice to `NOTICE.md` and the credits screen.
+- **Public use:** Yes.
