@@ -135,3 +135,30 @@ def test_dropped_engine_does_not_shrink_the_comparison():
     md = build_report(s, meta={"shards_done": 2, "shards_total": 2})
     assert "dropped after shard 1: slow" in md
     assert report.DROPPED.get("whisperkit")           # the real config marks WhisperKit dropped
+
+
+def test_size_options_table(tmp_path):
+    from edacc_eval.report import write_report, size_rows
+    shards = tmp_path / "shards"; (shards / "shard-001").mkdir(parents=True)
+    (shards / "index.json").write_text(json.dumps({"n_shards": 1, "shards": ["shard-001"]}))
+    (shards / "shard-001" / "manifest.jsonl").write_text(
+        "\n".join(json.dumps(m | {"file": f"audio/{m['clip_id']}.wav"}) for m in manifest_rows()) + "\n")
+    res = tmp_path / "results"; (res / "memory").mkdir(parents=True)
+    rows = []
+    for c, h, a in (("c1", "hello there", "hello where"), ("c2", "i have three kids", "i have kids"),
+                    ("c3", "good morning", "good morning")):
+        rows.append(r(c, "parakeet-fluidaudio", h, model="small") | {"speaker": c})
+        rows.append(r(c, "apple-speechanalyzer", a, model="SpeechTranscriber en-US"))
+    (res / "apple-shard-001.jsonl").write_text("\n".join(json.dumps(x) for x in rows) + "\n")
+    (res / "sizes.json").write_text(json.dumps({
+        "small": {"model": "small", "method": "4-bit", "disk_bytes": 300_000_000, "zipped_bytes": 250_000_000},
+        "fp16-only": {"model": "fp16-only", "method": "not run", "disk_bytes": 1_200_000_000, "zipped_bytes": 1}}))
+    (res / "memory" / "memory.jsonl").write_text(
+        json.dumps({"model": "small", "footprint_peak_mb": 900.0}) + "\n" +
+        json.dumps({"model": "small", "footprint_peak_mb": 512.0}) + "\n{bad\n")
+    s = write_report(shards, res, tmp_path / "r.md")
+    md = (tmp_path / "r.md").read_text()
+    assert "## Size options" in md and "| small | 4-bit | 300 MB | 250 MB |" in md and "512 MB" in md
+    assert "| fp16-only | not run |" in md and "nan" not in md.lower()
+    rows = {x["model"]: x for x in size_rows(s)}
+    assert rows["small"]["wer"] == 0.0 and rows["fp16-only"]["label"] is None

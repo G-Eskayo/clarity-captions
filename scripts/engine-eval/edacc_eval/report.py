@@ -85,6 +85,8 @@ class Score:
     load_stats: dict = field(default_factory=dict)
     speed_by_host: dict = field(default_factory=dict)
     latency: dict = field(default_factory=dict)
+    sizes: dict = field(default_factory=dict)
+    memory: dict = field(default_factory=dict)
     by_length: dict = field(default_factory=dict)
     notes: dict = field(default_factory=dict)
 
@@ -218,6 +220,61 @@ def _latency_section(lat: dict) -> list[str]:
     return out
 
 
+def _mb(b) -> str:
+    return "–" if b is None else f"{b / 1e6:.0f} MB"
+
+
+def size_rows(s: Score) -> list[dict]:
+    """One row per model that has a size record: size, WER, latency, memory, and whether it clearly beats Apple
+    (upper end of its 95% CI below Apple's WER)."""
+    apple = next((l for l in s.labels if s.models[l]["engine"] == "apple-speechanalyzer"), None)
+    apple_wer = s.overall[apple].wer if apple else math.nan
+    by_model = {s.models[l]["model"]: l for l in s.labels}
+    lat = (s.latency or {}).get("engines", {})
+    rows = []
+    for model, z in s.sizes.items():
+        lab = by_model.get(model)
+        cell = s.overall.get(lab) if lab else None
+        lat_key = next((k for k in lat if k.endswith(f"({model})")), None)
+        mem = s.memory.get(model, {})
+        rows.append({
+            "model": model, "label": lab, "method": z.get("method", ""), "disk": z.get("disk_bytes"),
+            "zipped": z.get("zipped_bytes"), "wer": cell.wer if cell else math.nan,
+            "ci": (cell.ci_low, cell.ci_high) if cell else (math.nan, math.nan),
+            "latency": (lat[lat_key]["median"], lat[lat_key]["p95"]) if lat_key else (math.nan, math.nan),
+            "memory_peak_mb": mem.get("footprint_peak_mb"),
+            "beats_apple": bool(cell and not math.isnan(apple_wer) and cell.ci_high < apple_wer),
+        })
+    rows.sort(key=lambda r: r["disk"] or 0)
+    return rows
+
+
+def _size_section(s: Score) -> list[str]:
+    if not s.sizes:
+        return []
+    out = ["## Size options (Parakeet builds)", "",
+           "Whole model folder as the app would ship it (all components). Zipped = deflate level 9, close to what an "
+           "App Store download costs. Memory = this process's peak footprint while transcribing 60 clips on the M4 "
+           "(Neural Engine memory held by system daemons is not included). \"Clearly beats Apple\" = the upper end "
+           "of the 95% CI is below Apple SpeechAnalyzer's WER.", "",
+           "| Model | Method | On disk | Zipped | WER (95% CI) | Clearly beats Apple | Correct word, median / p95 | "
+           "Peak memory |", "|---|---|---:|---:|---|---|---|---:|"]
+    for r in size_rows(s):
+        wer = "not run" if math.isnan(r["wer"]) else f"{_pct(r['wer'])} ({_pct(r['ci'][0])}–{_pct(r['ci'][1])})"
+        latency = "–" if math.isnan(r["latency"][0]) else f"{_secs(r['latency'][0])} / {_secs(r['latency'][1])}"
+        mem = "–" if r["memory_peak_mb"] is None else f"{r['memory_peak_mb']:.0f} MB"
+        beats = "–" if math.isnan(r["wer"]) else ("yes" if r["beats_apple"] else "no")
+        out.append(f"| {r['model']} | {r['method']} | {_mb(r['disk'])} | {_mb(r['zipped'])} | {wer} | {beats} | "
+                   f"{latency} | {mem} |")
+    apple_mem = next((v for k, v in s.memory.items() if k.startswith("SpeechTranscriber")), None)
+    if apple_mem:
+        out += ["", f"Apple SpeechAnalyzer for reference: model is a system asset (not in the app download); this "
+                    f"process peaked at {apple_mem['footprint_peak_mb']:.0f} MB (the recognizer runs largely in a system "
+                    "service, so this understates its memory)."]
+    out.append("")
+    return out
+
+
 def build_report(s: Score, meta: dict) -> str:
     now = meta.get("generated_at") or dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     out = [
@@ -312,6 +369,7 @@ def build_report(s: Score, meta: dict) -> str:
                        f"{sp.lines} |")
     out.append("")
     out += _latency_section(s.latency)
+    out += _size_section(s)
 
     out += ["## Engines and models", "", "| Engine | Model | Version | Clips done |", "|---|---|---|---:|"]
     for lab in order:
@@ -338,6 +396,16 @@ def write_report(shards_dir: Path, results_dir: Path, out: Path, json_out: Path 
             manifest_rows += read_manifest(shards_dir / name)
     s = score(manifest_rows, rows)
     s.load_stats = asdict(stats)
+    if (results_dir / "sizes.json").exists():
+        s.sizes = json.loads((results_dir / "sizes.json").read_text(encoding="utf-8"))
+    for mem_file in sorted((results_dir / "memory").glob("*.jsonl")):
+        for raw in mem_file.read_text(encoding="utf-8").splitlines():
+            try:
+                m = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(m, dict) and "model" in m:
+                s.memory[m["model"]] = m  # last measurement wins
     for lat_file in sorted((results_dir / "latency").glob("latency-shard-*.jsonl")):
         from .latency import analyze
         from .shards import read_manifest as _rm
