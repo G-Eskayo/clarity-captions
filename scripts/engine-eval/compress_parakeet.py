@@ -43,10 +43,13 @@ def main() -> None:
     ap.add_argument("--out", type=Path, required=True, help="models/variants directory")
     ap.add_argument("--variants", default="ultra-pal6,ultra-pal4")
     ap.add_argument("--workers", type=int, default=6)
+    ap.add_argument("--sizes", type=Path, required=True, help="sizes.json to upsert")
     a = ap.parse_args()
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from edacc_eval.sizes import record
 
+    record(a.sizes, "ultra-fp16-encoder-only", a.fp16, f"fp16 encoder as exported (iOS 18 target), not run; "
+           f"coremltools {ct.__version__}", "CC BY 4.0")
     model = ct.models.MLModel(str(a.fp16), skip_model_load=True)
     for name in a.variants.split(","):
         desc, cfg = VARIANTS[name]
@@ -66,7 +69,7 @@ def main() -> None:
         (dst / "NOTICE.txt").write_text(NOTICE)
         method = f"{desc}; coremltools {ct.__version__}; encoder only, other components as published"
         (dst / "variant.json").write_text(json.dumps({"asr_version": "ultra", "method": method}, indent=2) + "\n")
-        row = record(a.out.parent / "sizes.json", name, dst, method, "CC BY 4.0 (attribution in NOTICE.txt)",
+        row = record(a.sizes, name, dst, method, "CC BY 4.0 (attribution in NOTICE.txt)",
                      encoder=dst / "Encoder.mlmodelc")
         print(f"{name}: {time.time() - t0:.0f}s, {row['disk_bytes'] / 1e6:.0f} MB on disk, "
               f"{row['zipped_bytes'] / 1e6:.0f} MB zipped", flush=True)

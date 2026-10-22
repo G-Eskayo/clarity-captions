@@ -40,3 +40,12 @@ def test_record_upserts(tmp_path):
     record(out, "m", d, "int8 again", "CC BY 4.0")
     data = json.loads(out.read_text())
     assert list(data) == ["m"] and data["m"]["method"] == "int8 again" and data["m"]["disk_bytes"] == 105_000
+
+
+def test_include_limits_to_listed_components_and_missing_raises(tmp_path):
+    import pytest
+    d = make(tmp_path)
+    assert dir_bytes(d, ["vocab.json"]) == 5_000
+    assert dir_bytes(d, ["Encoder.mlmodelc", "vocab.json"]) == 105_000
+    with pytest.raises(FileNotFoundError):
+        dir_bytes(d, ["Missing.mlmodelc"])

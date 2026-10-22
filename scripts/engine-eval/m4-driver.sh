@@ -81,5 +81,6 @@ if [ "$SHERPA" = "1" ]; then
     echo "$(date '+%F %T') sherpa $name done on $HOST"
   done
 fi
-status "$LAST" "$COUNT" "FINISHED"
+# A chained caller (m4-compression.sh) keeps the window open for its later steps.
+[ "${EVAL_NO_FINISH:-0}" = "1" ] || status "$LAST" "$COUNT" "FINISHED"
 echo "$(date '+%F %T') DRIVER-DONE"

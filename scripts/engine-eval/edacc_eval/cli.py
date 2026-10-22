@@ -52,6 +52,14 @@ def main(argv: list[str] | None = None) -> int:
     sl.add_argument("--hop", type=float, default=0.5)
     sl.add_argument("--max-clip-seconds", type=float, default=30.0)
 
+    z = sub.add_parser("sizes", help="record a model folder's on-disk and zipped size into sizes.json")
+    z.add_argument("--out", type=Path, required=True)
+    z.add_argument("--model", required=True)
+    z.add_argument("--folder", type=Path, required=True)
+    z.add_argument("--include", default="", help="comma list of components inside the folder (default: all)")
+    z.add_argument("--method", default="as published")
+    z.add_argument("--license", default="CC BY 4.0")
+
     a = p.parse_args(argv)
     if a.cmd == "build-shards":
         from .shards import build_shards
@@ -73,6 +81,10 @@ def main(argv: list[str] | None = None) -> int:
     elif a.cmd == "sherpa-latency":
         from .sherpa_run import run_latency
         print(f"sherpa latency clips run: {run_latency(a.shard_dir, a.out, a.model_dir, a.threads, a.hop, a.max_clip_seconds)}")
+    elif a.cmd == "sizes":
+        from .sizes import record
+        inc = [x for x in a.include.split(",") if x] or None
+        print(json.dumps(record(a.out, a.model, a.folder, a.method, a.license, include=inc)))
     elif a.cmd == "compare":
         from .results import compare_hypotheses
         print(json.dumps(compare_hypotheses([a.a], [a.b], a.engine), indent=2))
