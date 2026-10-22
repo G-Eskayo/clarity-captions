@@ -129,15 +129,20 @@ caveat), **Internal** (process detail, not for marketing).
 - **Drives:** #145; any engine switch would add its notice to `NOTICE.md` and the credits screen.
 - **Public use:** Yes.
 
-## E11. Shard 1 of the engine accuracy test: which engine follows accents best
+## E11. Engine accuracy test on all of EdAcc: which engine follows accents best
 - **Source:** our own measurement, [docs/perf/engine-accuracy-comparison.md](../perf/engine-accuracy-comparison.md)
-  (#145; shard 1 = 548 EdAcc segments, 1.1 h, 120 speakers, all 32 accent groups, 5 repeats per engine; live-latency
-  sample of 526 clips on the M4 Mac mini).
-- **What we took:** Parakeet Ultra via FluidAudio had the lowest word error rate (13.3%, 95% CI 11.8–15.0%) against
-  Apple SpeechAnalyzer's 17.4% (15.5–19.4%), lower on almost every accent with enough speakers to say, and it also
-  put correct words on screen sooner (median 0.24 s vs 0.67 s after the word was said). Parakeet v2 15.7%, sherpa-onnx
-  16.3%, WhisperKit large-v3 turbo 23.5% (it returns nothing for most sub-second clips under its default no-speech
-  gate; 19.8% with the gate off). Every engine except WhisperKit gave identical text on all five repeats.
-- **Confidence:** Ours (one shard of 32; Mac, not iPhone; accent cells with few speakers are wide).
-- **Drives:** whether to test Parakeet on the phone next (#145 follow-up); the full-corpus run.
-- **Public use:** Careful (say "on a public accented-conversation corpus, in our test"; wait for the full run).
+  (#145; all 32 shards: 17,528 EdAcc segments, 31.4 h, 122 speakers, 32 accent groups, one run per clip after a
+  5-repeat shard 1; live-latency sample of 526 clips on the M4 Mac mini).
+- **What we took:** Parakeet Ultra via FluidAudio had the lowest word error rate, **13.8% (95% CI 12.7–14.7%)**,
+  against Apple SpeechAnalyzer's **17.2% (16.0–18.4%)**: about a fifth fewer errors. Parakeet v2 15.5%, sherpa-onnx
+  (Parakeet v2 int8, the Android-capable runtime) 16.1%. Ultra was best on every one of the 32 shards (2.2 to 4.3
+  points ahead of Apple) and on every accent group with three or more speakers. It also put correct words on screen
+  sooner in the live sample (median 0.24 s after the word was said, against 0.67 s for Apple; p95 1.34 s against
+  1.86 s). WhisperKit large-v3 turbo was dropped after shard 1 (23.5%, slowest, Apple-only). Apple, both Parakeet
+  builds and sherpa-onnx gave identical text on all five repeats of shard 1.
+- **Confidence:** Ours. Strong for the ranking on this corpus (32 of 32 shards agree); Mac, not iPhone, for latency
+  and speed; segmented clips, not continuous conversation; single-speaker accent cells are wide.
+- **Drives:** whether Seal switches its caption engine to Parakeet Ultra, pending an iPhone check (latency, battery,
+  heat, memory, download size, CC BY 4.0 attribution).
+- **Public use:** Careful ("on a public corpus of accented conversations, in our test, Parakeet made about a fifth
+  fewer word errors than Apple's built-in engine").

@@ -134,6 +134,10 @@ clips the remaining engines are compared on. Counterpoint: Whisper was the only 
 may come back for the non-English / live-translate work. That would be a separate test, with Parakeet v3 as the
 other multilingual candidate. Shards 2-32 run Apple, Parakeet v2, Parakeet Ultra and sherpa-onnx, one run per clip.
 
+**One clip sherpa-onnx can't take:** `test-EDACC-C34-9` (about 9 minutes, the longest segment) exceeds the offline
+Parakeet ONNX model's maximum input length, so sherpa-onnx errors on it and the full comparison covers 17,528 of
+17,529 clips. A chunked decode would fix it; one clip doesn't move any result.
+
 ## Live latency
 
 Added 2026-10-21 at the owner's request: "how fast are the words correctly generating after they have been said?"
