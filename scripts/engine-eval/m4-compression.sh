@@ -24,6 +24,9 @@ STATUS="$WORK/status.txt"
 status() { printf 'Parakeet size test (#150)\nStage: %s\nUpdated: %s\n' "$1" "$(date '+%F %T')" > "$STATUS.tmp" && mv "$STATUS.tmp" "$STATUS"; }
 mkdir -p "$WORK/results/latency" "$WORK/results/memory" "$WORK/models/variants"
 
+# Step 1 can also run elsewhere (the M4's disk is tight): copy the built folders into $WORK/models/variants and the
+# sizes into $SIZES, then start with EVAL_SKIP_BUILD=1.
+if [ "${EVAL_SKIP_BUILD:-0}" != "1" ]; then
 status "1/5 exporting the Ultra fp16 encoder (mobius)"
 if [ ! -d "$C/work/encoder_fp16_ultra.mlpackage" ]; then
   (cd "$M/parakeet-redux/coreml" && "$CPY" export_encoder_fp16.py --hf-dir "$C/work/hf" --work "$C/work" --name ultra) \
@@ -32,6 +35,7 @@ fi
 status "1/5 palettizing the encoder (6-bit, 4-bit)"
 "$CPY" "$HERE/compress_parakeet.py" "$C/work/encoder_fp16_ultra.mlpackage" --base "$WORK/models/fluidaudio/parakeet-ultra" \
   --out "$WORK/models/variants" --sizes "$SIZES" --workers "${EVAL_KMEANS_WORKERS:-6}" || { echo "palettization failed"; exit 1; }
+fi
 (cd "$REPO/Packages/EngineEval" && swift build -c release 2>&1 | tail -1)
 
 status "2/5 accuracy on every shard: $ENGINES"
