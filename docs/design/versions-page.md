@@ -14,9 +14,8 @@ Same as `site/index.html`: Peach in light, Harbor in dark (`prefers-color-scheme
 
 1. **Header / intro.** What this page is. States that unreleased versions are labelled as such.
 2. **Releases**, newest first, each with an honest status badge:
-   - *Planned (engine switch)*: captions from Parakeet Ultra 6-bit instead of Apple's recognizer. Not built into a submitted release yet; iPhone checks still to do.
-   - *Coming next, 1.1 (build 6)*: iPad and iPhone Duo. Uploaded, not yet submitted.
-   - *In review, 1.0 (build 5)*: everything in the 1.0 App Store listing, in user language. Not released.
+   - *Coming next, 1.1 (build 6)*: full-screen iPad layout, iPhone Duo, and the engine switch to Parakeet Ultra 6-bit. The iPad/Duo build is uploaded, not submitted; the engine build is not uploaded yet; iPhone checks still to do.
+   - *In review, 1.0 (build 5)*: everything in the 1.0 App Store listing, in user language. Runs on iPad in the iPhone-sized layout. Not released.
 3. **How we chose the caption engine.** Story in short paragraphs, then:
    - Method diagram (inline SVG).
    - Chart A: WER with 95% CI per engine.
