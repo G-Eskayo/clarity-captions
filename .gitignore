@@ -7,3 +7,12 @@ Apps/Spike/.team
 
 # Beta feedback recipient (owner phone number), never committed (ADR 0023)
 Apps/Spike/Beta.xcconfig.local
+
+# Engine accuracy test (#145): corpus audio, shards and models never enter the repo
+scripts/engine-eval/data/
+scripts/engine-eval/**/.venv/
+scripts/engine-eval/**/__pycache__/
+scripts/engine-eval/**/.pytest_cache/
+Packages/EngineEval/.build/
+*.parquet
+edacc/
