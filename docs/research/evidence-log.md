@@ -90,3 +90,73 @@ caveat), **Internal** (process detail, not for marketing).
 - **Confidence:** Ours (synthetic voices; real-device check pending).
 - **Drives:** SpeakerLabelSmoother (#94); open decision on adding a speaker-embedding model.
 - **Public use:** Careful (good "how we measure" story; don't overstate accuracy).
+
+## E9. EdAcc: accented conversations with checked transcripts
+- **Source:** Sanabria, Bogoychev, Markl, Carmantini, Klejch & Bell (2023), *The Edinburgh International Accents of
+  English Corpus: Towards the Democratization of English ASR*, ICASSP. [arXiv 2303.18110](https://arxiv.org/abs/2303.18110) ·
+  [Edinburgh DataShare, doi:10.7488/ds/7914](https://doi.org/10.7488/ds/7914) (handle 10283/8983) ·
+  Hugging Face mirror [`edinburghcstr/edacc`](https://huggingface.co/datasets/edinburghcstr/edacc) (test + validation,
+  6.95 GB parquet, 19,137 segments, 32.7 h after segmentation, 32 accent groups, 122 speakers).
+- **License:** CC BY-SA (the current DataShare record ships `CC_BY_SA_license_text.txt`; checked 2026-10-21). An earlier
+  DataShare record was withdrawn over a license change, so this current record is the one we rely on. The Hugging Face
+  card states no license of its own; we treat the mirror as carrying the DataShare license.
+- **What we took:** two-person conversations, human transcripts and per-speaker accent and first-language labels: the
+  closest public match to Seal's sit-down use. The paper reports every model degrading on accents (the best, Whisper
+  large, averaged 19.7% WER versus 2.7% on clean US read speech), worst on Jamaican, Indonesian, Nigerian and Kenyan
+  English.
+- **Handling:** downloaded with the owner's approval (2026-10-21) to the 2012 Mac mini only; the audio never goes in the
+  repo (ignore rules) or on any public page. Only aggregate scores are published.
+- **Confidence:** Strong (peer-reviewed corpus).
+- **Drives:** #145 engine accuracy test ([design](../perf/engine-accuracy-design.md), [results](../perf/engine-accuracy-comparison.md)).
+- **Public use:** Careful (cite the corpus and aggregate WER; never quote or play its audio).
+
+## E10. Speech engines compared in #145, and their licenses
+- **Source:** model cards and repos, checked 2026-10-21:
+  Apple SpeechAnalyzer / SpeechTranscriber (system framework, en-US asset via AssetInventory);
+  [FluidAudio](https://github.com/FluidInference/FluidAudio) 0.17.5 (Apache-2.0) running
+  [`FluidInference/parakeet-tdt-0.6b-v2-coreml`](https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v2-coreml) (CC BY 4.0,
+  from [`nvidia/parakeet-tdt-0.6b-v2`](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2)) and
+  [`FluidInference/parakeet-ultra-coreml`](https://huggingface.co/FluidInference/parakeet-ultra-coreml) (CC BY 4.0, from
+  [`moondream/parakeet-ultra`](https://huggingface.co/moondream/parakeet-ultra));
+  [WhisperKit / argmax-oss-swift](https://github.com/argmaxinc/argmax-oss-swift) (MIT) running
+  `openai_whisper-large-v3-v20240930_turbo` from [`argmaxinc/whisperkit-coreml`](https://huggingface.co/argmaxinc/whisperkit-coreml)
+  (MIT, from [`openai/whisper-large-v3-turbo`](https://huggingface.co/openai/whisper-large-v3-turbo));
+  [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) 1.13.8 (Apache-2.0) running
+  `sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8` (CC BY 4.0, from NVIDIA's Parakeet TDT 0.6B v2).
+- **What we took:** every candidate runs fully on device and has a license that allows use in a free app with
+  attribution (CC BY 4.0 needs credit in the app's notices if shipped).
+- **Confidence:** Strong (official model cards).
+- **Drives:** #145; any engine switch would add its notice to `NOTICE.md` and the credits screen.
+- **Public use:** Yes.
+
+## E11. Engine accuracy test on all of EdAcc: which engine follows accents best
+- **Source:** our own measurement, [docs/perf/engine-accuracy-comparison.md](../perf/engine-accuracy-comparison.md)
+  (#145; all 32 shards: 17,528 EdAcc segments, 31.4 h, 122 speakers, 32 accent groups, one run per clip after a
+  5-repeat shard 1; live-latency sample of 526 clips on the M4 Mac mini).
+- **What we took:** Parakeet Ultra via FluidAudio had the lowest word error rate, **13.8% (95% CI 12.7–14.7%)**,
+  against Apple SpeechAnalyzer's **17.2% (16.0–18.4%)**: about a fifth fewer errors. Parakeet v2 15.5%, sherpa-onnx
+  (Parakeet v2 int8, the Android-capable runtime) 16.1%. Ultra was best on every one of the 32 shards (2.2 to 4.3
+  points ahead of Apple) and on every accent group with three or more speakers. It also put correct words on screen
+  sooner in the live sample (median 0.24 s after the word was said, against 0.67 s for Apple; p95 1.34 s against
+  1.86 s). WhisperKit large-v3 turbo was dropped after shard 1 (23.5%, slowest, Apple-only). Apple, both Parakeet
+  builds and sherpa-onnx gave identical text on all five repeats of shard 1.
+- **Confidence:** Ours. Strong for the ranking on this corpus (32 of 32 shards agree); Mac, not iPhone, for latency
+  and speed; segmented clips, not continuous conversation; single-speaker accent cells are wide.
+- **Drives:** whether Seal switches its caption engine to Parakeet Ultra, pending an iPhone check (latency, battery,
+  heat, memory, download size, CC BY 4.0 attribution).
+- **Public use:** Careful ("on a public corpus of accented conversations, in our test, Parakeet made about a fifth
+  fewer word errors than Apple's built-in engine").
+
+## E12. How small can Parakeet Ultra get and still beat Apple?
+- **Source:** our own measurement, [docs/perf/engine-accuracy-comparison.md](../perf/engine-accuracy-comparison.md)
+  ("Size options"; #150 "[E] Switch captions to Parakeet Ultra: iPhone checks, then an ADR"). All 32 EdAcc shards
+  (17,528 clips), same normalizer and speaker-bootstrap CIs; 526-clip live-latency sample; M4 Mac mini.
+- **What we took:** the published Ultra encoder is already 8-bit (int8 linear per channel; folder 632 MB, 555 MB
+  zipped; 13.8%). Re-compressing the fp16 encoder (coremltools 9.0b1, data-free k-means palettization, per grouped
+  channel, group 16): **6-bit** keeps the same accuracy (13.8%, 12.8-14.8) at 498 MB / 485 MB zipped; **4-bit** costs
+  one point (14.8%, 13.7-15.8) at 350 MB / 320 MB zipped and still clearly beats Apple SpeechAnalyzer (17.2%, 16.0-18.4).
+  Latency barely moves (correct word median 0.24 s int8, 0.25 s 6-bit, 0.27 s 4-bit). FluidAudio's published small
+  builds don't: Redux (2-bit re-training, 220 MB) 16.7%, v3 int4 22.7%.
+- **Confidence:** Ours (one corpus; Mac, not iPhone; process memory excludes Neural Engine daemon memory).
+- **Drives:** which Ultra build to bundle (#150); the iPhone check and the ADR.
+- **Public use:** Careful.
