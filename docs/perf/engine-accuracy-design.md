@@ -193,6 +193,19 @@ move the score, but the results are not bit-identical. Since the M4 also runs sh
 the shards, the queue and the scoring. The 2012 mini's shard 1 run is kept in `check/` as the x86 Linux reference
 (deterministic across repeats, 2.7x real time on an Ivy Bridge i7), which also feeds #43's Android question.
 
+## Size options (#150)
+
+The published Ultra encoder is int8 linear per channel (FluidAudio / mobius recipe), so it is the 8-bit option.
+Smaller builds re-compress the fp16 encoder exported with FluidInference/mobius (`export_encoder_fp16.py --name
+ultra`, iOS 18 target) using `scripts/engine-eval/compress_parakeet.py`: data-free k-means palettization, per grouped
+channel (group 16, iOS 18+), 6-bit and 4-bit, encoder only; the other components are the published ones and each
+folder carries a NOTICE with the CC BY 4.0 attribution. FluidAudio's published small builds (v3 int4, Redux) run
+alongside. Each build gets the full 32-shard accuracy run, the 526-clip latency sample and a process memory
+footprint (`engine-eval memory`); sizes are whole folders on disk and deflate-zipped (`edacc_eval.sizes`).
+`m4-compression.sh` chains it; the export needs about 10 GB of scratch disk, so it ran on the MacBook in a Python
+3.12 env (the mobius Python 3.10 lock's scipy doesn't load on macOS 27) and the folders were copied to the M4.
+k-means palettization with a worker pool crashed ("Pool not running"); one worker works (about 10 minutes per variant).
+
 ## Complexity
 
 - Shard maker: one pass over the corpus, O(clips) time, streams one parquet file at a time (memory bounded by
