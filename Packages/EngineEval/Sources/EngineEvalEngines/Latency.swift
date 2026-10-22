@@ -136,10 +136,15 @@ public final class ParakeetWindowLatency: StreamingLatencyEngine {
     private let inner: ParakeetFileTranscriber
     private let hop: Double
 
-    public init(version: AsrModelVersion, name: String, modelsDir: URL, hop: Double) {
-        model = name; self.hop = hop
+    public convenience init(version: AsrModelVersion, name: String, modelsDir: URL, hop: Double) {
+        self.init(inner: ParakeetFileTranscriber(version: version, name: name, modelsDir: modelsDir, fluidAudio: ""),
+                  hop: hop)
+    }
+
+    /// Any Parakeet build, including compressed local variants.
+    public init(inner: ParakeetFileTranscriber, hop: Double) {
+        model = inner.model; self.hop = hop; self.inner = inner
         method = "growing window, re-decode all audio so far, hop \(hop) s, simulated clock + measured compute"
-        inner = ParakeetFileTranscriber(version: version, name: name, modelsDir: modelsDir, fluidAudio: "")
     }
 
     public func load() async throws { try await inner.load() }

@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 // Pure pieces of the engine accuracy run (#145): shard manifest, result lines, resume, ETA.
@@ -290,5 +291,59 @@ public enum WordTiming {
             }
         }
         return words
+    }
+}
+
+// MARK: - Engine specs and memory (#145 compression test)
+
+/// `--engines` entries: a built-in engine name, or `local:<name>` for a model folder under `<models>/variants/<name>`
+/// (a compressed Parakeet build made by scripts/engine-eval/compress_parakeet.py).
+public enum EngineSpec: Equatable, Sendable {
+    case builtin(String)
+    case local(String)
+
+    public static func parse(_ raw: String) -> EngineSpec? {
+        let s = raw.trimmingCharacters(in: .whitespaces)
+        if s.hasPrefix("local:") {
+            let name = String(s.dropFirst("local:".count))
+            guard !name.isEmpty, !name.contains("/"), !name.contains(".."), name != "." else { return nil }
+            return .local(name)
+        }
+        return s.isEmpty ? nil : .builtin(s)
+    }
+
+    public static func parseList(_ raw: String) -> [EngineSpec]? {
+        let parts = raw.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
+        let specs = parts.compactMap(parse)
+        return specs.count == parts.count && !specs.isEmpty ? specs : nil
+    }
+}
+
+/// The variant folder's `variant.json`: which FluidAudio model contract the folder follows.
+public struct VariantInfo: Codable, Equatable, Sendable {
+    public let asrVersion: String
+    public let method: String
+
+    public init(asrVersion: String, method: String) { self.asrVersion = asrVersion; self.method = method }
+
+    enum CodingKeys: String, CodingKey { case asrVersion = "asr_version", method }
+
+    public static func load(_ dir: URL) throws -> VariantInfo {
+        try JSONDecoder().decode(VariantInfo.self, from: Data(contentsOf: dir.appendingPathComponent("variant.json")))
+    }
+}
+
+/// This process's physical memory footprint (what Activity Monitor and jetsam count), in bytes.
+/// Core ML work on the Neural Engine also uses memory in system daemons, which this does not include.
+public enum MemoryFootprint {
+    public static func current() -> UInt64? {
+        var info = task_vm_info_data_t()
+        var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+        let kr = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+            }
+        }
+        return kr == KERN_SUCCESS ? UInt64(info.phys_footprint) : nil
     }
 }

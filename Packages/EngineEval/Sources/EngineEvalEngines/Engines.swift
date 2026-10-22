@@ -21,6 +21,10 @@ public enum EngineID: String, CaseIterable, Sendable {
     /// Diagnostic variant: WhisperKit with its no-speech and first-token gates off (short clips come back empty
     /// under the defaults). Not part of the default engine list.
     case whisperkitNoGate = "whisperkit-nogate"
+    /// FluidAudio's published compressed builds, for the size test (#150): v3's 4-bit encoder and Redux (2-bit
+    /// ternary re-training of v3).
+    case parakeetV3Int4 = "parakeet-v3-int4"
+    case parakeetRedux = "parakeet-redux"
 
     /// WhisperKit was dropped after shard 1 (owner, 2026-10-21); it stays selectable with --engines.
     public static var defaults: [EngineID] { [.apple, .parakeetV2, .parakeetUltra] }
@@ -49,6 +53,43 @@ public func makeTranscriber(_ id: EngineID, modelsDir: URL, versions: EngineVers
                                                        packageVersion: versions.whisperKit)
     case .whisperkitNoGate: return WhisperKitFileTranscriber(model: whisperModel, modelsDir: modelsDir,
                                                              packageVersion: versions.whisperKit, gates: false)
+    case .parakeetV3Int4: return ParakeetFileTranscriber(version: .v3, name: "parakeet-tdt-0.6b-v3-coreml-int4",
+                                                         modelsDir: modelsDir, fluidAudio: versions.fluidAudio,
+                                                         precision: .int4)
+    case .parakeetRedux: return ParakeetFileTranscriber(version: .redux, name: "parakeet-redux-coreml",
+                                                        modelsDir: modelsDir, fluidAudio: versions.fluidAudio)
+    }
+}
+
+public enum EngineFactoryError: Error, CustomStringConvertible {
+    case unknown(String), badVariant(String, String)
+    public var description: String {
+        switch self {
+        case let .unknown(s): return "unknown engine \(s)"
+        case let .badVariant(n, why): return "variant \(n): \(why)"
+        }
+    }
+}
+
+/// Built-in engine names, or `local:<name>` for a compressed Parakeet folder at `<models>/variants/<name>`.
+public func makeTranscriber(spec: EngineSpec, modelsDir: URL, versions: EngineVersions,
+                            whisperModel: String = WhisperKitFileTranscriber.defaultModel) throws -> FileTranscriber {
+    switch spec {
+    case let .builtin(name):
+        guard let id = EngineID(rawValue: name) else { throw EngineFactoryError.unknown(name) }
+        return makeTranscriber(id, modelsDir: modelsDir, versions: versions, whisperModel: whisperModel)
+    case let .local(name):
+        let dir = modelsDir.appendingPathComponent("variants").appendingPathComponent(name)
+        let info = try VariantInfo.load(dir)
+        let version: AsrModelVersion
+        switch info.asrVersion {
+        case "ultra": version = .ultra
+        case "v2": version = .v2
+        case "v3": version = .v3
+        default: throw EngineFactoryError.badVariant(name, "unsupported asr_version \(info.asrVersion)")
+        }
+        return ParakeetFileTranscriber(version: version, name: name, modelsDir: modelsDir,
+                                       fluidAudio: versions.fluidAudio, localDir: dir)
     }
 }
 
@@ -111,14 +152,25 @@ public final class ParakeetFileTranscriber: FileTranscriber {
     private var decoderLayers = 2
     private let converter = AudioConverter()
 
-    public init(version: AsrModelVersion, name: String, modelsDir: URL, fluidAudio: String) {
+    private let precision: ParakeetEncoderPrecision
+    private let localDir: URL?
+
+    public init(version: AsrModelVersion, name: String, modelsDir: URL, fluidAudio: String,
+                precision: ParakeetEncoderPrecision = .int8, localDir: URL? = nil) {
         asrVersion = version; model = name; self.modelsDir = modelsDir
-        self.version = "FluidAudio \(fluidAudio)"
+        self.precision = precision; self.localDir = localDir
+        self.version = "FluidAudio \(fluidAudio)" + (precision == .int8 ? "" : ", encoder \(precision.rawValue)")
+            + (localDir == nil ? "" : ", local build")
     }
 
     public func load() async throws {
-        let dir = modelsDir.appendingPathComponent("fluidaudio").appendingPathComponent(model)
-        let models = try await AsrModels.downloadAndLoad(to: dir, version: asrVersion)
+        let models: AsrModels
+        if let localDir {
+            models = try AsrModels.loadLocal(from: localDir, version: asrVersion, encoderPrecision: precision)
+        } else {
+            let dir = modelsDir.appendingPathComponent("fluidaudio").appendingPathComponent(model)
+            models = try await AsrModels.downloadAndLoad(to: dir, version: asrVersion, encoderPrecision: precision)
+        }
         let m = AsrManager(config: .default)
         try await m.loadModels(models)
         decoderLayers = asrVersion.decoderLayers
