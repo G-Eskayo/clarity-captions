@@ -277,12 +277,16 @@ final class CaptionModel: ObservableObject {
                 // Warm up model once.
                 try await TranscriptionEngine.warmUp(diarizerModelURL: modelURL)
 
+                // The engine picked in the developer panel, so check C2 can run both on the same build (ADR 0025).
+                let recognizer: SpeechRecognizerSetup = engineChoice == .parakeet
+                    ? CaptionEngineFactory.parakeetModelURL.map { .parakeet(modelURL: $0) } ?? .apple : .apple
+
                 // Throwaway pass.
-                let warmupEngine = TranscriptionEngine(diarizerModelURL: modelURL)
+                let warmupEngine = TranscriptionEngine(diarizerModelURL: modelURL, recognizer: recognizer)
                 for try await _ in try await warmupEngine.startReplaying(fileURL: fixtureURL) {}
 
                 // Measured pass.
-                let engine = TranscriptionEngine(diarizerModelURL: modelURL)
+                let engine = TranscriptionEngine(diarizerModelURL: modelURL, recognizer: recognizer)
                 var lagSamples: [Double] = []
                 var firstCaptionTime: TimeInterval?
                 let startTime = Date()
@@ -297,10 +301,12 @@ final class CaptionModel: ObservableObject {
                 }
 
                 let report = CaptionLatencyReport(lagSamples: lagSamples, timeToFirstCaption: firstCaptionTime)
-                latencyReport = String(format: "Median: %.3f s, P95: %.3f s, First: %.3f s",
-                                       report.medianLagSeconds,
-                                       report.p95LagSeconds,
-                                       report.timeToFirstCaptionSeconds ?? 0)
+                latencyReport = engine.engineName + " " + String(format: "Median: %.3f s, P95: %.3f s, First: %.3f s",
+                                                                 report.medianLagSeconds,
+                                                                 report.p95LagSeconds,
+                                                                 report.timeToFirstCaptionSeconds ?? 0)
+                    + (engine.decodeSeconds.map { String(format: ", decode p50 %.2f s / p95 %.2f s", $0.p50, $0.p95) } ?? "")
+                    + (engine.fallbackReason.map { ", fell back: \($0.rawValue)" } ?? "")
             } catch {
                 latencyReport = "Error: \(error)"
             }

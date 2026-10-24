@@ -109,6 +109,13 @@ public final class TranscriptionEngine {
     private var pieceStreams: AsyncStream<AsyncThrowingStream<RecognizedPiece, Error>>.Continuation?
     private var switching = false
     private var lastDecodeSeconds: Double?
+    /// Parakeet decode times this session (check C2: p95 under 0.5 s). Fixed size whatever the session length.
+    private var decodeTimes = PercentileHistogram(lower: 0, upper: 5, binWidth: 0.01)
+    private let decodeLock = NSLock()
+    /// Median and 95th-percentile Parakeet decode time so far; nil on Apple's engine.
+    public var decodeSeconds: (p50: Double, p95: Double)? {
+        decodeLock.withLock { decodeTimes.value(at: 0.5).flatMap { p50 in decodeTimes.value(at: 0.95).map { (p50, $0) } } }
+    }
 
     /// The recognizer captions are on now ("parakeet-ultra-pal6" / "apple-speechanalyzer"): beta report, diagnostics.
     /// Stays set after Stop, so the report written at the end of a session still names it.
@@ -164,7 +171,10 @@ public final class TranscriptionEngine {
         case .apple: return AppleSpeechBackend(locale: locale)
         case .parakeet(let url):
             let backend = ParakeetBackend(modelURL: url)
-            backend.onDecode = { [weak self] seconds in self?.lastDecodeSeconds = seconds }
+            backend.onDecode = { [weak self] seconds in
+                guard let self else { return }
+                self.decodeLock.withLock { self.lastDecodeSeconds = seconds; self.decodeTimes.add(seconds) }
+            }
             return backend
         }
     }
@@ -444,7 +454,7 @@ public final class TranscriptionEngine {
     private var diagnostics: String {
         var parts = [engineName]
         if let fallbackReason { parts.append("fallback: \(fallbackReason.rawValue)" + (fallbackDetail.map { " (\($0))" } ?? "")) }
-        if let lastDecodeSeconds { parts.append(String(format: "decode %.2fs", lastDecodeSeconds)) }
+        if let last = decodeLock.withLock({ lastDecodeSeconds }) { parts.append(String(format: "decode %.2fs", last)) }
         parts.append(diarizer.diagnostics)
         return parts.filter { !$0.isEmpty }.joined(separator: " · ")
     }

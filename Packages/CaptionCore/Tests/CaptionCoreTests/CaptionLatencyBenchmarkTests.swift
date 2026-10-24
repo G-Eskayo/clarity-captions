@@ -100,6 +100,9 @@ final class CaptionLatencyBenchmarkTests: XCTestCase {
                      report.medianLagSeconds,
                      report.p95LagSeconds,
                      report.timeToFirstCaptionSeconds ?? 0))
+        if let decode = engine.decodeSeconds {
+            print(String(format: "LATENCY-DECODE p50 %.3f s, p95 %.3f s", decode.p50, decode.p95))
+        }
 
         // Check against baseline.
         if let baseline = try loadBaseline() {
