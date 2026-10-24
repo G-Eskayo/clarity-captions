@@ -103,10 +103,32 @@ final class EngineFallbackPolicyTests: XCTestCase {
 
     // MARK: Silent-engine watchdog
 
-    func testTenSecondsOfSpeechWithNoWordsTrips() {
+    func testTwentySecondsOfLoudSpeechWithNoWordsTrips() {
         var dog = SilentEngineWatchdog()
-        for _ in 0..<19 { XCTAssertFalse(dog.observe(seconds: 0.5, speech: true, words: 0)) }
+        for _ in 0..<39 { XCTAssertFalse(dog.observe(seconds: 0.5, speech: true, words: 0)) }
         XCTAssertTrue(dog.observe(seconds: 0.5, speech: true, words: 0))
+    }
+
+    func testTenSecondsOfRestaurantNoiseBeforeAnyoneTalksDoesNotTrip() {
+        // The design's first draft said 10 s: a loud room with nobody talking yet would have left Parakeet for nothing.
+        var dog = SilentEngineWatchdog()
+        for _ in 0..<20 { XCTAssertFalse(dog.observe(seconds: 0.5, speech: true, words: 0)) }
+    }
+
+    func testThreeFailedDecodesInARowTrip() {
+        var dog = SilentEngineWatchdog()
+        XCTAssertFalse(dog.observe(seconds: 0.5, speech: false, words: 0, failed: true))
+        XCTAssertFalse(dog.observe(seconds: 0.5, speech: false, words: 0, failed: true))
+        XCTAssertTrue(dog.observe(seconds: 0.5, speech: false, words: 0, failed: true))
+    }
+
+    func testAGoodDecodeBetweenFailuresResetsTheRun() {
+        var dog = SilentEngineWatchdog()
+        for _ in 0..<10 {
+            XCTAssertFalse(dog.observe(seconds: 0.5, speech: false, words: 0, failed: true))
+            XCTAssertFalse(dog.observe(seconds: 0.5, speech: false, words: 0, failed: true))
+            XCTAssertFalse(dog.observe(seconds: 0.5, speech: false, words: 0))
+        }
     }
 
     func testQuietRoomNeverTrips() {
@@ -117,13 +139,23 @@ final class EngineFallbackPolicyTests: XCTestCase {
     func testOneWordDisarmsItForTheSession() {
         var dog = SilentEngineWatchdog()
         _ = dog.observe(seconds: 0.5, speech: true, words: 1)
-        for _ in 0..<100 { XCTAssertFalse(dog.observe(seconds: 0.5, speech: true, words: 0)) }
+        for _ in 0..<100 { XCTAssertFalse(dog.observe(seconds: 0.5, speech: true, words: 0, failed: true)) }
     }
 
     func testItTripsOnlyOnce() {
         var dog = SilentEngineWatchdog()
         var trips = 0
-        for _ in 0..<100 where dog.observe(seconds: 0.5, speech: true, words: 0) { trips += 1 }
+        for _ in 0..<200 where dog.observe(seconds: 0.5, speech: true, words: 0) { trips += 1 }
         XCTAssertEqual(trips, 1)
+    }
+
+    func testClearingTheHistoryUnpinsParakeet() {
+        let defaults = UserDefaults(suiteName: "fallback-test-\(UUID())")!
+        var store = EngineFallbackHistory(defaults: defaults)
+        store.record(now.addingTimeInterval(-60), now: now)
+        store.record(now, now: now)
+        XCTAssertEqual(choose(fallbacks: store.recent(now: now)).engine, .apple)
+        store.clear()
+        XCTAssertEqual(choose(fallbacks: store.recent(now: now)).engine, .parakeet)
     }
 }

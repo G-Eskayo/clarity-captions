@@ -415,16 +415,13 @@ public final class TranscriptionEngine {
             diarizer.feed(samples)
             soundLabeler.feed(samples, atAudioTime: fed.seconds)
             let level = recordLoudness(samples: samples, atAudioTime: fed.seconds)
-            if format == nil { backend?.feed(samples16k: samples, speech: level > Self.speechFloorDBFS) }
+            if format == nil { backend?.feed(samples16k: samples, level: level) }
         }
         if let backend, let converter, let format, let out = convert(buffer, with: converter, to: format) {
             backend.feed(buffer: out)
         }
         fed.add(Double(buffer.frameLength) / inFormat.sampleRate)
     }
-
-    /// Louder than this is treated as possible speech by Parakeet's silence gate and watchdog (BetaFeedback's quiet line).
-    static let speechFloorDBFS = -50.0
 
     private var diarConverterCache: AVAudioConverter?
     private func diarConverter(from inFormat: AVAudioFormat, to diarFormat: AVAudioFormat) -> AVAudioConverter? {

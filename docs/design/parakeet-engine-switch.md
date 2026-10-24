@@ -375,6 +375,10 @@ What the build does differently from the text above, and why. Each is small and 
 - **Silence gate:** skips a decode when nothing is open and nothing louder than -50 dBFS arrived since the last one
   (the beta report's quiet line). `LoudnessBaseline` is a rolling median of recent levels, which tracks speech during
   a conversation, so it would have gated speech.
+- **Watchdog:** trips on no words through 20 s of audio louder than -40 dBFS, or 3 failed decodes in a row (was 10 s
+  of speech). A loud room where nobody has spoken yet would have sent the session to Apple for nothing.
+- **Developer picker clears the 24 h pin:** picking an engine in the developer panel forgets earlier fallbacks, so
+  check C6 (which forces fallbacks) can't quietly pin Apple for the checks after it.
 - **Mid-session switch clock:** Apple's analyzer counts time from its first buffer, so its pieces are shifted by the
   session clock at the switch.
 - **Audio clock:** `FedAudioClock` now advances by the input buffer's duration for both engines (it used to count the

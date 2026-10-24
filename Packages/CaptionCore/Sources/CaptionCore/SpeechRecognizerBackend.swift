@@ -46,8 +46,8 @@ protocol SpeechRecognizerBackend: AnyObject, Sendable {
     func start() async throws -> AsyncThrowingStream<RecognizedPiece, Error>
     /// Called on the audio thread; must not block.
     func feed(buffer: AVAudioPCMBuffer)
-    /// Called on the audio thread with the diarizer's 16 kHz mono samples; must not block.
-    func feed(samples16k: [Float], speech: Bool)
+    /// Called on the audio thread with the diarizer's 16 kHz mono samples and their level (dBFS); must not block.
+    func feed(samples16k: [Float], level: Double)
     /// Flushes: the remaining words come out as final, then the stream ends.
     func finish() async
     /// Frees the model. Safe more than once, and after a failed prepare.
@@ -124,7 +124,7 @@ final class AppleSpeechBackend: SpeechRecognizerBackend, @unchecked Sendable {
         builder?.yield(AnalyzerInput(buffer: buffer))
     }
 
-    func feed(samples16k: [Float], speech: Bool) {}
+    func feed(samples16k: [Float], level: Double) {}
 
     func finish() async {
         let (analyzer, started) = takeAnalyzer()
