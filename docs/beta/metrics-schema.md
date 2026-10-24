@@ -3,7 +3,7 @@
 Decision: ADR 0023. One file per *Send feedback to Gil*, named `seal-feedback-<build>-<YYYYMMDD-HHMM>.json`. It
 holds every conversation recorded since the last report that was sent.
 
-**Never in a report:** caption text, audio, speaker names, vocabulary, saved conversations. The only free text is
+**Never in a report:** caption text, audio, speaker names, saved conversations. The only free text is
 the tester's own optional note.
 
 ## Shape

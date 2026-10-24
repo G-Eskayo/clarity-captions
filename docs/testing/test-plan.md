@@ -74,7 +74,7 @@ Read at normal pace. These lines are from the public Harvard Sentences (List 1) 
   4. These days a chicken leg is a rare dish.
   5. Rice is often served in round bowls.
   6. The juice of lemons makes fine punch.
-- **Names and numbers** (tests vocabulary): "Tell Jennifer, Marcus and Priya the meeting moved to 3:45 on Thursday,
+- **Names and numbers**: "Tell Jennifer, Marcus and Priya the meeting moved to 3:45 on Thursday,
   room 212, and the phone number is 555-0143."
 - **Rainbow Passage opening**: "When the sunlight strikes raindrops in the air, they act as a prism and form a
   rainbow. The rainbow is a division of white light into many beautiful colors."

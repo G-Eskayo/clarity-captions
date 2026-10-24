@@ -57,9 +57,7 @@ final class CaptionModel: ObservableObject {
             guard let url = Bundle.main.url(forResource: "Sortformer_v2.1", withExtension: "mlmodelc") else {
                 throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc"))
             }
-            let rawText = VocabularyStore().loadRawText()
-            let vocabulary = VocabularyList(rawText: rawText).entries
-            return TranscriptionEngine(micMode: self.micMode, diarizerModelURL: url, contextualStrings: vocabulary)
+            return TranscriptionEngine(micMode: self.micMode, diarizerModelURL: url)
         }, idleStopSetting: { [weak self] in self?.idleStop ?? .default })
 
         if let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
