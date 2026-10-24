@@ -31,7 +31,9 @@ the tester's own optional note.
       "ending": { "kind": "userStop" },
       "battery": { "dropPercentPer30Min": 6.5, "maxThermalState": "fair" },
       "micLevel": { "medianDBFS": -38.0, "quietFraction": 0.12 },
-      "launch": { "fullDance": false, "barShown": false }
+      "launch": { "fullDance": false, "barShown": false },
+      "engine": "parakeet-ultra-pal6",
+      "engineFallback": null
     }
   ]
 }
@@ -50,6 +52,7 @@ the tester's own optional note.
 | `ending.kind` | `userStop`, `quietStop`, `failure` (with `reason`, the plain-language text), `stuck`, `appClosed` | `CaptionSessionController`, `IdleStop`, `FailureReason` |
 | `battery` | Battery drop scaled to 30 minutes; highest `ProcessInfo.thermalState` | `UIDevice.batteryLevel`, `ProcessInfo` |
 | `micLevel` | Room loudness summary, never audio | `AudioLevel`, `ListeningActivityTracker` |
+| `engine`, `engineFallback` | Which recognizer captioned the conversation (`parakeet-ultra-pal6` or `apple-speechanalyzer`; the last one used, if it switched) and why it left Parakeet (`loadFailed`, `memoryWarning`, `thermalCritical`, `noWordsFromSpeech`, `lowMemory`, `locale`, `repeatedFallbacks`, `modelMissing`), else `null`. Added for 1.1 build 7 (ADR 0025); additive, still schema 1 | `TranscriptionEngine.engineName` / `fallbackReason` via `CaptionUpdate` |
 
 Size: about 1 KB per conversation, with no cap until sent (ADR 0023), so even 1,000 unsent conversations make a
 report of about 1 MB, well within an iMessage attachment.
@@ -62,7 +65,8 @@ under `~/Library/Messages/Attachments/`. A MARVIN job on the Mini finds new `sea
 1. validates each against this schema (`schema: 1`) and skips duplicates by conversation `id`
 2. appends them to a private local dataset (`~/.claude/seal-beta/reports.jsonl`), never the repo
 3. summarises **per device model** (plain name, then split by build) and per build: report count, median rating,
-   lag p50/p95, rewrite rate, relabels, endings, battery and thermal state, shown in the MARVIN dashboard
+   lag p50/p95, rewrite rate, relabels, endings, battery and thermal state, shown in the MARVIN dashboard;
+   from build 7 also split by `engine`
 4. files or updates clarity-captions tickets when a threshold is crossed (lag p95 > 2 s on a device model, any
    `stuck` ending, median rating ≤ 4 on a device model from at least 2 reports), quoting **only measurements,
    device and build**, never the tester's note or anything that identifies the sender

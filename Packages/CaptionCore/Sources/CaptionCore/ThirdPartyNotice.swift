@@ -11,6 +11,14 @@ public struct ThirdPartyNotice: Identifiable, Equatable, Sendable {
 
     public static let all: [ThirdPartyNotice] = [
         ThirdPartyNotice(
+            id: "parakeetultra",
+            name: "Parakeet Ultra",
+            licenseName: "CC BY 4.0",
+            licenseURL: URL(string: "https://creativecommons.org/licenses/by/4.0/")!,
+            note: String(localized: "Speech-recognition model by Moondream, trained from NVIDIA Parakeet TDT 0.6B v3 and converted to CoreML format by FluidInference. Changed for Seal Speak: the encoder's weights are compressed to 6 bits."),
+            sourceURL: URL(string: "https://huggingface.co/moondream/parakeet-ultra")
+        ),
+        ThirdPartyNotice(
             id: "sortformer",
             name: "Sortformer",
             licenseName: "CC BY 4.0",

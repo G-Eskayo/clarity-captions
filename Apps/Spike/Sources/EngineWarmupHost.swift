@@ -48,10 +48,7 @@ final class EngineWarmupHost: ObservableObject {
         #if DEBUG
         if let seconds = demoLoadSeconds { return DemoLoadingEngine(seconds: seconds) }
         #endif
-        guard let url = Bundle.main.url(forResource: "Sortformer_v2.1", withExtension: "mlmodelc") else {
-            throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc"))
-        }
-        return TranscriptionEngine(micMode: micMode, diarizerModelURL: url)
+        return try CaptionEngineFactory.make(micMode: micMode)
     }
 
     /// First run is done: from now on the engine may load ahead of Start.
