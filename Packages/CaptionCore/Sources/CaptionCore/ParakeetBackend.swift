@@ -50,16 +50,16 @@ struct SampleWindow: Sendable {
     private(set) var samples: [Float] = []
     /// Session time of `samples[0]`.
     private(set) var startTime = 0.0
-    /// Any speech fed since the last `take`.
-    private var speechSinceTake = false
+    /// The loudest buffer fed since the last `take`, in dBFS.
+    private var loudestSinceTake = -Double.infinity
 
     init(maxSeconds: Double = 20) { self.maxSeconds = maxSeconds }
 
     var endTime: Double { startTime + Double(samples.count) / Self.rate }
 
-    mutating func append(_ more: [Float], speech: Bool) {
+    mutating func append(_ more: [Float], level: Double) {
         samples.append(contentsOf: more)
-        speechSinceTake = speechSinceTake || speech
+        loudestSinceTake = max(loudestSinceTake, level)
         let excess = samples.count - Int(maxSeconds * Self.rate)
         if excess > 0 { drop(excess) }
     }
@@ -70,12 +70,12 @@ struct SampleWindow: Sendable {
         if n > 0 { drop(min(n, samples.count)) }
     }
 
-    /// The audio from `from` to now, and whether any of what arrived since the last take was speech.
-    mutating func take(from: Double) -> (samples: [Float], start: Double, end: Double, speech: Bool) {
+    /// The audio from `from` to now, and the loudest buffer that arrived since the last take.
+    mutating func take(from: Double) -> (samples: [Float], start: Double, end: Double, loudest: Double) {
         let first = max(0, min(samples.count, Int(((from - startTime) * Self.rate).rounded(.down))))
-        let speech = speechSinceTake
-        speechSinceTake = false
-        return (Array(samples[first...]), startTime + Double(first) / Self.rate, endTime, speech)
+        let loudest = loudestSinceTake
+        loudestSinceTake = -.infinity
+        return (Array(samples[first...]), startTime + Double(first) / Self.rate, endTime, loudest)
     }
 
     private mutating func drop(_ n: Int) {
@@ -144,9 +144,14 @@ final class ParakeetBackend: SpeechRecognizerBackend, @unchecked Sendable {
 
     func feed(buffer: AVAudioPCMBuffer) {}
 
-    func feed(samples16k: [Float], speech: Bool) {
-        lock.withLock { window.append(samples16k, speech: speech) }
+    func feed(samples16k: [Float], level: Double) {
+        lock.withLock { window.append(samples16k, level: level) }
     }
+
+    /// Quieter than this, with nothing open, skips the decode (the beta report's quiet line).
+    static let silenceGateDBFS = -50.0
+    /// Louder than this counts as someone talking for the watchdog: well above a quiet room.
+    static let watchdogSpeechDBFS = -40.0
 
     private func run(_ manager: AsrManager) async {
         var hop = AdaptiveHop.floor
@@ -157,7 +162,8 @@ final class ParakeetBackend: SpeechRecognizerBackend, @unchecked Sendable {
             let audioEnd = lock.withLock { window.endTime }
             let shot = lock.withLock { window.take(from: committer.windowStart(audioEnd: audioEnd)) }
             var heard = 0
-            if !shot.speech && committer.isSettled {
+            var failed = false
+            if shot.loudest < Self.silenceGateDBFS && committer.isSettled {
                 // Silence gate: a quiet table with nothing open costs no decode.
                 _ = committer.ingest(decode: [], windowStart: shot.start, audioEnd: shot.end)
             } else if let words = await decode(shot.samples, start: shot.start, manager: manager) {
@@ -165,10 +171,14 @@ final class ParakeetBackend: SpeechRecognizerBackend, @unchecked Sendable {
                                            windowStart: shot.start, audioEnd: shot.end)
                 heard = out.final.count + out.volatile.count
                 for piece in emitter.pieces(final: out.final, volatile: out.volatile) { yield(piece) }
+            } else {
+                failed = true
             }
             let keep = committer.windowStart(audioEnd: shot.end)
             lock.withLock { window.trim(before: keep) }
-            if watchdog.observe(seconds: hop, speech: shot.speech, words: heard) { onTrigger?(.noWordsFromSpeech) }
+            if watchdog.observe(seconds: hop, speech: shot.loudest > Self.watchdogSpeechDBFS, words: heard, failed: failed) {
+                onTrigger?(.noWordsFromSpeech)
+            }
             let thermal = ProcessInfo.processInfo.thermalState
             if thermal == .critical, !reportedCritical { reportedCritical = true; onTrigger?(.thermal(.critical)) }
             hop = AdaptiveHop.next(decodeTimes: decodeTimes, thermal: thermal)

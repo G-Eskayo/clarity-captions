@@ -95,26 +95,34 @@ public struct EngineFallbackHistory {
             .filter { $0 <= now && now.timeIntervalSince($0) <= EngineFallbackPolicy.pinWindow }
     }
 
+    /// Forget every fallback: the developer picked an engine on purpose (phone checks, ADR 0025).
+    public mutating func clear() { defaults.removeObject(forKey: Self.key) }
+
     public mutating func record(_ date: Date, now: Date) {
         let kept = (recent(now: now) + [date]).map(\.timeIntervalSince1970)
         defaults.set(kept, forKey: Self.key)
     }
 }
 
-/// Trips once if Parakeet gives no words at all through 10 s of speech at the start of a session (design §5).
+/// Trips once if Parakeet is producing nothing at the start of a session (design §5): no words at all through 20 s of
+/// loud audio, or three failed decodes in a row. (The design's first draft said 10 s; a loud room where nobody has
+/// spoken yet would have tripped it.) One word disarms it for the session.
 public struct SilentEngineWatchdog: Sendable {
-    public static let limit = 10.0
+    public static let limit = 20.0
+    public static let failuresInARow = 3
     private var speechSeconds = 0.0
+    private var failures = 0
     private var done = false
 
     public init() {}
 
-    /// `speech`: the last stretch was louder than the room baseline. Returns true exactly once, when it trips.
-    public mutating func observe(seconds: Double, speech: Bool, words: Int) -> Bool {
+    /// `speech`: the last stretch was loud enough to be someone talking. Returns true exactly once, when it trips.
+    public mutating func observe(seconds: Double, speech: Bool, words: Int, failed: Bool = false) -> Bool {
         guard !done else { return false }
         if words > 0 { done = true; return false }
+        failures = failed ? failures + 1 : 0
         if speech { speechSeconds += seconds }
-        if speechSeconds >= Self.limit - 1e-9 { done = true; return true }
+        if speechSeconds >= Self.limit - 1e-9 || failures >= Self.failuresInARow { done = true; return true }
         return false
     }
 }

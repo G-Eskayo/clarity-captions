@@ -15,6 +15,8 @@ final class CaptionModel: ObservableObject {
     @Published var engineChoice = CaptionEngineChoice.stored() {
         didSet {
             UserDefaults.standard.set(engineChoice.rawValue, forKey: CaptionEngineChoice.key)
+            var history = EngineFallbackHistory()
+            history.clear()   // picked on purpose: an earlier fallback must not pin Apple during the phone checks
             Task { @MainActor in
                 await EngineWarmupHost.shared.release()   // the warm engine was made for the other choice
                 EngineWarmupHost.shared.prepareIfAllowed(micMode: micMode)
