@@ -53,6 +53,9 @@ public struct TailCommitter: Sendable {
 
     public init(config: Config = Config()) { self.config = config }
 
+    /// Nothing open: the last decode had no words after the commit point.
+    public var isSettled: Bool { pending.isEmpty }
+
     /// Where the next decode's window should start, for audio heard up to `audioEnd`.
     public func windowStart(audioEnd: Double) -> Double {
         max(0, commitPoint - config.leftContext, audioEnd - config.maxWindow)

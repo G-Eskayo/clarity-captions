@@ -61,14 +61,20 @@ public enum TranscriptionError: Error {
     case converterUnavailable
 }
 
-/// Live microphone -> on-device SpeechAnalyzer/SpeechTranscriber (ADR 0001).
-/// Spike-grade: no diarization yet, no interruption/route-change handling yet.
+/// Which recognizer a TranscriptionEngine starts with (ADR 0025). The app picks it with EngineFallbackPolicy.
+public enum SpeechRecognizerSetup: Sendable, Equatable {
+    case apple
+    /// Parakeet from this bundled folder; Apple's engine takes over if it can't load or has to stop.
+    case parakeet(modelURL: URL)
+}
+
+/// Live microphone -> a speech recognizer behind `SpeechRecognizerBackend` (ADR 0001, ADR 0025), with the 16 kHz side
+/// path for the diarizer, the sound labeler and loudness.
 public final class TranscriptionEngine {
     private let audioEngine = AVAudioEngine()
-    private var analyzer: SpeechAnalyzer?
-    private var inputBuilder: AsyncStream<AnalyzerInput>.Continuation?
     private let locale: Locale
     private let micMode: MicMode
+    private let setup: SpeechRecognizerSetup
     private let diarizer: LiveDiarizer
     private let soundLabeler = SoundLabeler()
     private var soundLabelerStream: AsyncStream<SoundLabelKind>?
@@ -80,25 +86,41 @@ public final class TranscriptionEngine {
     private var loudnessBaseline = LoudnessBaseline()
     private var loudnessTimeSeries: [(audioTime: Double, level: Double)] = []
     private let loudnessLock = NSLock()
-    /// What `prepare` loads ahead of Start (#119): the speech model, the speaker model, the sound classifier and the
-    /// analyzer, everything except the microphone.
-    private struct Prepared {
-        let transcriber: SpeechTranscriber
-        let analyzer: SpeechAnalyzer
-        let format: AVAudioFormat
-    }
     private let prepareLock = NSLock()
-    private var prepareTask: Task<Prepared, Error>?
+    private var prepareTask: Task<SpeechRecognizerBackend, Error>?
     private var preparedLaps: [String] = []
-    private var analyzerStarted = false
     /// Set by `stop()`: a load still running then frees what it made instead of keeping it.
     private var stopped = false
 
+    /// The live recognizer and the converter that feeds it, swapped together on a mid-session fallback.
+    private struct Route {
+        var backend: SpeechRecognizerBackend?
+        var converter: AVAudioConverter?
+        var format: AVAudioFormat?
+        var started = false
+    }
+    private let routeLock = NSLock()
+    private var route = Route()
+    private var inFormat: AVAudioFormat?
+    /// Each backend's piece stream, in order: a fallback adds Apple's after Parakeet's has flushed.
+    private var pieceStreams: AsyncStream<AsyncThrowingStream<RecognizedPiece, Error>>.Continuation?
+    private var switching = false
+    private var lastDecodeSeconds: Double?
+
+    /// The recognizer captions are on now ("parakeet-ultra-pal6" / "apple-speechanalyzer"): beta report, diagnostics.
+    public var engineName: String { routeLock.withLock { route.backend?.name ?? "" } }
+    /// Why this engine left Parakeet, if it did.
+    public private(set) var fallbackReason: FallbackReason?
+    /// Called once when Parakeet falls back to Apple, so the app can count it toward the daily pin.
+    public var onFallback: (@Sendable (FallbackReason) -> Void)?
+
     /// `diarizerModelURL` has no default on purpose: the app must say where its bundled speaker model
-    /// lives, so there is no accidental network path (ADR 0014).
-    public init(locale: Locale = Locale(identifier: "en-US"), micMode: MicMode = .standard, diarizerModelURL: URL) {
+    /// lives, so there is no accidental network path (ADR 0014). The same goes for Parakeet's folder.
+    public init(locale: Locale = Locale(identifier: "en-US"), micMode: MicMode = .standard, diarizerModelURL: URL,
+                recognizer: SpeechRecognizerSetup = .apple) {
         self.locale = locale
         self.micMode = micMode
+        self.setup = recognizer
         self.diarizer = LiveDiarizer(modelURL: diarizerModelURL)
     }
 
@@ -112,14 +134,14 @@ public final class TranscriptionEngine {
     }
 
     /// Loads everything Start needs except the microphone (#119): runs during the launch animation, so Start is
-    /// instant. Reports steps 1-3 (speech model, speaker model, sound classifier and analyzer). Never opens the
+    /// instant. Reports steps 1-3 (speech model, speaker model, sound classifier). Never opens the
     /// microphone or asks for permission. Safe to call more than once: every caller waits for the same load.
     public func prepare(onStep: @escaping @Sendable (Int) -> Void) async throws {
         _ = try await loadPrepared(onStep: onStep)
     }
 
-    private func loadPrepared(onStep: @escaping @Sendable (Int) -> Void = { _ in }) async throws -> Prepared {
-        let task: Task<Prepared, Error> = prepareLock.withLock {
+    private func loadPrepared(onStep: @escaping @Sendable (Int) -> Void = { _ in }) async throws -> SpeechRecognizerBackend {
+        let task: Task<SpeechRecognizerBackend, Error> = prepareLock.withLock {
             if let prepareTask { return prepareTask }
             let task = Task { try await self.load(onStep: onStep) }
             prepareTask = task
@@ -128,7 +150,17 @@ public final class TranscriptionEngine {
         return try await task.value
     }
 
-    private func load(onStep: @escaping @Sendable (Int) -> Void) async throws -> Prepared {
+    private func makeBackend() -> SpeechRecognizerBackend {
+        switch setup {
+        case .apple: return AppleSpeechBackend(locale: locale)
+        case .parakeet(let url):
+            let backend = ParakeetBackend(modelURL: url)
+            backend.onDecode = { [weak self] seconds in self?.lastDecodeSeconds = seconds }
+            return backend
+        }
+    }
+
+    private func load(onStep: @escaping @Sendable (Int) -> Void) async throws -> SpeechRecognizerBackend {
         let clock = ContinuousClock()
         var mark = clock.now
         var laps: [String] = []
@@ -138,44 +170,50 @@ public final class TranscriptionEngine {
             laps.append("\(name) \(String(format: "%.1f", Double(d.components.seconds) + Double(d.components.attoseconds) / 1e18))s")
             mark = now
         }
-        let transcriber = SpeechTranscriber(
-            locale: locale,
-            transcriptionOptions: [],
-            reportingOptions: [.volatileResults, .fastResults],
-            attributeOptions: [.audioTimeRange]
-        )
-        try await ensureModelInstalled(for: transcriber)
-        lap("speech model"); onStep(1)
-        // Ready before the first audio, so both clocks start at the same first sample.
-        try await diarizer.prepare()
-        lap("speaker model"); onStep(2)
-        try await soundLabelerAsync { try self.soundLabeler.prepare() }
-        lap("sound classifier")
-        soundLabelerStream = soundLabeler.stream()
-
-        guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else {
-            throw TranscriptionError.noCompatibleAudioFormat
+        var backend = makeBackend()
+        do {
+            try await backend.prepare()
+        } catch where backend.choice == .parakeet {
+            // Design §5: the model is missing or won't load. Apple's engine for this launch, captions keep flowing.
+            await backend.cancel()
+            recordFallback(.loadFailed)
+            backend = AppleSpeechBackend(locale: locale)
+            try await backend.prepare()
         }
-        let analyzer = SpeechAnalyzer(modules: [transcriber])
-        // Load the model before the first word, not on it.
-        try await analyzer.prepareToAnalyze(in: format)
-        lap("analyzer")
+        lap(backend.name); onStep(1)
+        // Ready before the first audio, so both clocks start at the same first sample.
+        do {
+            try await diarizer.prepare()
+            lap("speaker model"); onStep(2)
+            try await soundLabelerAsync { try self.soundLabeler.prepare() }
+            lap("sound classifier")
+        } catch {
+            await backend.cancel()
+            throw error
+        }
+        soundLabelerStream = soundLabeler.stream()
         if prepareLock.withLock({ stopped }) {
             // Stopped while loading (released in the background, or a failed start): never keep a recognizer.
-            await analyzer.cancelAndFinishNow()
+            await backend.cancel()
             throw CancellationError()
         }
-        self.analyzer = analyzer
+        routeLock.withLock { route.backend = backend }
         preparedLaps = laps
         onStep(3)
-        return Prepared(transcriber: transcriber, analyzer: analyzer, format: format)
+        return backend
+    }
+
+    private func recordFallback(_ reason: FallbackReason) {
+        guard fallbackReason == nil else { return }
+        fallbackReason = reason
+        onFallback?(reason)
     }
 
     private func startSession() async throws -> AsyncThrowingStream<CaptionUpdate, Error> {
         let clock = ContinuousClock()
         var mark = clock.now
         let alreadyLoaded = prepareLock.withLock { prepareTask != nil }
-        let prepared = try await loadPrepared()
+        let backend = try await loadPrepared()
         var laps = preparedLaps
         if alreadyLoaded { laps = ["loaded before Start (\(laps.joined(separator: ", ")))"] }
         func lap(_ name: String) {
@@ -185,15 +223,11 @@ public final class TranscriptionEngine {
             mark = now
         }
         lap(alreadyLoaded ? "waited for the load" : "load")
-        let transcriber = prepared.transcriber, analyzer = prepared.analyzer, format = prepared.format
 
         let (alStream, alCont) = AsyncStream.makeStream(of: Double.self)
         self.audioLevelStreamValue = alStream
         self.audioLevelContinuation = alCont
-
         let fed = FedAudioClock()
-        let (sequence, builder) = AsyncStream.makeStream(of: AnalyzerInput.self)
-        self.inputBuilder = builder
 
         #if os(iOS)
         let session = AVAudioSession.sharedInstance()
@@ -209,107 +243,110 @@ public final class TranscriptionEngine {
 
         let input = audioEngine.inputNode
         let inFormat = input.outputFormat(forBus: 0)
-        guard let converter = AVAudioConverter(from: inFormat, to: format),
-              let diarFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000, channels: 1, interleaved: false),
-              let diarConverter = AVAudioConverter(from: inFormat, to: diarFormat) else {
-            throw TranscriptionError.converterUnavailable
-        }
+        let pieces = try await open(backend, inFormat: inFormat)
         input.installTap(onBus: 0, bufferSize: 4096, format: inFormat) { buffer, _ in
-            self.processBuffer(buffer, inFormat: inFormat, converter: converter, diarConverter: diarConverter, format: format, diarFormat: diarFormat, fed: fed, builder: builder)
+            self.processBuffer(buffer, inFormat: inFormat, fed: fed)
         }
         audioEngine.prepare()
         let wallTime = FedWallTime()
         try audioEngine.start()
         wallTime.set(Date())
-        try await analyzer.start(inputSequence: sequence)
-        analyzerStarted = true
         lap("audio start")
         startupReport = laps.joined(separator: " · ")
+        return makeResultStream(pieces: pieces, wallTime: wallTime)
+    }
 
-        return makeResultStream(transcriber: transcriber, fed: fed, wallTime: wallTime)
+    /// Builds the converter for `backend`, starts it, and opens the stream of piece streams.
+    private func open(_ backend: SpeechRecognizerBackend, inFormat: AVAudioFormat) async throws -> AsyncStream<AsyncThrowingStream<RecognizedPiece, Error>> {
+        self.inFormat = inFormat
+        guard AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000, channels: 1, interleaved: false) != nil else {
+            throw TranscriptionError.converterUnavailable
+        }
+        var converter: AVAudioConverter?
+        if let format = backend.analyzerFormat {
+            guard let c = AVAudioConverter(from: inFormat, to: format) else { throw TranscriptionError.converterUnavailable }
+            converter = c
+        }
+        backend.onTrigger = { [weak self] trigger in self?.handle(trigger) }
+        let first = try await backend.start()
+        let (streams, continuation) = AsyncStream.makeStream(of: AsyncThrowingStream<RecognizedPiece, Error>.self)
+        continuation.yield(first)
+        pieceStreams = continuation
+        routeLock.withLock { route = Route(backend: backend, converter: converter, format: backend.analyzerFormat, started: true) }
+        return streams
+    }
+
+    /// A trigger from the running backend or the app (design §5).
+    public func handle(_ trigger: FallbackTrigger) {
+        let running = routeLock.withLock { route.backend?.choice ?? .apple }
+        guard EngineFallbackPolicy.action(for: trigger, running: running) == .switchToApple,
+              let reason = EngineFallbackPolicy.reason(for: trigger) else { return }
+        Task { await self.switchToApple(reason: reason) }
+    }
+
+    /// Mid-session switch: the microphone, diarizer, sound labeler and clock stay up; only the recognizer changes.
+    /// Parakeet flushes its words as final first; audio during Apple's warm-up (about 1 s) goes uncaptioned.
+    private func switchToApple(reason: FallbackReason) async {
+        let old: SpeechRecognizerBackend? = routeLock.withLock {
+            guard !switching, route.started, route.backend?.choice == .parakeet, !prepareLock.withLock({ stopped }) else { return nil }
+            switching = true
+            let old = route.backend
+            route.backend = nil
+            return old
+        }
+        guard let old, let inFormat else { return }
+        recordFallback(reason)
+        await old.finish()
+        let apple = AppleSpeechBackend(locale: locale)
+        do {
+            try await apple.prepare()
+            guard let format = apple.analyzerFormat, let converter = AVAudioConverter(from: inFormat, to: format) else {
+                throw TranscriptionError.converterUnavailable
+            }
+            let stream = try await apple.start()
+            let keep = routeLock.withLock { () -> Bool in
+                switching = false
+                if prepareLock.withLock({ stopped }) { return false }
+                route = Route(backend: apple, converter: converter, format: format, started: true)
+                return true
+            }
+            if keep { pieceStreams?.yield(stream) } else { await apple.cancel() }
+        } catch {
+            routeLock.withLock { switching = false }
+            await apple.cancel()
+            pieceStreams?.yield(AsyncThrowingStream { $0.finish(throwing: error) })
+        }
     }
 
     /// Replays audio from a file at real-time pace for latency measurement.
-    /// The same processing pipeline as live mic input: same resamplers, analyzers, diarizer, lag calculation.
+    /// The same processing pipeline as live mic input: same resamplers, recognizer, diarizer, lag calculation.
     public func startReplaying(fileURL: URL) async throws -> AsyncThrowingStream<CaptionUpdate, Error> {
-        let transcriber = SpeechTranscriber(
-            locale: locale,
-            transcriptionOptions: [],
-            reportingOptions: [.volatileResults, .fastResults],
-            attributeOptions: [.audioTimeRange]
-        )
-        try await ensureModelInstalled(for: transcriber)
-        try await diarizer.prepare()
-        try await soundLabelerAsync { try self.soundLabeler.prepare() }
-
-        guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else {
-            throw TranscriptionError.noCompatibleAudioFormat
-        }
-        let analyzer = SpeechAnalyzer(modules: [transcriber])
-        self.analyzer = analyzer
+        let backend = try await loadPrepared()
         let fed = FedAudioClock()
-        let (sequence, builder) = AsyncStream.makeStream(of: AnalyzerInput.self)
-        self.inputBuilder = builder
-
         let audioFile = try AVAudioFile(forReading: fileURL)
         let inFormat = audioFile.processingFormat
-        guard let converter = AVAudioConverter(from: inFormat, to: format),
-              let diarFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000, channels: 1, interleaved: false),
-              let diarConverter = AVAudioConverter(from: inFormat, to: diarFormat) else {
-            throw TranscriptionError.converterUnavailable
-        }
-
-        try await analyzer.prepareToAnalyze(in: format)
-        soundLabelerStream = soundLabeler.stream()
+        let pieces = try await open(backend, inFormat: inFormat)
 
         return AsyncThrowingStream { (continuation: AsyncThrowingStream<CaptionUpdate, Error>.Continuation) in
             let task = Task {
                 do {
-                    // Read file in 4096-frame chunks at the input format's sample rate.
-                    let bufferSize = AVAudioFrameCount(4096)
-                    var position: AVAudioFramePosition = 0
                     let wallTime = FedWallTime()
-
-                    // Start the result stream task in the background.
-                    let resultTask = Task {
-                        var lagTracker = WordLagTracker()
-                        var labels = SpeakerLabelSmoother()
-                        for try await result in transcriber.results {
-                            let starts = result.text.runs.compactMap { $0.audioTimeRange?.start.seconds }
-                            let ends = result.text.runs.compactMap { $0.audioTimeRange?.end.seconds }
-                            let end = ends.max()
-                            let speaker = (starts.min().flatMap { st in end.map { (st, $0) } })
-                                .flatMap { labels.label(start: $0.0, end: $0.1, segments: self.diarizer.segments, isFinal: result.isFinal) }
-                            let lag = wallTime.elapsedSinceStart().flatMap { elapsed in lagTracker.sample(elapsed: elapsed, audioEnds: ends) }
-                            let wordEmphasis = self.wordEmphasisFromResultText(result.text)
-                            continuation.yield(CaptionUpdate(text: String(result.text.characters), isFinal: result.isFinal, lagSeconds: lag, speaker: speaker, startSeconds: starts.min(), endSeconds: end, diagnostics: self.diarizer.diagnostics, wordEmphasis: wordEmphasis))
-                        }
-                    }
-
-                    // Feed audio from the file at real-time pace.
-                    try await analyzer.start(inputSequence: sequence)
                     wallTime.set(Date())
-                    audioFile.framePosition = position
-                    while position < audioFile.length {
+                    let resultTask = Task {
+                        for try await update in self.makeResultStream(pieces: pieces, wallTime: wallTime) { continuation.yield(update) }
+                    }
+                    // Read the file in 4096-frame chunks and feed it at real-time pace.
+                    let bufferSize = AVAudioFrameCount(4096)
+                    while audioFile.framePosition < audioFile.length {
                         let buffer = AVAudioPCMBuffer(pcmFormat: inFormat, frameCapacity: bufferSize)!
                         try audioFile.read(into: buffer)
                         if buffer.frameLength == 0 { break }
-
-                        self.processBuffer(buffer, inFormat: inFormat, converter: converter, diarConverter: diarConverter, format: format, diarFormat: diarFormat, fed: fed, builder: builder)
-
-                        // Sleep to maintain real-time pace: fed time vs. wall clock time.
-                        if let elapsedWall = wallTime.elapsedSinceStart() {
-                            let targetWall = fed.seconds
-                            if targetWall > elapsedWall {
-                                try await Task.sleep(nanoseconds: UInt64((targetWall - elapsedWall) * 1e9))
-                            }
+                        self.processBuffer(buffer, inFormat: inFormat, fed: fed)
+                        if let elapsedWall = wallTime.elapsedSinceStart(), fed.seconds > elapsedWall {
+                            try await Task.sleep(nanoseconds: UInt64((fed.seconds - elapsedWall) * 1e9))
                         }
-
-                        position += Int64(buffer.frameLength)
                     }
-
-                    builder.finish()
-                    try await analyzer.finalizeAndFinishThroughEndOfInput()
+                    await self.finishRecognizer()
                     _ = try await resultTask.value
                     continuation.finish()
                 } catch {
@@ -320,10 +357,38 @@ public final class TranscriptionEngine {
         }
     }
 
-    private func processBuffer(_ buffer: AVAudioPCMBuffer, inFormat: AVAudioFormat, converter: AVAudioConverter, diarConverter: AVAudioConverter, format: AVAudioFormat, diarFormat: AVAudioFormat, fed: FedAudioClock, builder: AsyncStream<AnalyzerInput>.Continuation) {
-        let ratio = format.sampleRate / inFormat.sampleRate
-        let capacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio) + 1024
-        guard let out = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: capacity) else { return }
+    private func processBuffer(_ buffer: AVAudioPCMBuffer, inFormat: AVAudioFormat, fed: FedAudioClock) {
+        let (backend, converter, format) = routeLock.withLock { (route.backend, route.converter, route.format) }
+        // 16 kHz mono Float32 for the diarizer, the sound labeler, loudness, and Parakeet.
+        if let diarFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000, channels: 1, interleaved: false),
+           let dOut = convert(buffer, with: diarConverter(from: inFormat, to: diarFormat), to: diarFormat),
+           let ch = dOut.floatChannelData {
+            let samples = Array(UnsafeBufferPointer(start: ch[0], count: Int(dOut.frameLength)))
+            diarizer.feed(samples)
+            soundLabeler.feed(samples, atAudioTime: fed.seconds)
+            let level = recordLoudness(samples: samples, atAudioTime: fed.seconds)
+            if format == nil { backend?.feed(samples16k: samples, speech: level > Self.speechFloorDBFS) }
+        }
+        if let backend, let converter, let format, let out = convert(buffer, with: converter, to: format) {
+            backend.feed(buffer: out)
+        }
+        fed.add(Double(buffer.frameLength) / inFormat.sampleRate)
+    }
+
+    /// Louder than this is treated as possible speech by Parakeet's silence gate and watchdog (BetaFeedback's quiet line).
+    static let speechFloorDBFS = -50.0
+
+    private var diarConverterCache: AVAudioConverter?
+    private func diarConverter(from inFormat: AVAudioFormat, to diarFormat: AVAudioFormat) -> AVAudioConverter? {
+        if let c = diarConverterCache, c.inputFormat == inFormat { return c }
+        diarConverterCache = AVAudioConverter(from: inFormat, to: diarFormat)
+        return diarConverterCache
+    }
+
+    private func convert(_ buffer: AVAudioPCMBuffer, with converter: AVAudioConverter?, to format: AVAudioFormat) -> AVAudioPCMBuffer? {
+        guard let converter else { return nil }
+        let capacity = AVAudioFrameCount(Double(buffer.frameLength) * format.sampleRate / buffer.format.sampleRate) + 1024
+        guard let out = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: capacity) else { return nil }
         var supplied = false
         var error: NSError?
         converter.convert(to: out, error: &error) { _, status in
@@ -332,45 +397,25 @@ public final class TranscriptionEngine {
             status.pointee = .haveData
             return buffer
         }
-        // Same tap buffer, second path: 16 kHz mono Float32 for the diarizer and sound labeler.
-        let dCap = AVAudioFrameCount(Double(buffer.frameLength) * 16_000 / inFormat.sampleRate) + 1024
-        if let dOut = AVAudioPCMBuffer(pcmFormat: diarFormat, frameCapacity: dCap) {
-            var dSupplied = false
-            var dError: NSError?
-            diarConverter.convert(to: dOut, error: &dError) { _, status in
-                if dSupplied { status.pointee = .noDataNow; return nil }
-                dSupplied = true
-                status.pointee = .haveData
-                return buffer
-            }
-            if dError == nil, let ch = dOut.floatChannelData {
-                let samples = Array(UnsafeBufferPointer(start: ch[0], count: Int(dOut.frameLength)))
-                diarizer.feed(samples)
-                soundLabeler.feed(samples, atAudioTime: fed.seconds)
-                recordLoudness(samples: samples, atAudioTime: fed.seconds)
-            }
-        }
-        if error == nil {
-            fed.add(Double(out.frameLength) / format.sampleRate)
-            builder.yield(AnalyzerInput(buffer: out))
-        }
+        return error == nil ? out : nil
     }
 
-    private func makeResultStream(transcriber: SpeechTranscriber, fed: FedAudioClock, wallTime: FedWallTime) -> AsyncThrowingStream<CaptionUpdate, Error> {
+    private func makeResultStream(pieces: AsyncStream<AsyncThrowingStream<RecognizedPiece, Error>>, wallTime: FedWallTime) -> AsyncThrowingStream<CaptionUpdate, Error> {
         return AsyncThrowingStream { [weak self] continuation in
             let task = Task {
                 do {
                     var lagTracker = WordLagTracker()
                     var labels = SpeakerLabelSmoother()     // one per session (#91)
-                    for try await result in transcriber.results {
-                        let starts = result.text.runs.compactMap { $0.audioTimeRange?.start.seconds }
-                        let ends = result.text.runs.compactMap { $0.audioTimeRange?.end.seconds }
-                        let end = ends.max()
-                        let speaker = (starts.min().flatMap { st in end.map { (st, $0) } })
-                            .flatMap { labels.label(start: $0.0, end: $0.1, segments: self?.diarizer.segments ?? [], isFinal: result.isFinal) }
-                        let lag = wallTime.elapsedSinceStart().flatMap { elapsed in lagTracker.sample(elapsed: elapsed, audioEnds: ends) }
-                        let wordEmphasis = self?.wordEmphasisFromResultText(result.text) ?? []
-                        continuation.yield(CaptionUpdate(text: String(result.text.characters), isFinal: result.isFinal, lagSeconds: lag, speaker: speaker, startSeconds: starts.min(), endSeconds: end, diagnostics: self?.diarizer.diagnostics ?? "", wordEmphasis: wordEmphasis))
+                    for await stream in pieces {
+                        for try await piece in stream {
+                            guard let self else { break }
+                            let speaker = (piece.start.flatMap { st in piece.end.map { (st, $0) } })
+                                .flatMap { labels.label(start: $0.0, end: $0.1, segments: self.diarizer.segments, isFinal: piece.isFinal) }
+                            let lag = wallTime.elapsedSinceStart().flatMap { lagTracker.sample(elapsed: $0, audioEnds: piece.wordEnds) }
+                            continuation.yield(CaptionUpdate(text: piece.text, isFinal: piece.isFinal, lagSeconds: lag, speaker: speaker,
+                                                             startSeconds: piece.start, endSeconds: piece.end,
+                                                             diagnostics: self.diagnostics, wordEmphasis: self.wordEmphasis(piece.words)))
+                        }
                     }
                     continuation.finish()
                 } catch {
@@ -381,13 +426,23 @@ public final class TranscriptionEngine {
         }
     }
 
+    private var diagnostics: String {
+        var parts = [engineName]
+        if let fallbackReason { parts.append("fallback: \(fallbackReason.rawValue)") }
+        if let lastDecodeSeconds { parts.append(String(format: "decode %.2fs", lastDecodeSeconds)) }
+        parts.append(diarizer.diagnostics)
+        return parts.filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+
     /// Records the loudness level for a buffer of audio samples at a given audio time.
-    private func recordLoudness(samples: [Float], atAudioTime audioTime: Double) {
+    @discardableResult
+    private func recordLoudness(samples: [Float], atAudioTime audioTime: Double) -> Double {
         let level = AudioLevel.rmsDBFS(samples)
         loudnessLock.lock(); defer { loudnessLock.unlock() }
         loudnessTimeSeries.append((audioTime: audioTime, level: level))
         loudnessBaseline.update(level)
         audioLevelContinuation?.yield(level)
+        return level
     }
 
     /// Computes the average loudness for a word's audio time range.
@@ -399,60 +454,51 @@ public final class TranscriptionEngine {
         return overlapping.map(\.level).reduce(0, +) / Double(overlapping.count)
     }
 
-    /// Helper to compute word emphasis from a finalized result's runs.
-    private func wordEmphasisFromResultText(_ resultText: AttributedString) -> [EmphasisLevel] {
-        var result: [EmphasisLevel] = []
-        loudnessLock.lock(); let baseline = loudnessBaseline.median; loudnessLock.unlock()
-
-        for run in resultText.runs {
-            let substr = resultText[run.range]
-            let text = String(describing: substr)
-            let words = text.components(separatedBy: CharacterSet.whitespacesAndNewlines).filter { !$0.isEmpty }
-
-            guard let timeRange = run.audioTimeRange else {
-                result.append(contentsOf: Array(repeating: .normal, count: words.count))
-                continue
-            }
-
-            let audioRange = timeRange.start.seconds...timeRange.end.seconds
-            let loudness = averageLoudness(for: audioRange) ?? (loudnessTimeSeries.last?.level ?? -60)
-            let emphasis = EmphasisMapper.level(wordDBFS: loudness, baseline: baseline)
-            result.append(contentsOf: Array(repeating: emphasis, count: words.count))
-        }
-        return result
+    private func wordEmphasis(_ words: [RecognizedWord]) -> [EmphasisLevel] {
+        let (baseline, fallback) = loudnessLock.withLock { (loudnessBaseline.median, loudnessTimeSeries.last?.level ?? -60) }
+        return WordEmphasis.levels(for: words, baseline: baseline, loudness: averageLoudness(for:), fallback: fallback)
     }
 
-    /// Releases the microphone, the speech analyzer and the helpers. Safe to call more than once.
+    /// Flushes the live recognizer (its last words come out final) and closes the piece streams.
+    private func finishRecognizer() async {
+        let backend = routeLock.withLock { () -> SpeechRecognizerBackend? in
+            defer { route = Route() }
+            return route.started ? route.backend : nil
+        }
+        await backend?.finish()
+        pieceStreams?.finish()
+        pieceStreams = nil
+    }
+
+    /// Releases the microphone, the recognizer and the helpers. Safe to call more than once.
     public func stop() async {
         prepareLock.withLock { stopped = true }
         audioEngine.inputNode.removeTap(onBus: 0)
         audioEngine.stop()
-        inputBuilder?.finish()
-        inputBuilder = nil
-        if let analyzer {
-            self.analyzer = nil
-            if analyzerStarted {
-                do { try await analyzer.finalizeAndFinishThroughEndOfInput() }
-                catch { await analyzer.cancelAndFinishNow() }   // never leave a recognizer allocated
-            } else {
-                await analyzer.cancelAndFinishNow()   // loaded ahead but never started (#119)
-            }
+        let unstarted = routeLock.withLock { route.started ? nil : route.backend }
+        if let unstarted {
+            routeLock.withLock { route = Route() }
+            await unstarted.cancel()   // loaded ahead but never started (#119)
         }
+        await finishRecognizer()
         diarizer.finish()
         soundLabeler.finish()
         audioLevelContinuation?.finish()   // left open, it kept the session waiting after Stop (#89)
         audioLevelContinuation = nil
     }
 
-    /// The one-time, system-provisioned model fetch noted in CONTEXT.md "On-device only".
-    private func ensureModelInstalled(for transcriber: SpeechTranscriber) async throws {
-        try await SpeechModelInstaller.install(locale: locale) { _ in }
-    }
-
     /// Loads the speaker model once and discards it, so Core ML's one-time Neural Engine preparation
     /// happens during first run instead of the first time someone taps Start.
     public static func warmUp(diarizerModelURL: URL) async throws {
         try await LiveDiarizer(modelURL: diarizerModelURL).prepare()
+    }
+
+    /// Loads Parakeet once and discards it, so Core ML's first compile for this phone (35 s on a Mac) happens
+    /// during first run instead of behind the first Start (design §1, risk "first load").
+    public static func warmUp(parakeetModelURL: URL) async throws {
+        let backend = ParakeetBackend(modelURL: parakeetModelURL)
+        try await backend.prepare()
+        await backend.cancel()
     }
 
     /// Helper to run a throwing closure on a background task context.
