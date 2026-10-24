@@ -73,6 +73,49 @@ final class ParakeetIntegrationTests: XCTestCase {
         XCTAssertTrue(text.lowercased().contains("captions"), text)
     }
 
+    func testAMemoryWarningMidSessionSwitchesToAppleAndCaptionsKeepFlowing() async throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["CAPTION_PARAKEET"] == "1", "opt-in")
+        let said = "The birch canoe slid on the smooth planks. Glue the sheet to the dark blue background. "
+            + "It is easy to tell the depth of a well. These days a chicken leg is a rare dish. "
+            + "Rice is often served in round bowls. The juice of lemons makes fine punch."
+        let audio = try speech(said, name: "switch")
+        let engine = TranscriptionEngine(
+            diarizerModelURL: repo.appendingPathComponent("Apps/Spike/Resources/Models/Sortformer_v2.1.mlmodelc"),
+            recognizer: .parakeet(modelURL: repo.appendingPathComponent("Apps/Spike/Resources/Models/ParakeetUltra")))
+        let counted = Counter()
+        engine.onFallback = { _ in counted.bump() }
+        var finals: [(engine: String, text: String)] = []
+        var lastEnd = -1.0
+        let started = Date()
+        var fired = false
+        for try await u in try await engine.startReplaying(fileURL: audio) {
+            if u.isFinal {
+                finals.append((u.engine, u.text))
+                if let s = u.startSeconds { XCTAssertGreaterThanOrEqual(s, lastEnd - 1.5, "finals move forward in time") }
+                lastEnd = max(lastEnd, u.endSeconds ?? lastEnd)
+            }
+            if !fired, Date().timeIntervalSince(started) > 6 {
+                fired = true
+                engine.handle(.memoryWarning)
+                engine.handle(.memoryWarning)   // a second warning during the switch changes nothing
+            }
+        }
+        print("PARAKEET-IT switch: " + finals.map { "[\($0.engine)] \($0.text)" }.joined(separator: " "))
+        XCTAssertEqual(engine.fallbackReason, .memoryWarning)
+        XCTAssertEqual(engine.engineName, "apple-speechanalyzer")
+        XCTAssertEqual(counted.value, 1, "one fallback counts once toward the daily pin")
+        XCTAssertTrue(finals.contains { $0.engine == "parakeet-ultra-pal6" }, "Parakeet's words before the switch were kept as final")
+        let after = finals.filter { $0.engine == "apple-speechanalyzer" }.map(\.text).joined(separator: " ").lowercased()
+        XCTAssertTrue(after.contains("lemons") || after.contains("punch"), "Apple captioned the rest: \(after)")
+    }
+
+    private final class Counter: @unchecked Sendable {
+        private let lock = NSLock()
+        private var n = 0
+        func bump() { lock.withLock { n += 1 } }
+        var value: Int { lock.withLock { n } }
+    }
+
     private func editDistance(_ a: [String], _ b: [String]) -> Int {
         var row = Array(0...b.count)
         for i in 1...max(a.count, 1) where !a.isEmpty {
