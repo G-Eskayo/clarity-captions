@@ -1,9 +1,9 @@
 # Design: switch captions to Parakeet Ultra 6-bit (#150)
 
 Design for #150 "[E] Switch captions to Parakeet Ultra: iPhone checks, then an ADR (from the #145 accent test)".
-The decision record is [ADR 0025](../adr/0025-parakeet-ultra-caption-engine.md) (Proposed). This doc covers how:
-the code seam, streaming, packaging, the fallback, the iPhone checks, the tests and the task order. No app code
-changes until Gil approves this doc and the task list.
+The decision record is [ADR 0025](../adr/0025-parakeet-ultra-caption-engine.md) (Accepted 2026-10-23). This doc
+covers how: the code seam, streaming, packaging, the fallback, the iPhone checks, the tests and the task order. Gil
+approved it on 2026-10-23 ("go ahead and start the parakeet code"); his answers are in Decisions at the end.
 
 ## What is already decided (Gil, 2026-10-22, #150 comments)
 
@@ -82,7 +82,7 @@ protocol SpeechRecognizerBackend: AnyObject, Sendable {
     func prepare(onStep: @escaping @Sendable (Int) -> Void) async throws
     /// Audio format the backend wants. Parakeet: 16 kHz mono Float32 (the diarizer's format).
     var inputKind: RecognizerInput { get }         // .analyzerFormat(AVAudioFormat) or .mono16k
-    func start(context: [String]) async throws -> AsyncThrowingStream<RecognizedPiece, Error>
+    func start() async throws -> AsyncThrowingStream<RecognizedPiece, Error>
     /// Called on the audio thread; must not block (enqueue only).
     func feed(_ input: RecognizerFeed)
     /// Flushes and emits the remaining words as final.
@@ -103,9 +103,9 @@ struct RecognizedPiece: Sendable, Equatable {
   `CaptionUpdate`: text = words joined, `startSeconds`/`endSeconds` from the first and last word,
   `speaker` from `SpeakerLabelSmoother`, `lagSeconds` from `WordLagTracker` over the word ends, and
   `wordEmphasis` from the loudness series over each word's range.
-- The Apple backend is today's code moved, not rewritten: `SpeechTranscriber` options, `AnalysisContext` for the
-  vocabulary list, the converter to `bestAvailableAudioFormat`, `finalizeAndFinishThroughEndOfInput` on stop. Its
-  `AttributedString` runs become `TimedWord`s.
+- The Apple backend is today's code moved, not rewritten: `SpeechTranscriber` options, the converter to
+  `bestAvailableAudioFormat`, `finalizeAndFinishThroughEndOfInput` on stop. Its `AttributedString` runs become
+  `TimedWord`s. (The custom vocabulary list and its `contextualStrings` plumbing are removed, D5.)
 - `wordEmphasisFromResultText(_ AttributedString)` becomes a pure function over `[TimedWord]`. That is a small
   behavior-preserving refactor with its own test first.
 - The Parakeet backend reads the 16 kHz mono samples `processBuffer` already makes for the diarizer, so there is no
@@ -328,7 +328,6 @@ Pure first, each red before green, real collaborators where cheap, inputs chosen
 | First load after install takes 30-60+ s on the phone | High | First run looks stuck | Run it in the first-run flow with its own step and progress, not behind the launch animation; measure in C1 |
 | Memory with two large models on an 8 GB phone | Low-medium | Jetsam kill mid-conversation | C3; fallback on memory warning; 4-bit build |
 | iOS 18+ palettization ops on the iPhone Neural Engine fall back to CPU | Low | Slow decodes | C2 decode p95 catches it; the encoder's compute-unit placement shows in Instruments' Core ML template |
-| Custom vocabulary list (`contextualStrings`) has no effect on Parakeet | Certain | Names in the vocabulary list are no longer boosted | D5; FluidAudio's CTC vocabulary boosting needs an extra CTC model, a later ticket |
 | Locale: the app runs en-US today. ~~Ultra is English-tuned~~: retired by #158, where Ultra beat Apple in Spanish, French and German (2.8 / 4.5 / 4.4% vs 4.0 / 7.5 / 7.2% WER on FLEURS, evidence log E19) | Low | A language Ultra doesn't cover (outside its 25 European languages) gets wrong captions | Those locales use Apple (one line in the flag logic); es, fr and de can use Parakeet in 1.2 |
 | Hosting choice slips | Medium | Build 7 can't be built from a clean clone | Option D (Mini copy) unblocks the build on the Mini meanwhile |
 | Latency budget has no committed baseline (ADR 0015's file says TBD) | Certain | "10% over what?" | Apple measured on the same phone in the same build is the baseline (C2); fill the baseline file as part of task 12 |
@@ -336,11 +335,11 @@ Pure first, each red before green, real collaborators where cheap, inputs chosen
 
 ## 11. Ordered task list
 
-Doc-first: nothing below starts until Gil approves this doc and ADR 0025, and answers the decisions.
+Doc-first: approved by Gil on 2026-10-23.
 
-1. Gil reviews this doc and ADR 0025; answers D1-D6. ADR 0025 goes to Accepted.
-2. Measure Apple's engine on the phone with the existing developer-panel replay (fills ADR 0015's baseline; also C2's
-   baseline). Can run in parallel with 3-7.
+1. Gil reviews this doc and ADR 0025; answers D1-D7. ADR 0025 goes to Accepted. **Done 2026-10-23.**
+2. ~~Measure Apple's engine on the phone beforehand.~~ Dropped: both engines are measured on the same Parakeet build
+   the same day in step 10.
 3. TDD: `TailCommitter`, token-to-word merge, `AdaptiveHop`, `EngineFallbackPolicy` (tests 1-3, 5).
 4. Packaging: clean the `ultra-pal6` folder (drop `config.json` and `parakeet_vocab.json`, correct `variant.json`),
    generate the sha256 manifest, write `scripts/fetch-asr-models.sh` with the chosen source and the Mini fallback,
@@ -358,40 +357,20 @@ Doc-first: nothing below starts until Gil approves this doc and ADR 0025, and an
 12. Fill `docs/perf/caption-latency-baseline.md` with both engines' phone numbers; update the Versions page story
     (#151) if the switch ships.
 
-## Decisions (Gil)
+## Decisions (Gil, 2026-10-23)
 
-**D1. If both 6-bit and 4-bit fail the phone checks, what ships as build 7?**
-- [ ] **Build 7 ships the seam with the flag defaulting to Apple; the switch moves to 1.2 (recommended).** The iPad
-  work isn't held up and the risky part waits for a fix.
-- [ ] Hold build 7 until Parakeet passes.
-- [ ] Ship build 6 as 1.1 now; the engine work becomes 1.2 entirely.
+- **D1. If both 6-bit and 4-bit fail the phone checks:** not decided now. If Parakeet fails, Gil decides with the
+  real phone numbers in front of him. (The seam and the flag are built either way, so every option stays open.)
+- **D2. Hosting:** A. GitHub Release asset on G-Eskayo/clarity-captions, sha256 manifest in the repo, the Mini copy
+  as the fallback source (`SEAL_MODEL_SOURCE=mini`).
+- **D3. Fetch scripts:** two. `fetch-diarizer-models.sh` stays as is; new `fetch-asr-models.sh`.
+- **D4. Apple's speech asset:** keeps installing in first run, so the fallback works offline.
+- **D5. Custom vocabulary list: removed from the app entirely.** `VocabularyList`, `VocabularyStore`, the
+  `contextualStrings` passed to `TranscriptionEngine`, their tests and their mentions in the docs are deleted as
+  part of this work. It is not an option, not a later ticket, and not a future Parakeet feature.
+- **D6. Mac app:** stays on Apple's engine in 1.1.
+- **D7. Hop:** 0.5 s adaptive at the start of the phone checks.
 
-**D2. Where is the 6-bit build hosted for the fetch script?**
-- [ ] **A. GitHub Release asset on clarity-captions, sha256 manifest in the repo, Mini copy as the fallback source
-  (recommended).**
-- [ ] B. Hugging Face model repo under Gil's account, pinned by commit.
-- [ ] D only: copy from the M4; builds only on the Mini.
-
-**D3. One fetch script or two?**
-- [ ] **Two scripts (`fetch-diarizer-models.sh`, new `fetch-asr-models.sh`) (recommended)**: each model's host and
-  manifest stays separate, and the existing script is untouched.
-- [ ] One `fetch-models.sh` for both.
-
-**D4. Keep installing Apple's speech asset in first run while Parakeet is the default?**
-- [ ] **Yes (recommended).** The fallback then works offline. It costs the same first-run step as today.
-- [ ] No, install it only when a fallback first happens (needs network at that moment).
-
-**D5. The custom vocabulary list does nothing on Parakeet. What happens when a user has entries?**
-- [ ] **Parakeet anyway; the list stays for the Apple fallback; boosting on Parakeet becomes its own ticket
-  (recommended).** The accuracy gain on accents is larger than the list's effect, and few users have entries.
-- [ ] Use Apple whenever the vocabulary list is not empty.
-- [ ] Hide the vocabulary list while Parakeet is the engine.
-
-**D6. Mac app in 1.1?**
-- [ ] **Stays on Apple's engine in 1.1 (recommended)**: the Mac isn't part of build 7, and its bundling can follow
-  once the phone numbers are in.
-- [ ] Switch the Mac at the same time.
-
-**D7. Hop at the start of the phone checks.**
-- [ ] **0.5 s adaptive (recommended)**, measured in C2 and C4, raised if C4 runs hot.
-- [ ] 1.0 s fixed: half the compute, words show about 0.5 s later.
+**How the checks run:** on a real Release build installed on Gil's iPhone by cable, with Parakeet on and both
+engines in the build behind the developer flag. Both engines are measured on that same build, on the same day.
+There is no separate Apple baseline run beforehand (this replaces task 2's separate step).
