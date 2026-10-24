@@ -43,8 +43,10 @@ targets:
       - path: Resources/Models/ParakeetUltra
         type: folder
         buildPhase: resources
-      # (The latency fixture is NOT bundled: it is generated, not committed, and a missing bundled file breaks the build.
-      #  The package's latency test generates its own audio. Re-add this only together with a committed fixture.)
+      # The developer panel's "Measure latency" replays this committed 19 s fixture (say -v Samantha, 16 kHz Int16), so
+      # iPhone check C2 runs both engines on the same audio (ADR 0025).
+      - path: Resources/latency-fixture.wav
+        buildPhase: resources
     dependencies:
       - package: CaptionCore
     # Beta feedback recipient (ADR 0023): set in the gitignored Beta.xcconfig.local, never committed.
