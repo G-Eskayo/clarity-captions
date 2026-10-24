@@ -48,8 +48,12 @@ public struct TailCommitter: Sendable {
     public private(set) var commitPoint = 0.0
     /// The last decode's open words, to agree with.
     private var pending: [TimedWord] = []
-    /// The newest final word: a re-decode of it with shifted timing must not pass as a new word.
-    private var lastFinal: TimedWord?
+    /// The newest final words (up to `alignWords`): each decode re-reads them as context, and is aligned on their
+    /// text, because Parakeet's token times move by a frame or two between windows (more than half a short word).
+    private var recentFinals: [TimedWord] = []
+    private static let alignWords = 3
+    /// How far a re-read final word may drift in time and still be the same word.
+    private static let alignTolerance = 1.0
 
     public init(config: Config = Config()) { self.config = config }
 
@@ -75,7 +79,7 @@ public struct TailCommitter: Sendable {
         }
         let final = Array(open[..<count])
         let rest = Array(open[count...])
-        if let last = final.last { commitPoint = last.end; lastFinal = last }
+        if let last = final.last { commitPoint = last.end; remember(final) }
         if rest.isEmpty || audioEnd - commitPoint >= config.maxUncommitted {
             // Nothing open (silence), or still too much: let go of audio no open word starts in.
             commitPoint = max(commitPoint, min(audioEnd - config.forceKeep, rest.first?.start ?? .infinity))
@@ -87,18 +91,40 @@ public struct TailCommitter: Sendable {
     /// On stop: the last decode's open words all become final.
     public mutating func finish(decode: [TimedWord], windowStart: Double) -> [TimedWord] {
         let open = openWords(decode, windowStart: windowStart)
-        if let last = open.last { commitPoint = last.end; lastFinal = last }
+        if let last = open.last { commitPoint = last.end; remember(open) }
         pending = []
         return open
     }
 
+    private mutating func remember(_ final: [TimedWord]) {
+        recentFinals = Array((recentFinals + final).suffix(Self.alignWords))
+    }
+
+    /// The decode's words after the last final word. First by text: find the newest final words in the decode near
+    /// their own time and take what follows. If the decode doesn't contain them (the window moved past them), by
+    /// time: words centred after the commit point.
     private func openWords(_ decode: [TimedWord], windowStart: Double) -> [TimedWord] {
-        decode.compactMap { word in
-            let absolute = TimedWord(text: word.text, start: windowStart + word.start, end: windowStart + word.end)
-            if (absolute.start + absolute.end) / 2 < commitPoint { return nil }
-            if let lastFinal, absolute.text == lastFinal.text, absolute.start < lastFinal.end { return nil }
-            return absolute
+        let words = decode.map { TimedWord(text: $0.text, start: windowStart + $0.start, end: windowStart + $0.end) }
+        let keys = words.map { Self.key($0.text) }
+        for k in stride(from: min(Self.alignWords, recentFinals.count), through: 1, by: -1) {
+            let tail = recentFinals.suffix(k)
+            let tailKeys = tail.map { Self.key($0.text) }
+            let anchor = tail.first!.start
+            var best: (index: Int, drift: Double)?
+            if words.count >= k {
+                for i in 0...(words.count - k) where Array(keys[i..<(i + k)]) == tailKeys {
+                    let drift = abs(words[i].start - anchor)
+                    if drift <= Self.alignTolerance, drift < (best?.drift ?? .infinity) { best = (i, drift) }
+                }
+            }
+            if let best { return Array(words[(best.index + k)...]) }
         }
+        return words.filter { ($0.start + $0.end) / 2 >= commitPoint }
+    }
+
+    /// Text for matching: case and punctuation can change between decodes of the same word.
+    private static func key(_ text: String) -> String {
+        String(text.lowercased().unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) })
     }
 }
 

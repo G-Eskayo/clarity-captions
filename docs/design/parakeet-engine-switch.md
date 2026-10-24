@@ -42,7 +42,8 @@ a local folder, or does it only download its own Hugging Face models?
 **Answer: yes, it loads from a local folder, with no network.** `AsrModels.loadLocal(from:version:)` is public in
 0.17.5 ("Load compiled models from this exact directory without downloading or resolving a repository"). It reads
 `Preprocessor.mlmodelc`, `Encoder.mlmodelc`, `Decoder.mlmodelc`, `JointDecisionv3.mlmodelc` and
-`parakeet_v3_vocab.json` from the folder for `.ultra`, checks the vocabulary, and calls `MLModel(contentsOf:)`. It
+`parakeet_vocab.json` from the folder for `.ultra` (corrected 2026-10-24: an earlier draft said `parakeet_v3_vocab.json`;
+the integration test showed `loadLocal` needs `parakeet_vocab.json`), checks the vocabulary, and calls `MLModel(contentsOf:)`. It
 never touches `ModelHub`. `AsrManager.loadModels(_:)` only stores the models.
 
 Run on this MacBook (Apple M-series, macOS 27), nice +15, a throwaway SwiftPM package in the session scratch
@@ -186,9 +187,9 @@ resource with no "optional" flag, so `xcodegen generate` fails when it is missin
 - New script `scripts/fetch-asr-models.sh` (or a second section in the existing script, D3), with
   `VARIANT=ultra-pal6` at the top. Switching to 4-bit is that one line plus nothing else, because `loadLocal` takes
   the folder as is.
-- The folder ships as `Resources/Models/ParakeetUltra.mlmodelc-folder/` containing the four `.mlmodelc`
-  components, `parakeet_v3_vocab.json`, `NOTICE.txt` and a corrected `variant.json`; the stale `config.json` and
-  the unused `parakeet_vocab.json` are dropped.
+- The folder ships as `Resources/Models/ParakeetUltra/` containing the four `.mlmodelc` components,
+  `parakeet_vocab.json`, `NOTICE.txt` and a corrected `variant.json`; the stale `config.json` and the unused,
+  byte-identical `parakeet_v3_vocab.json` are dropped.
 - A checked-in manifest `scripts/models/ultra-pal6.sha256` lists every file's size and sha256, generated once from
   the M4 copy. The script refuses anything that doesn't match, whatever the host serves. This also closes ADR
   0014's open follow-up (the Sortformer fetch is still unpinned on `main`).
@@ -341,7 +342,7 @@ Doc-first: approved by Gil on 2026-10-23.
 2. ~~Measure Apple's engine on the phone beforehand.~~ Dropped: both engines are measured on the same Parakeet build
    the same day in step 10.
 3. TDD: `TailCommitter`, token-to-word merge, `AdaptiveHop`, `EngineFallbackPolicy` (tests 1-3, 5).
-4. Packaging: clean the `ultra-pal6` folder (drop `config.json` and `parakeet_vocab.json`, correct `variant.json`),
+4. Packaging: clean the `ultra-pal6` folder (drop `config.json` and `parakeet_v3_vocab.json`, correct `variant.json`),
    generate the sha256 manifest, write `scripts/fetch-asr-models.sh` with the chosen source and the Mini fallback,
    add the folder to `project.yml`, extend `BundledModelsTests`. Gil (or an agent with Gil's go-ahead) uploads the
    asset per D2.
