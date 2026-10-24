@@ -358,6 +358,40 @@ Doc-first: approved by Gil on 2026-10-23.
 12. Fill `docs/perf/caption-latency-baseline.md` with both engines' phone numbers; update the Versions page story
     (#151) if the switch ships.
 
+## Implementation notes (2026-10-24, PR #155)
+
+What the build does differently from the text above, and why. Each is small and reversible.
+
+- **Vocabulary file:** `loadLocal(version: .ultra)` reads `parakeet_vocab.json`. Section 4 had the two names swapped;
+  the integration test caught it (the app silently fell back to Apple). The shipped folder keeps `parakeet_vocab.json`.
+- **Folder name:** `Resources/Models/ParakeetUltra/`, found with `Bundle.main.url(forResource: "ParakeetUltra",
+  withExtension: nil)`.
+- **Committer alignment:** Parakeet's word times move by a frame or two between windows, more than half a short word,
+  so "words centred after the commit point" alone repeated a word on the real model ("over the | the lazy").
+  `TailCommitter` first finds the newest final words in the decode by text (case and punctuation ignored, within 1 s
+  of their time) and takes what follows; the time rule is the fallback.
+- **Pieces widen to the open tail:** while a volatile tail is on screen, Parakeet's next piece starts at the tail's
+  start, so `CaptionStream` always treats it as a revision and never commits a stale tail beside it.
+- **Silence gate:** skips a decode when nothing is open and nothing louder than -50 dBFS arrived since the last one
+  (the beta report's quiet line). `LoudnessBaseline` is a rolling median of recent levels, which tracks speech during
+  a conversation, so it would have gated speech.
+- **Mid-session switch clock:** Apple's analyzer counts time from its first buffer, so its pieces are shifted by the
+  session clock at the switch.
+- **Audio clock:** `FedAudioClock` now advances by the input buffer's duration for both engines (it used to count the
+  analyzer converter's output). Apple's benchmark numbers did not move.
+- **First-run compile:** Parakeet's first Core ML compile runs inside the existing "getting ready" step (with the
+  speaker model), so first run gets no new screen. It is skipped when the launch would not use Parakeet.
+- **Credits page:** unchanged (its five lines are an approved mock-up). Parakeet Ultra is credited in full in
+  NOTICE.md, one tap away, and in `ThirdPartyNotice`. Adding a line to the page is Gil's call.
+- **C2 fixture:** `Apps/Spike/Resources/latency-fixture.wav` (19 s, `say`, 16 kHz Int16, 600 KB) is now committed and
+  bundled, so the developer panel's "Measure latency" works on the phone. It replays through the engine picked in the
+  panel and prints decode p50/p95.
+- **C2 rule:** this benchmark's lag for Apple is about -0.2 s on the Mac (the replay feeds a buffer ahead of the wall
+  clock), so "Parakeet ≤ Apple × 1.10" can't be met by any engine. Suggestion for Gil, not applied: compare medians as
+  a difference (Parakeet ≤ Apple + 0.3 s) and keep decode p95 < 0.5 s. Evidence log E14.
+- **Mac app:** stays on Apple (D6). It does not build on `main` today, for reasons unrelated to this work
+  (`CaptionStyle` and window API drift in `Apps/Mac/Sources/CaptionWindowView.swift`).
+
 ## Decisions (Gil, 2026-10-23)
 
 - **D1. If both 6-bit and 4-bit fail the phone checks:** not decided now. If Parakeet fails, Gil decides with the
