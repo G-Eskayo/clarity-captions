@@ -105,6 +105,8 @@ public final class TranscriptionEngine {
     private let routeLock = NSLock()
     private var route = Route()
     private var inFormat: AVAudioFormat?
+    /// The session's audio clock, so a recognizer switched in mid-session can be put on it.
+    private var fed: FedAudioClock?
     /// Each backend's piece stream, in order: a fallback adds Apple's after Parakeet's has flushed.
     private var pieceStreams: AsyncStream<AsyncThrowingStream<RecognizedPiece, Error>>.Continuation?
     private var switching = false
@@ -249,6 +251,7 @@ public final class TranscriptionEngine {
         self.audioLevelStreamValue = alStream
         self.audioLevelContinuation = alCont
         let fed = FedAudioClock()
+        self.fed = fed
 
         #if os(iOS)
         let session = AVAudioSession.sharedInstance()
@@ -325,18 +328,40 @@ public final class TranscriptionEngine {
                 throw TranscriptionError.converterUnavailable
             }
             let stream = try await apple.start()
+            var offset = 0.0
             let keep = routeLock.withLock { () -> Bool in
                 switching = false
                 if prepareLock.withLock({ stopped }) { return false }
+                // Apple's clock starts at its first buffer, which is the next one fed: put it on the session clock.
+                offset = fed?.seconds ?? 0
                 route = Route(backend: apple, converter: converter, format: format, started: true)
                 lastEngineName = apple.name
                 return true
             }
-            if keep { pieceStreams?.yield(stream) } else { await apple.cancel() }
+            if keep { pieceStreams?.yield(Self.shifted(stream, by: offset)) } else { await apple.cancel() }
         } catch {
             routeLock.withLock { switching = false }
             await apple.cancel()
             pieceStreams?.yield(AsyncThrowingStream { $0.finish(throwing: error) })
+        }
+    }
+
+    /// The same pieces with every time moved by `offset` seconds.
+    static func shifted(_ stream: AsyncThrowingStream<RecognizedPiece, Error>, by offset: Double) -> AsyncThrowingStream<RecognizedPiece, Error> {
+        guard offset != 0 else { return stream }
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    for try await p in stream {
+                        continuation.yield(RecognizedPiece(
+                            text: p.text, isFinal: p.isFinal,
+                            words: p.words.map { RecognizedWord(text: $0.text, range: $0.range.map { ($0.lowerBound + offset)...($0.upperBound + offset) }) },
+                            start: p.start.map { $0 + offset }, end: p.end.map { $0 + offset }))
+                    }
+                    continuation.finish()
+                } catch { continuation.finish(throwing: error) }
+            }
+            continuation.onTermination = { _ in task.cancel() }
         }
     }
 
@@ -345,6 +370,7 @@ public final class TranscriptionEngine {
     public func startReplaying(fileURL: URL) async throws -> AsyncThrowingStream<CaptionUpdate, Error> {
         let backend = try await loadPrepared()
         let fed = FedAudioClock()
+        self.fed = fed
         let audioFile = try AVAudioFile(forReading: fileURL)
         let inFormat = audioFile.processingFormat
         let pieces = try await open(backend, inFormat: inFormat)
