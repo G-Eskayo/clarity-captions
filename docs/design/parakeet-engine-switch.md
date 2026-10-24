@@ -1,9 +1,9 @@
 # Design: switch captions to Parakeet Ultra 6-bit (#150)
 
 Design for #150 "[E] Switch captions to Parakeet Ultra: iPhone checks, then an ADR (from the #145 accent test)".
-The decision record is [ADR 0025](../adr/0025-parakeet-ultra-caption-engine.md) (Proposed). This doc covers how:
-the code seam, streaming, packaging, the fallback, the iPhone checks, the tests and the task order. No app code
-changes until Gil approves this doc and the task list.
+The decision record is [ADR 0025](../adr/0025-parakeet-ultra-caption-engine.md) (Accepted 2026-10-23). This doc
+covers how: the code seam, streaming, packaging, the fallback, the iPhone checks, the tests and the task order. Gil
+approved it on 2026-10-23 ("go ahead and start the parakeet code"); his answers are in Decisions at the end.
 
 ## What is already decided (Gil, 2026-10-22, #150 comments)
 
@@ -42,7 +42,8 @@ a local folder, or does it only download its own Hugging Face models?
 **Answer: yes, it loads from a local folder, with no network.** `AsrModels.loadLocal(from:version:)` is public in
 0.17.5 ("Load compiled models from this exact directory without downloading or resolving a repository"). It reads
 `Preprocessor.mlmodelc`, `Encoder.mlmodelc`, `Decoder.mlmodelc`, `JointDecisionv3.mlmodelc` and
-`parakeet_v3_vocab.json` from the folder for `.ultra`, checks the vocabulary, and calls `MLModel(contentsOf:)`. It
+`parakeet_vocab.json` from the folder for `.ultra` (corrected 2026-10-24: an earlier draft said `parakeet_v3_vocab.json`;
+the integration test showed `loadLocal` needs `parakeet_vocab.json`), checks the vocabulary, and calls `MLModel(contentsOf:)`. It
 never touches `ModelHub`. `AsrManager.loadModels(_:)` only stores the models.
 
 Run on this MacBook (Apple M-series, macOS 27), nice +15, a throwaway SwiftPM package in the session scratch
@@ -82,7 +83,7 @@ protocol SpeechRecognizerBackend: AnyObject, Sendable {
     func prepare(onStep: @escaping @Sendable (Int) -> Void) async throws
     /// Audio format the backend wants. Parakeet: 16 kHz mono Float32 (the diarizer's format).
     var inputKind: RecognizerInput { get }         // .analyzerFormat(AVAudioFormat) or .mono16k
-    func start(context: [String]) async throws -> AsyncThrowingStream<RecognizedPiece, Error>
+    func start() async throws -> AsyncThrowingStream<RecognizedPiece, Error>
     /// Called on the audio thread; must not block (enqueue only).
     func feed(_ input: RecognizerFeed)
     /// Flushes and emits the remaining words as final.
@@ -103,9 +104,9 @@ struct RecognizedPiece: Sendable, Equatable {
   `CaptionUpdate`: text = words joined, `startSeconds`/`endSeconds` from the first and last word,
   `speaker` from `SpeakerLabelSmoother`, `lagSeconds` from `WordLagTracker` over the word ends, and
   `wordEmphasis` from the loudness series over each word's range.
-- The Apple backend is today's code moved, not rewritten: `SpeechTranscriber` options, `AnalysisContext` for the
-  vocabulary list, the converter to `bestAvailableAudioFormat`, `finalizeAndFinishThroughEndOfInput` on stop. Its
-  `AttributedString` runs become `TimedWord`s.
+- The Apple backend is today's code moved, not rewritten: `SpeechTranscriber` options, the converter to
+  `bestAvailableAudioFormat`, `finalizeAndFinishThroughEndOfInput` on stop. Its `AttributedString` runs become
+  `TimedWord`s. (The custom vocabulary list and its `contextualStrings` plumbing are removed, D5.)
 - `wordEmphasisFromResultText(_ AttributedString)` becomes a pure function over `[TimedWord]`. That is a small
   behavior-preserving refactor with its own test first.
 - The Parakeet backend reads the 16 kHz mono samples `processBuffer` already makes for the diarizer, so there is no
@@ -186,9 +187,9 @@ resource with no "optional" flag, so `xcodegen generate` fails when it is missin
 - New script `scripts/fetch-asr-models.sh` (or a second section in the existing script, D3), with
   `VARIANT=ultra-pal6` at the top. Switching to 4-bit is that one line plus nothing else, because `loadLocal` takes
   the folder as is.
-- The folder ships as `Resources/Models/ParakeetUltra.mlmodelc-folder/` containing the four `.mlmodelc`
-  components, `parakeet_v3_vocab.json`, `NOTICE.txt` and a corrected `variant.json`; the stale `config.json` and
-  the unused `parakeet_vocab.json` are dropped.
+- The folder ships as `Resources/Models/ParakeetUltra/` containing the four `.mlmodelc` components,
+  `parakeet_vocab.json`, `NOTICE.txt` and a corrected `variant.json`; the stale `config.json` and the unused,
+  byte-identical `parakeet_v3_vocab.json` are dropped.
 - A checked-in manifest `scripts/models/ultra-pal6.sha256` lists every file's size and sha256, generated once from
   the M4 copy. The script refuses anything that doesn't match, whatever the host serves. This also closes ADR
   0014's open follow-up (the Sortformer fetch is still unpinned on `main`).
@@ -328,7 +329,6 @@ Pure first, each red before green, real collaborators where cheap, inputs chosen
 | First load after install takes 30-60+ s on the phone | High | First run looks stuck | Run it in the first-run flow with its own step and progress, not behind the launch animation; measure in C1 |
 | Memory with two large models on an 8 GB phone | Low-medium | Jetsam kill mid-conversation | C3; fallback on memory warning; 4-bit build |
 | iOS 18+ palettization ops on the iPhone Neural Engine fall back to CPU | Low | Slow decodes | C2 decode p95 catches it; the encoder's compute-unit placement shows in Instruments' Core ML template |
-| Custom vocabulary list (`contextualStrings`) has no effect on Parakeet | Certain | Names in the vocabulary list are no longer boosted | D5; FluidAudio's CTC vocabulary boosting needs an extra CTC model, a later ticket |
 | Locale: the app runs en-US today; Ultra is English-tuned | Low | A non-English locale gets worse captions | Non-English locales use Apple (one line in the flag logic) |
 | Hosting choice slips | Medium | Build 7 can't be built from a clean clone | Option D (Mini copy) unblocks the build on the Mini meanwhile |
 | Latency budget has no committed baseline (ADR 0015's file says TBD) | Certain | "10% over what?" | Apple measured on the same phone in the same build is the baseline (C2); fill the baseline file as part of task 12 |
@@ -336,13 +336,13 @@ Pure first, each red before green, real collaborators where cheap, inputs chosen
 
 ## 11. Ordered task list
 
-Doc-first: nothing below starts until Gil approves this doc and ADR 0025, and answers the decisions.
+Doc-first: approved by Gil on 2026-10-23.
 
-1. Gil reviews this doc and ADR 0025; answers D1-D6. ADR 0025 goes to Accepted.
-2. Measure Apple's engine on the phone with the existing developer-panel replay (fills ADR 0015's baseline; also C2's
-   baseline). Can run in parallel with 3-7.
+1. Gil reviews this doc and ADR 0025; answers D1-D7. ADR 0025 goes to Accepted. **Done 2026-10-23.**
+2. ~~Measure Apple's engine on the phone beforehand.~~ Dropped: both engines are measured on the same Parakeet build
+   the same day in step 10.
 3. TDD: `TailCommitter`, token-to-word merge, `AdaptiveHop`, `EngineFallbackPolicy` (tests 1-3, 5).
-4. Packaging: clean the `ultra-pal6` folder (drop `config.json` and `parakeet_vocab.json`, correct `variant.json`),
+4. Packaging: clean the `ultra-pal6` folder (drop `config.json` and `parakeet_v3_vocab.json`, correct `variant.json`),
    generate the sha256 manifest, write `scripts/fetch-asr-models.sh` with the chosen source and the Mini fallback,
    add the folder to `project.yml`, extend `BundledModelsTests`. Gil (or an agent with Gil's go-ahead) uploads the
    asset per D2.
@@ -358,40 +358,59 @@ Doc-first: nothing below starts until Gil approves this doc and ADR 0025, and an
 12. Fill `docs/perf/caption-latency-baseline.md` with both engines' phone numbers; update the Versions page story
     (#151) if the switch ships.
 
-## Decisions (Gil)
+## Implementation notes (2026-10-24, PR #155)
 
-**D1. If both 6-bit and 4-bit fail the phone checks, what ships as build 7?**
-- [ ] **Build 7 ships the seam with the flag defaulting to Apple; the switch moves to 1.2 (recommended).** The iPad
-  work isn't held up and the risky part waits for a fix.
-- [ ] Hold build 7 until Parakeet passes.
-- [ ] Ship build 6 as 1.1 now; the engine work becomes 1.2 entirely.
+What the build does differently from the text above, and why. Each is small and reversible.
 
-**D2. Where is the 6-bit build hosted for the fetch script?**
-- [ ] **A. GitHub Release asset on clarity-captions, sha256 manifest in the repo, Mini copy as the fallback source
-  (recommended).**
-- [ ] B. Hugging Face model repo under Gil's account, pinned by commit.
-- [ ] D only: copy from the M4; builds only on the Mini.
+- **Vocabulary file:** `loadLocal(version: .ultra)` reads `parakeet_vocab.json`. Section 4 had the two names swapped;
+  the integration test caught it (the app silently fell back to Apple). The shipped folder keeps `parakeet_vocab.json`.
+- **Folder name:** `Resources/Models/ParakeetUltra/`, found with `Bundle.main.url(forResource: "ParakeetUltra",
+  withExtension: nil)`.
+- **Committer alignment:** Parakeet's word times move by a frame or two between windows, more than half a short word,
+  so "words centred after the commit point" alone repeated a word on the real model ("over the | the lazy").
+  `TailCommitter` first finds the newest final words in the decode by text (case and punctuation ignored, within 1 s
+  of their time) and takes what follows; the time rule is the fallback.
+- **Pieces widen to the open tail:** while a volatile tail is on screen, Parakeet's next piece starts at the tail's
+  start, so `CaptionStream` always treats it as a revision and never commits a stale tail beside it.
+- **Silence gate:** skips a decode when nothing is open and nothing louder than -50 dBFS arrived since the last one
+  (the beta report's quiet line). `LoudnessBaseline` is a rolling median of recent levels, which tracks speech during
+  a conversation, so it would have gated speech.
+- **Watchdog:** trips on no words through 20 s of audio louder than -40 dBFS, or 3 failed decodes in a row (was 10 s
+  of speech). A loud room where nobody has spoken yet would have sent the session to Apple for nothing.
+- **Developer picker clears the 24 h pin:** picking an engine in the developer panel forgets earlier fallbacks, so
+  check C6 (which forces fallbacks) can't quietly pin Apple for the checks after it.
+- **Mid-session switch clock:** Apple's analyzer counts time from its first buffer, so its pieces are shifted by the
+  session clock at the switch.
+- **Audio clock:** `FedAudioClock` now advances by the input buffer's duration for both engines (it used to count the
+  analyzer converter's output). Apple's benchmark numbers did not move.
+- **First-run compile:** Parakeet's first Core ML compile runs inside the existing "getting ready" step (with the
+  speaker model), so first run gets no new screen. It is skipped when the launch would not use Parakeet.
+- **Credits page:** unchanged (its five lines are an approved mock-up). Parakeet Ultra is credited in full in
+  NOTICE.md, one tap away, and in `ThirdPartyNotice`. Adding a line to the page is Gil's call.
+- **C2 fixture:** `Apps/Spike/Resources/latency-fixture.wav` (19 s, `say`, 16 kHz Int16, 600 KB) is now committed and
+  bundled, so the developer panel's "Measure latency" works on the phone. It replays through the engine picked in the
+  panel and prints decode p50/p95.
+- **C2 rule:** this benchmark's lag for Apple is about -0.2 s on the Mac (the replay feeds a buffer ahead of the wall
+  clock), so "Parakeet ≤ Apple × 1.10" can't be met by any engine. Suggestion for Gil, not applied: compare medians as
+  a difference (Parakeet ≤ Apple + 0.3 s) and keep decode p95 < 0.5 s. Evidence log E14.
+- **Mac app:** stays on Apple (D6). It does not build, and every error is in code this branch doesn't change
+  (`CaptionStyle` and window API drift in `Apps/Mac/Sources/CaptionWindowView.swift`, `CaptionMacApp.swift`, and the
+  `Task` at `CaptionMacModel.swift:37`); the branch's only Mac change is dropping the vocabulary argument.
 
-**D3. One fetch script or two?**
-- [ ] **Two scripts (`fetch-diarizer-models.sh`, new `fetch-asr-models.sh`) (recommended)**: each model's host and
-  manifest stays separate, and the existing script is untouched.
-- [ ] One `fetch-models.sh` for both.
+## Decisions (Gil, 2026-10-23)
 
-**D4. Keep installing Apple's speech asset in first run while Parakeet is the default?**
-- [ ] **Yes (recommended).** The fallback then works offline. It costs the same first-run step as today.
-- [ ] No, install it only when a fallback first happens (needs network at that moment).
+- **D1. If both 6-bit and 4-bit fail the phone checks:** not decided now. If Parakeet fails, Gil decides with the
+  real phone numbers in front of him. (The seam and the flag are built either way, so every option stays open.)
+- **D2. Hosting:** A. GitHub Release asset on G-Eskayo/clarity-captions, sha256 manifest in the repo, the Mini copy
+  as the fallback source (`SEAL_MODEL_SOURCE=mini`).
+- **D3. Fetch scripts:** two. `fetch-diarizer-models.sh` stays as is; new `fetch-asr-models.sh`.
+- **D4. Apple's speech asset:** keeps installing in first run, so the fallback works offline.
+- **D5. Custom vocabulary list: removed from the app entirely.** `VocabularyList`, `VocabularyStore`, the
+  `contextualStrings` passed to `TranscriptionEngine`, their tests and their mentions in the docs are deleted as
+  part of this work. It is not an option, not a later ticket, and not a future Parakeet feature.
+- **D6. Mac app:** stays on Apple's engine in 1.1.
+- **D7. Hop:** 0.5 s adaptive at the start of the phone checks.
 
-**D5. The custom vocabulary list does nothing on Parakeet. What happens when a user has entries?**
-- [ ] **Parakeet anyway; the list stays for the Apple fallback; boosting on Parakeet becomes its own ticket
-  (recommended).** The accuracy gain on accents is larger than the list's effect, and few users have entries.
-- [ ] Use Apple whenever the vocabulary list is not empty.
-- [ ] Hide the vocabulary list while Parakeet is the engine.
-
-**D6. Mac app in 1.1?**
-- [ ] **Stays on Apple's engine in 1.1 (recommended)**: the Mac isn't part of build 7, and its bundling can follow
-  once the phone numbers are in.
-- [ ] Switch the Mac at the same time.
-
-**D7. Hop at the start of the phone checks.**
-- [ ] **0.5 s adaptive (recommended)**, measured in C2 and C4, raised if C4 runs hot.
-- [ ] 1.0 s fixed: half the compute, words show about 0.5 s later.
+**How the checks run:** on a real Release build installed on Gil's iPhone by cable, with Parakeet on and both
+engines in the build behind the developer flag. Both engines are measured on that same build, on the same day.
+There is no separate Apple baseline run beforehand (this replaces task 2's separate step).

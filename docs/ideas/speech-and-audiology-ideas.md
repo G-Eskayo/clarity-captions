@@ -38,7 +38,7 @@ claims (see `docs/app-store-compliance.md`).
 | Idea | Origin | Fits our decisions? | Notes |
 |---|---|---|---|
 | **Dim uncertain words** using the recognizer's per-word confidence | audiology: hardest sounds (s, f, th, sh) are also where recognizers err | Yes, it is "dim, don't dismiss" (ADR 0012) applied to words | `transcriptionConfidence` attribute exists in the SDK. Cheap. |
-| **Custom vocabulary**: type the names of people and places she talks about | SLP: names and proper nouns are high-value and unpredictable | Yes, no voice enrollment, fully on-device | `AnalysisContext.contextualStrings` exists in the SDK. Setup step: "Who do you talk with most?" |
+| ~~Custom vocabulary~~ | | **Dropped** (Gil, 2026-10-23; ADR 0025). Built, then removed from the app. Not coming back. | |
 | **Sound labels** such as laughter, applause, a doorbell or a phone ringing, shown as non-speech captions | audiology: non-speech sound is lost context | Yes, on-device | `SoundAnalysis` (`SNClassifySoundRequest`) is in the SDK. Must not be marketed as a safety alert. |
 | **Emphasis cues**: show louder or stretched words differently | SLP: prosody carries meaning that plain text drops | Probably | Needs the loudness timeline from the session-capture tool. |
 | **"Say that again" replay**: a short in-memory rewind buffer to re-read or replay the last seconds | SLP/audiology: conversation repair | Needs the retention decision first | Keep it memory-only unless the design session says otherwise. |

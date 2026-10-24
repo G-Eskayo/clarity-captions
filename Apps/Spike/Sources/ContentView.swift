@@ -11,6 +11,18 @@ final class CaptionModel: ObservableObject {
     @Published var diag = ""
     @Published var startup = ""
     @Published var micMode: MicMode = .standard
+    /// Developer panel only (ADR 0025, no setting for users): which recognizer the next session uses.
+    @Published var engineChoice = CaptionEngineChoice.stored() {
+        didSet {
+            UserDefaults.standard.set(engineChoice.rawValue, forKey: CaptionEngineChoice.key)
+            var history = EngineFallbackHistory()
+            history.clear()   // picked on purpose: an earlier fallback must not pin Apple during the phone checks
+            Task { @MainActor in
+                await EngineWarmupHost.shared.release()   // the warm engine was made for the other choice
+                EngineWarmupHost.shared.prepareIfAllowed(micMode: micMode)
+            }
+        }
+    }
     @Published var style: CaptionStyle = CaptionStyleStore().load() {
         didSet { CaptionStyleStore().save(style) }
     }
@@ -54,12 +66,7 @@ final class CaptionModel: ObservableObject {
             guard let self else { throw CancellationError() }
             // Loaded during the launch (or after the last pause), so Start is instant (#119).
             if let warm = EngineWarmupHost.shared.take(micMode: self.micMode) { return warm }
-            guard let url = Bundle.main.url(forResource: "Sortformer_v2.1", withExtension: "mlmodelc") else {
-                throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc"))
-            }
-            let rawText = VocabularyStore().loadRawText()
-            let vocabulary = VocabularyList(rawText: rawText).entries
-            return TranscriptionEngine(micMode: self.micMode, diarizerModelURL: url, contextualStrings: vocabulary)
+            return try CaptionEngineFactory.make(micMode: self.micMode)
         }, idleStopSetting: { [weak self] in self?.idleStop ?? .default })
 
         if let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
@@ -272,12 +279,16 @@ final class CaptionModel: ObservableObject {
                 // Warm up model once.
                 try await TranscriptionEngine.warmUp(diarizerModelURL: modelURL)
 
+                // The engine picked in the developer panel, so check C2 can run both on the same build (ADR 0025).
+                let recognizer: SpeechRecognizerSetup = engineChoice == .parakeet
+                    ? CaptionEngineFactory.parakeetModelURL.map { .parakeet(modelURL: $0) } ?? .apple : .apple
+
                 // Throwaway pass.
-                let warmupEngine = TranscriptionEngine(diarizerModelURL: modelURL)
+                let warmupEngine = TranscriptionEngine(diarizerModelURL: modelURL, recognizer: recognizer)
                 for try await _ in try await warmupEngine.startReplaying(fileURL: fixtureURL) {}
 
                 // Measured pass.
-                let engine = TranscriptionEngine(diarizerModelURL: modelURL)
+                let engine = TranscriptionEngine(diarizerModelURL: modelURL, recognizer: recognizer)
                 var lagSamples: [Double] = []
                 var firstCaptionTime: TimeInterval?
                 let startTime = Date()
@@ -292,10 +303,12 @@ final class CaptionModel: ObservableObject {
                 }
 
                 let report = CaptionLatencyReport(lagSamples: lagSamples, timeToFirstCaption: firstCaptionTime)
-                latencyReport = String(format: "Median: %.3f s, P95: %.3f s, First: %.3f s",
-                                       report.medianLagSeconds,
-                                       report.p95LagSeconds,
-                                       report.timeToFirstCaptionSeconds ?? 0)
+                latencyReport = engine.engineName + " " + String(format: "Median: %.3f s, P95: %.3f s, First: %.3f s",
+                                                                 report.medianLagSeconds,
+                                                                 report.p95LagSeconds,
+                                                                 report.timeToFirstCaptionSeconds ?? 0)
+                    + (engine.decodeSeconds.map { String(format: ", decode p50 %.2f s / p95 %.2f s", $0.p50, $0.p95) } ?? "")
+                    + (engine.fallbackReason.map { ", fell back: \($0.rawValue)" } ?? "")
             } catch {
                 latencyReport = "Error: \(error)"
             }
@@ -1349,6 +1362,12 @@ struct ContentView: View {
                 Text("Raw").tag(MicMode.raw)
                 Text("Standard").tag(MicMode.standard)
                 Text("Voice").tag(MicMode.voiceProcessing)
+            }
+            .pickerStyle(.segmented)
+            .disabled(model.state == .listening || model.state == .preparing)
+            Picker("Engine", selection: $model.engineChoice) {
+                Text("Parakeet").tag(CaptionEngineChoice.parakeet)
+                Text("Apple").tag(CaptionEngineChoice.apple)
             }
             .pickerStyle(.segmented)
             .disabled(model.state == .listening || model.state == .preparing)
