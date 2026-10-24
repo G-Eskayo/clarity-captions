@@ -11,6 +11,16 @@ final class CaptionModel: ObservableObject {
     @Published var diag = ""
     @Published var startup = ""
     @Published var micMode: MicMode = .standard
+    /// Developer panel only (ADR 0025, no setting for users): which recognizer the next session uses.
+    @Published var engineChoice = CaptionEngineChoice.stored() {
+        didSet {
+            UserDefaults.standard.set(engineChoice.rawValue, forKey: CaptionEngineChoice.key)
+            Task { @MainActor in
+                await EngineWarmupHost.shared.release()   // the warm engine was made for the other choice
+                EngineWarmupHost.shared.prepareIfAllowed(micMode: micMode)
+            }
+        }
+    }
     @Published var style: CaptionStyle = CaptionStyleStore().load() {
         didSet { CaptionStyleStore().save(style) }
     }
@@ -54,10 +64,7 @@ final class CaptionModel: ObservableObject {
             guard let self else { throw CancellationError() }
             // Loaded during the launch (or after the last pause), so Start is instant (#119).
             if let warm = EngineWarmupHost.shared.take(micMode: self.micMode) { return warm }
-            guard let url = Bundle.main.url(forResource: "Sortformer_v2.1", withExtension: "mlmodelc") else {
-                throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc"))
-            }
-            return TranscriptionEngine(micMode: self.micMode, diarizerModelURL: url)
+            return try CaptionEngineFactory.make(micMode: self.micMode)
         }, idleStopSetting: { [weak self] in self?.idleStop ?? .default })
 
         if let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
@@ -1347,6 +1354,12 @@ struct ContentView: View {
                 Text("Raw").tag(MicMode.raw)
                 Text("Standard").tag(MicMode.standard)
                 Text("Voice").tag(MicMode.voiceProcessing)
+            }
+            .pickerStyle(.segmented)
+            .disabled(model.state == .listening || model.state == .preparing)
+            Picker("Engine", selection: $model.engineChoice) {
+                Text("Parakeet").tag(CaptionEngineChoice.parakeet)
+                Text("Apple").tag(CaptionEngineChoice.apple)
             }
             .pickerStyle(.segmented)
             .disabled(model.state == .listening || model.state == .preparing)

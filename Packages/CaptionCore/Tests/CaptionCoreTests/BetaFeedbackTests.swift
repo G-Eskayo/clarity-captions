@@ -307,6 +307,31 @@ final class BetaFeedbackTests: XCTestCase {
         XCTAssertTrue(String(decoding: data, as: UTF8.self).contains("\"medianDBFS\" : null"))
     }
 
+    func testTheEngineThatCaptionedIsReportedWithAnyFallback() throws {
+        var r = ConversationRecorder(id: UUID())
+        r.startPressed(at: at(0), sinceLaunch: nil, launch: nil)
+        XCTAssertNil(r.entry(now: at(1)).engine)
+        r.engineUsed("parakeet-ultra-pal6", fallback: nil)
+        r.engineUsed("", fallback: nil)   // an update with no name never erases the known one
+        XCTAssertEqual(r.entry(now: at(1)).engine, "parakeet-ultra-pal6")
+        r.engineUsed("apple-speechanalyzer", fallback: "memoryWarning")
+        let entry = r.entry(now: at(2))
+        XCTAssertEqual(entry.engine, "apple-speechanalyzer")
+        XCTAssertEqual(entry.engineFallback, "memoryWarning")
+        let restored = try JSONDecoder().decode(ConversationRecorder.self, from: JSONEncoder().encode(r))
+        XCTAssertEqual(restored.entry(now: at(2)).engine, "apple-speechanalyzer", "survives a relaunch")
+    }
+
+    func testARecorderSavedByBuildSixStillLoads() throws {
+        // Build 6 stored recorders without the engine keys; they must decode, with the engine unknown.
+        var r = ConversationRecorder(id: UUID())
+        r.startPressed(at: at(0), sinceLaunch: nil, launch: nil)
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(r)) as? [String: Any])
+        json.removeValue(forKey: "engine"); json.removeValue(forKey: "engineFallback")
+        let old = try JSONDecoder().decode(ConversationRecorder.self, from: JSONSerialization.data(withJSONObject: json))
+        XCTAssertNil(old.entry(now: at(1)).engine)
+    }
+
     func testFileName() {
         let utc = TimeZone(identifier: "UTC")!
         XCTAssertEqual(FeedbackReport.fileName(build: "42", date: t0, timeZone: utc), "seal-feedback-42-20251009-0853.json")

@@ -18,6 +18,9 @@ public struct CaptionUpdate: Sendable {
     public let diagnostics: String
     /// Emphasis level per word in the text (split on whitespace), empty if unavailable.
     public let wordEmphasis: [EmphasisLevel]
+    /// The recognizer behind this caption, and why it left Parakeet if it did (beta report, ADR 0025).
+    public var engine = ""
+    public var engineFallback: FallbackReason?
 }
 
 /// Audio seconds fed to the analyzer so far; written on the audio thread, read on the results task.
@@ -113,15 +116,17 @@ public final class TranscriptionEngine {
     private var lastEngineName = ""
     /// The error behind a load fallback, for the developer panel.
     public private(set) var fallbackDetail: String?
-    /// Why this engine left Parakeet, if it did.
+    /// Why this engine isn't on Parakeet, if it isn't: chosen so at the start (`startReason`) or fell back.
     public private(set) var fallbackReason: FallbackReason?
     /// Called once when Parakeet falls back to Apple, so the app can count it toward the daily pin.
     public var onFallback: (@Sendable (FallbackReason) -> Void)?
+    private var fallbackCounted = false
 
     /// `diarizerModelURL` has no default on purpose: the app must say where its bundled speaker model
     /// lives, so there is no accidental network path (ADR 0014). The same goes for Parakeet's folder.
     public init(locale: Locale = Locale(identifier: "en-US"), micMode: MicMode = .standard, diarizerModelURL: URL,
-                recognizer: SpeechRecognizerSetup = .apple) {
+                recognizer: SpeechRecognizerSetup = .apple, startReason: FallbackReason? = nil) {
+        self.fallbackReason = startReason
         self.locale = locale
         self.micMode = micMode
         self.setup = recognizer
@@ -209,7 +214,8 @@ public final class TranscriptionEngine {
     }
 
     private func recordFallback(_ reason: FallbackReason) {
-        guard fallbackReason == nil else { return }
+        guard !fallbackCounted else { return }
+        fallbackCounted = true
         fallbackReason = reason
         onFallback?(reason)
     }
@@ -418,9 +424,12 @@ public final class TranscriptionEngine {
                             let speaker = (piece.start.flatMap { st in piece.end.map { (st, $0) } })
                                 .flatMap { labels.label(start: $0.0, end: $0.1, segments: self.diarizer.segments, isFinal: piece.isFinal) }
                             let lag = wallTime.elapsedSinceStart().flatMap { lagTracker.sample(elapsed: $0, audioEnds: piece.wordEnds) }
-                            continuation.yield(CaptionUpdate(text: piece.text, isFinal: piece.isFinal, lagSeconds: lag, speaker: speaker,
-                                                             startSeconds: piece.start, endSeconds: piece.end,
-                                                             diagnostics: self.diagnostics, wordEmphasis: self.wordEmphasis(piece.words)))
+                            var update = CaptionUpdate(text: piece.text, isFinal: piece.isFinal, lagSeconds: lag, speaker: speaker,
+                                                       startSeconds: piece.start, endSeconds: piece.end,
+                                                       diagnostics: self.diagnostics, wordEmphasis: self.wordEmphasis(piece.words))
+                            update.engine = self.engineName
+                            update.engineFallback = self.fallbackReason
+                            continuation.yield(update)
                         }
                     }
                     continuation.finish()
