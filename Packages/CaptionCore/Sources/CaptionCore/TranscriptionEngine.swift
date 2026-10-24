@@ -108,7 +108,11 @@ public final class TranscriptionEngine {
     private var lastDecodeSeconds: Double?
 
     /// The recognizer captions are on now ("parakeet-ultra-pal6" / "apple-speechanalyzer"): beta report, diagnostics.
-    public var engineName: String { routeLock.withLock { route.backend?.name ?? "" } }
+    /// Stays set after Stop, so the report written at the end of a session still names it.
+    public var engineName: String { routeLock.withLock { lastEngineName } }
+    private var lastEngineName = ""
+    /// The error behind a load fallback, for the developer panel.
+    public private(set) var fallbackDetail: String?
     /// Why this engine left Parakeet, if it did.
     public private(set) var fallbackReason: FallbackReason?
     /// Called once when Parakeet falls back to Apple, so the app can count it toward the daily pin.
@@ -176,6 +180,7 @@ public final class TranscriptionEngine {
         } catch where backend.choice == .parakeet {
             // Design §5: the model is missing or won't load. Apple's engine for this launch, captions keep flowing.
             await backend.cancel()
+            fallbackDetail = String(describing: error)
             recordFallback(.loadFailed)
             backend = AppleSpeechBackend(locale: locale)
             try await backend.prepare()
@@ -197,7 +202,7 @@ public final class TranscriptionEngine {
             await backend.cancel()
             throw CancellationError()
         }
-        routeLock.withLock { route.backend = backend }
+        routeLock.withLock { route.backend = backend; lastEngineName = backend.name }
         preparedLaps = laps
         onStep(3)
         return backend
@@ -308,6 +313,7 @@ public final class TranscriptionEngine {
                 switching = false
                 if prepareLock.withLock({ stopped }) { return false }
                 route = Route(backend: apple, converter: converter, format: format, started: true)
+                lastEngineName = apple.name
                 return true
             }
             if keep { pieceStreams?.yield(stream) } else { await apple.cancel() }
@@ -428,7 +434,7 @@ public final class TranscriptionEngine {
 
     private var diagnostics: String {
         var parts = [engineName]
-        if let fallbackReason { parts.append("fallback: \(fallbackReason.rawValue)") }
+        if let fallbackReason { parts.append("fallback: \(fallbackReason.rawValue)" + (fallbackDetail.map { " (\($0))" } ?? "")) }
         if let lastDecodeSeconds { parts.append(String(format: "decode %.2fs", lastDecodeSeconds)) }
         parts.append(diarizer.diagnostics)
         return parts.filter { !$0.isEmpty }.joined(separator: " · ")

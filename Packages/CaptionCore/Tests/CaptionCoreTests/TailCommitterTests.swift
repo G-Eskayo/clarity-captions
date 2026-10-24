@@ -110,6 +110,25 @@ final class TailCommitterTests: XCTestCase {
         XCTAssertFalse(texts(out.final + out.volatile).contains("ok"))
     }
 
+    func testACommittedWordReDecodedWellAfterItsTimeIsNotRepeated() {
+        // Seen on the real model: "jumps over the | the lazy". The re-decoded "the" moved past the commit point.
+        var c = TailCommitter()
+        let first = [w("jumps", 0.0, 0.3), w("over", 0.35, 0.6), w("the", 0.65, 0.75)]
+        _ = c.ingest(decode: first, windowStart: 0, audioEnd: 2)
+        XCTAssertEqual(texts(c.ingest(decode: first, windowStart: 0, audioEnd: 2.5).final), ["jumps", "over", "the"])
+        let shifted = [w("jumps", 0.05, 0.35), w("over", 0.4, 0.7), w("the", 0.78, 0.9), w("lazy", 1.0, 1.3)]
+        let out = c.ingest(decode: shifted, windowStart: 0, audioEnd: 3)
+        XCTAssertEqual(texts(out.volatile), ["lazy"])
+    }
+
+    func testPunctuationChangesDoNotBreakTheAlignment() {
+        var c = TailCommitter()
+        _ = c.ingest(decode: [w("dog", 0.0, 0.3)], windowStart: 0, audioEnd: 2)
+        _ = c.ingest(decode: [w("dog", 0.0, 0.3)], windowStart: 0, audioEnd: 2.5)
+        let out = c.ingest(decode: [w("dog,", 0.2, 0.45), w("she", 0.6, 0.8)], windowStart: 0, audioEnd: 3)
+        XCTAssertEqual(texts(out.volatile), ["she"])
+    }
+
     func testFinishCommitsEverythingLeft() {
         var c = TailCommitter()
         _ = c.ingest(decode: [w("almost", 0.0, 0.4), w("done", 0.5, 0.8)], windowStart: 0, audioEnd: 1.0)
@@ -153,7 +172,8 @@ final class TailCommitterTests: XCTestCase {
                 let start = c.windowStart(audioEnd: end)
                 var out: [TimedWord] = []
                 for word in truth where word.start >= start && word.end <= end {
-                    let jitter = rng.double(in: -0.03...0.03)
+                    // Parakeet's token times move by a frame or two between windows: up to 0.12 s, more than half a short word.
+                    let jitter = rng.double(in: -0.12...0.12)
                     var text = word.text
                     if noisy && word.end + jitter > end - margin {   // the end the committer sees
                         let r = rng.double(in: 0...1)

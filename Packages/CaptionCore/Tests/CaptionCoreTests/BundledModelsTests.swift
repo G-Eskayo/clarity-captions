@@ -64,10 +64,10 @@ final class BundledSpeechModelTests: XCTestCase {
         for component in ["Preprocessor", "Encoder", "Decoder", "JointDecisionv3"] {
             XCTAssertTrue(files.contains("\(component).mlmodelc/coremldata.bin"), component)
         }
-        XCTAssertTrue(files.contains("parakeet_v3_vocab.json"))
+        XCTAssertTrue(files.contains("parakeet_vocab.json"), "the name loadLocal(version: .ultra) reads")
         XCTAssertTrue(files.contains("NOTICE.txt"), "CC BY 4.0 credit travels with the model")
         XCTAssertFalse(files.contains("config.json"), "the stale config label is not shipped")
-        XCTAssertFalse(files.contains("parakeet_vocab.json"))
+        XCTAssertFalse(files.contains("parakeet_v3_vocab.json"), "an identical unused copy")
     }
 
     func testShippedNoticeNamesTheChange() throws {
