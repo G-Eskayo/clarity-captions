@@ -51,8 +51,7 @@ final class EngineWarmupHost: ObservableObject {
         guard let url = Bundle.main.url(forResource: "Sortformer_v2.1", withExtension: "mlmodelc") else {
             throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc"))
         }
-        let vocabulary = VocabularyList(rawText: VocabularyStore().loadRawText()).entries
-        return TranscriptionEngine(micMode: micMode, diarizerModelURL: url, contextualStrings: vocabulary)
+        return TranscriptionEngine(micMode: micMode, diarizerModelURL: url)
     }
 
     /// First run is done: from now on the engine may load ahead of Start.

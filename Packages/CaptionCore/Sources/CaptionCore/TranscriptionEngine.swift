@@ -74,7 +74,6 @@ public final class TranscriptionEngine {
     private var soundLabelerStream: AsyncStream<SoundLabelKind>?
     private var audioLevelStreamValue: AsyncStream<Double>?
     private var audioLevelContinuation: AsyncStream<Double>.Continuation?
-    private let contextualStrings: [String]
     /// Spike-only: how long each startup step took, for the developer panel. Measured, not guessed.
     public private(set) var startupReport = ""
     private var loudnessTracker = LoudnessWordTracker()
@@ -97,11 +96,10 @@ public final class TranscriptionEngine {
 
     /// `diarizerModelURL` has no default on purpose: the app must say where its bundled speaker model
     /// lives, so there is no accidental network path (ADR 0014).
-    public init(locale: Locale = Locale(identifier: "en-US"), micMode: MicMode = .standard, diarizerModelURL: URL, contextualStrings: [String] = []) {
+    public init(locale: Locale = Locale(identifier: "en-US"), micMode: MicMode = .standard, diarizerModelURL: URL) {
         self.locale = locale
         self.micMode = micMode
         self.diarizer = LiveDiarizer(modelURL: diarizerModelURL)
-        self.contextualStrings = contextualStrings
     }
 
     /// Starts live captioning. If anything fails part-way, everything already opened is released before the
@@ -218,11 +216,6 @@ public final class TranscriptionEngine {
         }
         input.installTap(onBus: 0, bufferSize: 4096, format: inFormat) { buffer, _ in
             self.processBuffer(buffer, inFormat: inFormat, converter: converter, diarConverter: diarConverter, format: format, diarFormat: diarFormat, fed: fed, builder: builder)
-        }
-        if !contextualStrings.isEmpty {
-            let context = AnalysisContext()
-            context.contextualStrings[.general] = contextualStrings
-            try await analyzer.setContext(context)
         }
         audioEngine.prepare()
         let wallTime = FedWallTime()

@@ -61,7 +61,7 @@ simulator screenshots after). This is a hard rule.
 
 ## 6. Settings cleanup
 
-- Remove **Words and names** from Settings (keep the engine's vocabulary support for later).
+- Remove **Words and names** from Settings. (The custom vocabulary list was later removed from the app entirely: ADR 0025, #150.)
 - Remove the **Speaker labels** explainer section.
 - Remove the **Conversation** section (Copy all text / Share as text / SRT): highlight-and-copy covers it.
 - **No borders anywhere** in Settings (not the preview, not the sections): it should feel like the same screen. At most

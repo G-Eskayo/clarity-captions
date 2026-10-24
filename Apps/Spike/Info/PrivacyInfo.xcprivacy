@@ -11,7 +11,7 @@
 	<array/>
 	<key>NSPrivacyAccessedAPITypes</key>
 	<array>
-		<!-- CaptionCore keeps the app's own settings, vocabulary and first-run state in UserDefaults. -->
+		<!-- CaptionCore keeps the app's own settings and first-run state in UserDefaults. -->
 		<dict>
 			<key>NSPrivacyAccessedAPIType</key>
 			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>

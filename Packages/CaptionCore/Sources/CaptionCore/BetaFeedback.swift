@@ -2,7 +2,7 @@ import Foundation
 
 // Beta-tester feedback and metrics (ADR 0023, #112). TestFlight installs only: testers rate each conversation and
 // the app keeps measurements (lag, rewrites, speaker labels, how it ended, battery, heat). Never caption text, audio,
-// speaker names or vocabulary. App Store installs record nothing (fail closed).
+// or speaker names. App Store installs record nothing (fail closed).
 
 /// Where this install came from, as StoreKit reports it.
 public enum BetaEnvironment: String, Codable, Sendable {

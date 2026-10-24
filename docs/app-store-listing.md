@@ -169,7 +169,7 @@ Items from docs/app-store-compliance.md, each marked **Done**, **N/A** (with rea
 | P6 | External AI consent modal | **N/A** | All ML runs on the device; stated in the review notes. |
 | M1 | No health or medical claims in copy | **Done** | Checked against 1.4.1: no "treat/improve/help hearing" wording anywhere above; "not a medical device" stated. Re-check screenshots (#47) the same way. |
 | M2 | Screenshots and description match the build | **Open** | #47. Use DemoMode `-ClarityDemoStatic` for repeatable screenshots; it is debug-only so it never ships. Screenshots must not show features that are on hold. |
-| M3 | Explain what Seal adds over iOS Live Captions (4.2) | **Done** | Description covers speaker labels, saved conversations, vocabulary, colours, sound labels. Reply ready if asked. |
+| M3 | Explain what Seal adds over iOS Live Captions (4.2) | **Done** | Description covers speaker labels, saved conversations, colours, sound labels. Reply ready if asked. |
 | E1 | Export compliance key | **Open** | Add `ITSAppUsesNonExemptEncryption = NO`. |
 | E2 | Third-party credits | **Done** | #21. #32 (unused FluidAudio parts) is still open but is not a review blocker. |
 
