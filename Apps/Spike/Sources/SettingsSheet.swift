@@ -20,6 +20,7 @@ extension CaptionStyle {
 /// One screen, three questions: which colors, how big, which lettering. A live preview sits on top.
 struct SettingsSheet: View {
     @Binding var style: CaptionStyle
+    @State private var showingLanguagePicker = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -28,6 +29,7 @@ struct SettingsSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     preview
+                    section("Language") { languageRow }
                     section("Colors") { presetRow }
                     section("Size") { sizeRow }
                     section("Lettering") { fontRow }
@@ -43,6 +45,9 @@ struct SettingsSheet: View {
         }
         .tint(style.text.color)
         .preferredColorScheme(style.background.isDark ? .dark : .light)
+        .sheet(isPresented: $showingLanguagePicker) {
+            LanguagePickerView { _ in showingLanguagePicker = false }
+        }
     }
 
     private var preview: some View {
@@ -99,6 +104,22 @@ struct SettingsSheet: View {
                 .buttonStyle(.bordered).tint(style.font == f ? .accentColor : .secondary)
             }
         }
+    }
+
+    private var languageRow: some View {
+        Button(action: { showingLanguagePicker = true }) {
+            HStack {
+                let currentLanguage = Locale(identifier: LanguageStore().selectedLocaleIdentifier).localizedDisplayName
+                Label(currentLanguage, systemImage: "globe")
+                Spacer()
+                Image(systemName: "chevron.forward")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, minHeight: 56)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.bordered)
     }
 
     private var aboutRow: some View {

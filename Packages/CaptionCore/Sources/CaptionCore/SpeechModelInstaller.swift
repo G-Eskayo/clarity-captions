@@ -28,4 +28,20 @@ public enum SpeechModelInstaller {
         try await request.downloadAndInstall()
         onProgress(1)
     }
+
+    /// All locales supported by the system's speech recognizer.
+    public static func supportedLocaleIdentifiers() async -> [String] {
+        (await SpeechTranscriber.supportedLocales).map { $0.identifier }
+    }
+
+    /// Pending download size for a locale, or 0 if already installed, or nil if size is unknown.
+    /// Only available before download begins; once downloading, totalUnitCount may be unavailable.
+    public static func pendingDownloadSize(locale: Locale) async throws -> Int64? {
+        if await isInstalled(locale: locale) { return 0 }
+        guard let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber(locale)]) else {
+            return nil
+        }
+        let total = request.progress.totalUnitCount
+        return total > 0 ? total : nil
+    }
 }

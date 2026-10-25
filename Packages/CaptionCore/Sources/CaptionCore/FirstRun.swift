@@ -3,18 +3,20 @@ import Foundation
 public enum MicrophoneAccess: Equatable, Sendable { case undetermined, granted, denied }
 
 public enum FirstRunStep: Equatable, Sendable, CaseIterable {
-    case welcome, microphone, microphoneDenied, speechModel, speakerModel, done
+    case welcome, microphone, microphoneDenied, language, speechModel, speakerModel, done
 }
 
 /// Everything the first-run flow needs to know, as plain facts.
 public struct FirstRunFacts: Equatable, Sendable {
     public var hasSeenWelcome: Bool
     public var microphone: MicrophoneAccess
+    public var languageChosen: Bool
     public var speechModelInstalled: Bool
     public var speakerModelWarm: Bool
-    public init(hasSeenWelcome: Bool, microphone: MicrophoneAccess, speechModelInstalled: Bool, speakerModelWarm: Bool) {
+    public init(hasSeenWelcome: Bool, microphone: MicrophoneAccess, languageChosen: Bool, speechModelInstalled: Bool, speakerModelWarm: Bool) {
         self.hasSeenWelcome = hasSeenWelcome
         self.microphone = microphone
+        self.languageChosen = languageChosen
         self.speechModelInstalled = speechModelInstalled
         self.speakerModelWarm = speakerModelWarm
     }
@@ -31,6 +33,7 @@ public enum FirstRun {
         case .denied: return .microphoneDenied
         case .granted: break
         }
+        if !f.languageChosen { return .language }
         if !f.speechModelInstalled { return .speechModel }
         if !f.speakerModelWarm { return .speakerModel }
         return .done
@@ -44,30 +47,35 @@ public struct FirstRunCopy: Equatable, Sendable {
     /// nil for steps that run by themselves.
     public let button: String?
 
-    public static func `for`(_ step: FirstRunStep) -> FirstRunCopy {
+    public static func `for`(_ step: FirstRunStep, languageName: String? = nil) -> FirstRunCopy {
         switch step {
         case .welcome:
-            FirstRunCopy(title: String(localized: "Hi! Let's get you set up."),
+            return FirstRunCopy(title: String(localized: "Hi! Let's get you set up."),
                          message: String(localized: "I'll help you follow conversations by showing what people say. This takes about a minute."),
                          button: String(localized: "Let's go"))
         case .microphone:
-            FirstRunCopy(title: String(localized: "I need to hear the room"),
+            return FirstRunCopy(title: String(localized: "I need to hear the room"),
                          message: String(localized: "On the next screen, tap Allow so I can turn speech into words. Everything stays on your phone."),
                          button: String(localized: "Continue"))
         case .microphoneDenied:
-            FirstRunCopy(title: String(localized: "I can't hear yet"),
+            return FirstRunCopy(title: String(localized: "I can't hear yet"),
                          message: String(localized: "Captions need the microphone. Tap the button, then switch Microphone on."),
                          button: String(localized: "Open Settings"))
+        case .language:
+            return FirstRunCopy(title: String(localized: "Which language?"),
+                         message: String(localized: "Tap the language you speak. You can change it in Settings."),
+                         button: nil)
         case .speechModel:
-            FirstRunCopy(title: String(localized: "Learning English"),
+            let lang = languageName ?? "English"
+            return FirstRunCopy(title: String(localized: "Learning \(lang)"),
                          message: String(localized: "A one-time download. Please keep Wi-Fi on. It only happens once."),
                          button: nil)
         case .speakerModel:
-            FirstRunCopy(title: String(localized: "Getting ready to tell voices apart"),
+            return FirstRunCopy(title: String(localized: "Getting ready to tell voices apart"),
                          message: String(localized: "Almost there! This is a one-time warm-up so you never wait later."),
                          button: nil)
         case .done:
-            FirstRunCopy(title: String(localized: "All set!"),
+            return FirstRunCopy(title: String(localized: "All set!"),
                          message: String(localized: "Tap the big button any time you want captions."),
                          button: String(localized: "Start captioning"))
         }
