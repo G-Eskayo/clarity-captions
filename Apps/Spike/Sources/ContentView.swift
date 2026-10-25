@@ -268,6 +268,10 @@ struct ContentView: View {
     @State private var draggingEdge: SelectionHandle.Edge?
     /// Follows scrolling while something is selected, so the handles and Copy stay on the words.
     @State private var selectionScroll: CGFloat = 0
+    /// The tour state machine, or nil when the tour is not active.
+    @State private var tour: TourState?
+    /// Track where each tour step's target control is on screen.
+    @StateObject private var tourFrames = TourFrames()
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -292,12 +296,32 @@ struct ContentView: View {
             style.background.color.ignoresSafeArea()
             Group { landscape ? AnyView(landscapeLayout) : AnyView(portraitLayout) }
                 .padding()
+                .coordinateSpace(.named(TourFrames.space))
             if showPreparingAnimation {
                 ZStack {
                     style.background.color.ignoresSafeArea()
                     LaunchAnimationView()
                 }
                 .transition(.opacity)
+            }
+            if let t = tour {
+                TourOverlayView(state: t, frames: tourFrames,
+                    onNext: {
+                        guard var updated = tour else { return }
+                        updated.next()
+                        endTour(updated)
+                    },
+                    onBack: {
+                        guard var updated = tour else { return }
+                        updated.back()
+                        tour = updated
+                    },
+                    onSkip: {
+                        guard var updated = tour else { return }
+                        updated.skip()
+                        endTour(updated)
+                    }
+                )
             }
         }
         // One look for the whole app: background, text, controls and the system's own chrome all follow it.
@@ -315,7 +339,7 @@ struct ContentView: View {
         } message: {
             Text(String(localized: "This conversation isn't saved."))
         }
-        .sheet(isPresented: $showingSettings) { SettingsSheet(style: $model.style, idleStop: $model.idleStop, stream: model.stream, speakerNames: model.speakerNames, store: model.store) }
+        .sheet(isPresented: $showingSettings) { SettingsSheet(style: $model.style, idleStop: $model.idleStop, stream: model.stream, speakerNames: model.speakerNames, store: model.store, onReplayTour: { showingSettings = false; tour = TourState(startingStep: model.state == .listening ? .listening : .start) }) }
         .task {
             guard DemoMode.isOn else { return }
             model.demoApplyPreset()
@@ -326,9 +350,18 @@ struct ContentView: View {
             if DemoMode.opensSettings { showingSettings = true }
             await runDemoPause()
         }
+        .task {
+            guard !DemoMode.isOn, tour == nil, !TourStore().hasSeenTour else { return }
+            tour = TourState()
+        }
         .onChange(of: model.state) { _, newState in
             UIAccessibility.post(notification: .announcement, argument: StatusWords.announcement(for: newState))
             handleStateChange(newState)
+        }
+        .onChange(of: model.stream.lines.count) { _, _ in
+            if !model.stream.lines.isEmpty && tour?.step == .listening {
+                advanceTour(.captionArrived)
+            }
         }
     }
 
@@ -358,6 +391,22 @@ struct ContentView: View {
                 animationShownAt = nil
             }
         }
+    }
+
+    /// The single choke point for ending the tour: ensures markSeen() is called exactly once.
+    private func endTour(_ newState: TourState) {
+        if newState.isActive {
+            tour = newState
+        } else {
+            TourStore().markSeen()
+            tour = nil
+        }
+    }
+
+    private func advanceTour(_ trigger: TourTrigger) {
+        guard var t = tour else { return }
+        t.handle(trigger)
+        endTour(t)
     }
 
     /// Portrait: the gear and the status share the top row, so captions start right under it. Start captions sits at
@@ -393,7 +442,20 @@ struct ContentView: View {
             MorphingControl(control: control, fullWidth: pillWidth ?? geo.size.width,
                             fill: style.text.color, label: style.background.color) {
                 model.perform(control.action)
+                switch control.action {
+                case .start:
+                    advanceTour(.startedCaptioning)
+                case .stop:
+                    let wasOnPause = tour?.step == .pause
+                    advanceTour(.paused)
+                    if wasOnPause && !model.hasConversation {
+                        model.stream.apply(text: TourDemoLine.text, isFinal: true)
+                    }
+                case .none:
+                    break
+                }
             }
+            .trackTourTarget(control.action == .stop ? .pause : .start, in: tourFrames)
             .frame(maxWidth: .infinity, maxHeight: .infinity,
                    alignment: control.presentation == .compact ? .bottomTrailing : .bottom)
         }
@@ -423,7 +485,10 @@ struct ContentView: View {
     private var gearColor: Color { style.text.color }
 
     private var settingsButton: some View {
-        Button { showingSettings = true } label: {
+        Button {
+            showingSettings = true
+            advanceTour(.openedSettings)
+        } label: {
             Image(systemName: "gearshape")
                 .font(.title2)
                 .foregroundStyle(gearColor)
@@ -432,6 +497,7 @@ struct ContentView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(String(localized: "Settings"))
+        .trackTourTarget(.gear, in: tourFrames)
     }
 
     private var statusHeadline: String {
@@ -580,7 +646,8 @@ struct ContentView: View {
             if selection != nil { selectionChrome }
 
             if model.veil.isVisible(state: model.state, hasConversation: model.hasConversation) {
-                pauseVeil.transition(.opacity)
+                pauseVeil
+                    .transition(.opacity)
             }
 
             if showingVeilHint {
@@ -613,6 +680,7 @@ struct ContentView: View {
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
+        .trackTourTarget(.listening, in: tourFrames)
         .animation(veilAnimation, value: model.veil.isVisible(state: model.state, hasConversation: model.hasConversation))
         .accessibilityAction(named: String(localized: "Show Save and New")) { bringBackVeil() }
         .alert(String(localized: "Name this speaker"), isPresented: Binding(
@@ -749,8 +817,12 @@ struct ContentView: View {
             switch model.session.saveButton(lines: model.stream.lines, names: model.speakerNames) {
             case .save:
                 retroButton(String(localized: "Save"), color: style.text.color, label: String(localized: "Save conversation")) {
-                    withAnimation(.easeInOut(duration: 0.2)) { model.save() }
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        model.save()
+                    }
+                    advanceTour(.saved)
                 }
+                .trackTourTarget(.save, in: tourFrames)
             case .saved:
                 retroButton(String(localized: "Saved"), color: green, label: String(localized: "Conversation saved"), action: nil)
             case .unavailable:
@@ -900,7 +972,10 @@ struct ContentView: View {
                     // Above the first selected line (mock-up 05). If that's scrolled away, at the top of the visible
                     // selection: never below it, where it would cover words she hasn't selected.
                     let y = max(36, ends.start.minY - 46)
-                    Button(action: copySelection) {
+                    Button(action: {
+                        copySelection()
+                        advanceTour(.copied)
+                    }) {
                         Label(String(localized: "Copy"), systemImage: "doc.on.doc")
                             .font(.title3.bold())
                             .padding(.horizontal, 26).padding(.vertical, 12)
@@ -909,6 +984,7 @@ struct ContentView: View {
                     .accessibilityHint(String(localized: "Copies the selected words"))
                     .position(x: geo.size.width / 2, y: y)
                     .transition(.opacity)
+                    .trackTourTarget(.copy, in: tourFrames)
                 }
             }
         }
