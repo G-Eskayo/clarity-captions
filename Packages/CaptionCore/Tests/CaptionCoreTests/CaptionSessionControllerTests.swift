@@ -17,12 +17,18 @@ final class CaptionSessionControllerTests: XCTestCase {
         var holdOpen = false                  // keep the streams open until stop()
         var labels: [SoundLabelKind] = []
         var levels: [Double] = []
+        var interruptions: [InterruptionSignal] = []
+        var markers: [TranscriptMarker] = []
         private(set) var stopCount = 0
         private var updateCont: AsyncThrowingStream<CaptionUpdate, Error>.Continuation?
         private var labelCont: AsyncStream<SoundLabelKind>.Continuation?
         private var levelCont: AsyncStream<Double>.Continuation?
+        private var interruptionCont: AsyncStream<InterruptionSignal>.Continuation?
+        private var markerCont: AsyncStream<TranscriptMarker>.Continuation?
         private var labelStream: AsyncStream<SoundLabelKind>?
         private var levelStream: AsyncStream<Double>?
+        private var capturedInterruptionStream: AsyncStream<InterruptionSignal>?
+        private var capturedMarkerStream: AsyncStream<TranscriptMarker>?
 
         func start() async throws -> AsyncThrowingStream<CaptionUpdate, Error> {
             if let startError { throw startError }
@@ -30,23 +36,33 @@ final class CaptionSessionControllerTests: XCTestCase {
             labelStream = ls; labelCont = lc
             let (lvls, lvcont) = AsyncStream.makeStream(of: Double.self)
             levelStream = lvls; levelCont = lvcont
+            let (intStream, intCont) = AsyncStream.makeStream(of: InterruptionSignal.self)
+            capturedInterruptionStream = intStream; interruptionCont = intCont
+            let (markerStream, markerCont) = AsyncStream.makeStream(of: TranscriptMarker.self)
+            capturedMarkerStream = markerStream; self.markerCont = markerCont
             let (stream, cont) = AsyncThrowingStream.makeStream(of: CaptionUpdate.self)
             updateCont = cont
             for u in updates { cont.yield(u) }
             for l in labels { lc.yield(l) }
             for lv in levels { lvcont.yield(lv) }
+            for int in interruptions { intCont.yield(int) }
+            for marker in markers { markerCont.yield(marker) }
             if !holdOpen {
                 if let failAfterUpdates { cont.finish(throwing: failAfterUpdates) } else { cont.finish() }
                 lc.finish()
                 lvcont.finish()
+                intCont.finish()
+                markerCont.finish()
             }
             return stream
         }
         func soundLabelsStream() -> AsyncStream<SoundLabelKind> { labelStream ?? AsyncStream { $0.finish() } }
         func audioLevelStream() -> AsyncStream<Double> { levelStream ?? AsyncStream { $0.finish() } }
+        func interruptionStream() -> AsyncStream<InterruptionSignal> { capturedInterruptionStream ?? AsyncStream { $0.finish() } }
+        func transcriptMarkerStream() -> AsyncStream<TranscriptMarker> { capturedMarkerStream ?? AsyncStream { $0.finish() } }
         func stop() async {
             stopCount += 1
-            updateCont?.finish(); labelCont?.finish(); levelCont?.finish()
+            updateCont?.finish(); labelCont?.finish(); levelCont?.finish(); interruptionCont?.finish(); markerCont?.finish()
         }
     }
 
@@ -184,6 +200,30 @@ final class CaptionSessionControllerTests: XCTestCase {
         await eventually("listening") { c.state == .listening }
         await eventually("audio levels delivered") { audioLevels.count >= 3 }
         XCTAssertEqual(audioLevels, [-30, -28, -32])
+        await c.stopAndWait()
+    }
+
+    func testInterruptionSignalCanTransitionStateWhenNotificationFires() async {
+        let engine = FakeEngine(); engine.holdOpen = true; engine.updates = [update("hello")]; engine.interruptions = [.paused("call")]
+        let (c, _) = make { engine }
+        var pausedStates: [(String)] = []
+        c.onStateChange = { state in
+            if case .paused(let reason) = state { pausedStates.append(reason) }
+        }
+        c.start()
+        await eventually("has paused state delivered") { pausedStates.count >= 1 }
+        XCTAssertTrue(pausedStates.contains("call"))
+        await c.stopAndWait()
+    }
+
+    func testMarkerArrivesViaStreamDuringInterruptionResume() async {
+        var markersCaptured: [TranscriptMarker] = []
+        let engine = FakeEngine(); engine.holdOpen = true; engine.updates = [update("hello")]; engine.interruptions = [.paused("x"), .resumed]; engine.markers = [.resumedAfterInterruption]
+        let (c, _) = make { engine }
+        c.onTranscriptMarker = { markersCaptured.append($0) }
+        c.start()
+        await eventually("marker received") { markersCaptured.count >= 1 }
+        XCTAssertEqual(markersCaptured.first, .resumedAfterInterruption)
         await c.stopAndWait()
     }
 }

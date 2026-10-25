@@ -46,6 +46,7 @@ final class CaptionModel: ObservableObject {
         controller.onStateChange = { [weak self] in self?.handleCaptionStateChange($0) }
         controller.onStartup = { [weak self] in self?.startup = $0 }
         controller.onSoundLabel = { [weak self] in self?.stream.insertSoundLabel($0) }
+        controller.onTranscriptMarker = { [weak self] in self?.stream.insertMarker($0) }
         controller.onAudioLevel = { [weak self] level in
             self?.roomLevelDBFS = level
         }
@@ -64,27 +65,33 @@ final class CaptionModel: ObservableObject {
 
     private func handleCaptionStateChange(_ newState: CaptionState) {
         state = newState
+        UIApplication.shared.isIdleTimerDisabled = ScreenWakePolicy.shouldStayAwake(for: newState)
 
         switch newState {
         case .preparing:
             sessionStartedAt = Date()
-        case .listening:
+        case .listening, .paused:
             startActivityLoop()
         case .idle, .failed:
             stopActivityLoop()
             saveSessionIfNeeded()
-        default:
-            break
         }
     }
 
     private func startActivityLoop() {
         activityTask?.cancel()
         activityTask = Task {
-            while !Task.isCancelled && state == .listening {
-                let newActivity = tracker.activity(now: Date(), roomLevelDBFS: roomLevelDBFS)
-                if activity != newActivity {
-                    activity = newActivity
+            var isContinuing = true
+            while !Task.isCancelled && isContinuing {
+                if case .listening = state {
+                    let newActivity = tracker.activity(now: Date(), roomLevelDBFS: roomLevelDBFS)
+                    if activity != newActivity {
+                        activity = newActivity
+                    }
+                } else if case .paused = state {
+                    // Continue loop while paused
+                } else {
+                    isContinuing = false
                 }
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
             }
@@ -202,6 +209,7 @@ struct ContentView: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
     private var style: CaptionStyle { model.style }
     private var control: PrimaryControl { PrimaryControl.for(model.state) }
@@ -235,6 +243,15 @@ struct ContentView: View {
             UIAccessibility.post(notification: .announcement, argument: StatusWords.announcement(for: newState))
             handleStateChange(newState)
         }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .background {
+                if case .listening = model.state {
+                    model.stream.insertMarker(.wasAway)
+                } else if case .paused = model.state {
+                    model.stream.insertMarker(.wasAway)
+                }
+            }
+        }
     }
 
     /// The branded animation only appears if getting ready is genuinely slow (a cold start, a download); a quick
@@ -251,7 +268,7 @@ struct ContentView: View {
                 animationShownAt = Date()
                 withAnimation(.easeInOut(duration: 0.25)) { showPreparingAnimation = true }
             }
-        case .listening, .idle, .failed:
+        case .listening, .paused, .idle, .failed:
             preparingStartTime = nil
             guard showPreparingAnimation else { return }
             let shown = animationShownAt.map { Date().timeIntervalSince($0) } ?? LaunchAnimationGate.minimumDuration
@@ -391,6 +408,8 @@ struct ContentView: View {
                             if line.isSoundLabel {
                                 Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize)).italic()).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
                                     .accessibilityLabel(line.soundLabel.map { soundLabelA11yLabel(for: $0) } ?? "")
+                            } else if line.isMarker {
+                                Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize)).italic()).opacity(0.6)
                             } else {
                                 Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize))).opacity(line.isFinal ? 1 : CaptionLine.volatileOpacity)
                                     .textSelection(.enabled)

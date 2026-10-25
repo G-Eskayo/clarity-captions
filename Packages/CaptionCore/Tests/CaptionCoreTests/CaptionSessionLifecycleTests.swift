@@ -43,6 +43,20 @@ final class CaptionSessionLifecycleTests: XCTestCase {
         XCTAssertEqual(action, .none)
     }
 
+    func testActionIsNoneWhenStateIsPaused() {
+        let now = Date()
+        var stream = CaptionStream()
+        stream.apply(text: "hello", isFinal: true)
+
+        let action = CaptionSessionLifecycle.action(
+            for: .paused("call incoming"),
+            sessionStartedAt: now,
+            lines: stream.lines
+        )
+
+        XCTAssertEqual(action, .none)
+    }
+
     func testActionIsSaveWhenIdleWithContent() {
         let now = Date()
         var stream = CaptionStream()

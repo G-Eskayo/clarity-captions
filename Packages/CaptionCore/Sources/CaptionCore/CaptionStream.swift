@@ -15,6 +15,8 @@ public struct CaptionLine: Identifiable, Equatable, Sendable {
     public var speaker: Int?
     /// Sound label for non-speech lines (laughter, applause, etc.); nil for ordinary speech lines.
     public var soundLabel: SoundLabelKind?
+    /// Transcript marker for gaps and transitions (backgrounding, interruptions); nil for ordinary lines.
+    public var marker: TranscriptMarker?
     var committed: [CaptionWord]
     var tail: String?
     var tailRange: ClosedRange<Double>?
@@ -30,6 +32,7 @@ public struct CaptionLine: Identifiable, Equatable, Sendable {
     }
     public var isFinal: Bool { tail == nil }
     public var isSoundLabel: Bool { soundLabel != nil }
+    public var isMarker: Bool { marker != nil }
 }
 
 /// The live caption transcript. Pure value type -- no audio, no UI, no platform APIs -- so it is tested
@@ -134,6 +137,24 @@ public struct CaptionStream: Sendable {
         lines.append(CaptionLine(
             id: nextID, speaker: nil, soundLabel: label,
             committed: labelWords,
+            tail: nil, tailRange: nil, startTime: nil, endTime: nil))
+        nextID += 1
+    }
+
+    /// Closes any open volatile tail on the last line and appends a new, already-final transcript marker line.
+    public mutating func insertMarker(_ marker: TranscriptMarker) {
+        if var last = lines.last {
+            if let stale = last.tail {
+                last.committed = Self.joinWords(last.committed, stale); last.tail = nil; last.tailRange = nil
+                lines[lines.count - 1] = last
+            }
+        }
+
+        let markerText = TranscriptMarkerFormatter.caption(for: marker)
+        let markerWords = Self.captionWords(from: markerText, emphasis: [])
+        lines.append(CaptionLine(
+            id: nextID, speaker: nil, marker: marker,
+            committed: markerWords,
             tail: nil, tailRange: nil, startTime: nil, endTime: nil))
         nextID += 1
     }

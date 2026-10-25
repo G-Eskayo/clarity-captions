@@ -183,4 +183,86 @@ final class CaptionStreamTests: XCTestCase {
         }
         XCTAssertEqual(s.lines.count, 1000, "all 1000 lines should be retained for scrollback")
     }
+
+    // MARK: - Transcript markers
+
+    func testInsertMarkerAddsNewLine() {
+        var s = CaptionStream()
+        s.insertMarker(.wasAway)
+        XCTAssertEqual(s.lines.count, 1)
+        XCTAssertEqual(s.lines[0].marker, .wasAway)
+        XCTAssertTrue(s.lines[0].text.contains("away"))
+    }
+
+    func testInsertMarkerIsAlwaysFinal() {
+        var s = CaptionStream()
+        s.insertMarker(.resumedAfterInterruption)
+        XCTAssertTrue(s.lines[0].isFinal)
+        XCTAssertNil(s.lines[0].tail)
+    }
+
+    func testInsertMarkerClosesOpenTail() {
+        var s = CaptionStream()
+        s.apply(text: "hel", isFinal: false)
+        XCTAssertTrue(s.lines[0].tail != nil)
+        s.insertMarker(.wasAway)
+        XCTAssertEqual(s.lines.count, 2)
+        XCTAssertTrue(s.lines[0].isFinal)
+        XCTAssertEqual(s.lines[0].text, "hel")
+        XCTAssertEqual(s.lines[1].marker, .wasAway)
+    }
+
+    func testSpeechAfterMarkerStartsNewLine() {
+        var s = CaptionStream()
+        s.insertMarker(.wasAway)
+        s.apply(text: "hello", isFinal: false)
+        XCTAssertEqual(s.lines.count, 2)
+        XCTAssertEqual(s.lines[0].marker, .wasAway)
+        XCTAssertNil(s.lines[1].marker)
+        XCTAssertEqual(s.lines[1].text, "hello")
+    }
+
+    func testSpeechNeverMergesIntoMarker() {
+        var s = CaptionStream()
+        s.insertMarker(.resumedAfterInterruption)
+        s.apply(text: "thank", isFinal: true)
+        s.apply(text: "you", isFinal: false)
+        XCTAssertEqual(s.lines.count, 3)
+        XCTAssertEqual(s.lines[0].marker, .resumedAfterInterruption)
+        XCTAssertEqual(s.lines[1].text, "thank")
+        XCTAssertEqual(s.lines[2].text, "you")
+    }
+
+    func testInsertMarkerIntoEmptyStreamDoesNotCrash() {
+        var s = CaptionStream()
+        s.insertMarker(.wasAway)
+        XCTAssertEqual(s.lines.count, 1)
+        XCTAssertEqual(s.lines[0].marker, .wasAway)
+    }
+
+    func testNormalApplyAfterMarkerStartsFreshLine() {
+        var s = CaptionStream()
+        s.insertMarker(.wasAway)
+        s.apply(text: "hello", isFinal: true)
+        s.apply(text: "world", isFinal: false)
+        XCTAssertEqual(s.lines.count, 3)
+        XCTAssertTrue(s.lines[0].isMarker)
+        XCTAssertFalse(s.lines[1].isMarker)
+        XCTAssertEqual(s.lines[1].text, "hello")
+        XCTAssertEqual(s.lines[2].text, "world")
+    }
+
+    func testMarkerLineHasNilSpeaker() {
+        var s = CaptionStream()
+        s.insertMarker(.resumedAfterInterruption)
+        XCTAssertNil(s.lines[0].speaker)
+    }
+
+    func testMarkerIsMarkerPropertyWorks() {
+        var s = CaptionStream()
+        s.apply(text: "hello", isFinal: true)
+        s.insertMarker(.wasAway)
+        XCTAssertFalse(s.lines[0].isMarker)
+        XCTAssertTrue(s.lines[1].isMarker)
+    }
 }

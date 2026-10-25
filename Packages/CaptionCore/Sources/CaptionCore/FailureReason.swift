@@ -19,6 +19,8 @@ public enum FailureReason {
             return String(localized: "The microphone format isn't compatible — try a different mic mode in Settings")
         case .converterUnavailable:
             return String(localized: "Audio processing isn't available right now — tap to try again")
+        case .interruptionTimedOut:
+            return String(localized: "The microphone didn't come back — tap to try again")
         }
     }
 

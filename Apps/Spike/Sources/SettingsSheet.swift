@@ -1,5 +1,6 @@
 import CaptionCore
 import SwiftUI
+import UIKit
 
 extension RGBA {
     var color: Color { Color(red: r, green: g, blue: b, opacity: a) }

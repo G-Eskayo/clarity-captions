@@ -59,6 +59,7 @@ public enum MicMode: String, CaseIterable, Sendable {
 public enum TranscriptionError: Error {
     case noCompatibleAudioFormat
     case converterUnavailable
+    case interruptionTimedOut
 }
 
 /// Live microphone -> on-device SpeechAnalyzer/SpeechTranscriber (ADR 0001).
@@ -67,6 +68,7 @@ public final class TranscriptionEngine {
     private let audioEngine = AVAudioEngine()
     private var analyzer: SpeechAnalyzer?
     private var inputBuilder: AsyncStream<AnalyzerInput>.Continuation?
+    private var resultContinuation: AsyncThrowingStream<CaptionUpdate, Error>.Continuation?
     private let locale: Locale
     private let micMode: MicMode
     private let diarizer: LiveDiarizer
@@ -81,6 +83,16 @@ public final class TranscriptionEngine {
     private var loudnessBaseline = LoudnessBaseline()
     private var loudnessTimeSeries: [(audioTime: Double, level: Double)] = []
     private let loudnessLock = NSLock()
+    private var interruptionStreamValue: AsyncStream<InterruptionSignal>?
+    private var interruptionContinuation: AsyncStream<InterruptionSignal>.Continuation?
+    private var markerStreamValue: AsyncStream<TranscriptMarker>?
+    private var markerContinuation: AsyncStream<TranscriptMarker>.Continuation?
+    private var observerTokens: [NSObjectProtocol] = []
+    private var interruptionWatchdogTask: Task<Void, Never>?
+    private var sessionFormat: AVAudioFormat?
+    private var sessionDiarFormat: AVAudioFormat?
+    private var sessionFed: FedAudioClock?
+    private var isPaused = false
 
     /// `diarizerModelURL` has no default on purpose: the app must say where its bundled speaker model
     /// lives, so there is no accidental network path (ADR 0014).
@@ -129,6 +141,14 @@ public final class TranscriptionEngine {
         self.audioLevelStreamValue = alStream
         self.audioLevelContinuation = alCont
 
+        let (intStream, intCont) = AsyncStream.makeStream(of: InterruptionSignal.self)
+        self.interruptionStreamValue = intStream
+        self.interruptionContinuation = intCont
+
+        let (markerStream, markerCont) = AsyncStream.makeStream(of: TranscriptMarker.self)
+        self.markerStreamValue = markerStream
+        self.markerContinuation = markerCont
+
         guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else {
             throw TranscriptionError.noCompatibleAudioFormat
         }
@@ -172,6 +192,16 @@ public final class TranscriptionEngine {
         let wallTime = FedWallTime()
         try audioEngine.start()
         wallTime.set(Date())
+
+        #if os(iOS)
+        let session = AVAudioSession.sharedInstance()
+        self.sessionFormat = format
+        self.sessionDiarFormat = diarFormat
+        self.sessionFed = fed
+        self.registerInterruptionHandler(session: session, intCont: intCont, markerCont: markerCont)
+        self.registerRouteChangeHandler(session: session)
+        #endif
+
         try await analyzer.start(inputSequence: sequence)
         lap("audio start")
         startupReport = laps.joined(separator: " · ")
@@ -307,6 +337,7 @@ public final class TranscriptionEngine {
 
     private func makeResultStream(transcriber: SpeechTranscriber, fed: FedAudioClock, wallTime: FedWallTime) -> AsyncThrowingStream<CaptionUpdate, Error> {
         return AsyncThrowingStream { [weak self] continuation in
+            self?.resultContinuation = continuation
             let task = Task {
                 do {
                     var lagTracker = WordLagTracker()
@@ -376,6 +407,17 @@ public final class TranscriptionEngine {
         audioEngine.stop()
         inputBuilder?.finish()
         inputBuilder = nil
+        resultContinuation = nil
+        #if os(iOS)
+        for token in observerTokens {
+            NotificationCenter.default.removeObserver(token)
+        }
+        observerTokens.removeAll()
+        interruptionWatchdogTask?.cancel()
+        interruptionWatchdogTask = nil
+        interruptionContinuation?.finish()
+        markerContinuation?.finish()
+        #endif
         if let analyzer {
             self.analyzer = nil
             do { try await analyzer.finalizeAndFinishThroughEndOfInput() }
@@ -410,4 +452,110 @@ public final class TranscriptionEngine {
     public func audioLevelStream() -> AsyncStream<Double> {
         audioLevelStreamValue ?? AsyncStream { $0.finish() }
     }
+
+    public func interruptionStream() -> AsyncStream<InterruptionSignal> {
+        interruptionStreamValue ?? AsyncStream { $0.finish() }
+    }
+
+    public func transcriptMarkerStream() -> AsyncStream<TranscriptMarker> {
+        markerStreamValue ?? AsyncStream { $0.finish() }
+    }
+
+    #if os(iOS)
+    private func registerInterruptionHandler(
+        session: AVAudioSession,
+        intCont: AsyncStream<InterruptionSignal>.Continuation,
+        markerCont: AsyncStream<TranscriptMarker>.Continuation
+    ) {
+        let token = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: session,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self else { return }
+            guard let info = notification.userInfo,
+                  let typeValue = info[AVAudioSession.interruptionTypeKey] as? UInt,
+                  let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+
+            switch type {
+            case .began:
+                self.audioEngine.inputNode.removeTap(onBus: 0)
+                self.audioEngine.stop()
+                intCont.yield(.paused(String(localized: "Captions paused for your call")))
+                self.isPaused = true
+                let watchdog = Task {
+                    try? await Task.sleep(nanoseconds: 30 * 1_000_000_000)
+                    if !Task.isCancelled {
+                        self.resultContinuation?.finish(throwing: TranscriptionError.interruptionTimedOut)
+                    }
+                }
+                self.interruptionWatchdogTask = watchdog
+
+            case .ended:
+                let optionsValue = notification.userInfo?[AVAudioSession.interruptionOptionKey] as? UInt ?? 0
+                let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+                self.interruptionWatchdogTask?.cancel()
+                self.interruptionWatchdogTask = nil
+                if options.contains(.shouldResume) {
+                    intCont.yield(.resumed)
+                    if self.isPaused {
+                        markerCont.yield(.resumedAfterInterruption)
+                    }
+                    self.isPaused = false
+                    self.rebuildAudioTap(intCont: intCont, markerCont: markerCont)
+                }
+            @unknown default:
+                break
+            }
+        }
+        observerTokens.append(token)
+    }
+
+    private func registerRouteChangeHandler(session: AVAudioSession) {
+        let token = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.routeChangeNotification,
+            object: session,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            self.preferBuiltInMic(session: session)
+            self.rebuildAudioTap(intCont: self.interruptionContinuation, markerCont: self.markerContinuation)
+        }
+        observerTokens.append(token)
+    }
+
+    private func preferBuiltInMic(session: AVAudioSession) {
+        if let inputs = session.availableInputs,
+           let builtIn = inputs.first(where: { $0.portType == .builtInMic }) {
+            try? session.setPreferredInput(builtIn)
+        }
+    }
+
+    /// Rebuilds the audio tap with fresh converters after a format change (route change, resuming from interruption).
+    /// Derives inFormat fresh from the current input node state rather than reusing a stale stored value.
+    private func rebuildAudioTap(intCont: AsyncStream<InterruptionSignal>.Continuation?, markerCont: AsyncStream<TranscriptMarker>.Continuation?) {
+        guard let sessionFormat = self.sessionFormat,
+              let sessionDiarFormat = self.sessionDiarFormat,
+              let sessionFed = self.sessionFed,
+              let builder = self.inputBuilder else { return }
+
+        let input = audioEngine.inputNode
+        let inFormat = input.outputFormat(forBus: 0)
+        guard let converter = AVAudioConverter(from: inFormat, to: sessionFormat),
+              let diarConverter = AVAudioConverter(from: inFormat, to: sessionDiarFormat) else {
+            return
+        }
+
+        audioEngine.inputNode.removeTap(onBus: 0)
+        input.installTap(onBus: 0, bufferSize: 4096, format: inFormat) { [weak self] buffer, _ in
+            self?.processBuffer(buffer, inFormat: inFormat, converter: converter, diarConverter: diarConverter, format: sessionFormat, diarFormat: sessionDiarFormat, fed: sessionFed, builder: builder)
+        }
+        audioEngine.prepare()
+        do {
+            try audioEngine.start()
+        } catch {
+            self.resultContinuation?.finish(throwing: error)
+        }
+    }
+    #endif
 }

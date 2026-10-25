@@ -18,6 +18,14 @@ final class FailureReasonTests: XCTestCase {
         XCTAssertFalse(plain.contains("converterUnavailable"))
     }
 
+    func testTranscriptionErrorInterruptionTimedOut() {
+        let error = TranscriptionError.interruptionTimedOut
+        let plain = FailureReason.plainLanguage(for: error)
+        XCTAssertNotEqual(plain, String(describing: error))
+        XCTAssertTrue(plain.count > 0)
+        XCTAssertFalse(plain.contains("interruptionTimedOut"))
+    }
+
     func testSpeakerModelErrorModelMissing() {
         let url = URL(fileURLWithPath: "test.mlmodelc")
         let error = SpeakerModelError.modelMissing(url)

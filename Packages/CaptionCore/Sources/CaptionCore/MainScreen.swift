@@ -2,7 +2,7 @@ import Foundation
 
 /// What the captioning engine is doing, in the only terms the main screen needs.
 public enum CaptionState: Equatable, Sendable {
-    case idle, preparing, listening
+    case idle, preparing, listening, paused(String)
     case failed(String)
 }
 
@@ -26,6 +26,7 @@ public struct PrimaryControl: Equatable, Sendable {
         case .idle: PrimaryControl(title: String(localized: "Start captions"), action: .start, isEnabled: true)
         case .preparing: PrimaryControl(title: String(localized: "Getting ready…"), action: .none, isEnabled: false)
         case .listening: PrimaryControl(title: String(localized: "Stop"), action: .stop, isEnabled: true, presentation: .compact)
+        case .paused: PrimaryControl(title: String(localized: "Stop"), action: .stop, isEnabled: true, presentation: .compact)
         case .failed: PrimaryControl(title: String(localized: "Start again"), action: .start, isEnabled: true)
         }
     }
@@ -39,37 +40,43 @@ public enum StatusWords {
         case .idle: String(localized: "Ready")
         case .preparing: String(localized: "Getting ready…")
         case .listening: String(localized: "Listening")
+        case .paused: String(localized: "Captions paused")
         case .failed: String(localized: "Captions stopped")
         }
     }
 
     /// Activity-aware headline: same for all activities except can't hear.
     public static func headline(for state: CaptionState, activity: ListeningActivity) -> String {
-        guard case .listening = state else { return headline(for: state) }
-        switch activity {
-        case .activelyListening, .noOneTalking:
-            return String(localized: "Listening")
-        case .cantHearAnything:
-            return String(localized: "I can't hear anything")
+        if case .listening = state {
+            switch activity {
+            case .activelyListening, .noOneTalking:
+                return String(localized: "Listening")
+            case .cantHearAnything:
+                return String(localized: "I can't hear anything")
+            }
         }
+        return headline(for: state)
     }
 
     public static func detail(for state: CaptionState) -> String? {
+        if case .paused(let reason) = state { return reason }
         if case .failed(let reason) = state { return reason }
         return nil
     }
 
     /// Activity-aware detail line for listening state.
     public static func secondLine(for state: CaptionState, activity: ListeningActivity) -> String? {
-        guard case .listening = state else { return detail(for: state) }
-        switch activity {
-        case .activelyListening:
-            return nil
-        case .noOneTalking:
-            return String(localized: "No one is talking right now")
-        case .cantHearAnything:
-            return String(localized: "Is something covering the microphone?")
+        if case .listening = state {
+            switch activity {
+            case .activelyListening:
+                return nil
+            case .noOneTalking:
+                return String(localized: "No one is talking right now")
+            case .cantHearAnything:
+                return String(localized: "Is something covering the microphone?")
+            }
         }
+        return detail(for: state)
     }
 
     /// Combines headline and detail into a single accessible announcement.
