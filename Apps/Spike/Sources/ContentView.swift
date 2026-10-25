@@ -25,8 +25,10 @@ final class CaptionModel: ObservableObject {
     var store: SavedConversationStoring?
     private var sessionStartedAt: Date?
     private var tracker = ListeningActivityTracker()
+    private var watchSender: WatchConnectivitySender!
 
     init() {
+        watchSender = WatchConnectivitySender()
         controller = CaptionSessionController(makeEngine: { [weak self] in
             guard let self else { throw CancellationError() }
             guard let url = Bundle.main.url(forResource: "Sortformer_v2.1", withExtension: "mlmodelc") else {
@@ -36,6 +38,7 @@ final class CaptionModel: ObservableObject {
             let vocabulary = VocabularyList(rawText: rawText).entries
             return TranscriptionEngine(micMode: self.micMode, diarizerModelURL: url, contextualStrings: vocabulary)
         })
+        watchSender.activate()
 
         if let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
             let conversationsDir = appSupportURL.appendingPathComponent("SavedConversations")
@@ -59,6 +62,8 @@ final class CaptionModel: ObservableObject {
             if !u.text.trimmingCharacters(in: .whitespaces).isEmpty {
                 self.tracker.recordSpeech(at: Date())
             }
+            let speakerLabel = u.speaker.map { self.speakerNames.name(for: $0) ?? "Speaker \($0 + 1)" } ?? ""
+            self.watchSender.report(line: u.text, speakerLabel: speakerLabel, isFinal: u.isFinal)
         }
     }
 
@@ -73,6 +78,7 @@ final class CaptionModel: ObservableObject {
         case .idle, .failed:
             stopActivityLoop()
             saveSessionIfNeeded()
+            watchSender.report(line: "", speakerLabel: "", isFinal: true)
         default:
             break
         }
