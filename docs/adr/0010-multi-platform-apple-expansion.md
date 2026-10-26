@@ -29,8 +29,8 @@ no per-user training ([[0008]]), and free forever ([[0007]]) apply to every plat
 3. **Candidate platforms, in rough expected order**, each to be confirmed individually:
    - iPad — near-free; same SDK, adaptive layout.
    - Mac — native macOS target (not Catalyst unless native proves impractical).
-   - Apple Watch — likely a caption *display* companion to the phone, since a watch is a poor
-     far-field microphone; whether it transcribes on its own is open.
+   - Apple Watch — **dropped 2026-10-26 (owner)**: too much complexity for too little gain, both as a
+     caption screen and as an extra room microphone. Not planned for any version.
    - Apple Vision Pro — captions in view is a strong fit; mic and diarization story unverified.
    - Apple TV — no microphone of its own; probably out of scope unless it displays captions from
      another device.
