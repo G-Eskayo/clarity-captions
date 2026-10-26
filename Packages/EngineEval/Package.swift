@@ -7,7 +7,11 @@ import PackageDescription
 let package = Package(
     name: "EngineEval",
     platforms: [.macOS("26.0")],
-    products: [.executable(name: "engine-eval", targets: ["engine-eval"])],
+    products: [
+        .executable(name: "engine-eval", targets: ["engine-eval"]),
+        // Translation comparison test (#159): Apple's Translation framework, no other dependencies.
+        .executable(name: "translation-eval", targets: ["translation-eval"]),
+    ],
     dependencies: [
         .package(path: "../CaptionCore"),
         // Same FluidAudio as the app (CaptionCore pins 0.17.5).
@@ -32,6 +36,7 @@ let package = Package(
             dependencies: ["EngineEvalKit", "EngineEvalEngines"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
+        .executableTarget(name: "translation-eval", dependencies: ["EngineEvalKit"]),
         .testTarget(name: "EngineEvalKitTests", dependencies: ["EngineEvalKit"]),
         // Opt-in (CAPTION_ENGINE_EVAL=1), same shape as CaptionCore's SpeakerModelComparisonTests.
         .testTarget(

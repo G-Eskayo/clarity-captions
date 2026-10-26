@@ -85,7 +85,8 @@ def cmd_comet(a) -> int:
     model = load_from_checkpoint(download_model("Unbabel/wmt22-comet-da"))
     data = [{"src": seg[r["clip_id"]]["source"], "mt": r["hypothesis"], "ref": seg[r["clip_id"]]["reference"]}
             for r in todo]
-    out = model.predict(data, batch_size=a.batch, gpus=0, progress_bar=False)
+    gpus = 0 if a.accelerator == "cpu" else 1
+    out = model.predict(data, batch_size=a.batch, gpus=gpus, accelerator=a.accelerator, progress_bar=False)
     with cache_path.open("a", encoding="utf-8") as fh:
         for r, sc in zip(todo, out.scores):
             fh.write(json.dumps({"engine": r["engine"], "model": r["model"], "clip_id": r["clip_id"],
@@ -146,6 +147,7 @@ def main(argv: list[str] | None = None) -> int:
     m.add_argument("--sets", type=Path, required=True)
     m.add_argument("--results", type=Path, required=True, help="one pair's results directory")
     m.add_argument("--batch", type=int, default=16)
+    m.add_argument("--accelerator", default="mps", help="mps (Apple GPU) or cpu")
     r = sub.add_parser("report")
     r.add_argument("--sets", type=Path, required=True)
     r.add_argument("--results", type=Path, required=True)

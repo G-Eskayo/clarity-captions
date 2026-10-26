@@ -51,5 +51,6 @@ done
 AS cat files/results/mlkit.jsonl > "$OUT/mlkit.jsonl"
 AS cat files/done.json > "$OUT/mlkit-done.json"
 # Size on the device of the language folder ML Kit downloaded (measured in place; the files are not copied off)
-AS du -sk "no_backup/com.google.mlkit.translate.models/en_$TARGET" > "$OUT/mlkit-model-du.txt"
+# (folders are named by the sorted language pair: en_es, en_fr, but de_en)
+AS sh -c "'du -sk no_backup/com.google.mlkit.translate.models/*$TARGET*'" > "$OUT/mlkit-model-du.txt"
 cat "$OUT/mlkit-done.json"; echo
