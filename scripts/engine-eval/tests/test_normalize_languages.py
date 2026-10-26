@@ -24,8 +24,28 @@ def test_empty_and_none(lang):
 
 
 @pytest.mark.parametrize("lang", ["es", "fr", "de"])
-def test_tags_and_bracketed_markers_dropped(lang):
-    assert normalize("<noise> [Música] (risas) hola", lang) == "hola"
+def test_tags_and_square_bracket_markers_dropped(lang):
+    assert normalize("<noise> [Música] hola", lang) == "hola"
+
+
+@pytest.mark.parametrize("lang", ["es", "fr", "de"])
+def test_parenthesised_words_are_spoken_in_fleurs_and_kept(lang):
+    # FLEURS reads Wikipedia sentences aloud, brackets included: "(al otro lado del río)" is said.
+    assert normalize("la estación (al otro lado del río) abre", lang) == "la estación al otro lado del río abre"
+
+
+@pytest.mark.parametrize("lang", ["es", "fr", "de"])
+def test_space_thousands_in_every_language(lang):
+    # FLEURS Spanish writes "800 000"; Apple writes "800,000"; both are one number.
+    assert normalize("800 000", lang) == normalize("800,000", lang) == normalize("800000", lang)
+    assert "cero" not in normalize("800 000", "es")
+
+
+def test_clock_times():
+    assert normalize("a las 12:00", "es") == "a las doce"
+    assert normalize("entre las 6:30 y las 07:30", "es") == "entre las seis treinta y las siete treinta"
+    assert normalize("um 22:00 Uhr", "de") == "um zweiundzwanzig uhr"
+    assert normalize("à 11:35", "fr") == "à onze trente cinq"
 
 
 def test_accents_kept_by_default():
@@ -170,3 +190,15 @@ def test_decimals_per_language():
     assert normalize("3,25", "es") == "tres coma veinticinco"
     assert normalize("3,25", "de") == "drei komma zwei fünf"
     assert normalize("0,05", "fr") == "zéro virgule zéro cinq"
+
+
+def test_letters_glued_to_decimals_split_before_number_reading():
+    assert normalize("802.11a", "es") == normalize("802.11 a", "es") == normalize("802.11 A", "es")
+    assert normalize("2.4Ghz", "es") == normalize("2.4 GHz", "es")
+
+
+def test_spanish_double_accepted_spellings_meet():
+    # The RAE accepts both "período" and "periodo"; neither is a caption error.
+    assert normalize("el período", "es") == normalize("el periodo", "es")
+    assert normalize("los períodos", "es") == normalize("los periodos", "es")
+    assert normalize("está", "es") != normalize("esta", "es")  # real accent errors still count

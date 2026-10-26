@@ -104,10 +104,15 @@ reproducible. For `es`, `fr` and `de`, applied identically to the reference and 
 
 1. Unicode NFKC, then casefold (German `ß` becomes `ss` on both sides, which also merges old and new spellings like
    `daß` / `dass`).
-2. Drop annotation tags `<...>` and bracketed non-speech markers `[...]`, `(...)`.
+2. Drop annotation tags `<...>` and square-bracket markers `[...]`. **Parentheses stay**: unlike EdAcc's
+   `(laughs)`, FLEURS reads its Wikipedia sentences aloud brackets and all ("(al otro lado del río)" is spoken), so
+   only the bracket characters go.
 3. **Numbers to words in the language** (`num2words`), before punctuation goes:
-   - thousands groups: `1.000` / `1,000` / `1 000` (space, no-break or narrow no-break space) when every group after
-     the first has exactly three digits;
+   - letters glued to digits are split first (`802.11a` -> `802.11 a`, `A4` -> `a 4`), so a reference and an engine
+     that space them differently read the same number;
+   - clock times `H:MM`: hour, then minutes unless `00` (`12:00` -> `doce`, `6:30` -> `seis treinta`);
+   - thousands groups: `1.000` / `1,000` / `1 000` (space, no-break or narrow no-break space; FLEURS Spanish writes
+     `800 000`) when every group after the first has exactly three digits;
    - decimals with either separator (`3,5`, `3.5`) read as "<whole> <comma word> <digits>" with the language's own
      word (es `coma`, fr `virgule`, de `komma`);
    - years: German four-digit numbers 1100-1999 as years (`1990` -> `neunzehnhundertneunzig`); Spanish and French
@@ -116,8 +121,7 @@ reproducible. For `es`, `fr` and `de`, applied identically to the reference and 
      numeral + ordinal suffix, common in FLEURS's Wikipedia sentences). German `3.` is not converted: a digit and a
      full stop can't be told apart from the end of a sentence;
    - `%` -> `por ciento` / `pour cent` / `prozent`; `€` -> `euros` / `euros` / `euro`; `$` -> `dólares` / `dollars`
-     / `dollar`;
-   - letters glued to digits are split first (`A4` -> `a 4`), as in English.
+     / `dollar`.
 4. **Apostrophes and hyphens become spaces**, so French elision `l'homme` is `l homme` and number words like
    `quatre-vingt-dix` split the same way on both sides.
 5. All other punctuation becomes a space, including `¿ ¡ « » „ “ ” – —`.
@@ -126,10 +130,18 @@ reproducible. For `es`, `fr` and `de`, applied identically to the reference and 
    how much of an engine's error is only accent marks.
 7. Hesitation words dropped (rare in read speech): es `eh`, `ehm`, `em`, `mm`; fr `euh`, `heu`, `hum`, `mm`;
    de `äh`, `ähm`, `öh`, `hm`, `hmm`, `mm`.
+8. Spellings the language's academy accepts both ways map to one form: Spanish `período` / `periodo`. Real accent
+   errors (`esta` / `está`) still count.
+
+Steps 2 (parentheses), 3 (times, space thousands, letters before numbers) and 8 were added after reading the
+errors on Spanish shard 1, before any language was finished: each was a reference-vs-engine formatting mismatch
+that charged every engine for words it got right (Ultra 4.5% -> 3.2%, Apple es-ES 5.9% -> 3.9% on that shard).
+Each has a test in `tests/test_normalize_languages.py`.
 
 Known residual mismatches, accepted and equal for every engine: German compounds written apart vs together
 (`Bundes Regierung`), bare Roman numerals (`Luis XIV` read "catorce"), Spanish decimals said `punto` instead of
-`coma`, and German ordinals after a digit. English's spelling-variant table has no counterpart here.
+`coma`, German ordinals after a digit, times said another way (`6:30` read "seis y media"), unit abbreviations
+(`h`, `km`) against spoken units, and a few typos in FLEURS's own transcripts (`carreras d Fórmula 1`). English's spelling-variant table has no counterpart here.
 
 **WER**, alignment and pooling are #145's (`wer.py`): (S + D + I) / N, pooled over clips; only clips every engine
 finished are compared.

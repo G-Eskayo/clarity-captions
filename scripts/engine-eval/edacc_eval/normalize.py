@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 _ONES = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
          "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"]
@@ -157,14 +157,14 @@ class _Lang:
     percent: str
     currency: dict
     fillers: frozenset
-    space_thousands: bool = False
+    variants: dict = field(default_factory=dict)  # both spellings accepted by the language's academy -> one form
 
 
 _LANGS = {
     "es": _Lang("coma", "por ciento", {"€": "euros", "$": "dólares", "£": "libras"},
-                frozenset("eh ehm em mm mmm hmm".split())),
+                frozenset("eh ehm em mm mmm hmm".split()), {"período": "periodo", "períodos": "periodos"}),
     "fr": _Lang("virgule", "pour cent", {"€": "euros", "$": "dollars", "£": "livres"},
-                frozenset("euh heu hum mm mmm hmm".split()), space_thousands=True),
+                frozenset("euh heu hum mm mmm hmm".split())),
     "de": _Lang("komma", "prozent", {"€": "euro", "$": "dollar", "£": "pfund"},
                 frozenset("äh ähm öh öhm hm hmm mm mmm".split())),
 }
@@ -181,6 +181,8 @@ _PCT = re.compile(r"(\d)\s?%")
 _DOT_COMMA_GROUPS = re.compile(r"\b\d{1,3}(?:([.,])\d{3})(?:\1\d{3})*\b")
 _SPACE_GROUPS = re.compile(r"\b\d{1,3}(?: \d{3})+\b")
 _ANY_DECIMAL = re.compile(r"\b(\d+)[.,](\d+)\b")
+_SQUARE = re.compile(r"\[[^\]]*\]|\{[^}]*\}")  # engine markers; parentheses hold spoken words in FLEURS
+_CLOCK = re.compile(r"\b(\d{1,2}):(\d{2})\b")
 
 
 def strip_accents(text: str) -> str:
@@ -266,18 +268,18 @@ def _normalize_lang(text: str | None, lang: str) -> str:
         s = _FR_ORDINAL.sub(lambda m: _fr_ordinal(int(m.group(1)), m.group(2)), s)
     s = unicodedata.normalize("NFKC", s).casefold()  # no-break spaces become spaces; ß -> ss
     s = _TAG.sub(" ", s)
-    s = _BRACKETED.sub(" ", s)
+    s = _SQUARE.sub(" ", s)
+    s = _CLOCK.sub(lambda m: f" {int(m.group(1))} " + ("" if m.group(2) == "00" else f"{int(m.group(2))} "), s)
     s = _CUR_BEFORE.sub(lambda m: f" {m.group(2)} {cfg.currency[m.group(1)]} ", s)
     s = _CUR_AFTER.sub(lambda m: f" {m.group(1)} {cfg.currency[m.group(2)]} ", s)
     s = _PCT.sub(lambda m: f"{m.group(1)} {cfg.percent} ", s)
-    if cfg.space_thousands:
-        s = _SPACE_GROUPS.sub(lambda m: m.group(0).replace(" ", ""), s)
+    s = _LETTER_DIGIT_ANY.sub(" ", s)  # "802.11a" -> "802.11 a" before numbers are read
+    s = _SPACE_GROUPS.sub(lambda m: m.group(0).replace(" ", ""), s)
     s = _DOT_COMMA_GROUPS.sub(lambda m: m.group(0).replace(m.group(1), ""), s)
     s = _ANY_DECIMAL.sub(lambda m: _decimal_words(m, lang), s)
-    s = _LETTER_DIGIT_ANY.sub(" ", s)
     s = _INTEGER.sub(lambda m: _int_words(m.group(0), lang), s)
     s = re.sub(r"[\W_]+", " ", s)
-    return " ".join(w for w in s.split() if w not in cfg.fillers)
+    return " ".join(cfg.variants.get(w, w) for w in s.split() if w not in cfg.fillers)
 
 
 _LETTER_DIGIT_ANY = re.compile(r"(?<=[^\W\d_])(?=\d)|(?<=\d)(?=[^\W\d_])")
