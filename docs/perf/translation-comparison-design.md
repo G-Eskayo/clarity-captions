@@ -1,7 +1,9 @@
 # Translation comparison test: design (#159)
 
-Design for #159 "[E] Translation comparison test: Apple vs ML Kit vs open models, before 1.3". Results go in
-[`translation-comparison.md`](translation-comparison.md), which the scorer regenerates from the result files.
+Design for #159 "[E] Translation comparison test: Apple vs ML Kit vs open models, before 1.3". Results and the
+recommendation are in [`translation-comparison.md`](translation-comparison.md); the full generated tables are in
+[`translation-comparison-results.md`](translation-comparison-results.md), which the scorer rebuilds from the result
+files.
 Policy behind the test: [[0026]] (Apple first, every feature gets a cross-platform comparison test). Landscape:
 [`docs/research/cross-platform-engines.md`](../research/cross-platform-engines.md).
 
@@ -79,19 +81,32 @@ alike. Any engine may have seen FLORES or WMT data in training; we can't check t
 | Engine | Model | Where it runs here | Runtime |
 |---|---|---|---|
 | `apple` | Translation framework, system model | M4 Mac mini, macOS 26 | `TranslationSession(installedSource:target:)` in `engine-eval`'s new `translation-eval` command |
-| `mlkit` | ML Kit on-device translation (`GoogleMLKit/Translate`), Google Translate's offline models | **iOS Simulator** (iOS 26.5, arm64) on the M4 | a tool-only iOS app under `scripts/engine-eval/mlkit-ios` (XcodeGen + CocoaPods), launched with `simctl` |
-| `opus-mt` | `Helsinki-NLP/opus-mt-en-{es,fr,de}` | M4 CPU | CTranslate2, int8 weights, 4 threads, beam 4 (Marian default) and greedy |
+| `mlkit` | ML Kit on-device translation (`com.google.mlkit:translate` 17.0.3), Google Translate's offline models | **Android emulator** (Android 15, Google APIs, arm64-v8a) on the M4 | a tool-only Android app under `scripts/engine-eval/mlkit-android`, driven by `run.sh` over `adb` |
+| `opus-mt` | `Helsinki-NLP/opus-mt-en-{es,fr,de}` | M4 CPU | CTranslate2, int8 weights, 4 threads, beam 4, sentence by sentence |
 | `opus-mt-big` | `Helsinki-NLP/opus-mt-tc-big-en-{es,fr}` | M4 CPU | CTranslate2, int8 |
-| `bergamot` | Firefox's en-es model | M4 CPU | `bergamot-translator`, if it builds; otherwise reported as not run |
+| `bergamot` | Firefox's en-es model | – | not run: no arm64 macOS build of the runtime (the `bergamot` wheel is x86_64 only) |
 
-ML Kit has no macOS SDK, so the iOS Simulator is used rather than an Android emulator: it is already installed,
-runs native arm64 code on the M4, and ML Kit's iOS and Android SDKs share the same models. Simulator timing is Mac
-CPU timing, not iPhone timing.
+ML Kit has no macOS SDK. The iOS Simulator was tried first and doesn't work: ML Kit's iOS frameworks (MLKitTranslate
+8.0.0, the newest, pulled in by GoogleMLKit 9.0.0) are fat binaries with an x86_64 Simulator slice and an arm64 device
+slice but **no arm64 Simulator slice**, and the iOS 26.5 Simulator on Apple silicon refuses x86_64 apps ("needs to be
+updated"). Re-tagging the device slice as a Simulator slice would mean modifying Google's binaries, which ML Kit's
+terms rule out. So ML Kit runs in an **arm64 Android emulator** (hardware-virtualized on the M4, so near-native CPU
+speed) with Google's official Android SDK, which uses the same offline models as iOS. The app is built debuggable only
+so `adb shell run-as` can write the sets into its private folder; translation runs in ML Kit's native code. Emulator
+timing is Mac CPU timing, not phone timing.
 
 Apple's framework does not run in the iOS Simulator, and on macOS it only translates once the language is
 installed, which takes a person: the system download sheet or **System Settings → General → Language & Region →
 Translation Languages**. On 2026-10-26 the M4 had en→es, fr and de as *supported, not installed*, so #159 asks Gil
 to install them; the Apple rows are added when he has.
+
+**Sentence splitting for OPUS-MT.** Marian models translate a sentence at a time and silently drop sentences from
+long multi-sentence input: on the WMT24++ speech passages (median 68 words) the first unsplit run left 13 (base) and
+21 (tc-big) of 111 Spanish outputs under 70% of the reference length, against 0 for ML Kit, which splits internally.
+An app integration would feed a sentence or a caption line at a time, so the OPUS runner splits at sentence ends
+(`translation_eval.split`, tested) and rejoins. The caption-style copies have no punctuation to split on, so on the
+long speech passages they also measure how each engine copes with an unpunctuated paragraph; in the app, lines would
+be short.
 
 ## How the model reaches the device
 
@@ -120,10 +135,12 @@ Recorded per engine in the report, because Seal Speak shows no system pop-ups:
 - Only segments every engine finished are compared, as in #145.
 - **Speed**: milliseconds per caption line on `edacc-lines`, batch size 1, one line at a time as live captions
   would arrive; median and p95 over 2 repeats, excluding model loading and the first 5 lines (warm-up). The repeat
-  also gives a determinism check (share of lines with identical output).
+  also gives a determinism check (share of lines with identical output). The quality runs overlap (emulator and
+  CTranslate2 at once, and other work on the M4), so timing comes from a separate **isolated pass**: each engine
+  alone on the caption lines, en-es (`--speed-results`).
 - **Size per language**: the folder an engine needs for one language pair, on disk and zipped (`edacc_eval.sizes`).
-  For ML Kit, the downloaded model folder in the app container; for Apple, the installed asset if it can be found on
-  disk, otherwise reported as unknown.
+  For ML Kit, `du` of the language folder it downloaded, measured in place on the emulator (the files aren't copied
+  off; zipped size not measured); for Apple, the installed asset if it can be found on disk, otherwise unknown.
 
 ## Complexity
 
@@ -140,11 +157,16 @@ Recorded per engine in the report, because Seal Speak shows no system pop-ups:
 cd scripts/engine-eval && python3 -m pytest     # existing #145 tests plus translation_eval tests
 # Build sets, run the open models, score (~/translation-eval/venv has sacrebleu, ctranslate2, unbabel-comet)
 python -m translation_eval.cli build-sets --data ~/translation-eval/data --out ~/translation-eval/sets --pair en-es
-python -m translation_eval.cli ct2 --sets ~/translation-eval/sets/en-es --model ~/translation-eval/models/opus-mt-en-es-ct2 --engine opus-mt --results ~/translation-eval/results
-python -m translation_eval.cli report --sets ~/translation-eval/sets --results ~/translation-eval/results --out docs/perf/translation-comparison.md
+python -m translation_eval.cli ct2 --sets ~/translation-eval/sets/en-es --model ~/translation-eval/models/opus-mt-en-es-ct2 --hf-model ~/translation-eval/models/opus-mt-en-es-ct2 --results ~/translation-eval/results/en-es/opus-mt.jsonl
+python -m translation_eval.cli report --sets ~/translation-eval/sets --results ~/translation-eval/results --speed-results ~/translation-eval/results-speed --sizes ~/translation-eval/sizes.json --meta translation_eval/report_meta.json --out ../../docs/perf/translation-comparison-results.md
 # Apple (once the languages are installed)
 swift run --package-path Packages/EngineEval translation-eval --sets ~/translation-eval/sets/en-es --target es --results ~/translation-eval/results/apple-en-es.jsonl
-# ML Kit: scripts/engine-eval/mlkit-ios/run.sh en-es
+# ML Kit: JDK 21 + Android SDK (platform-tools, emulator, platforms;android-35, build-tools, cmdline-tools,
+# system-images;android-35;google_apis;arm64-v8a), then
+scripts/engine-eval/mlkit-android/run.sh en-es
+# Open models for every pair, then COMET, then the report
+scripts/engine-eval/translation-open-models.sh
+python -m translation_eval.cli comet --sets ~/translation-eval/sets/en-es --results ~/translation-eval/results/en-es
 ```
 
 ## Not in this ticket
