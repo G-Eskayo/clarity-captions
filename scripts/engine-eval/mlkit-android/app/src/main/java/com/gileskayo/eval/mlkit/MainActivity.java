@@ -33,9 +33,13 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MainActivity extends Activity {
     private static final String TAG = "MLKitEval";
+    // The activity can be created twice (a configuration change while the emulator settles); two harness threads
+    // would translate every line twice, concurrently, and spoil the timing. One run per process.
+    private static final AtomicBoolean STARTED = new AtomicBoolean(false);
     private static final String[] SETS = {"flores", "flores-caption", "speech", "speech-caption", "edacc-lines"};
 
     @Override
@@ -44,6 +48,7 @@ public class MainActivity extends Activity {
         TextView view = new TextView(this);
         view.setText("running");
         setContentView(view);
+        if (!STARTED.compareAndSet(false, true)) return;
         String target = getIntent().getStringExtra("target");
         int repeats = getIntent().getIntExtra("repeats", 2);
         new Thread(() -> {
