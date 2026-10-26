@@ -126,3 +126,18 @@ def test_language_report_with_no_results(tmp_path):
     result = write_language_report(shards, res, tmp_path / "o.md")
     md = (tmp_path / "o.md").read_text()
     assert result["fr"].verdict.verdict == "not ready" and "No results yet" in md and "nan" not in md.lower()
+
+
+def test_report_says_when_apple_locales_give_identical_text(tmp_path):
+    from edacc_eval.report import write_language_report
+    shards, res = tmp_path / "shards", tmp_path / "results"
+    res.mkdir()
+    write_lang(shards, "es", [man(f"es{i}", "Hola amigo", "es", f"es-{i}") for i in range(3)])
+    lines = []
+    for i in range(3):
+        lines += [r(f"es{i}", "apple-speechanalyzer", "hola amigo", model="SpeechTranscriber es-MX"),
+                  r(f"es{i}", "apple-speechanalyzer", "hola amigo" if i else "ola amigo", model="SpeechTranscriber es-ES"),
+                  r(f"es{i}", "parakeet-fluidaudio", "hola amigo", model="parakeet-ultra-coreml")]
+    (res / "x.jsonl").write_text("\n".join(json.dumps(x) for x in lines) + "\n")
+    write_language_report(shards, res, tmp_path / "o.md")
+    assert "Apple's 2 Spanish locales gave identical text on 2 of 3 clips" in (tmp_path / "o.md").read_text()

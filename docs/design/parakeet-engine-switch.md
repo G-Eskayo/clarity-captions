@@ -329,7 +329,7 @@ Pure first, each red before green, real collaborators where cheap, inputs chosen
 | Memory with two large models on an 8 GB phone | Low-medium | Jetsam kill mid-conversation | C3; fallback on memory warning; 4-bit build |
 | iOS 18+ palettization ops on the iPhone Neural Engine fall back to CPU | Low | Slow decodes | C2 decode p95 catches it; the encoder's compute-unit placement shows in Instruments' Core ML template |
 | Custom vocabulary list (`contextualStrings`) has no effect on Parakeet | Certain | Names in the vocabulary list are no longer boosted | D5; FluidAudio's CTC vocabulary boosting needs an extra CTC model, a later ticket |
-| Locale: the app runs en-US today; Ultra is English-tuned | Low | A non-English locale gets worse captions | Non-English locales use Apple (one line in the flag logic) |
+| Locale: the app runs en-US today. ~~Ultra is English-tuned~~: retired by #158, where Ultra beat Apple in Spanish, French and German (2.8 / 4.5 / 4.4% vs 4.0 / 7.5 / 7.2% WER on FLEURS, evidence log E19) | Low | A language Ultra doesn't cover (outside its 25 European languages) gets wrong captions | Those locales use Apple (one line in the flag logic); es, fr and de can use Parakeet in 1.2 |
 | Hosting choice slips | Medium | Build 7 can't be built from a clean clone | Option D (Mini copy) unblocks the build on the Mini meanwhile |
 | Latency budget has no committed baseline (ADR 0015's file says TBD) | Certain | "10% over what?" | Apple measured on the same phone in the same build is the baseline (C2); fill the baseline file as part of task 12 |
 | App Review asks about the larger download | Low | Delay | Nothing to declare; the size is the model, offline by design |

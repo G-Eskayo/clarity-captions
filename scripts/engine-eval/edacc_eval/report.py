@@ -90,6 +90,7 @@ class Score:
     by_length: dict = field(default_factory=dict)
     notes: dict = field(default_factory=dict)
     accent_blind: dict = field(default_factory=dict)  # label -> pooled WER with diacritics stripped (#158 languages)
+    hypotheses: dict = field(default_factory=dict)    # label -> clip -> first-repeat text, compared clips only
 
 
 def _labels(rows: list[dict]) -> dict[tuple[str, str], str]:
@@ -193,7 +194,8 @@ def score(manifest_rows: list[dict], result_rows: list[dict], dropped: dict | No
                  clips_compared=len(compared),
                  audio_seconds_compared=sum(float(clips[c].get("audio_seconds", 0)) for c in compared),
                  clips_done={lab: len(hyps[lab]) for lab in labels}, models=models, speed_by_host=speed_by_host,
-                 by_length=by_length, accent_blind=accent_blind)
+                 by_length=by_length, accent_blind=accent_blind,
+                 hypotheses={lab: {c: hyps[lab][c][min(hyps[lab][c])] for c in clip_sets[lab]} for lab in labels})
 
 
 def _pct(x: float) -> str:
@@ -531,6 +533,18 @@ def _android_line(res: LanguageResult) -> str:
     return "Android path: " + ("; ".join(parts) if parts else "no ONNX results yet") + "."
 
 
+def _locale_identity_line(res: LanguageResult) -> str:
+    """With several Apple locales for one language: on how many compared clips did they all write the same text?"""
+    labs = res.labels_for(APPLE_ENGINE)
+    hyps = res.score.hypotheses
+    if len(labs) < 2 or not hyps:
+        return ""
+    clips = [c for c in hyps.get(labs[0], {}) if all(c in hyps.get(l, {}) for l in labs)]
+    same = sum(len({hyps[l][c] for l in labs}) == 1 for c in clips)
+    return (f"Apple's {len(labs)} {LANGUAGE_NAMES.get(res.language, res.language)} locales gave identical text on "
+            f"{same} of {len(clips)} clips.")
+
+
 def build_language_report(results: dict[str, LanguageResult], meta: dict) -> str:
     now = meta.get("generated_at") or dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     names = [LANGUAGE_NAMES.get(l, l) for l in results]
@@ -589,6 +603,9 @@ def build_language_report(results: dict[str, LanguageResult], meta: dict) -> str
                        f"{_pct(s.accent_blind.get(lab, math.nan))} | {_verdict(c.wer)} | {c.sub} | {c.dele} | {c.ins} | "
                        f"{c.n} | {c.clips} | {c.speakers} | {xr} |")
         out += ["", f"**{res.verdict.verdict}**: {res.verdict.reason}.", "", _android_line(res), ""]
+        line = _locale_identity_line(res)
+        if line:
+            out += [line, ""]
 
     out += ["## Engines and models", "", "| Engine | Model | Version |", "|---|---|---|"]
     seen = set()
