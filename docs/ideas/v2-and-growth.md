@@ -9,7 +9,6 @@ the cited sources; the rest are judgments or things still to confirm.
 |---|---|---|
 | **iPad** | Yes, same SDK (verified: the engine and diarizer already build for iOS) | Near-free: adaptive layout of the phone app |
 | **Mac** | Yes. Verified: the shared package builds and its tests run on macOS 27, and the speaker diarizer ran there | A native Mac app: a floating caption window for conversations and meetings. Capturing audio *from the computer* (calls, video) needs ScreenCaptureKit and extra permissions |
-| **Apple Watch** | **No.** Verified: Apple marks `SpeechTranscriber` unavailable on watchOS and the watchOS SDK ships no Speech interface for it. FluidAudio's diarizer is not targeted at watchOS either | A **companion display**: the phone does the work and the watch shows the latest line and taps the wrist. A watch-as-remote-microphone is conceivable but hard |
 | **Vision Pro** | Likely (visionOS has Speech); unverified here | Captions placed in view; later |
 | **Apple TV** | No microphone | Out of scope unless it only displays captions from another device |
 | **Android / Google Play** | Not the same code. Needs a native Kotlin app and a different engine. [sherpa-onnx](https://k2-fsa.github.io/sherpa/onnx/index.html) offers fully offline streaming recognition and speaker diarization on Android | A second product, close to a rewrite of the engine layer; the design, copy and tests carry over |
@@ -21,7 +20,7 @@ built-in Live Caption. Seal's case rests on what they lack: **speaker labels, a 
 strong customization, dimming rather than dropping background speech, and sound labels.** Worth confirming
 Live Captions' current speaker handling before writing the store description.
 
-**Suggested order:** iPad, then Mac, then a Watch companion. Android is a real second project; decide after the
+**Suggested order:** iPad, then Mac. (Apple Watch was dropped on 2026-10-26: too much complexity for too little gain.) Android is a real second project; decide after the
 iPhone app has users. A Chrome extension only if a web audience matters.
 
 ## Languages (verified on macOS 27's speech engine)

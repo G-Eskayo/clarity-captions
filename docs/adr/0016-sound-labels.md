@@ -33,7 +33,7 @@ This must follow the same on-device-only guarantee as speech (CONTEXT.md, [[0001
 - **Pure logic, fully tested:** All classification logic (`SoundLabelKind`, confidence check, debounce) is tested synchronously on plain `swift test` with synthetic input. No audio fixtures of real sounds are needed (unlike `DiarizerIntegrationTests`).
 - **No model download:** Because `SNClassifySoundRequest` is system-provided, there is no script to run, no bundle to fetch, and no offline-mode guard needed (unlike Sortformer). The on-device-only guarantee holds without extra work.
 - **Latency:** Sound recognition runs in parallel with speech transcription, not serialized after it, so it does not add to the perceived caption lag. The 10% latency budget ([[0015]]) applies only to the speech path.
-- **On a new platform:** If the app expands to macOS, iPadOS, or Apple Watch ([[0010]]), each platform can use the same `SoundLabelKind` and `SoundLabelDetector` types; only the OS-specific `SNAudioStreamAnalyzer` wiring changes.
+- **On a new platform:** If the app expands to macOS or iPadOS ([[0010]]), each platform can use the same `SoundLabelKind` and `SoundLabelDetector` types; only the OS-specific `SNAudioStreamAnalyzer` wiring changes.
 - **Accuracy not guaranteed:** `SNClassifySoundRequest` is a heuristic classifier, not ML fine-tuned to this app. False positives and false negatives are expected and acceptable (the confidence threshold helps reduce false positives). The app must not imply otherwise in marketing or help text.
 
 ## References
