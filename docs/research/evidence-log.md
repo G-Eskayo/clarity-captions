@@ -172,3 +172,43 @@ caveat), **Internal** (process detail, not for marketing).
 - **Confidence:** Ours (Mac only; iPhone numbers come from the #150 phone checks).
 - **Drives:** ADR 0025, the committed tail-window decoder and adaptive hop, the first-run load step.
 - **Public use:** Careful (Mac numbers; say so).
+
+## E14. Parakeet Ultra covers 25 European languages, not just English
+- **Source:** Parakeet Ultra model card (read from a mirror, [matenek/parakeet-ultra](https://huggingface.co/matenek/parakeet-ultra);
+  the `moondream/parakeet-ultra` page didn't load on 2026-10-26) and [Spokenly on Parakeet v3](https://spokenly.app/blog/parakeet-models).
+- **What we took:** Ultra is a post-training of Parakeet TDT 0.6B v3 (25 European languages, language detected
+  automatically). Card figures: 25-language FLEURS WER 9.55% (v3 11.62%), English Open ASR 5.80% (v3 6.26%).
+- **Confidence:** Moderate (card figures via a mirror; not our measurement yet).
+- **Drives:** ADR 0026; the 1.2 languages plan may use Parakeet for European languages instead of Apple's engine,
+  pending the FLEURS test. Challenges the "Ultra is English-tuned" risk row in the engine-switch design.
+- **Public use:** Careful (cite as the model card's numbers, not ours).
+
+## E15. Apple's Translation framework downloads languages through a system sheet
+- **Source:** Apple, [`TranslationSession`](https://developer.apple.com/documentation/translation/translationsession)
+  (`prepareTranslation()` "asks for permission to download translation languages"); [Kodeco, Translation API](https://www.kodeco.com/ios/paths/apple-ai-models/49307459-translation-framework/01-meet-the-translation-api/03).
+- **What we took:** a missing language triggers a system download view the app can't restyle; a forum report says it
+  sometimes doesn't appear on first use.
+- **Confidence:** Strong for the sheet; Weak for the first-use bug.
+- **Drives:** ADR 0026; the 1.3 translation design must handle or avoid the sheet (Seal shows no system pop-ups).
+- **Public use:** Internal.
+
+## E16. On-device translation that runs on iOS and Android, and what licences rule out
+- **Source:** [ML Kit Translation](https://developers.google.com/ml-kit/language/translation) and its
+  [iOS guide](https://developers.google.com/ml-kit/language/translation/ios); [NLLB-200 model card](https://huggingface.co/facebook/nllb-200-distilled-600M).
+- **What we took:** ML Kit translates 50+ languages offline on both platforms, about 30 MB per language, downloads
+  managed by the app, pivots through English, aimed at "casual and simple" text. NLLB-200 is CC BY-NC 4.0, so it is out
+  for a paid app.
+- **Confidence:** Strong (official docs). ML Kit's terms not yet read.
+- **Drives:** ADR 0026; the 1.3 translation comparison test (Apple vs ML Kit vs OPUS-MT/Bergamot).
+- **Public use:** Internal.
+
+## E17. Speaker labels and sound labels outside Apple
+- **Source:** community Sortformer ONNX exports ([soniqo](https://huggingface.co/soniqo/Sortformer-Diarization-4spk-ONNX),
+  [TalkBar](https://huggingface.co/TalkBar/ultra-sortformer-8spk), [Recogment](https://huggingface.co/Recogment/sortformer-4spk-v2-onnx));
+  [LiteRT audio classifier (YAMNet)](https://ai.google.dev/edge/lite/libraries/task_library/audio_classifier).
+- **What we took:** Sortformer runs outside Core ML through ONNX, but the exports are unofficial and disagree on
+  licence (CC BY 4.0 vs NVIDIA Open Model License; v1 offline is CC BY-NC). YAMNet classifies 521 AudioSet sounds on
+  Android and iOS; licence believed Apache 2.0, unverified.
+- **Confidence:** Weak (Sortformer licence), Moderate (YAMNet capability).
+- **Drives:** ADR 0026; the speaker-label and sound-label comparison tests.
+- **Public use:** Internal.
