@@ -42,9 +42,10 @@ public struct EngineVersions: Sendable {
 }
 
 public func makeTranscriber(_ id: EngineID, modelsDir: URL, versions: EngineVersions,
-                            whisperModel: String = WhisperKitFileTranscriber.defaultModel) -> FileTranscriber {
+                            whisperModel: String = WhisperKitFileTranscriber.defaultModel,
+                            locale: String = AppleLocale.defaultLocale) -> FileTranscriber {
     switch id {
-    case .apple: return AppleSpeechFileTranscriber(osVersion: versions.os)
+    case .apple: return AppleSpeechFileTranscriber(osVersion: versions.os, locale: locale)
     case .parakeetV2: return ParakeetFileTranscriber(version: .v2, name: "parakeet-tdt-0.6b-v2-coreml",
                                                      modelsDir: modelsDir, fluidAudio: versions.fluidAudio)
     case .parakeetUltra: return ParakeetFileTranscriber(version: .ultra, name: "parakeet-ultra-coreml",
@@ -73,11 +74,12 @@ public enum EngineFactoryError: Error, CustomStringConvertible {
 
 /// Built-in engine names, or `local:<name>` for a compressed Parakeet folder at `<models>/variants/<name>`.
 public func makeTranscriber(spec: EngineSpec, modelsDir: URL, versions: EngineVersions,
-                            whisperModel: String = WhisperKitFileTranscriber.defaultModel) throws -> FileTranscriber {
+                            whisperModel: String = WhisperKitFileTranscriber.defaultModel,
+                            locale: String = AppleLocale.defaultLocale) throws -> FileTranscriber {
     switch spec {
     case let .builtin(name):
         guard let id = EngineID(rawValue: name) else { throw EngineFactoryError.unknown(name) }
-        return makeTranscriber(id, modelsDir: modelsDir, versions: versions, whisperModel: whisperModel)
+        return makeTranscriber(id, modelsDir: modelsDir, versions: versions, whisperModel: whisperModel, locale: locale)
     case let .local(name):
         let dir = modelsDir.appendingPathComponent("variants").appendingPathComponent(name)
         let info = try VariantInfo.load(dir)
@@ -96,20 +98,25 @@ public func makeTranscriber(spec: EngineSpec, modelsDir: URL, versions: EngineVe
 // MARK: - Apple SpeechAnalyzer / SpeechTranscriber
 
 /// Today's engine (ADR 0001). Same transcriber options as the app's TranscriptionEngine (`fastResults`, no
-/// transcription options), en-US, final results only. The asset installs through CaptionCore's
-/// SpeechModelInstaller, the app's own AssetInventory path.
+/// transcription options), final results only. en-US unless `--locale` picks another (#158). The asset installs
+/// through CaptionCore's SpeechModelInstaller, the app's own AssetInventory path.
 public final class AppleSpeechFileTranscriber: FileTranscriber {
     public let engine = "apple-speechanalyzer"
-    public let model = "SpeechTranscriber en-US"
+    public let model: String
     public let version: String
-    private let locale = Locale(identifier: "en-US")
+    private let locale: Locale
 
-    public init(osVersion: String) { version = "macOS \(osVersion)" }
+    public init(osVersion: String, locale: String = AppleLocale.defaultLocale) {
+        version = "macOS \(osVersion)"
+        model = AppleLocale.modelName(locale)
+        self.locale = Locale(identifier: locale)
+    }
 
     public func load() async throws {
         try await SpeechModelInstaller.install(locale: locale) { _ in }
         guard await SpeechModelInstaller.isInstalled(locale: locale) else {
-            throw NSError(domain: "EngineEval", code: 1, userInfo: [NSLocalizedDescriptionKey: "en-US speech asset not installed"])
+            throw NSError(domain: "EngineEval", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: "\(locale.identifier) speech asset not installed"])
         }
     }
 

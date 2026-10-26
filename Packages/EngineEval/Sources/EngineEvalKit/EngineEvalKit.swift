@@ -347,3 +347,23 @@ public enum MemoryFootprint {
         return kr == KERN_SUCCESS ? UInt64(info.phys_footprint) : nil
     }
 }
+
+/// The Apple engine's `SpeechTranscriber` locale for a run (#158): BCP-47 language-REGION such as "es-MX".
+/// en-US is the default, so #145's model names ("SpeechTranscriber en-US") are unchanged.
+public enum AppleLocale {
+    public static let defaultLocale = "en-US"
+
+    /// nil -> the default; anything that isn't `ll-RR` (lowercase language, uppercase region) -> nil.
+    public static func parse(_ raw: String?) -> String? {
+        guard let raw else { return defaultLocale }
+        let id = raw.trimmingCharacters(in: .whitespaces)
+        let parts = id.split(separator: "-", omittingEmptySubsequences: false)
+        guard parts.count == 2,
+              (2...3).contains(parts[0].count), parts[0].allSatisfy({ $0.isASCII && $0.isLowercase }),
+              parts[1].count == 2, parts[1].allSatisfy({ $0.isASCII && $0.isUppercase })
+        else { return nil }
+        return id
+    }
+
+    public static func modelName(_ locale: String) -> String { "SpeechTranscriber \(locale)" }
+}
