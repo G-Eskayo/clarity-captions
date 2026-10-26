@@ -1,4 +1,4 @@
-"""Command line for the engine accuracy test (#145). Run as `python -m edacc_eval.cli <command>`."""
+"""Command line for the engine accuracy test (#145) and the language test (#158). Run as `python -m edacc_eval.cli <command>`."""
 from __future__ import annotations
 
 import argparse
@@ -16,6 +16,12 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--out", type=Path, required=True)
     b.add_argument("--target-hours", type=float, default=1.0)
 
+    fl = sub.add_parser("fleurs-shards", help="cut FLEURS test splits into per-language shards (#158)")
+    fl.add_argument("--corpus", type=Path, required=True, help="directory with <config>/test.tsv and test.tar.gz")
+    fl.add_argument("--out", type=Path, required=True)
+    fl.add_argument("--languages", default="es,fr,de")
+    fl.add_argument("--target-hours", type=float, default=1.0)
+
     s = sub.add_parser("sherpa", help="run sherpa-onnx over one shard, appending result lines")
     s.add_argument("--shard-dir", type=Path, required=True)
     s.add_argument("--results", type=Path, required=True)
@@ -29,6 +35,12 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--results", type=Path, required=True, help="directory of *.jsonl result files")
     r.add_argument("--out", type=Path, required=True)
     r.add_argument("--json-out", type=Path)
+
+    rl = sub.add_parser("report-languages", help="score FLEURS results per language and write the #158 report")
+    rl.add_argument("--shards", type=Path, required=True, help="directory with <lang>/index.json and shards")
+    rl.add_argument("--results", type=Path, required=True)
+    rl.add_argument("--out", type=Path, required=True)
+    rl.add_argument("--json-out", type=Path)
 
     c = sub.add_parser("claim", help="atomically claim the next sherpa-onnx shard; prints its number or nothing")
     c.add_argument("--root", type=Path, required=True)
@@ -64,6 +76,13 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "build-shards":
         from .shards import build_shards
         print(json.dumps(build_shards(a.corpus, a.out, a.target_hours), indent=2))
+    elif a.cmd == "fleurs-shards":
+        from .fleurs import build_fleurs_shards
+        print(json.dumps(build_fleurs_shards(a.corpus, a.out, a.languages.split(","), a.target_hours), indent=2))
+    elif a.cmd == "report-languages":
+        from .report import write_language_report
+        for lang, res in write_language_report(a.shards, a.results, a.out, a.json_out).items():
+            print(f"{lang}: {res.verdict.verdict} ({res.score.clips_compared} clips compared)")
     elif a.cmd == "sherpa":
         from .sherpa_run import run_shard
         run_shard(a.shard_dir, a.results, a.model_dir, a.repeats, a.threads, a.status)

@@ -23,8 +23,9 @@ the comparison test in its ticket. Confidence follows the evidence log (E14–E1
   locales use Apple"). That row should be revisited after the language test, not before.
 - Not covered by Parakeet: Japanese, Korean, Mandarin, Cantonese, the Indian languages. Those stay on Apple's
   engine on iPhone; Android would need another engine (sherpa-onnx lists SenseVoice, Zipformer and Whisper models).
-- **Test to run:** FLEURS (and Common Voice where FLEURS is thin) for Spanish, French and German: Apple vs Parakeet
-  Ultra (FluidAudio) vs Parakeet in ONNX (sherpa-onnx). Same harness as #145.
+- **Measured (#158, E19):** on FLEURS, Parakeet Ultra beat Apple in Spanish (2.8% vs 4.0% WER), French (4.5% vs
+  7.5%) and German (4.4% vs 7.2%). In ONNX on CPU (the Android path), v3 scored 3.9 / 7.0 / 6.6% and a community
+  Ultra export 3.2 / 6.2 / 5.3%. Results: [`language-accuracy-comparison.md`](../perf/language-accuracy-comparison.md).
 
 ## Translation (1.3)
 

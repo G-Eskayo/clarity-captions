@@ -3,7 +3,8 @@ import EngineEvalKit
 import Foundation
 
 // engine-eval run --shard-dir DIR --results FILE [--engines apple,parakeet-v2,parakeet-ultra,whisperkit]
-//                 [--repeats N] [--models-dir DIR] [--status FILE] [--whisper-model NAME]
+//                 [--repeats N] [--models-dir DIR] [--status FILE] [--whisper-model NAME] [--locale es-MX]
+// --locale sets the Apple engine's SpeechTranscriber locale (default en-US; #158). Parakeet detects the language.
 // One shard, every listed engine in turn (one model in memory at a time). Resumable. See
 // docs/perf/engine-accuracy-design.md (#145).
 
@@ -36,6 +37,7 @@ let modelsDir = URL(fileURLWithPath: arg("--models-dir", args)
     ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("edacc-eval/models").path)
 let status = arg("--status", args).map { StatusFile(url: URL(fileURLWithPath: $0)) }
 let whisperModel = arg("--whisper-model", args) ?? WhisperKitFileTranscriber.defaultModel
+guard let appleLocale = AppleLocale.parse(arg("--locale", args)) else { fail("bad --locale (want e.g. es-MX)") }
 
 // Versions straight from this package's lock file, so result lines record what actually ran.
 let resolved = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
@@ -55,7 +57,8 @@ var exitCode: Int32 = 0
 Task {
     for spec in engineSpecs {
         do {
-            let t = try makeTranscriber(spec: spec, modelsDir: modelsDir, versions: versions, whisperModel: whisperModel)
+            let t = try makeTranscriber(spec: spec, modelsDir: modelsDir, versions: versions, whisperModel: whisperModel,
+                                        locale: appleLocale)
             let r = try await runner.run(t, clips: present)
             print("ENGINE-EVAL-RESULT \(t.engine) \(t.model) done \(r.done) errors \(r.errors)")
             if r.errors > 0 { exitCode = 1 }  // the driver won't mark the shard done; a rerun retries the failures

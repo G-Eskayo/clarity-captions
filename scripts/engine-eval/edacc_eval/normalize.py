@@ -1,12 +1,13 @@
-"""One English text normalizer for the reference and every engine (#145).
+"""Text normalizer for the reference and every engine: English (#145) and Spanish, French, German (#158).
 
-Choices are documented in docs/perf/engine-accuracy-design.md ("Scoring"). The same function runs on both sides,
-so any residual quirk costs every engine equally.
+Choices are documented in docs/perf/engine-accuracy-design.md and docs/perf/language-accuracy-design.md ("Scoring").
+The same function runs on both sides, so any residual quirk costs every engine equally.
 """
 from __future__ import annotations
 
 import re
 import unicodedata
+from dataclasses import dataclass, field
 
 _ONES = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
          "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"]
@@ -118,7 +119,7 @@ def _strip_diacritics(text: str) -> str:
     return "".join(ch for ch in decomposed if not unicodedata.combining(ch)).replace("đ", "d").replace("ı", "i")
 
 
-def normalize(text: str | None) -> str:
+def _normalize_en(text: str | None) -> str:
     if not text:
         return ""
     s = unicodedata.normalize("NFKC", text).casefold()
@@ -146,3 +147,148 @@ def normalize(text: str | None) -> str:
             continue
         words.extend(_VARIANTS.get(w, w).split())
     return " ".join(words)
+
+
+# --- Spanish, French, German (#158) ----------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class _Lang:
+    comma: str
+    percent: str
+    currency: dict
+    fillers: frozenset
+    variants: dict = field(default_factory=dict)  # both spellings accepted by the language's academy -> one form
+
+
+_LANGS = {
+    "es": _Lang("coma", "por ciento", {"€": "euros", "$": "dólares", "£": "libras"},
+                frozenset("eh ehm em mm mmm hmm".split()), {"período": "periodo", "períodos": "periodos"}),
+    "fr": _Lang("virgule", "pour cent", {"€": "euros", "$": "dollars", "£": "livres"},
+                frozenset("euh heu hum mm mmm hmm".split())),
+    "de": _Lang("komma", "prozent", {"€": "euro", "$": "dollar", "£": "pfund"},
+                frozenset("äh ähm öh öhm hm hmm mm mmm".split())),
+}
+LANGUAGES = ("en",) + tuple(_LANGS)
+
+_ES_ORDINAL = re.compile(r"\b(\d+)\.?\s?([º°ª])")
+_FR_ORDINAL = re.compile(r"\b(\d+)(ère|ere|er|re|ème|eme|e)\b", re.IGNORECASE)
+_FR_ROMAN_ORDINAL = re.compile(r"\b([IVXLCDM]+)(ère|er|re|ème|e)\b")
+_ROMAN = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100, "D": 500, "M": 1000}
+_NUM = r"\d[\d., ]*\d|\d"
+_CUR_BEFORE = re.compile(r"([$€£])\s?(" + _NUM + r")")
+_CUR_AFTER = re.compile(r"(" + _NUM + r")\s?([$€£])")
+_PCT = re.compile(r"(\d)\s?%")
+_DOT_COMMA_GROUPS = re.compile(r"\b\d{1,3}(?:([.,])\d{3})(?:\1\d{3})*\b")
+_SPACE_GROUPS = re.compile(r"\b\d{1,3}(?: \d{3})+\b")
+_ANY_DECIMAL = re.compile(r"\b(\d+)[.,](\d+)\b")
+_SQUARE = re.compile(r"\[[^\]]*\]|\{[^}]*\}")  # engine markers; parentheses hold spoken words in FLEURS
+_CLOCK = re.compile(r"\b(\d{1,2}):(\d{2})\b")
+
+
+def strip_accents(text: str) -> str:
+    """Accent-blind form for the secondary WER: diacritics removed, everything else as is."""
+    return unicodedata.normalize("NFC", "".join(ch for ch in unicodedata.normalize("NFKD", text)
+                                                 if not unicodedata.combining(ch)))
+
+
+def _words(n: int, lang: str, to: str = "cardinal") -> str:
+    from num2words import num2words
+    try:
+        return " " + num2words(n, lang=lang, to=to).casefold() + " "
+    except (OverflowError, NotImplementedError, ValueError):
+        return " " + " ".join(num2words(int(d), lang=lang) for d in str(n)) + " "
+
+
+def _roman_value(s: str) -> int | None:
+    total = 0
+    for i, ch in enumerate(s):
+        v = _ROMAN[ch]
+        total += -v if i + 1 < len(s) and _ROMAN[s[i + 1]] > v else v
+    return total if total > 0 and _to_roman(total) == s else None
+
+
+def _to_roman(n: int) -> str:
+    out = ""
+    for v, sym in [(1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"), (90, "XC"), (50, "L"),
+                   (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I")]:
+        while n >= v:
+            out += sym
+            n -= v
+    return out
+
+
+def _fr_ordinal(n: int, suffix: str) -> str:
+    if n == 1:
+        return " première " if suffix.lower() in ("re", "ère", "ere") else " premier "
+    return _words(n, "fr", "ordinal")
+
+
+def _fr_roman(m: re.Match) -> str:
+    numeral, suffix = m.group(1), m.group(2)
+    n = _roman_value(numeral)
+    if n is None or (len(numeral) == 1 and not (numeral == "I" and suffix == "er")):  # "Ce", "Le", "Me" are words
+        return m.group(0)
+    return _fr_ordinal(n, suffix)
+
+
+def _es_ordinal(m: re.Match) -> str:
+    w = _words(int(m.group(1)), "es", "ordinal").strip()
+    if m.group(2) == "ª" and w.endswith("o"):
+        w = w[:-1] + "a"
+    return f" {w} "
+
+
+def _int_words(digits: str, lang: str) -> str:
+    if len(digits) > 1 and digits.startswith("0"):
+        return " " + " ".join(_words(int(d), lang).strip() for d in digits) + " "
+    n = int(digits)
+    if lang == "de" and len(digits) == 4 and 1100 <= n <= 1999:
+        return _words(n, lang, "year")
+    return _words(n, lang)
+
+
+def _decimal_words(m: re.Match, lang: str) -> str:
+    whole, frac = m.group(1), m.group(2)
+    if lang == "de" or frac.startswith("0"):
+        frac_words = " ".join(_words(int(d), lang).strip() for d in frac)
+    else:
+        frac_words = _words(int(frac), lang).strip()
+    return f"{_int_words(whole, lang)} {_LANGS[lang].comma} {frac_words} "
+
+
+def _normalize_lang(text: str | None, lang: str) -> str:
+    if not text:
+        return ""
+    cfg = _LANGS[lang]
+    s = unicodedata.normalize("NFC", text)
+    if lang == "es":
+        s = _ES_ORDINAL.sub(_es_ordinal, s)  # before NFKC, which turns º/ª into o/a
+    if lang == "fr":
+        s = _FR_ROMAN_ORDINAL.sub(_fr_roman, s)  # case-sensitive: needs the capitals
+        s = _FR_ORDINAL.sub(lambda m: _fr_ordinal(int(m.group(1)), m.group(2)), s)
+    s = unicodedata.normalize("NFKC", s).casefold()  # no-break spaces become spaces; ß -> ss
+    s = _TAG.sub(" ", s)
+    s = _SQUARE.sub(" ", s)
+    s = _CLOCK.sub(lambda m: f" {int(m.group(1))} " + ("" if m.group(2) == "00" else f"{int(m.group(2))} "), s)
+    s = _CUR_BEFORE.sub(lambda m: f" {m.group(2)} {cfg.currency[m.group(1)]} ", s)
+    s = _CUR_AFTER.sub(lambda m: f" {m.group(1)} {cfg.currency[m.group(2)]} ", s)
+    s = _PCT.sub(lambda m: f"{m.group(1)} {cfg.percent} ", s)
+    s = _LETTER_DIGIT_ANY.sub(" ", s)  # "802.11a" -> "802.11 a" before numbers are read
+    s = _SPACE_GROUPS.sub(lambda m: m.group(0).replace(" ", ""), s)
+    s = _DOT_COMMA_GROUPS.sub(lambda m: m.group(0).replace(m.group(1), ""), s)
+    s = _ANY_DECIMAL.sub(lambda m: _decimal_words(m, lang), s)
+    s = _INTEGER.sub(lambda m: _int_words(m.group(0), lang), s)
+    s = re.sub(r"[\W_]+", " ", s)
+    return " ".join(cfg.variants.get(w, w) for w in s.split() if w not in cfg.fillers)
+
+
+_LETTER_DIGIT_ANY = re.compile(r"(?<=[^\W\d_])(?=\d)|(?<=\d)(?=[^\W\d_])")
+
+
+def normalize(text: str | None, language: str | None = None) -> str:
+    """English (language None or "en") is #145's normalizer, unchanged; "es", "fr", "de" use the #158 rules."""
+    if language in (None, "en"):
+        return _normalize_en(text)
+    if language not in _LANGS:
+        raise ValueError(f"no normalizer for language {language!r}; have {', '.join(LANGUAGES)}")
+    return _normalize_lang(text, language)

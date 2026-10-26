@@ -11,7 +11,7 @@ from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from .normalize import normalize
+from .normalize import normalize, strip_accents
 from .results import load_results
 from .wer import Counts, align_counts, bootstrap_ci, pooled_wer
 
@@ -89,6 +89,8 @@ class Score:
     memory: dict = field(default_factory=dict)
     by_length: dict = field(default_factory=dict)
     notes: dict = field(default_factory=dict)
+    accent_blind: dict = field(default_factory=dict)  # label -> pooled WER with diacritics stripped (#158 languages)
+    hypotheses: dict = field(default_factory=dict)    # label -> clip -> first-repeat text, compared clips only
 
 
 def _labels(rows: list[dict]) -> dict[tuple[str, str], str]:
@@ -137,7 +139,11 @@ def score(manifest_rows: list[dict], result_rows: list[dict], dropped: dict | No
     active = [lab for lab in labels if models[lab]["engine"] not in dropped] or labels
     compared = sorted(c for c in clips if active and all(c in hyps[lab] for lab in active))
     clip_sets = {lab: compared if lab in active else sorted(c for c in clips if c in hyps[lab]) for lab in labels}
-    ref_norm = {c: normalize(clips[c]["reference"]) for lab in labels for c in clip_sets[lab]}
+    lang_of = {c: clips[c].get("language") for c in clips}
+    ref_norm = {c: normalize(clips[c]["reference"], lang_of[c]) for lab in labels for c in clip_sets[lab]}
+    # Bootstrap unit: the manifest's group (FLEURS sentence id) when present, else the speaker (#145).
+    unit_of = {c: clips[c].get("group") or clips[c].get("speaker", c) for c in clips}
+    accent_blind: dict[str, float] = {}
 
     overall: dict[str, Cell] = {}
     by_accent: dict[str, dict[str, Cell]] = {}
@@ -149,11 +155,15 @@ def score(manifest_rows: list[dict], result_rows: list[dict], dropped: dict | No
         per_repeat: dict[int, list[Counts]] = defaultdict(list)
         per_length: dict[str, dict[str, list[Counts]]] = defaultdict(lambda: defaultdict(list))
         det = Determinism()
+        blind: list[Counts] = []
         for c in clip_sets[lab]:
             reps = hyps[lab][c]
             first = reps[min(reps)]
-            counts = align_counts(ref_norm[c], normalize(first))
-            spk = clips[c].get("speaker", c)
+            hyp_norm = normalize(first, lang_of[c])
+            counts = align_counts(ref_norm[c], hyp_norm)
+            if lang_of[c] not in (None, "en"):  # English already strips diacritics
+                blind.append(align_counts(strip_accents(ref_norm[c]), strip_accents(hyp_norm)))
+            spk = unit_of[c]
             per_speaker[spk].append(counts)
             per_accent[clips[c].get("accent", "unknown")][spk].append(counts)
             per_length[length_bucket(float(clips[c].get("audio_seconds", 0)))][spk].append(counts)
@@ -161,11 +171,13 @@ def score(manifest_rows: list[dict], result_rows: list[dict], dropped: dict | No
                 det.clips += 1
                 texts = list(reps.values())
                 det.identical += all(t == texts[0] for t in texts)
-                det.identical_normalized += len({normalize(t) for t in texts}) == 1
+                det.identical_normalized += len({normalize(t, lang_of[c]) for t in texts}) == 1
                 det.repeats = max(det.repeats, len(reps))
                 for rep, text in reps.items():
-                    per_repeat[rep].append(align_counts(ref_norm[c], normalize(text)))
+                    per_repeat[rep].append(align_counts(ref_norm[c], normalize(text, lang_of[c])))
         overall[lab] = _cell(per_speaker)
+        if blind:
+            accent_blind[lab] = pooled_wer(blind)
         by_accent[lab] = {acc: _cell(spk) for acc, spk in per_accent.items()}
         by_length_lab = {b: _cell(spk) for b, spk in per_length.items()}
         full = [rep for rep, cs in per_repeat.items() if len(cs) == det.clips]
@@ -182,7 +194,8 @@ def score(manifest_rows: list[dict], result_rows: list[dict], dropped: dict | No
                  clips_compared=len(compared),
                  audio_seconds_compared=sum(float(clips[c].get("audio_seconds", 0)) for c in compared),
                  clips_done={lab: len(hyps[lab]) for lab in labels}, models=models, speed_by_host=speed_by_host,
-                 by_length=by_length)
+                 by_length=by_length, accent_blind=accent_blind,
+                 hypotheses={lab: {c: hyps[lab][c][min(hyps[lab][c])] for c in clip_sets[lab]} for lab in labels})
 
 
 def _pct(x: float) -> str:
@@ -426,3 +439,224 @@ def write_report(shards_dir: Path, results_dir: Path, out: Path, json_out: Path 
             "speed_by_host": {f"{k[0]} @ {k[1]}": {**asdict(v), "rtf": v.rtf} for k, v in s.speed_by_host.items()},
         }, indent=2, default=lambda x: None) + "\n", encoding="utf-8")
     return s
+
+
+# --- Languages (#158): FLEURS Spanish, French, German ------------------------------------------------------------
+
+LANGUAGE_NAMES = {"es": "Spanish", "fr": "French", "de": "German"}
+APPLE_ENGINE, ULTRA_ENGINE, ONNX_ENGINE = "apple-speechanalyzer", "parakeet-fluidaudio", "sherpa-onnx"
+
+
+@dataclass
+class Verdict:
+    verdict: str            # "Parakeet", "Apple" or "not ready"
+    reason: str
+    apple_label: str | None = None
+
+
+def _ci(c: Cell) -> str:
+    return f"{_pct(c.wer)} ({_pct(c.ci_low)}–{_pct(c.ci_high)})"
+
+
+def recommend(apple: dict, ultra: Cell | None, not_ready: float = GOOD) -> Verdict:
+    """The #158 rule (language-accuracy-design.md): not ready if the better of Apple's best locale and Parakeet Ultra
+    misses the 15% line; else Parakeet if the low end of Ultra's 95% CI is at or below Apple's WER (ADR 0026 §3,
+    "matches or beats"); else Apple."""
+    valid = {k: c for k, c in apple.items() if c is not None and not math.isnan(c.wer)}
+    if not valid or ultra is None or math.isnan(ultra.wer):
+        missing = ", ".join(n for n, ok in (("Apple", bool(valid)), ("Parakeet Ultra", ultra is not None
+                                            and not math.isnan(ultra.wer))) if not ok)
+        return Verdict("not ready", f"no results yet for {missing}")
+    label = min(valid, key=lambda k: valid[k].wer)
+    a = valid[label]
+    best = min(a.wer, ultra.wer)
+    if best > not_ready:
+        return Verdict("not ready", f"the better engine still has {_pct(best)} word errors on read speech, above "
+                                    f"the {_pct(not_ready)} line", label)
+    if ultra.ci_low <= a.wer:
+        how = "beats" if ultra.ci_high < a.wer else "matches"
+        return Verdict("Parakeet", f"Parakeet Ultra {_ci(ultra)} {how} Apple's best locale {_ci(a)}", label)
+    return Verdict("Apple", f"Apple's best locale {_ci(a)} is clearly ahead of Parakeet Ultra {_ci(ultra)}", label)
+
+
+def display_name(model: dict) -> str:
+    engine, name = model["engine"], model["model"]
+    if engine == APPLE_ENGINE:
+        return "Apple SpeechAnalyzer, " + name.replace("SpeechTranscriber ", "")
+    if engine == ULTRA_ENGINE:
+        return "Parakeet Ultra, FluidAudio (Core ML)" if "ultra" in name else f"Parakeet {name}, FluidAudio (Core ML)"
+    if engine == ONNX_ENGINE:
+        if "ultra" in name:
+            return "Parakeet Ultra, sherpa-onnx (ONNX, community export)"
+        return "Parakeet v3, sherpa-onnx (ONNX)" if "v3" in name else f"{name}, sherpa-onnx (ONNX)"
+    return f"{engine} ({name})"
+
+
+@dataclass
+class LanguageResult:
+    language: str
+    score: Score
+    verdict: Verdict
+    index: dict
+
+    def labels_for(self, engine: str) -> list[str]:
+        return [l for l in self.score.labels if self.score.models[l]["engine"] == engine]
+
+    @property
+    def ultra_label(self) -> str | None:
+        labs = self.labels_for(ULTRA_ENGINE)
+        return next((l for l in labs if "ultra" in self.score.models[l]["model"]), labs[0] if labs else None)
+
+
+def score_language(lang: str, manifest_rows: list[dict], result_rows: list[dict], index: dict) -> LanguageResult:
+    s = score(manifest_rows, result_rows, dropped={})
+    res = LanguageResult(lang, s, Verdict("not ready", "no results yet"), index)
+    if s.clips_compared:
+        apple = {l: s.overall[l] for l in res.labels_for(APPLE_ENGINE)}
+        u = res.ultra_label
+        res.verdict = recommend(apple, s.overall[u] if u else None)
+    return res
+
+
+def _android_line(res: LanguageResult) -> str:
+    s, u = res.score, res.ultra_label
+    parts = []
+    for lab in sorted(res.labels_for(ONNX_ENGINE)):
+        c = s.overall[lab]
+        rel = ""
+        if u:
+            uc = s.overall[u]
+            gap = 100 * (c.wer - uc.wer)
+            rel = (" (same as Ultra on Core ML within its interval)" if uc.ci_low <= c.wer <= uc.ci_high
+                   else f" ({abs(gap):.1f} points {'worse' if gap > 0 else 'better'} than Ultra on Core ML)")
+        parts.append(f"{display_name(s.models[lab])} {_ci(c)}{rel}")
+    return "Android path: " + ("; ".join(parts) if parts else "no ONNX results yet") + "."
+
+
+def _locale_identity_line(res: LanguageResult) -> str:
+    """With several Apple locales for one language: on how many compared clips did they all write the same text?"""
+    labs = res.labels_for(APPLE_ENGINE)
+    hyps = res.score.hypotheses
+    if len(labs) < 2 or not hyps:
+        return ""
+    clips = [c for c in hyps.get(labs[0], {}) if all(c in hyps.get(l, {}) for l in labs)]
+    same = sum(len({hyps[l][c] for l in labs}) == 1 for c in clips)
+    return (f"Apple's {len(labs)} {LANGUAGE_NAMES.get(res.language, res.language)} locales gave identical text on "
+            f"{same} of {len(clips)} clips.")
+
+
+def build_language_report(results: dict[str, LanguageResult], meta: dict) -> str:
+    now = meta.get("generated_at") or dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    names = [LANGUAGE_NAMES.get(l, l) for l in results]
+    out = [
+        "# Language accuracy comparison (FLEURS)",
+        "",
+        "Generated by `scripts/engine-eval` (`report-languages`) for #158 \"[E] Language accuracy test: Apple vs "
+        "Parakeet Ultra (and its Android build) on Spanish, French and German\". Do not edit by hand. Method: "
+        "[language-accuracy-design.md](language-accuracy-design.md).",
+        "",
+        f"**Languages:** {', '.join(names)} · {now}.",
+        "",
+        "WER = (S + D + I) / N, pooled over clips, after a per-language normalizer that keeps accents (an engine that "
+        "writes *esta* for *está* makes an error). **Accent-blind** is the same score with accent marks removed, to "
+        "show how much of the error is only accents. 95% confidence intervals: bootstrap over FLEURS sentences "
+        "(1,000 resamples). Only clips every engine finished are compared. Targets (docs/testing/test-plan.md): "
+        "**15% or less is good, 30% or less is acceptable**.",
+        "",
+        "**FLEURS is read speech in quiet rooms**, not conversation. Every engine scores far better here than in a "
+        "sit-down chat (#145 on EdAcc), so the ranking is the useful part and the absolute numbers flatter all of "
+        "them. Mac numbers (M4 Mac mini, nice +15 next to other work), not iPhone numbers.",
+        "",
+        "## Summary",
+        "",
+        "| Language | Apple, best locale | Parakeet Ultra (Core ML) | Parakeet v3 (ONNX) | Parakeet Ultra (ONNX) | Recommendation |",
+        "|---|---|---|---|---|---|",
+    ]
+    for lang, res in results.items():
+        s = res.score
+        def pick(engine, want):
+            labs = [l for l in res.labels_for(engine) if want(s.models[l]["model"])]
+            return _ci(s.overall[labs[0]]) if labs else "–"
+        apple = (f"{_ci(s.overall[res.verdict.apple_label])}, {s.models[res.verdict.apple_label]['model'].split()[-1]}"
+                 if res.verdict.apple_label else "–")
+        out.append(f"| {LANGUAGE_NAMES.get(lang, lang)} | {apple} | {pick(ULTRA_ENGINE, lambda m: 'ultra' in m)} | "
+                   f"{pick(ONNX_ENGINE, lambda m: 'ultra' not in m)} | {pick(ONNX_ENGINE, lambda m: 'ultra' in m)} | "
+                   f"**{res.verdict.verdict}** |")
+    out.append("")
+
+    for lang, res in results.items():
+        s, idx = res.score, res.index
+        out += [f"## {LANGUAGE_NAMES.get(lang, lang)}", ""]
+        if idx:
+            out += [f"FLEURS `{idx.get('config', '')}` test split: {idx.get('clips', '?')} clips, "
+                    f"{idx.get('sentences', '?')} distinct sentences, {idx.get('audio_hours', 0):.2f} h. Compared on "
+                    f"every engine: {s.clips_compared} clips ({s.audio_seconds_compared / 3600:.2f} h).", ""]
+        if not s.clips_compared:
+            out += ["No results yet.", ""]
+            continue
+        out += ["| Engine | WER | 95% CI | Accent-blind WER | vs target | Sub | Del | Ins | Ref words | Clips | "
+                "Sentences | Speed (x real time) |", "|---|---:|---|---:|---|---:|---:|---:|---:|---:|---:|---:|"]
+        for lab in sorted(s.labels, key=lambda l: s.overall[l].wer):
+            c, sp = s.overall[lab], s.speed[lab]
+            xr = "–" if math.isnan(sp.x_realtime) else f"{sp.x_realtime:.1f}x"
+            out.append(f"| {display_name(s.models[lab])} | {_pct(c.wer)} | {_pct(c.ci_low)} – {_pct(c.ci_high)} | "
+                       f"{_pct(s.accent_blind.get(lab, math.nan))} | {_verdict(c.wer)} | {c.sub} | {c.dele} | {c.ins} | "
+                       f"{c.n} | {c.clips} | {c.speakers} | {xr} |")
+        out += ["", f"**{res.verdict.verdict}**: {res.verdict.reason}.", "", _android_line(res), ""]
+        line = _locale_identity_line(res)
+        if line:
+            out += [line, ""]
+
+    out += ["## Engines and models", "", "| Engine | Model | Version |", "|---|---|---|"]
+    seen = set()
+    for res in results.values():
+        for lab in res.score.labels:
+            m = res.score.models[lab]
+            key = (m["engine"], m["model"])
+            if key not in seen:
+                seen.add(key)
+                out.append(f"| {display_name(m)} | `{m['model']}` | {m['engine_version']} |")
+    out.append("")
+    ls = meta.get("load_stats") or {}
+    if ls:
+        out += [f"Result lines read: {ls.get('lines', 0)}; corrupt lines skipped: {ls.get('corrupt', 0)}; "
+                f"duplicates ignored: {ls.get('duplicates', 0)}.", ""]
+
+    out += ["## Recommendation", "",
+            "Rule (decided before the run, [design](language-accuracy-design.md#recommendation-rule)): **not ready** if "
+            "the better of Apple's best locale and Parakeet Ultra is above 15% WER; otherwise **Parakeet** if Ultra "
+            "matches or beats Apple (the low end of its 95% CI is at or below Apple's WER, ADR 0026 §3); otherwise "
+            "**Apple**.", "",
+            "| Language | Recommendation | Why |", "|---|---|---|"]
+    for lang, res in results.items():
+        out.append(f"| {LANGUAGE_NAMES.get(lang, lang)} | {res.verdict.verdict} | {res.verdict.reason} |")
+    return "\n".join(out)
+
+
+def write_language_report(shards_root: Path, results_dir: Path, out: Path,
+                          json_out: Path | None = None) -> dict[str, LanguageResult]:
+    """One shard set per language under shards_root/<lang>/ (fleurs.py); every *.jsonl in results_dir."""
+    from .shards import read_manifest
+
+    shards_root = Path(shards_root)
+    rows, stats = load_results(sorted(Path(results_dir).glob("*.jsonl")))
+    langs = [l for l in LANGUAGE_NAMES if (shards_root / l / "index.json").exists()]
+    results: dict[str, LanguageResult] = {}
+    for lang in langs:
+        index = json.loads((shards_root / lang / "index.json").read_text(encoding="utf-8"))
+        manifest = [m for name in index["shards"] for m in read_manifest(shards_root / lang / name)]
+        ids = {m["clip_id"] for m in manifest}
+        results[lang] = score_language(lang, manifest, [r for r in rows if r["clip_id"] in ids], index)
+    md = build_language_report(results, meta={"load_stats": asdict(stats)})
+    Path(out).write_text(md + "\n", encoding="utf-8")
+    if json_out:
+        Path(json_out).write_text(json.dumps({
+            lang: {"verdict": res.verdict.verdict, "reason": res.verdict.reason, "apple_label": res.verdict.apple_label,
+                   "clips_compared": res.score.clips_compared,
+                   "overall": {k: asdict(v) for k, v in res.score.overall.items()},
+                   "accent_blind": res.score.accent_blind,
+                   "speed": {k: {**asdict(v), "rtf": v.rtf, "x_realtime": v.x_realtime}
+                             for k, v in res.score.speed.items()},
+                   "models": res.score.models}
+            for lang, res in results.items()}, indent=2, default=lambda x: None) + "\n", encoding="utf-8")
+    return results

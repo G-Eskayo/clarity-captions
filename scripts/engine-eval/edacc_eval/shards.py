@@ -39,16 +39,16 @@ def shard_count(total_seconds: float, target_hours: float) -> int:
     return max(1, math.ceil(total_seconds / (target_hours * 3600)))
 
 
-def assign_shards(clips: list[Clip], n_shards: int) -> list[list[Clip]]:
-    """Within each accent, sort by clip id and deal round-robin; the deal continues across accents so small
-    accents don't all land in shard 1. Deterministic regardless of input order."""
+def assign_shards(clips: list, n_shards: int, key: str = "accent") -> list[list]:
+    """Within each stratum (accent for EdAcc, gender for FLEURS), sort by clip id and deal round-robin; the deal
+    continues across strata so small ones don't all land in shard 1. Deterministic regardless of input order."""
     ids = [c.clip_id for c in clips]
     if len(ids) != len(set(ids)):
         dupes = sorted({i for i in ids if ids.count(i) > 1})
         raise ValueError(f"duplicate clip ids: {dupes[:5]}")
-    by_accent: dict[str, list[Clip]] = defaultdict(list)
+    by_accent: dict[str, list] = defaultdict(list)
     for c in clips:
-        by_accent[c.accent].append(c)
+        by_accent[getattr(c, key)].append(c)
     shards: list[list[Clip]] = [[] for _ in range(n_shards)]
     cursor = 0
     for accent in sorted(by_accent):
