@@ -32,7 +32,7 @@ model gets onto the device. English to Spanish first, then French and German.
 
 ## Licences and terms (checked first)
 
-Read 2026-10-26; recorded in the evidence log (E18).
+Read 2026-10-26; recorded in the evidence log (E20).
 
 | Item | Licence / terms | Paid app OK? | Notes |
 |---|---|---|---|
@@ -83,6 +83,7 @@ alike. Any engine may have seen FLORES or WMT data in training; we can't check t
 | `apple` | Translation framework, system model | M4 Mac mini, macOS 26 | `TranslationSession(installedSource:target:)` in `engine-eval`'s new `translation-eval` command |
 | `mlkit` | ML Kit on-device translation (`com.google.mlkit:translate` 17.0.3), Google Translate's offline models | **Android emulator** (Android 15, Google APIs, arm64-v8a) on the M4 | a tool-only Android app under `scripts/engine-eval/mlkit-android`, driven by `run.sh` over `adb` |
 | `opus-mt` | `Helsinki-NLP/opus-mt-en-{es,fr,de}` | M4 CPU | CTranslate2, int8 weights, 4 threads, beam 4, sentence by sentence |
+| `opus-mt-greedy` | the same, en-es | M4 CPU | the same with beam 1 (greedy), added after the first results to price the speed/quality trade |
 | `opus-mt-big` | `Helsinki-NLP/opus-mt-tc-big-en-{es,fr}` | M4 CPU | CTranslate2, int8 |
 | `bergamot` | Firefox's en-es model | – | not run: no arm64 macOS build of the runtime (the `bergamot` wheel is x86_64 only) |
 

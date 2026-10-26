@@ -121,9 +121,7 @@ def build_report(pairs: dict[str, dict], meta: dict) -> str:
          f"Generated {meta.get('generated', '')} by `python -m translation_eval.cli report`. Design and method: "
          "[`translation-comparison-design.md`](translation-comparison-design.md).", ""]
     for note in meta.get("notes", []):
-        L.append(note)
-    if meta.get("notes"):
-        L.append("")
+        L += [note, ""]
     for engine, why in sorted(meta.get("missing", {}).items()):
         L.append(f"- **{engine}: not run.** {why}")
     if meta.get("missing"):

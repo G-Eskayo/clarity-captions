@@ -257,3 +257,50 @@ caveat), **Internal** (process detail, not for marketing).
   English-tuned" risk row in the engine-switch design; under ADR 0026 the same weights are the Android candidate.
 - **Public use:** Careful ("on a public set of read sentences, in our test, Parakeet made about a third fewer word
   errors than Apple's built-in engine in Spanish, French and German").
+
+## E20. Translation engines for 1.3: licences, terms and how each gets its model onto the phone
+- **Source:** [ML Kit Terms](https://developers.google.com/ml-kit/terms) (modified 2025-05-14) and the
+  [ML Kit Translation guidelines](https://developers.google.com/ml-kit/language/translation/translation-terms);
+  [ML Kit Translation overview](https://developers.google.com/ml-kit/language/translation); Hugging Face model cards
+  for [`Helsinki-NLP/opus-mt-en-es`](https://huggingface.co/Helsinki-NLP/opus-mt-en-es) and its fr, de and tc-big
+  siblings; [mozilla/firefox-translations-models](https://github.com/mozilla/firefox-translations-models) LICENSE;
+  [`Unbabel/wmt22-comet-da`](https://huggingface.co/Unbabel/wmt22-comet-da); FLORES-200 (CC BY-SA 4.0) and
+  [WMT24++](https://huggingface.co/datasets/google/wmt24pp) (Apache 2.0). All read 2026-10-26 for #159.
+- **What we took:** every engine tested is usable in a paid app. **ML Kit** is free, but its translation guidelines
+  require Google's Cloud Translation attribution and branding in the app, it may only ship on phones, tablets and
+  computers, its models may not be reverse engineered, and **the SDK sends usage and performance metrics to Google**
+  (our harness saw ML Kit keep a growing `datatransport` event database, 2.7 MB after one language), which the app
+  must disclose. ML Kit downloads languages with the app's own code and no system UI. **OPUS-MT** models are Apache
+  2.0 (en-es, en-fr) or CC BY 4.0 (en-de, tc-big), credited like Parakeet; the app owns download and storage.
+  Firefox's Bergamot models are MPL 2.0. **Apple's** Translation framework downloads languages only through a
+  system sheet or Settings (E15). NLLB-200 stays out (CC BY-NC). The reference-free CometKiwi metrics are
+  non-commercial, so scoring uses the Apache 2.0 `wmt22-comet-da`.
+- **Confidence:** Strong (official terms and model cards).
+- **Drives:** the 1.3 engine choice (#159), the privacy label if ML Kit is used, the credits screen.
+- **Public use:** Internal.
+
+## E21. Translation comparison: open OPUS-MT models beat ML Kit in Spanish, French and German
+- **Source:** our own measurement, [docs/perf/translation-comparison.md](../perf/translation-comparison.md)
+  (#159 "[E] Translation comparison test: Apple vs ML Kit vs open models, before 1.3"). FLORES-200 devtest (1,012
+  sentences) and WMT24++ speech transcripts (111 passages), each as written and in a caption-style copy (lowercase,
+  unpunctuated); 760 EdAcc caption lines for speed. chrF and COMET (wmt22-comet-da), 95% bootstrap CIs over documents.
+  OPUS-MT on the M4 Mac mini CPU (CTranslate2 int8, sentence by sentence); ML Kit 17.0.3 in an arm64 Android 15
+  emulator on the same machine. Apple not yet run (languages not installed).
+- **What we took:** the 82 MB OPUS-MT base model scored above ML Kit on written text in all three languages: chrF on
+  FLORES **55.0 vs 53.2** (es), **69.8 vs 65.4** (fr), **63.6 vs 59.0** (de), and on speech transcripts **68.9 vs
+  65.2**, **62.2 vs 59.5**, **61.3 vs 57.4**: paired differences of +1.8 to +4.6 chrF, every 95% CI above zero,
+  and COMET gaps of 0.04 to 0.11. On caption-style input they were close: ML Kit ahead by 0.5 on Spanish FLORES (CI
+  0.1–1.0), a tie in French (CIs include zero), OPUS-MT ahead on Spanish speech (+1.6) and in German (+1.5 FLORES,
+  +10.2 speech). Every engine lost 1 to 15 chrF on caption-style input against the same words written with
+  punctuation. Greedy decoding kept OPUS-MT's quality (FLORES 54.8, COMET 0.847)
+  at **35 ms median, 107 ms p95 per caption line** on the M4 CPU; ML Kit took 23 ms median, 59 ms p95 in the emulator
+  (measured under heavier machine load). The larger tc-big models (es, fr) added 0.9 to 2.6 chrF on written text at three
+  times the size (about 215 MB zipped against 62–69 MB) and lost ground on long unpunctuated input. Marian models
+  silently drop sentences from long multi-sentence input unless fed a sentence at a time.
+- **Confidence:** Ours. Strong for the ranking on written text (all paired CIs exclude zero in all three languages);
+  Moderate for caption-style input. Mac and emulator, not iPhone; Spanish references are Latin American; any engine may
+  have seen FLORES or WMT data in training.
+- **Drives:** the 1.3 translation engine (recommendation: OPUS-MT, pending an iPhone runtime spike), and the rule to
+  translate Parakeet's punctuated text a sentence at a time.
+- **Public use:** Careful ("in our test on public benchmarks, an open model we can ship ourselves translated more
+  accurately than Google's on-device ML Kit in Spanish, French and German").
