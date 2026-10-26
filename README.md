@@ -8,7 +8,7 @@ dinner. The App Store and home-screen name is **Seal Speak** ([ADR 0011](docs/ad
 
 **Status: working spike, not released.** Runs on an iPhone 17 Pro; target is the intended user's
 iPhone 17 by **2026-10-25**; TestFlight first ([ADR 0009](docs/adr/0009-testflight-then-app-store-distribution.md)).
-It is free and non-commercial by design ([ADR 0007](docs/adr/0007-free-and-non-commercial-by-design.md)).
+**Pricing:** $4.99 one-time purchase; live translation planned as a $2 in-app purchase ([ADR 0026](docs/adr/0026-pricing-and-live-translation-iap.md), [ADR 0007](docs/adr/0007-free-and-non-commercial-by-design.md) for history).
 
 ## How it works
 

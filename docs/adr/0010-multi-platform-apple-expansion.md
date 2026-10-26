@@ -14,8 +14,10 @@ other device that can host it natively. The reason is the same one behind [[0007
 meant for anyone with needs like the primary user's, and people with hearing loss use more than
 one device.
 
-Constraints that did not change: the 2026-10-25 date is for **iPhone only**. On-device-only,
-no per-user training ([[0008]]), and free forever ([[0007]]) apply to every platform.
+Constraints that did not change: the 2026-10-25 date is for **iPhone only**. On-device-only
+and no per-user training ([[0008]]) apply to every platform. Pricing is governed by [[0026]] (v1
+ships at $4.99; live translation planned as a $2 IAP; see [[0007]] for the history of this
+decision).
 
 ## Decision
 

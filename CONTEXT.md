@@ -30,6 +30,8 @@ domain understanding only.
   like "[Doorbell]" or "[Laughter]" — added to the stream independently of speech captions and
   never replacing or hiding spoken text. Distinct from speaker-turn labeling (which identifies
   *who* is speaking) and not a safety alert or notification. See [[0016]].
+- **Live translation (IAP)**: a paid in-app purchase that shows a translation of what's being said,
+  in the user's language, alongside or instead of English captions. Not yet shipped. See [[0026]].
 
 ## Transcription engine
 
