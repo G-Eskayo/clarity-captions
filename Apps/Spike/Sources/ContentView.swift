@@ -457,6 +457,7 @@ struct ContentView: View {
             }
             if DemoMode.seedsSaved { await seedDemoSaved() }
             model.runDemo()
+            if DemoMode.opensDeveloperPanel { developerTools = true }
             if DemoMode.opensSettings || DemoMode.settingsPush != nil {
                 // Debug only: open straight on Settings (or one of its pages) for screenshots, no fade.
                 nav.gearTapped()

@@ -34,12 +34,14 @@ import Foundation
 ///   -ClarityDemoShow <id>  one state for the UI audit (2026-10-10; simctl can't tap): savedfromcaptions (#137), banner, preparing, confirmnew,
 ///                         namespeaker, jump, canthear, failed, quiet, tour4save, savebeta
 ///   -ClarityDemoSettingsPush saved|credits|deleteall   Settings opened on a sub-screen (with -ClarityDemoSettings)
+///   -ClarityDemoDeveloperPanel  opens the developer panel (mic mode, Engine picker, #150): simctl can't do the 1.5 s hold
 /// It feeds the same CaptionStream the real engine feeds, so what you see is the real caption view: speaker colours,
 /// names, line breaks and sound labels. No microphone, speech model or network is involved.
 enum DemoMode {
     static var isOn: Bool { flag("-ClarityDemo") || isStatic || tour != nil || show != nil }
     static var isStatic: Bool { flag("-ClarityDemoStatic") }
     static var opensSettings: Bool { flag("-ClarityDemoSettings") }
+    static var opensDeveloperPanel: Bool { flag("-ClarityDemoDeveloperPanel") }
     /// The section id to scroll Settings to, from `-ClarityDemoSettingsSection <id>`. Debug builds only.
     static var settingsSection: String? {
         #if DEBUG

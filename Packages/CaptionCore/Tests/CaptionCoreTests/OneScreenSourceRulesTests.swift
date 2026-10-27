@@ -80,4 +80,20 @@ final class OneScreenSourceRulesTests: XCTestCase {
         XCTAssertEqual(occurrences(of: "SpeakerExplanation", in: files), [])
         XCTAssertEqual(occurrences(of: "Name this speaker", in: files), [], "naming speakers is out of v1 (#117)")
     }
+
+    /// #150: the developer panel (mic mode, Engine picker) opens by the 1.5 s hold on the status, or, for screenshots
+    /// (simctl can't hold), by `-ClarityDemoDeveloperPanel`, a DemoMode flag that is false in a shipped build.
+    func testDeveloperPanelOpensByHoldOrTheDemoFlagOnly() throws {
+        let files = try appSources()
+        let parsed = occurrences(of: "flag(\"-ClarityDemoDeveloperPanel\")", in: files)
+        XCTAssertEqual(parsed.count, 1, "\(parsed)")
+        XCTAssertTrue(parsed.allSatisfy { $0.hasPrefix("DemoMode.swift") }, "\(parsed)")
+        let opens = occurrences(of: "developerTools = true", in: files) + occurrences(of: "developerTools.toggle()", in: files)
+        XCTAssertEqual(opens.count, 2, "\(opens)")
+        XCTAssertTrue(opens.allSatisfy { $0.hasPrefix("ContentView.swift") }, "\(opens)")
+        let byFlag = occurrences(of: "if DemoMode.opensDeveloperPanel { developerTools = true }", in: files)
+        XCTAssertEqual(byFlag.count, 1, "\(byFlag)")
+        let documented = files.first { $0.name == "DemoMode.swift" }?.text ?? ""
+        XCTAssertTrue(documented.contains("///   -ClarityDemoDeveloperPanel"), "list the flag in DemoMode's header")
+    }
 }
