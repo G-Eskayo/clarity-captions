@@ -98,6 +98,12 @@
   table.data td.n, table.data th.n { text-align: right; }
   .pick-card { max-width: 46rem; border-left: 6px solid var(--teal); }
   .src { font-size: .9rem; color: var(--muted); }
+  /* ── version switcher ──────────────────────────────────────── */
+  .version-nav { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1.75rem; }
+  .version-nav a { font-weight: 800; letter-spacing: .02em; border-radius: 999px; padding: .35rem 1.1rem; border: 2px solid var(--accent); color: var(--accent); text-decoration: none; }
+  .version-nav a[aria-current] { background: var(--accent); color: var(--bg); }
+  .version[hidden] { display: none; }
+  .version .release + .release, #v1-0-1 { margin-top: 1.25rem; }
 </style>
 </head>
 <body>
@@ -118,30 +124,22 @@
   <div class="wrap page-head">
     <h1>Versions</h1>
     <p class="lede">What changed in each version of Seal Speak, and the story behind the bigger choices. Each version says honestly where it stands: only what is on the App Store is live.</p>
+    <nav class="version-nav" id="releases" aria-label="Choose a version" data-default="v1-0">
+      <a href="#v1-0">1.0</a>
+      <a href="#v1-1">1.1</a>
+    </nav>
   </div>
 
-  <section class="band" id="releases" aria-labelledby="rel-h">
+  <div class="version" id="v1-0">
+  <section class="band" aria-labelledby="v10-h">
     <div class="wrap">
-      <h2 id="rel-h">Releases</h2>
-      <p class="intro">Newest first.</p>
-
+      <h2 id="v10-h">Version 1.0</h2>
+      <div id="v1-0-0">
       <div class="card release">
-        <h3>1.1 (build 6) <span class="badge">Coming next</span></h3>
-        <ul>
-          <li>A full-screen iPad layout, with the captions using the whole screen.</li>
-          <li>It also works on iPhone Duo, folded or open.</li>
-          <li>A new engine makes the captions: Parakeet Ultra instead of Apple's speech recognition. In our tests it makes fewer mistakes and the words show up sooner. The story is <a href="#engine">below</a>.</li>
-          <li>It still works with no internet, and nothing leaves your device.</li>
-          <li>The app gets bigger: the new caption model is about 498 MB.</li>
-        </ul>
-        <p class="note">Not on the App Store. The iPad and iPhone Duo build is uploaded to Apple but not submitted for review yet. The build with the new engine is not uploaded yet: we still need to check it on an iPhone, and the tests so far ran on a Mac. No date.</p>
-      </div>
-
-      <div class="card release">
-        <h3>1.0 (build 5) <span class="badge review">In review</span></h3>
+        <h3>1.0.0 <span class="badge review">In review</span></h3>
         <p>The first version. It is with Apple for review and has not been released yet.</p>
         <ul>
-          <li>Live captions of what people around you say, in large clear text, on your iPhone. It also runs on iPad, in the iPhone-sized layout; 1.1 brings the full-screen iPad layout.</li>
+          <li>Live captions of what people around you say, in large clear text, on your iPhone. It also runs on iPad, in the iPhone-sized layout; 1.0.1 brings the full-screen iPad layout.</li>
           <li>One big button to start and stop.</li>
           <li>A new line, labelled Speaker 1 or Speaker 2, when the voice changes. It goes by the sound of the voice, so it can mix people up.</li>
           <li>Text size that follows your phone, with A&minus; and A+ to go bigger or smaller.</li>
@@ -154,7 +152,38 @@
           <li>Works with no internet after a one-time setup.</li>
           <li>$4.99, once. English captions. iPhone 12 or newer with iOS 26 or later, or an iPad.</li>
         </ul>
-        <p class="note">Captions are made by a computer and can contain mistakes. Seal Speak is not a medical device. The captions in 1.0 come from Apple's on-device speech recognition.</p>
+        <p class="note">Captions are made by a computer and can contain mistakes. Seal Speak is not a medical device. The captions in 1.0.0 come from Apple's on-device speech recognition.</p>
+      </div>
+      </div>
+      <div id="v1-0-1">
+      <div class="card release">
+        <h3>1.0.1 <span class="badge">Coming next</span></h3>
+        <p>Display fixes.</p>
+        <ul>
+          <li>A full-screen iPad layout, with the captions using the whole screen.</li>
+          <li>It also works on iPhone Duo, folded or open.</li>
+        </ul>
+        <p class="note">Not on the App Store yet. No date.</p>
+      </div>
+      </div>
+    </div>
+  </section>
+  </div>
+
+  <div class="version" id="v1-1">
+  <section class="band" aria-labelledby="v11-h">
+    <div class="wrap">
+      <h2 id="v11-h">Version 1.1</h2>
+      <div class="card release">
+        <h3 id="v1-1-0">1.1.0 <span class="badge">Planned</span></h3>
+        <ul>
+          <li>A new engine makes the captions: Parakeet Ultra instead of Apple's speech recognition. In our tests it makes fewer mistakes and the words show up sooner. The story is <a href="#engine">below</a>.</li>
+          <li>Captions in more languages. Parakeet understands 25 European languages: Bulgarian, Croatian, Czech, Danish, Dutch, English, Estonian, Finnish, French, German, Greek, Hungarian, Italian, Latvian, Lithuanian, Maltese, Polish, Portuguese, Romanian, Russian, Slovak, Slovenian, Spanish, Swedish and Ukrainian. So far we have measured English, Spanish, French and German (<a href="#languages">below</a>), and we test each of the others before switching it on.</li>
+          <li>Live translation of the captions into another language, right on your phone. It is an optional add-on: $1.99, once, as an in-app purchase. Captions in every language stay part of the app. It uses Apple's on-device translation, the most accurate engine we tested (<a href="#translation">below</a>).</li>
+          <li>It still works with no internet, and nothing leaves your device.</li>
+          <li>The app gets bigger: the new caption model is about 498 MB.</li>
+        </ul>
+        <p class="note">Planned, not built yet. The new engine has run on a Mac; we still need to check it on an iPhone. No date.</p>
       </div>
     </div>
   </section>
@@ -223,12 +252,65 @@
           <li>It is fast to show words (median 0.25 s), and it runs on the phone with no internet.</li>
         </ul>
         <p><strong>If it does not work out on an iPhone,</strong> the fallback is Parakeet Ultra 4-bit: smaller (350 MB), about a point less accurate, still better than Apple.</p>
-        <p class="note">What we have not shown yet: these tests ran on a Mac with one set of recordings. The next step is checking on an iPhone. Until then, Seal Speak 1.0 uses Apple's recognition. The switch arrives in 1.1. Captions can still contain mistakes with any engine.</p>
+        <p class="note">What we have not shown yet: these tests ran on a Mac with one set of recordings. The next step is checking on an iPhone. Until then, Seal Speak uses Apple's recognition. The switch arrives in 1.1.0. Captions can still contain mistakes with any engine.</p>
       </div>
 
       <p class="intro" style="margin-top:2rem">The full results, including every accent we tested, are in the <a href="https://github.com/G-Eskayo/clarity-captions/blob/feature/145-engine-eval/docs/perf/engine-accuracy-comparison.md">engine accuracy report</a> on GitHub. The research note behind the size test is <a href="https://github.com/G-Eskayo/clarity-captions/blob/feature/145-engine-eval/docs/research/evidence-log.md">evidence log E12</a>.</p>
     </div>
   </section>
+
+  <section class="band" id="languages" aria-labelledby="lang-h">
+    <div class="wrap">
+      <h2 id="lang-h">How Parakeet did in other languages</h2>
+      <p class="intro">Before promising a language, we measured it.</p>
+      <div class="prose">
+        <p>We ran Apple's speech recognition and Parakeet Ultra on the same recordings in Spanish, French and German, and counted mistakes the same way as in the English test: word error rate, with a 95% confidence interval. Lower is better.</p>
+      </div>
+      <div class="tablewrap">
+        <table class="data">
+          <caption class="sr-only">Word error rate by language and engine</caption>
+          <thead><tr><th scope="col">Language</th><th class="n" scope="col">Apple</th><th class="n" scope="col">Parakeet Ultra</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Spanish</th><td class="n">4.0% (3.4% to 4.5%)</td><td class="n"><strong>2.8%</strong> (2.4% to 3.3%)</td></tr>
+            <tr><th scope="row">French</th><td class="n">7.5% (6.7% to 8.3%)</td><td class="n"><strong>4.5%</strong> (3.9% to 5.1%)</td></tr>
+            <tr><th scope="row">German</th><td class="n">7.2% (6.5% to 7.9%)</td><td class="n"><strong>4.4%</strong> (3.8% to 5.0%)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="prose" style="margin-top:1.5rem">
+        <p>Parakeet made 30 to 40% fewer mistakes in every language, and the ranges do not overlap. That is why 1.1.0 uses it.</p>
+      </div>
+      <p class="note src">These recordings are people reading sentences in quiet rooms, not conversations, so every engine scores much better here than in real life. The ranking is the useful part. Measured on a Mac, not an iPhone. Source: <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/language-accuracy-comparison.md">language accuracy report</a> (FLEURS test sets, CC BY 4.0).</p>
+    </div>
+  </section>
+  <section class="band" id="translation" aria-labelledby="tr-h">
+    <div class="wrap">
+      <h2 id="tr-h">How we chose the translation engine</h2>
+      <p class="intro">Three engines can translate on the phone with no internet. We tested all three on the same sentences.</p>
+      <div class="prose">
+        <p>We score translations with <strong>chrF</strong>: how closely a translation matches one written by a person, from 0 to 100. Higher is better. We tested two kinds of text: ordinary written sentences, and the same sentences the way captions arrive, in lower case with no punctuation.</p>
+      </div>
+      <div class="tablewrap">
+        <table class="data">
+          <caption class="sr-only">Translation score (chrF) by engine, English into each language</caption>
+          <thead><tr><th scope="col">English into</th><th scope="col">Text</th><th class="n" scope="col">Apple</th><th class="n" scope="col">OPUS-MT</th><th class="n" scope="col">Google ML Kit</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Spanish</th><td>written</td><td class="n"><strong>56.8</strong></td><td class="n">55.0</td><td class="n">53.2</td></tr>
+            <tr><th scope="row">Spanish</th><td>caption-style</td><td class="n"><strong>54.8</strong></td><td class="n">51.2</td><td class="n">51.8</td></tr>
+            <tr><th scope="row">French</th><td>written</td><td class="n"><strong>73.2</strong></td><td class="n">69.8</td><td class="n">65.4</td></tr>
+            <tr><th scope="row">French</th><td>caption-style</td><td class="n"><strong>69.7</strong></td><td class="n">63.0</td><td class="n">62.6</td></tr>
+            <tr><th scope="row">German</th><td>written</td><td class="n"><strong>68.2</strong></td><td class="n">63.6</td><td class="n">59.0</td></tr>
+            <tr><th scope="row">German</th><td>caption-style</td><td class="n"><strong>65.9</strong></td><td class="n">58.2</td><td class="n">56.7</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="prose" style="margin-top:1.5rem">
+        <p>Apple's translation scored highest everywhere, and it lost the least when the punctuation was missing, which is how captions arrive. All three were fast enough for live captions. That is why 1.1.0 uses Apple's translation. We are now checking every other language it supports.</p>
+      </div>
+      <p class="note src">Sentences from FLORES-200 (1,012 per language). Measured on a Mac, not an iPhone. Source: <a href="https://github.com/G-Eskayo/clarity-captions/blob/feature/159-translation-eval/docs/perf/translation-comparison.md">translation comparison report</a>, with every confidence interval and a second scoring method.</p>
+    </div>
+  </section>
+  </div>
 </main>
 
 <footer>
@@ -244,5 +326,35 @@
     <p>Seal Speak is made by Gil Eskayo. &copy; 2026.</p>
   </div>
 </footer>
+<script>
+// Version switcher: show one version at a time. Without JavaScript every version shows, one after another.
+// A link to anything inside a version (#engine, #languages) opens that version and scrolls to it.
+(() => {
+  const nav = document.querySelector('.version-nav')
+  if (!nav) return
+  const versions = [...document.querySelectorAll('.version')]
+  const links = [...nav.querySelectorAll('a')]
+  const show = (scroll, instant) => {
+    const id = decodeURIComponent(location.hash.slice(1))
+    const target = id ? document.getElementById(id) : null
+    const version = (target && target.closest('.version')) || document.getElementById(nav.dataset.default)
+    for (const v of versions) v.hidden = v !== version
+    for (const a of links) {
+      if (a.getAttribute('href') === '#' + version.id) a.setAttribute('aria-current', 'page')
+      else a.removeAttribute('aria-current')
+    }
+    // On first load the browser's own jump happened while the version was still hidden, so jump at once.
+    if (scroll && target && !target.classList.contains('version')) target.scrollIntoView(instant ? { behavior: 'instant' } : undefined)
+  }
+  for (const a of links) a.addEventListener('click', (e) => {
+    e.preventDefault()
+    history.pushState(null, '', a.getAttribute('href'))
+    show(false)
+  })
+  addEventListener('popstate', () => show(false))
+  addEventListener('hashchange', () => show(true))
+  show(true, true)
+})()
+</script>
 </body>
 </html>
