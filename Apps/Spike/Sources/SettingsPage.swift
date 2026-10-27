@@ -22,6 +22,9 @@ struct SettingsPage: View {
     var onChooseCaptionLanguage: (() -> Void)?
     var onTranslation: ((Bool) -> Void)?
     var onChooseTranslationTarget: (() -> Void)?
+    /// The translation purchase (#53): StoreKit is wired with the feature; the mock-up only shows the two states.
+    var onBuyTranslation: (() -> Void)?
+    var onRestorePurchases: (() -> Void)?
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     /// Beta installs only (ADR 0023): the "Test version" section.
     @ObservedObject private var beta = BetaFeedbackCenter.shared
@@ -39,6 +42,10 @@ struct SettingsPage: View {
                         preview
                         section("Colors", first: true) { colorsRow }
                         section("Size") { sizeRow }
+                        // Translation is a one-time purchase (owner, #171): bought or not, it keeps this one place above
+                        // Lettering, with the same shape, so buying it changes what's in the space, never the layout.
+                        section("Translate captions", note: language.translationOwned ? translationNote : translationOfferNote) { translationRows }
+                            .id("translation")
                         section("Lettering", note: String(localized: "OpenDyslexic was made for people with dyslexia. Atkinson Hyperlegible was designed by the Braille Institute for low vision.")) { letteringRows }
                             .id("lettering")
                         section("Stop when it's quiet") { idleStopRow }.id("idleStop")
@@ -46,8 +53,6 @@ struct SettingsPage: View {
                         if showsTourReplay { section("How to use Seal") { tourRow }.id("tour") }
                         section("Caption language", note: String(localized: "Seal captions the language people are speaking. Change it when you're somewhere they speak another language.")) { captionLanguageRow }
                             .id("language")
-                        section("Translate captions", note: translationNote) { translationRows }
-                            .id("translation")
                         section("About") { aboutRows }.id("about")
                     }
                     .padding(.horizontal, 20)
@@ -177,6 +182,30 @@ struct SettingsPage: View {
     }
 
     @ViewBuilder private var translationRows: some View {
+        if language.translationOwned { ownedTranslationRows } else { translationOfferRows }
+    }
+
+    /// Not bought yet: the same pill row the bought section starts with, so the section keeps its size.
+    private var translationOfferRows: some View {
+        HStack(spacing: 8) {
+            offerPill(String(format: String(localized: "Unlock · %@"), language.translationPrice), filled: true) { onBuyTranslation?() }
+            offerPill(String(localized: "Restore purchase"), filled: false) { onRestorePurchases?() }
+        }
+    }
+
+    private func offerPill(_ title: String, filled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(verbatim: title)
+                .font(scaled(15, .bold))
+                .padding(.vertical, 9)
+                .padding(.horizontal, 18)
+                .foregroundStyle(filled ? style.background.color : style.text.color)
+                .background(filled ? style.text.color : softFill, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder private var ownedTranslationRows: some View {
         HStack(spacing: 8) {
             ForEach([false, true], id: \.self) { on in
                 let selected = language.translationOn == on
@@ -212,6 +241,10 @@ struct SettingsPage: View {
                 }
             }
         }
+    }
+
+    private var translationOfferNote: String {
+        String(format: String(localized: "Read what people say in your own language, translated on this %@ with no internet. Each caption shows its translation on top, with what was said underneath. One-time purchase."), LanguageSettingsState.deviceWord)
     }
 
     private var translationNote: String {

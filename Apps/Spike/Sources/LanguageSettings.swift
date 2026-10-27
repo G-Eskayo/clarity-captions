@@ -11,6 +11,10 @@ struct LanguageSettingsState: Equatable {
     var target: Locale?
     /// The translation language pack for this pair: nil when it's on the device, else 0...1 while it downloads.
     var downloadProgress: Double?
+    /// Translation is a one-time in-app purchase (owner, #171). Until StoreKit is wired (#53) nobody owns it.
+    var translationOwned = false
+    /// The App Store's price for it, as StoreKit shows it; the mock-up uses the planned US price.
+    var translationPrice = "$1.99"
 
     /// The saved choices, with the device's language filling in what hasn't been picked.
     static func current(store: CaptionLanguageStore = CaptionLanguageStore(),
@@ -22,7 +26,8 @@ struct LanguageSettingsState: Equatable {
                                           target: store.translationTarget ?? CaptionLanguage.translationTarget(captions: captions, preferred: preferred))
         #if DEBUG
         if let id = DemoMode.language { state.captions = Locale(identifier: id); state.followsDevice = id == preferred.first }
-        if let id = DemoMode.translate { state.translationOn = true; state.target = Locale(identifier: id) }
+        if let id = DemoMode.translate { state.translationOwned = true; state.translationOn = true; state.target = Locale(identifier: id) }
+        if DemoMode.translationOwned { state.translationOwned = true }
         state.downloadProgress = DemoMode.translateProgress
         #endif
         return state
