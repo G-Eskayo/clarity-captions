@@ -17,7 +17,7 @@ struct SettingsPage: View {
     let onGear: () -> Void
     /// Opens one of Settings' own pages.
     let onOpen: (AppScreen) -> Void
-    /// #37 / #53: caption language and translation, at the bottom of Settings (owner, 2026-10-27).
+    /// #37 / #53: caption language and translation, at the bottom of Settings just above About (owner, PR #171 decisions).
     var language: LanguageSettingsState = .current()
     var onChooseCaptionLanguage: (() -> Void)?
     var onTranslation: ((Bool) -> Void)?
@@ -44,11 +44,11 @@ struct SettingsPage: View {
                         section("Stop when it's quiet") { idleStopRow }.id("idleStop")
                         if beta.isOn { testVersionSection.id("betaFeedback") }
                         if showsTourReplay { section("How to use Seal") { tourRow }.id("tour") }
-                        section("About") { aboutRows }.id("about")
                         section("Caption language", note: String(localized: "Seal captions the language people are speaking. Change it when you're somewhere they speak another language.")) { captionLanguageRow }
                             .id("language")
                         section("Translate captions", note: translationNote) { translationRows }
                             .id("translation")
+                        section("About") { aboutRows }.id("about")
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 30)
@@ -122,10 +122,13 @@ struct SettingsPage: View {
                 Text(String(localized: "Speaker 1"))
                     .font(.headline)
                     .foregroundStyle(palette[0])
-                Text(LanguageSettingsState.sample(language.captions) ?? String(localized: "Let's book a table for seven."))
-                    .font(style.font(for: SystemTextSizeCategory(dynamicTypeSize)))
+                let original = LanguageSettingsState.sample(language.captions) ?? String(localized: "Let's book a table for seven.")
                 if language.translationOn, let target = language.target, let line = LanguageSettingsState.sample(target) {
                     translatedLine(line)
+                    originalUnderTranslation(original)
+                } else {
+                    Text(original)
+                        .font(style.font(for: SystemTextSizeCategory(dynamicTypeSize)))
                 }
             }
             .accessibilityElement(children: .combine)
@@ -137,17 +140,23 @@ struct SettingsPage: View {
         .padding(.bottom, 6)
     }
 
-    /// #53: a translated line sits under its caption, smaller, slanted and muted, behind a translate mark, so nobody
-    /// takes it for what was said. The original is never hidden.
+    /// #53 (owner, PR #171 decisions): the translation is the line that gets read, so it sits on top at caption size,
+    /// behind a translate mark so nobody takes it for what was said. The original stays, smaller, underneath.
     private func translatedLine(_ text: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Image(systemName: "translate").font(scaled(13, .bold))
-            Text(text).font(scaled(17).italic())
+            Image(systemName: "translate").font(scaled(15, .bold)).foregroundStyle(muted)
+            Text(text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize)))
         }
-        .foregroundStyle(muted)
-        .padding(.top, 2)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(String(localized: "Translated: ") + text)
+    }
+
+    private func originalUnderTranslation(_ text: String) -> some View {
+        Text(text)
+            .font(scaled(17))
+            .foregroundStyle(muted)
+            .padding(.top, 2)
+            .accessibilityLabel(String(localized: "Said: ") + text)
     }
 
     private var captionLanguageRow: some View {
@@ -159,7 +168,7 @@ struct SettingsPage: View {
                         .font(scaled(12, .bold)).foregroundStyle(muted)
                 }
                 Spacer()
-                Text("›").font(scaled(20, .heavy)).foregroundStyle(muted)
+                Text(verbatim: "›").font(scaled(20, .heavy)).foregroundStyle(muted)
             }
             .contentShape(Rectangle())
         }
@@ -190,7 +199,7 @@ struct SettingsPage: View {
                     Text(language.target.map(LanguageSettingsState.name) ?? String(localized: "Choose a language"))
                         .font(scaled(18, .heavy))
                     Spacer()
-                    Text("›").font(scaled(20, .heavy)).foregroundStyle(muted)
+                    Text(verbatim: "›").font(scaled(20, .heavy)).foregroundStyle(muted)
                 }
                 .contentShape(Rectangle())
             }
@@ -206,7 +215,7 @@ struct SettingsPage: View {
     }
 
     private var translationNote: String {
-        String(localized: "Each caption gets a translated line under it. What was said always stays. The first time, the language pack downloads once (about 200 MB); after that it works with no internet.")
+        String(localized: "Each caption shows its translation on top, with what was said in smaller text underneath. What was said always stays. The first time, the language pack downloads once (about 200 MB); after that it works with no internet.")
     }
 
     private func section<C: View>(_ title: LocalizedStringKey, first: Bool = false, note: String? = nil, @ViewBuilder _ content: () -> C) -> some View {

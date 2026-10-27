@@ -21,9 +21,9 @@ public enum CaptionLanguage {
             if let exact = supported.first(where: { sameLanguage($0, wanted) && $0.region == wanted.region && wanted.region != nil }) {
                 return .use(exact)
             }
-            let sameLanguage = supported.filter { sameLanguage($0, wanted) }
-            if sameLanguage.count == 1 { return .use(sameLanguage[0]) }
-            if sameLanguage.count > 1 { return .ask(suggested: sameLanguage) }
+            let matches = supported.filter { sameLanguage($0, wanted) }
+            if matches.count == 1 { return .use(matches[0]) }
+            if matches.count > 1 { return .ask(suggested: matches) }
         }
         return .ask(suggested: [])
     }

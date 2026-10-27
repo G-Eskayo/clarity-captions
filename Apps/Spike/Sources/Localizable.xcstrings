@@ -859,6 +859,17 @@
         }
       }
     },
+    "Into" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Into"
+          }
+        }
+      }
+    },
     "Is something covering the microphone?" : {
       "extractionState": "manual",
       "localizations": {
