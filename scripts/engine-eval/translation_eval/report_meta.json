@@ -1,11 +1,10 @@
 {
   "notes": [
-    "Machines: OPUS-MT ran on the M4 Mac mini CPU (CTranslate2 int8, 4 threads, beam 4, sentence by sentence; `opus-mt-greedy` is the base model with beam 1). ML Kit ran in an arm64 Android 15 emulator (Google APIs image) on the same M4, because its iOS frameworks have no arm64 Simulator slice and the iOS 26.5 Simulator no longer runs x86_64 apps. Times are Mac and emulator times, not iPhone times.",
-    "Spanish references are Latin American (FLORES `spa_Latn`) and Mexican (WMT24++ `es_MX`); ML Kit and OPUS-MT produce general Spanish. Any dialect gap costs both engines alike.",
-    "Timing comes from a separate pass over the caption lines, one engine at a time. OPUS-MT's was taken with the M4 quiet (load average about 5); ML Kit's while another test loaded the machine (load average 16–28), under which OPUS-MT beam 4 measured 111 ms median instead of 65 ms."
+    "Machines: Apple's Translation framework ran on the M4 Mac mini under macOS 26.5.1 (`TranslationSession(installedSource:target:)`, one segment at a time, languages installed by hand in System Settings). OPUS-MT ran on the M4 Mac mini CPU (CTranslate2 int8, 4 threads, beam 4, sentence by sentence; `opus-mt-greedy` is the base model with beam 1). ML Kit ran in an arm64 Android 15 emulator (Google APIs image) on the same M4, because its iOS frameworks have no arm64 Simulator slice and the iOS 26.5 Simulator no longer runs x86_64 apps. Times are Mac and emulator times, not iPhone times.",
+    "Spanish references are Latin American (FLORES `spa_Latn`) and Mexican (WMT24++ `es_MX`); Apple, ML Kit and OPUS-MT produce general Spanish. Any dialect gap costs every engine alike.",
+    "Timing comes from a separate pass over the caption lines, one engine at a time. OPUS-MT's and Apple's were taken with the M4 quiet (load average about 5); ML Kit's while another test loaded the machine (load average 16–28), under which OPUS-MT beam 4 measured 111 ms median instead of 65 ms."
   ],
   "missing": {
-    "apple": "Apple's en→es/fr/de languages are *supported, not installed* on the M4 Mac mini, and only a person can install them (system sheet or System Settings → General → Language & Region → Translation Languages). The Translation framework doesn't run in the iOS Simulator. Asked on #159; the Apple rows are added when the languages are in.",
     "bergamot": "Firefox's Bergamot runtime has no arm64 macOS build (the `bergamot` wheel is x86_64 only), so it wasn't run in this round. Its models are MPL 2.0 and Firefox ships it on Android, so it stays a candidate."
   },
   "delivery": [
@@ -13,7 +12,7 @@
       "engine": "Apple Translation",
       "who": "the system",
       "ui": "**yes**: a system download sheet (`prepareTranslation()` or first use), or the person installs it in Settings",
-      "notes": "The app can't download silently, restyle the sheet or delete a language. Languages are shared with Apple's Translate app."
+      "notes": "The app can't download silently, restyle the sheet or delete a language. Languages are shared with Apple's Translate app. On the M4, en→es is a shared encoder asset plus an English and a Spanish asset, about 286 MB on disk (about 221 MB zipped); each further language in the same family adds about 80 MB. None of it counts against the app's size."
     },
     {
       "engine": "ML Kit",

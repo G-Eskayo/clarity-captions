@@ -7,116 +7,123 @@ Evidence log: E20 (licences, terms, delivery), E21 (results).
 
 ## Summary
 
-- **The open OPUS-MT models translate better than Google's ML Kit in Spanish, French and German** on written text:
-  +1.8 to +4.6 chrF, every paired 95% interval above zero, and COMET 0.04 to 0.11 higher.
-- **On caption-style text (lowercase, no punctuation) the two are close.** ML Kit is 0.5 ahead on Spanish FLORES and
-  they tie in French. OPUS-MT leads in German, by 10 chrF on the unpunctuated speech passages.
-- **Punctuation matters more than the engine.** Every engine lost 1 to 15 chrF when it got the same words without
-  punctuation. Parakeet (1.1) writes punctuation, so 1.3 should translate Parakeet's punctuated text a sentence at a
-  time.
-- **Everything is fast enough for captions.** OPUS-MT base with greedy decoding took 35 ms per caption line (p95
-  107 ms) on the M4 CPU. ML Kit took 23 ms (p95 59 ms) in an Android emulator. That's Mac speed, not iPhone speed.
-- **Only Apple puts up a system pop-up.** Its languages come through a system download sheet or Settings. ML Kit
-  and OPUS-MT download under the app's control. ML Kit also sends usage metrics to Google and requires Google
-  attribution.
-- **Apple wasn't measured yet:** its languages aren't installed on the M4, and only a person can install them
-  (asked on #159).
+- **Apple's Translation framework translates best in Spanish, French and German, on every set.** It beat the next
+  best engine in each cell, and every paired 95% interval excludes zero. Against OPUS-MT base, the open model we
+  could ship ourselves, it led by +1.8 to +4.5 chrF on written text and +3.6 to +7.9 on caption-style text.
+  COMET agrees.
+- **Apple loses the least when punctuation is missing.** Every engine scores lower on caption-style text, but Apple
+  drops 2 to 7 chrF where the others drop up to 15. On German caption-style speech passages, Apple scores 60.5,
+  OPUS-MT 52.6 and ML Kit 42.3.
+- **OPUS-MT still beats Google's ML Kit on written text** in all three languages, by +1.8 to +4.6 chrF.
+- **Everything is fast enough for captions.** Apple took 59 ms per caption line (p95 89 ms) on the M4. OPUS-MT base
+  with greedy decoding took 35 ms (p95 107 ms), and ML Kit took 23 ms (p95 59 ms) in an Android emulator. These are
+  Mac numbers, not iPhone numbers.
+- **Only Apple puts up a system pop-up.** Its languages come through a system download sheet or Settings, and the
+  app can't download them itself. In return the app ships no model and no runtime: about 286 MB per language pair
+  lives in the system, shared with Apple's Translate app. ML Kit and OPUS-MT download under the app's control. ML
+  Kit also sends usage metrics to Google and requires Google attribution.
 
 ## Results, written text
 
 chrF (0–100, higher is better) on FLORES-200 devtest (1,012 sentences) and WMT24++ speech transcripts (111
 passages). COMET (wmt22-comet-da) in brackets. 95% intervals are in the full tables.
 
-| Pair | Set | OPUS-MT base | OPUS-MT tc-big | ML Kit | OPUS-MT base − ML Kit (95% CI) |
-|---|---|---|---|---|---|
-| en-es | FLORES | 55.0 (0.849) | **56.5** (0.858) | 53.2 (0.805) | +1.8 (+1.4 to +2.1) |
-| en-es | speech | 68.9 (0.788) | **69.8** (0.792) | 65.2 (0.723) | +3.6 (+2.8 to +4.4) |
-| en-fr | FLORES | 69.8 (0.861) | **72.4** (0.877) | 65.4 (0.802) | +4.4 (+3.9 to +4.9) |
-| en-fr | speech | 62.2 (0.753) | **63.3** (0.764) | 59.5 (0.672) | +2.7 (+1.9 to +3.6) |
-| en-de | FLORES | **63.6** (0.847) | – | 59.0 (0.759) | +4.6 (+4.1 to +5.2) |
-| en-de | speech | **61.3** (0.764) | – | 57.4 (0.656) | +4.0 (+3.0 to +4.9) |
+| Pair | Set | Apple | OPUS-MT base | OPUS-MT tc-big | ML Kit | Apple − OPUS-MT base (95% CI) |
+|---|---|---|---|---|---|---|
+| en-es | FLORES | **56.8** (0.863) | 55.0 (0.849) | 56.5 (0.858) | 53.2 (0.805) | +1.8 (+1.4 to +2.1) |
+| en-es | speech | **71.6** (0.806) | 68.9 (0.788) | 69.8 (0.792) | 65.2 (0.723) | +2.7 (+2.0 to +3.4) |
+| en-fr | FLORES | **73.2** (0.879) | 69.8 (0.861) | 72.4 (0.877) | 65.4 (0.802) | +3.3 (+2.9 to +3.8) |
+| en-fr | speech | **65.3** (0.778) | 62.2 (0.753) | 63.3 (0.764) | 59.5 (0.672) | +3.1 (+2.4 to +3.8) |
+| en-de | FLORES | **68.2** (0.883) | 63.6 (0.847) | – | 59.0 (0.759) | +4.5 (+4.0 to +5.1) |
+| en-de | speech | **64.3** (0.795) | 61.3 (0.764) | – | 57.4 (0.656) | +3.0 (+2.3 to +3.6) |
 
-There is no tc-big model for en-de.
+There is no tc-big model for en-de. Apple also beat tc-big, by smaller margins: +0.3 (en-es FLORES, CI +0.0 to
++0.6) to +2.0 chrF.
 
 ## Results, caption-style text
 
 The same sources and references, lowercased with sentence punctuation removed, which is what a caption engine
 without punctuation would hand over.
 
-| Pair | Set | OPUS-MT base | OPUS-MT tc-big | ML Kit | OPUS-MT base − ML Kit (95% CI) |
-|---|---|---|---|---|---|
-| en-es | FLORES | 51.2 (0.784) | **53.1** (0.813) | 51.8 (0.782) | −0.5 (−1.0 to −0.1) |
-| en-es | speech | **59.9** (0.638) | 56.5 (0.652) | 58.3 (0.605) | +1.6 (+0.3 to +3.0) |
-| en-fr | FLORES | 63.0 (0.784) | **66.5** (0.818) | 62.6 (0.765) | +0.4 (−0.2 to +1.0) |
-| en-fr | speech | **54.4** (0.596) | 51.6 (0.603) | 53.8 (0.549) | +0.6 (−0.4 to +1.6) |
-| en-de | FLORES | **58.2** (0.751) | – | 56.7 (0.721) | +1.5 (+0.9 to +2.1) |
-| en-de | speech | **52.6** (0.553) | – | 42.3 (0.475) | +10.2 (+8.1 to +12.4) |
+| Pair | Set | Apple | OPUS-MT base | OPUS-MT tc-big | ML Kit | Apple − OPUS-MT base (95% CI) |
+|---|---|---|---|---|---|---|
+| en-es | FLORES | **54.8** (0.840) | 51.2 (0.784) | 53.1 (0.813) | 51.8 (0.782) | +3.6 (+3.2 to +3.9) |
+| en-es | speech | **65.8** (0.744) | 59.9 (0.638) | 56.5 (0.652) | 58.3 (0.605) | +5.9 (+5.0 to +6.7) |
+| en-fr | FLORES | **69.7** (0.850) | 63.0 (0.784) | 66.5 (0.818) | 62.6 (0.765) | +6.7 (+6.2 to +7.3) |
+| en-fr | speech | **58.7** (0.678) | 54.4 (0.596) | 51.6 (0.603) | 53.8 (0.549) | +4.3 (+2.9 to +5.4) |
+| en-de | FLORES | **65.9** (0.861) | 58.2 (0.751) | – | 56.7 (0.721) | +7.7 (+7.1 to +8.4) |
+| en-de | speech | **60.5** (0.734) | 52.6 (0.553) | – | 42.3 (0.475) | +7.9 (+6.8 to +9.1) |
 
 On the speech passages (median 68 words) there is no punctuation to split on, so these cells also test long
-unpunctuated input, which a caption app wouldn't send. tc-big suffers most there.
+unpunctuated input, which a caption app wouldn't send. OPUS-MT tc-big suffers most there.
 
 ## Speed, size and delivery
 
 | Engine (en-es) | Median ms per line | p95 ms | Size per pair | Model reaches the phone by | System pop-up |
 |---|---|---|---|---|---|
+| Apple Translation | 59 | 89 | 286 MB on disk, 221 MB zipped, held by the system | system sheet or Settings | **yes** |
 | OPUS-MT base, greedy | 35 | 107 | 82 MB on disk, 69 MB zipped | app download or bundle, our host | none |
 | OPUS-MT base, beam 4 | 65 | 198 | same | same | none |
 | OPUS-MT tc-big, beam 4 | 102 | 317 | 239 MB, 215 MB zipped | same | none |
 | ML Kit | 23 | 59 | 46 MB (both directions) | app-controlled download from Google | none |
-| Apple Translation | not run | | system-managed | system sheet or Settings | **yes** |
 
-Speed: 760 EdAcc caption lines, one at a time, two repeats, model load and warm-up excluded. OPUS-MT ran on the
-M4 CPU (CTranslate2 int8, 4 threads) with the machine quiet. ML Kit ran in an arm64 Android 15 emulator on the same
-M4 while another test was loading the machine (load average 16–28). Under that load OPUS-MT beam 4 measured 111 ms,
-so ML Kit's quiet number is probably lower still. Every engine gave identical text on both repeats. Left
-untranslated (output equal to input), out of 760: OPUS-MT 5, ML Kit 7, mostly "oh wow" or "okay okay". One of ML
-Kit's was a whole 25-word sentence.
+Speed: 760 EdAcc caption lines, one at a time, two repeats, model load and warm-up excluded. Apple and OPUS-MT ran
+on the M4 with the machine quiet (load average about 5); Apple ran through `TranslationSession` on macOS 26.5.1,
+OPUS-MT on the CPU (CTranslate2 int8, 4 threads). ML Kit ran in an arm64 Android 15 emulator on the same M4 while
+another test was loading the machine (load average 16–28). Under that load OPUS-MT beam 4 measured 111 ms, so ML
+Kit's quiet number is probably lower still. Every engine gave identical text on both repeats. Left untranslated
+(output equal to input), out of 760: Apple 2, OPUS-MT 5, ML Kit 7, mostly "oh wow" or "okay okay". One of ML Kit's
+was a whole 25-word sentence.
 
+Apple's size is what the system installed for en→es: a shared encoder for its English, Spanish, German, Italian,
+French, Portuguese and Dutch family, plus an English and a Spanish asset. Each further language in that family adds
+about 80 MB. The system holds it, so none of it counts against Seal Speak's download, and a person who already uses
+Apple's Translate app may have it. The zipped size is our estimate of the download; Apple doesn't show the real one.
 ML Kit downloaded en-es in 6 s on the M4's connection. Its folder holds both directions and dictionaries.
 
 ## Things we learned on the way
 
 - **Marian models drop sentences from long input.** Fed whole 68-word passages, OPUS-MT left 13 (base) and 21
   (tc-big) of 111 Spanish outputs under 70% of the reference length, against 0 for ML Kit, which splits on its own.
-  Translating sentence by sentence fixes it (`translation_eval.split`); the integration must do the same.
+  Translating sentence by sentence fixes it (`translation_eval.split`); an OPUS-MT integration must do the same.
+  Apple splits on its own too.
 - **Greedy decoding costs nothing here.** FLORES 54.8 against 55.0 for beam 4 (COMET 0.847 against 0.849), at about
   half the time.
 - **ML Kit can't run in the iOS Simulator on Apple silicon.** MLKitTranslate 8.0.0 has no arm64 Simulator slice, and
   the iOS 26.5 Simulator refuses x86_64 apps. An iOS ML Kit build would need a real device for every test.
 - **ML Kit keeps a telemetry queue.** Its `datatransport` event database reached 10 MB over this test's runs.
+- **Apple's framework needs a person in the loop even for testing.** The installed-languages session never shows the
+  sheet, so a Mac test run needs the languages installed by hand in Settings first.
 - One sample line suggests ML Kit softens profanity ("I wouldn't learn shit" became "I wouldn't learn"), while OPUS-MT
   kept it. That's one example, not a measurement, but captions for a hard-of-hearing person should say what was said.
-  Worth a check in the iPhone spike.
+  Worth checking for whichever engine ships.
 
 ## Caveats
 
-- Mac CPU and Android emulator, not iPhone. Absolute times will differ on a phone; the ranking of quality won't.
+- Mac CPU and Android emulator, not iPhone. Absolute times will differ on a phone; the quality ranking shouldn't,
+  assuming iOS uses the same Apple language assets as macOS (likely, not verified).
 - FLORES is written Wikipedia-style prose. WMT24++ speech passages are real transcripts, but paragraph-length.
 - The Spanish references are Latin American (FLORES) and Mexican (WMT24++). The caption-style copies are synthetic.
   Real caption lines (EdAcc) have no reference translation, so they measure speed and failures only.
-- Any engine may have seen FLORES or WMT data in training. That can't be checked for Google.
+- Any engine may have seen FLORES or WMT data in training. That can't be checked for Apple or Google.
 - Firefox's Bergamot wasn't run because there's no arm64 macOS build. It's MPL 2.0 and ships in Firefox on Android,
-  so it stays a fallback candidate.
+  so it stays a candidate for Android.
 
 ## Recommendation for 1.3
 
-**Use OPUS-MT base models (one per language pair, about 65 MB zipped each), with greedy decoding, translating
-Parakeet's punctuated text a sentence at a time. The app downloads them from our own host, behind its own UI.**
-Before the ADR, run an iPhone spike: pick the runtime (a Core ML conversion of the Marian model, or CTranslate2 built
-for iOS) and measure time per line, memory and battery on a phone.
+**Use Apple's Translation framework for 1.3, translating Parakeet's punctuated text.** It's the most accurate engine
+in all three languages on every set, it needs no model or runtime in the app, and it's fast enough. This changes the
+earlier recommendation (OPUS-MT), which was written before Apple could be measured.
 
-Why:
+This is ADR 0026's path. A feature may ship first on Apple's framework, and a cross-platform engine is preferred only
+once it matches or beats Apple. On this test, none does.
 
-1. **Best measured quality.** OPUS-MT beats ML Kit on written text in all three languages, by margins well outside
-   the noise. Text from Parakeet is punctuated, so the written-text results are the ones that apply.
-2. **No system pop-up, no third party.** The app owns the download and the storage. ML Kit would add Google
-   telemetry to the privacy label and Google branding to the screen. Apple's system sheet breaks the no-pop-up rule
-   whatever its quality.
-3. **The same model on Android.** It fits ADR 0026: one model and one behaviour on both platforms.
-4. **Cost:** we ship and maintain a runtime ourselves, and licences need credits (CC BY 4.0 for en-de). The tc-big
-   models aren't worth 3× the size for 1 to 3 chrF.
+The cost is the system sheet. Seal Speak shows no system pop-ups (E15), and Apple's languages arrive only through
+its download sheet or Settings, which the app can't restyle or replace. The 1.3 design has to decide when the sheet
+may appear, as an exception to that rule. That is Gil's call; this test only prices it. Before the ADR, an iPhone
+check should confirm the time per line and memory use, and that the sheet appears when expected (a forum report says
+it sometimes doesn't on first use, E15).
 
-Fallback: if the iPhone spike fails (too slow, too much memory or battery), use ML Kit. It is the turnkey option,
-with the attribution and the privacy disclosure. Apple's numbers can be added with one command once its languages
-are installed (`swift run --package-path Packages/EngineEval translation-eval ...`). Only a large quality win could
-outweigh its system sheet.
+**OPUS-MT base is the cross-platform engine** for an Android version and the fallback if the sheet is ruled out. It
+is second on written text, needs no pop-up, and has no third party, at the cost of shipping a runtime and about 65 MB
+zipped per language. **ML Kit is third:** it loses to both on quality and adds Google telemetry and attribution.

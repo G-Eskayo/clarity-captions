@@ -98,8 +98,11 @@ timing is Mac CPU timing, not phone timing.
 
 Apple's framework does not run in the iOS Simulator, and on macOS it only translates once the language is
 installed, which takes a person: the system download sheet or **System Settings → General → Language & Region →
-Translation Languages**. On 2026-10-26 the M4 had en→es, fr and de as *supported, not installed*, so #159 asks Gil
-to install them; the Apple rows are added when he has.
+Translation Languages**. On 2026-10-26 the M4 first had en→es, fr and de as *supported, not installed*, so #159
+asked Gil to install them. Gil installed them in Settings later that day, `LanguageAvailability` then reported all
+three as *installed*, and the Apple rows were run on the same sets. Apple feeds whole segments to the framework,
+which splits sentences itself, as ML Kit does. Apple's size per pair is the installed system assets
+(`/System/Library/AssetsV2/com_apple_MobileAsset_UAF_Translation_Assets`), measured with `edacc_eval.sizes`.
 
 **Sentence splitting for OPUS-MT.** Marian models translate a sentence at a time and silently drop sentences from
 long multi-sentence input: on the WMT24++ speech passages (median 68 words) the first unsplit run left 13 (base) and
