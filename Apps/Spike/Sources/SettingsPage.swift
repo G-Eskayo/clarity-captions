@@ -17,6 +17,11 @@ struct SettingsPage: View {
     let onGear: () -> Void
     /// Opens one of Settings' own pages.
     let onOpen: (AppScreen) -> Void
+    /// #37 / #53: caption language and translation, at the bottom of Settings (owner, 2026-10-27).
+    var language: LanguageSettingsState = .current()
+    var onChooseCaptionLanguage: (() -> Void)?
+    var onTranslation: ((Bool) -> Void)?
+    var onChooseTranslationTarget: (() -> Void)?
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     /// Beta installs only (ADR 0023): the "Test version" section.
     @ObservedObject private var beta = BetaFeedbackCenter.shared
@@ -40,6 +45,10 @@ struct SettingsPage: View {
                         if beta.isOn { testVersionSection.id("betaFeedback") }
                         if showsTourReplay { section("How to use Seal") { tourRow }.id("tour") }
                         section("About") { aboutRows }.id("about")
+                        section("Caption language", note: String(localized: "Seal captions the language people are speaking. Change it when you're somewhere they speak another language.")) { captionLanguageRow }
+                            .id("language")
+                        section("Translate captions", note: translationNote) { translationRows }
+                            .id("translation")
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 30)
@@ -113,8 +122,11 @@ struct SettingsPage: View {
                 Text(String(localized: "Speaker 1"))
                     .font(.headline)
                     .foregroundStyle(palette[0])
-                Text("Let's book a table for seven.")
+                Text(LanguageSettingsState.sample(language.captions) ?? String(localized: "Let's book a table for seven."))
                     .font(style.font(for: SystemTextSizeCategory(dynamicTypeSize)))
+                if language.translationOn, let target = language.target, let line = LanguageSettingsState.sample(target) {
+                    translatedLine(line)
+                }
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel(String(localized: "Sample caption: Speaker 1, Let's book a table for seven."))
@@ -123,6 +135,78 @@ struct SettingsPage: View {
         .padding(.horizontal, 4)
         .padding(.top, 16)
         .padding(.bottom, 6)
+    }
+
+    /// #53: a translated line sits under its caption, smaller, slanted and muted, behind a translate mark, so nobody
+    /// takes it for what was said. The original is never hidden.
+    private func translatedLine(_ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Image(systemName: "translate").font(scaled(13, .bold))
+            Text(text).font(scaled(17).italic())
+        }
+        .foregroundStyle(muted)
+        .padding(.top, 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(String(localized: "Translated: ") + text)
+    }
+
+    private var captionLanguageRow: some View {
+        Button { onChooseCaptionLanguage?() } label: {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(LanguageSettingsState.name(language.captions)).font(scaled(18, .heavy))
+                if language.followsDevice {
+                    Text(String(format: String(localized: "· matches this %@"), LanguageSettingsState.deviceWord))
+                        .font(scaled(12, .bold)).foregroundStyle(muted)
+                }
+                Spacer()
+                Text("›").font(scaled(20, .heavy)).foregroundStyle(muted)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(String(localized: "Caption language, ") + LanguageSettingsState.name(language.captions))
+    }
+
+    @ViewBuilder private var translationRows: some View {
+        HStack(spacing: 8) {
+            ForEach([false, true], id: \.self) { on in
+                let selected = language.translationOn == on
+                Button { onTranslation?(on) } label: {
+                    Text(on ? String(localized: "On") : String(localized: "Off"))
+                        .font(scaled(15, .bold))
+                        .padding(.vertical, 9)
+                        .padding(.horizontal, 18)
+                        .foregroundStyle(selected ? style.background.color : style.text.color)
+                        .background(selected ? style.text.color : softFill, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel((on ? String(localized: "Translation on") : String(localized: "Translation off")) + (selected ? String(localized: ", selected") : ""))
+            }
+        }
+        if language.translationOn {
+            Button { onChooseTranslationTarget?() } label: {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text("Into").font(scaled(15, .bold)).foregroundStyle(muted)
+                    Text(language.target.map(LanguageSettingsState.name) ?? String(localized: "Choose a language"))
+                        .font(scaled(18, .heavy))
+                    Spacer()
+                    Text("›").font(scaled(20, .heavy)).foregroundStyle(muted)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            if let p = language.downloadProgress {
+                VStack(alignment: .leading, spacing: 6) {
+                    ProgressView(value: p).tint(style.gear.color)
+                    Text(String(format: String(localized: "Downloading the language pack · %lld%%"), Int(p * 100)))
+                        .font(scaled(13, .semibold)).foregroundStyle(muted)
+                }
+            }
+        }
+    }
+
+    private var translationNote: String {
+        String(localized: "Each caption gets a translated line under it. What was said always stays. The first time, the language pack downloads once (about 200 MB); after that it works with no internet.")
     }
 
     private func section<C: View>(_ title: LocalizedStringKey, first: Bool = false, note: String? = nil, @ViewBuilder _ content: () -> C) -> some View {

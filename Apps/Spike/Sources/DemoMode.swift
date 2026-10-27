@@ -34,6 +34,7 @@ import Foundation
 ///   -ClarityDemoShow <id>  one state for the UI audit (2026-10-10; simctl can't tap): savedfromcaptions (#137), banner, preparing, confirmnew,
 ///                         namespeaker, jump, canthear, failed, quiet, tour4save, savebeta
 ///   -ClarityDemoSettingsPush saved|credits|deleteall   Settings opened on a sub-screen (with -ClarityDemoSettings)
+///   -ClarityDemoLanguage <id>  -ClarityDemoTranslate <id>  -ClarityDemoTranslateProgress <0-1>   caption language and translation (#37, #53)
 /// It feeds the same CaptionStream the real engine feeds, so what you see is the real caption view: speaker colours,
 /// names, line breaks and sound labels. No microphone, speech model or network is involved.
 enum DemoMode {
@@ -80,6 +81,11 @@ enum DemoMode {
     static var tour: String? { value(after: "-ClarityDemoTour") }
     static var show: String? { value(after: "-ClarityDemoShow") }
     static var settingsPush: String? { value(after: "-ClarityDemoSettingsPush") }
+    /// `-ClarityDemoLanguage es-ES`: captions in this language (#37). `-ClarityDemoTranslate en-US`: translation on,
+    /// into this language (#53). `-ClarityDemoTranslateProgress 0.42`: its language pack mid-download.
+    static var language: String? { value(after: "-ClarityDemoLanguage") }
+    static var translate: String? { value(after: "-ClarityDemoTranslate") }
+    static var translateProgress: Double? { value(after: "-ClarityDemoTranslateProgress").flatMap(Double.init) }
     /// Round 2 (#118): three saved conversations to show the saved list (mock-up round2/02), written once on launch.
     static var seedsSaved: Bool {
         flag("-ClarityDemoSavedSeed") || settingsPush == "saved" || settingsPush == "deleteall" || settingsPush == "conversation" || flow == "saved" || flow == "delete"
