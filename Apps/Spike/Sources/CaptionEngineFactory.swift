@@ -9,9 +9,15 @@ enum CaptionEngineFactory {
     static var parakeetModelURL: URL? { Bundle.main.url(forResource: "ParakeetUltra", withExtension: nil) }
     /// Captions are English (en-US) whatever the phone's language; see TranscriptionEngine's default.
     static let captionLocale = Locale(identifier: "en-US")
+    /// Only an Xcode (debug) build has the developer panel, so only it honours the panel's engine pick (owner, PR #155).
+    #if DEBUG
+    static let developerBuild = true
+    #else
+    static let developerBuild = false
+    #endif
 
     static func selection(now: Date = Date()) -> EngineSelection {
-        EngineFallbackPolicy.engine(for: CaptionEngineChoice.stored(), now: now,
+        EngineFallbackPolicy.engine(for: CaptionEngineChoice.stored(developerBuild: developerBuild), now: now,
                                     recentFallbacks: EngineFallbackHistory().recent(now: now),
                                     availableMemory: UInt64(os_proc_available_memory()),
                                     locale: captionLocale, modelPresent: parakeetModelURL != nil)

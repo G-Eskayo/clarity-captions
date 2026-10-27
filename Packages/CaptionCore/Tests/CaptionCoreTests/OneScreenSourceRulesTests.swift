@@ -96,4 +96,21 @@ final class OneScreenSourceRulesTests: XCTestCase {
         let documented = files.first { $0.name == "DemoMode.swift" }?.text ?? ""
         XCTAssertTrue(documented.contains("///   -ClarityDemoDeveloperPanel"), "list the flag in DemoMode's header")
     }
+
+    /// Owner, PR #155: the 1.5 s hold opens the developer panel in Xcode (debug) builds only, never TestFlight or the
+    /// App Store; the panel pushes the captions down only while it's open.
+    func testTheDeveloperHoldExistsInDebugBuildsOnly() throws {
+        let files = try appSources()
+        let holds = occurrences(of: "minimumDuration: 1.5", in: files)
+        XCTAssertEqual(holds.count, 1, "\(holds)")
+        let view = code(files.first { $0.name == "ContentView.swift" }?.text ?? "")
+        guard let hold = view.range(of: "minimumDuration: 1.5") else { return XCTFail("no developer hold") }
+        let before = view[..<hold.lowerBound]
+        let lastIf = before.range(of: "#if DEBUG", options: .backwards)?.lowerBound
+        let lastEnd = before.range(of: "#endif", options: .backwards)?.lowerBound
+        XCTAssertNotNil(lastIf, "the hold must sit inside #if DEBUG")
+        if let lastIf, let lastEnd { XCTAssertGreaterThan(lastIf, lastEnd, "the hold must sit inside #if DEBUG") }
+        XCTAssertEqual(occurrences(of: "CaptionEngineChoice.stored()", in: files), [],
+                       "pass developerBuild, so a release build ignores an old pick")
+    }
 }

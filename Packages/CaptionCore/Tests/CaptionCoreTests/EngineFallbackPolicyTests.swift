@@ -14,6 +14,22 @@ final class EngineFallbackPolicyTests: XCTestCase {
                                     locale: locale ?? en, modelPresent: modelPresent)
     }
 
+    // MARK: Who can pick the engine (owner, PR #155: the developer panel is in Xcode builds only)
+
+    func testOutsideXcodeBuildsAStoredApplePickIsIgnored() {
+        // A TestFlight tester can no longer open the panel, so a pick saved earlier must not pin them to Apple.
+        let defaults = UserDefaults(suiteName: "engine-choice-\(UUID())")!
+        defaults.set("apple", forKey: CaptionEngineChoice.key)
+        XCTAssertEqual(CaptionEngineChoice.stored(in: defaults, developerBuild: false), .parakeet)
+        XCTAssertEqual(CaptionEngineChoice.stored(in: defaults, developerBuild: true), .apple)
+    }
+
+    func testAnUnreadableStoredPickFallsBackToParakeet() {
+        let defaults = UserDefaults(suiteName: "engine-choice-\(UUID())")!
+        defaults.set("whisper", forKey: CaptionEngineChoice.key)
+        XCTAssertEqual(CaptionEngineChoice.stored(in: defaults, developerBuild: true), .parakeet)
+    }
+
     // MARK: Before a session
 
     func testParakeetByDefault() {

@@ -12,7 +12,7 @@ final class CaptionModel: ObservableObject {
     @Published var startup = ""
     @Published var micMode: MicMode = .standard
     /// Developer panel only (ADR 0025, no setting for users): which recognizer the next session uses.
-    @Published var engineChoice = CaptionEngineChoice.stored() {
+    @Published var engineChoice = CaptionEngineChoice.stored(developerBuild: CaptionEngineFactory.developerBuild) {
         didSet {
             UserDefaults.standard.set(engineChoice.rawValue, forKey: CaptionEngineChoice.key)
             var history = EngineFallbackHistory()
@@ -690,7 +690,7 @@ struct ContentView: View {
             .opacity(0.8)
             .lineLimit(1)
             .minimumScaleFactor(0.7)
-            .onLongPressGesture(minimumDuration: 1.5) { developerTools.toggle() }
+            .modifier(DeveloperHold { developerTools.toggle() })
         }
         .padding(.horizontal, 52)   // never under the gear
         .accessibilityElement(children: .combine)
@@ -1395,5 +1395,19 @@ private struct TourTargetIf: ViewModifier {
     let active: Bool
     func body(content: Content) -> some View {
         if active { content.tourTarget(target) } else { content }
+    }
+}
+
+/// Holding the status word for 1.5 s opens the developer panel, in Xcode (debug) builds only: TestFlight and App Store
+/// users can never open it (owner, PR #155). The panel pushes the captions down only while it's open.
+private struct DeveloperHold: ViewModifier {
+    let toggle: () -> Void
+
+    func body(content: Content) -> some View {
+        #if DEBUG
+        content.onLongPressGesture(minimumDuration: 1.5, perform: toggle)
+        #else
+        content
+        #endif
     }
 }

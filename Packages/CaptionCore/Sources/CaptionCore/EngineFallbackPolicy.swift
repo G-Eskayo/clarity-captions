@@ -7,9 +7,11 @@ public enum CaptionEngineChoice: String, CaseIterable, Sendable {
 
     public static let key = "captionEngine.v1"
 
-    /// The stored developer choice; Parakeet unless set.
-    public static func stored(in defaults: UserDefaults = .standard) -> CaptionEngineChoice {
-        defaults.string(forKey: key).flatMap(CaptionEngineChoice.init(rawValue:)) ?? .parakeet
+    /// The developer panel's pick, Parakeet unless set. Only an Xcode build has the panel (owner, PR #155), so any
+    /// other build ignores a pick saved earlier: nobody can be pinned to a choice they can't reach.
+    public static func stored(in defaults: UserDefaults = .standard, developerBuild: Bool) -> CaptionEngineChoice {
+        guard developerBuild else { return .parakeet }
+        return defaults.string(forKey: key).flatMap(CaptionEngineChoice.init(rawValue:)) ?? .parakeet
     }
 }
 
