@@ -257,3 +257,77 @@ caveat), **Internal** (process detail, not for marketing).
   English-tuned" risk row in the engine-switch design; under ADR 0026 the same weights are the Android candidate.
 - **Public use:** Careful ("on a public set of read sentences, in our test, Parakeet made about a third fewer word
   errors than Apple's built-in engine in Spanish, French and German").
+
+## E20. Translation engines for 1.3: licences, terms and how each gets its model onto the phone
+- **Source:** [ML Kit Terms](https://developers.google.com/ml-kit/terms) (modified 2025-05-14) and the
+  [ML Kit Translation guidelines](https://developers.google.com/ml-kit/language/translation/translation-terms);
+  [ML Kit Translation overview](https://developers.google.com/ml-kit/language/translation); Hugging Face model cards
+  for [`Helsinki-NLP/opus-mt-en-es`](https://huggingface.co/Helsinki-NLP/opus-mt-en-es) and its fr, de and tc-big
+  siblings; [mozilla/firefox-translations-models](https://github.com/mozilla/firefox-translations-models) LICENSE;
+  [`Unbabel/wmt22-comet-da`](https://huggingface.co/Unbabel/wmt22-comet-da); FLORES-200 (CC BY-SA 4.0) and
+  [WMT24++](https://huggingface.co/datasets/google/wmt24pp) (Apache 2.0). All read 2026-10-26 for #159.
+- **What we took:** every engine tested is usable in a paid app. **ML Kit** is free, but its translation guidelines
+  require Google's Cloud Translation attribution and branding in the app, it may only ship on phones, tablets and
+  computers, its models may not be reverse engineered, and **the SDK sends usage and performance metrics to Google**
+  (our harness saw ML Kit keep a growing `datatransport` event database, 2.7 MB after one language), which the app
+  must disclose. ML Kit downloads languages with the app's own code and no system UI. **OPUS-MT** models are Apache
+  2.0 (en-es, en-fr) or CC BY 4.0 (en-de, tc-big), credited like Parakeet; the app owns download and storage.
+  Firefox's Bergamot models are MPL 2.0. **Apple's** Translation framework downloads languages only through a
+  system sheet or Settings (E15). NLLB-200 stays out (CC BY-NC). The reference-free CometKiwi metrics are
+  non-commercial, so scoring uses the Apache 2.0 `wmt22-comet-da`.
+- **Confidence:** Strong (official terms and model cards).
+- **Drives:** the 1.3 engine choice (#159), the privacy label if ML Kit is used, the credits screen.
+- **Public use:** Internal.
+
+## E21. Translation comparison: Apple's Translation framework beats OPUS-MT and ML Kit in Spanish, French and German
+- **Source:** our own measurement, [docs/perf/translation-comparison.md](../perf/translation-comparison.md)
+  (#159 "[E] Translation comparison test: Apple vs ML Kit vs open models, before 1.3"). FLORES-200 devtest (1,012
+  sentences) and WMT24++ speech transcripts (111 passages), each as written and in a caption-style copy (lowercase,
+  unpunctuated); 760 EdAcc caption lines for speed. chrF and COMET (wmt22-comet-da), 95% bootstrap CIs over documents.
+  Apple's Translation framework on the M4 Mac mini (macOS 26.5.1, languages installed in Settings); OPUS-MT on the
+  same machine's CPU (CTranslate2 int8, sentence by sentence); ML Kit 17.0.3 in an arm64 Android 15 emulator on the
+  same machine.
+- **What we took:** **Apple was the most accurate engine in every cell.** chrF on FLORES as written: Apple **56.8**,
+  OPUS-MT base 55.0, ML Kit 53.2 (es); **73.2**, 69.8, 65.4 (fr); **68.2**, 63.6, 59.0 (de). On speech transcripts:
+  **71.6**, 68.9, 65.2 (es); **65.3**, 62.2, 59.5 (fr); **64.3**, 61.3, 57.4 (de). Apple's lead over OPUS-MT base was
+  +1.8 to +4.5 chrF on written text and +3.6 to +7.9 on caption-style text, every paired 95% CI above zero; COMET
+  agrees (e.g. FLORES de 0.883 vs 0.847 vs 0.759). It also beat the larger OPUS-MT tc-big models (+0.3 to +2.0).
+  Apple lost only 2 to 7 chrF on caption-style input, where the others lost up to 15 (German caption-style speech:
+  Apple 60.5, OPUS-MT 52.6, ML Kit 42.3). Speed per caption line, en-es, machine quiet: Apple **59 ms median, 89 ms
+  p95**; OPUS-MT greedy 35 / 107 ms; ML Kit 23 / 59 ms in the emulator under heavier load. Apple's en→es languages
+  take about 286 MB of system assets (about 221 MB zipped), held by the system, not the app; each further language
+  in its family adds about 80 MB. Among the engines the app would download itself, OPUS-MT beat ML Kit on written
+  text in all three languages (+1.8 to +4.6 chrF). Greedy decoding kept OPUS-MT's quality (FLORES 54.8, COMET 0.847)
+  at half the time. Marian models silently drop sentences from long multi-sentence input unless fed a sentence at a
+  time.
+- **Confidence:** Ours. Strong for the ranking on written and caption-style text (all paired CIs exclude zero in all
+  three languages; Apple vs tc-big on Spanish FLORES only just). Mac and emulator, not iPhone; Spanish references are
+  Latin American; any engine may have seen FLORES or WMT data in training.
+- **Drives:** the 1.3 translation engine (recommendation: Apple's Translation framework under ADR 0026, with the
+  system download sheet as a decision for Gil; OPUS-MT base as the cross-platform engine and fallback), and the rule
+  to translate Parakeet's punctuated text.
+- **Public use:** Careful ("in our test on public benchmarks, Apple's on-device translation was the most accurate of
+  the engines we tried in Spanish, French and German, ahead of an open model and Google's on-device ML Kit").
+
+## E22. Apple's Translation framework in every language it supports: FLORES-200 written text
+- **Source:** our own measurement, [docs/perf/translation-comparison.md](../perf/translation-comparison.md), section
+  "All languages Apple supports" (#159 "[E] Translation comparison test"); generated table in
+  [docs/perf/translation-languages-results.md](../perf/translation-languages-results.md). All 19 English→X pairs that
+  `LanguageAvailability` reported *installed* on the M4 Mac mini (macOS 26.5.1) after Gil installed every Translation
+  language, each run on FLORES-200 devtest (1,012 sentences, English source). chrF with 95% bootstrap CIs over
+  articles, COMET (wmt22-comet-da), ms per line on 760 EdAcc caption lines. Spanish, French and German reused from E21.
+- **What we took:** COMET is 0.86 to 0.92 in 18 of 19 languages (Indonesian 0.920 highest), the range where Apple
+  beat every other engine in E21. **Hindi is the weak one** (COMET 0.807). chrF ranges from 73.8 (Indonesian) to 32.6
+  (Chinese, Traditional); Japanese, Chinese and Korean chrF runs low because of the metric (no spaces, character
+  n-grams), not the translation, as COMET shows (Japanese 0.912). Asked for Simplified Chinese, Apple returned mostly
+  Traditional characters in 2.9% of FLORES sentences and 2.0% of caption lines; never the reverse. Time per caption
+  line is 51 to 59 ms median in every new language. Installed assets per pair, on disk: 154 to 291 MB, held by the
+  system; languages in one family share most of it.
+- **Confidence:** Ours. Written text only (Wikipedia-style prose), not conversation or caption-style input, and only
+  Apple was run in these 16 languages, so there is no engine comparison for them. chrF isn't comparable across
+  languages; COMET is closer to comparable but still varies by language. Mac, not iPhone.
+- **Drives:** which languages 1.3 can offer for translation, which need a check first (Hindi), and whether the app
+  must force Simplified script when Simplified Chinese is chosen.
+- **Public use:** Careful ("in our test on a public written-text benchmark, Apple's on-device translation scored
+  well in most of the languages it supports"). Don't publish per-language chrF without saying it isn't comparable
+  across languages.

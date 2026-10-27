@@ -1,0 +1,401 @@
+[
+ {
+  "code": "ar-AE",
+  "name": "Arabic",
+  "chrf": 63.077655736028646,
+  "ci": [
+   62.0866520222783,
+   64.1358003451136
+  ],
+  "n": 1012,
+  "comet": 0.8704038735177865,
+  "median_ms": 53.286583,
+  "p95_ms": 76.15941699999999,
+  "untranslated": 1,
+  "disk_bytes": 154962490,
+  "assets": [
+   "com.apple.sequoia.asset.mt.bi-en-ar.20",
+   "com.apple.sequoia.asset.mt.bi-en-ar.en.20",
+   "com.apple.sequoia.asset.mt.bi-en-ar.ar.20"
+  ],
+  "source": "all-languages run"
+ },
+ {
+  "code": "de",
+  "name": "German",
+  "chrf": 68.16681097223382,
+  "ci": [
+   67.28762506073775,
+   69.0186044263569
+  ],
+  "n": 1012,
+  "comet": 0.8825878656126481,
+  "median_ms": 69.515542,
+  "p95_ms": 110.316375,
+  "untranslated": 5,
+  "disk_bytes": 290558501,
+  "assets": [
+   "com.apple.sequoia.asset.mt.bi-en-es-de-it-fr-pt-nl.20",
+   "com.apple.sequoia.asset.mt.bi-en-es-de-it-fr-pt-nl.en.20",
+   "com.apple.sequoia.asset.mt.bi-en-es-de-it-fr-pt-nl.de.20"
+  ],
+  "source": "main comparison"
+ },
+ {
+  "code": "es",
+  "name": "Spanish",
+  "chrf": 56.75769817069784,
+  "ci": [
+   56.186067223537336,
+   57.38395854584053
+  ],
+  "n": 1012,
+  "comet": 0.862725385375494,
+  "median_ms": 59.034792,
+  "p95_ms": 89.017542,
+  "untranslated": 2,
+  "disk_bytes": 285886856,
+  "assets": [
+   "com.apple.sequoia.asset.mt.bi-en-es-de-it-fr-pt-nl.20",
+   "com.apple.sequoia.asset.mt.bi-en-es-de-it-fr-pt-nl.en.20",
+   "com.apple.sequoia.asset.mt.bi-en-es-de-it-fr-pt-nl.es.20"
+  ],
+  "source": "main comparison"
+ },
+ {
+  "code": "fr",
+  "name": "French",
+  "chrf": 73.15794838428194,
+  "ci": [
+   72.19862139145657,
+   74.07381016248983
+  ],
+  "n": 1012,
+  "comet": 0.8794933399209487,
+  "median_ms": 57.669041,
+  "p95_ms": 97.192625,
+  "untranslated": 3,
+  "disk_bytes": 287766364,
+  "assets": [
+   "com.apple.sequoia.asset.mt.bi-en-es-de-it-fr-pt-nl.20",
+   "com.apple.sequoia.asset.mt.bi-en-es-de-it-fr-pt-nl.en.20",
+   "com.apple.sequoia.asset.mt.bi-en-es-de-it-fr-pt-nl.fr.20"
+  ],
+  "source": "main comparison"
+ },
+ {
+  "code": "hi",
+  "name": "Hindi",
+  "chrf": 60.86182195827371,
+  "ci": [
+   59.86851105178898,
+   62.009975471952394
+  ],
+  "n": 1012,
+  "comet": 0.8066061561264822,
+  "median_ms": 51.510917000000006,
+  "p95_ms": 76.187917,
+  "untranslated": 0,
+  "disk_bytes": 154075029,
+  "assets": [
+   "com.apple.sequoia.asset.mt.bi-en-hi.20",
+   "com.apple.sequoia.asset.mt.bi-en-hi.en.20",
+   "com.apple.sequoia.asset.mt.bi-en-hi.hi.20"
+  ],
+  "source": "all-languages run"
+ },
+ {
+  "code": "id",
+  "name": "Indonesian",
+  "chrf": 73.79301562003633,
+  "ci": [
+   72.97059515684771,
+   74.64295897359851
+  ],
+  "n": 1012,
+  "comet": 0.9204323913043478,
+  "median_ms": 53.469125,
+  "p95_ms": 75.697417,
+  "untranslated": 3,
+  "disk_bytes": 208077291,
+  "assets": [
+   "com.apple.sequoia.asset.mt.bi-en-id-th-vi.20",
+   "com.apple.sequoia.asset.mt.bi-en-id-th-vi.en.20",
+   "com.apple.sequoia.asset.mt.bi-en-id-th-vi.id.20"
+  ],
+  "source": "all-languages run"
+ },
+ {
+  "code": "it",
+  "name": "Italian",
+  "chrf": 60.42724103876375,
+  "ci": [
+   59.83358329415851,
+   61.062322998444216
+  ],
+  "n": 1012,
+  "comet": 0.8793746739130435,
+  "median_ms": 51.663417,
+  "p95_ms": 77.137708,
+  "untranslated": 2,
+  "disk_bytes": 283692969,
+  "assets": [
+   "com.apple.sequoia.asset.mt.bi-en-es-de-it-fr-pt-nl.20",
+   "com.apple.sequoia.asset.mt.bi-en-es-de-it-fr-pt-nl.en.20",
+   "com.apple.sequoia.asset.mt.bi-en-es-de-it-fr-pt-nl.it.20"
+  ],
+  "source": "all-languages run"
+ },
+ {
+  "code": "ja",
+  "name": "Japanese",
+  "chrf": 43.48546252420978,
+  "ci": [
+   42.47838110783017,
+   44.525254828121454
+  ],
+  "n": 1012,
+  "comet": 0.9115836363636364,
+  "median_ms": 58.7855,
+  "p95_ms": 88.49575,
+  "untranslated": 1,
+  "disk_bytes": 248194414,
+  "assets": [
+   "com.apple.sequoia.asset.mt.bi-en-zh-ja-ko.20",
+   "com.apple.sequoia.asset.mt.bi-en-zh-ja-ko.en.20",
+   "com.apple.sequoia.asset.mt.bi-en-zh-ja-ko.ja.20"
+  ],
+  "source": "all-languages run"
+ },
+ {
+  "code": "ko",
+  "name": "Korean",
+  "chrf": 38.01076350338098,
+  "ci": [
+   37.10193278358555,
+   38.98686658821905
+  ],
+  "n": 1012,
+  "comet": 0.8992653458498023,
+  "median_ms": 55.524292,
+  "p95_ms": 78.510666,
+  "untranslated": 1,
+  "disk_bytes": 246750687,
+  "assets": [
+   "com.apple.sequoia.asset.mt.bi-en-zh-ja-ko.20",
+   "com.apple.sequoia.asset.mt.bi-en-zh-ja-ko.en.20",
+   "com.apple.sequoia.asset.mt.bi-en-zh-ja-ko.ko.20"
+  ],
+  "source": "all-languages run"
+ },
+ {
+  "code": "nl",
+  "name": "Dutch",
+  "chrf": 59.58269708166506,
+  "ci": [
+   58.86612377704359,
+   60.33419397605704
+  ],
+  "n": 1012,
+  "comet": 0.8793513339920949,
+  "median_ms": 51.28025,
+  "p95_ms": 75.376833,
+  "untranslated": 5,
+  "disk_bytes": 284204613,
+  "assets": [
+   "com.apple.sequoia.asset.mt.bi-en-es-de-it-fr-pt-nl.20",
+   "com.apple.sequoia.asset.mt.bi-en-es-de-it-fr-pt-nl.en.20",
+   "com.apple.sequoia.asset.mt.bi-en-es-de-it-fr-pt-nl.nl.20"
+  ],
+  "source": "all-languages run"
+ },
+ {
+  "code": "pl",
+  "name": "Polish",
+  "chrf": 53.83381744108273,
+  "ci": [
+   53.07633008056874,
+   54.54446701737376
+  ],
+  "n": 1012,
+  "comet": 0.8886078162055336,
+  "median_ms": 51.6965,
+  "p95_ms": 76.56579099999999,
+  "untranslated": 0,
+  "disk_bytes": 213498052,
+  "assets": [
+   "com.apple.sequoia.asset.mt.bi-en-ru-pl-uk.20",
+   "com.apple.sequoia.asset.mt.bi-en-ru-pl-uk.en.20",
+   "com.apple.sequoia.asset.mt.bi-en-ru-pl-uk.pl.20"
+  ],
+  "source": "all-languages run"
+ },
+ {
+  "code": "pt",
+  "name": "Portuguese (Brazil)",
+  "chrf": 73.56956124322713,
+  "ci": [
+   72.73370911180892,
+   74.50283574146745
+  ],
+  "n": 1012,
+  "comet": 0.8991732905138341,
+  "median_ms": 50.554167,
+  "p95_ms": 77.981625,
+  "untranslated": 2,
+  "disk_bytes": 284799941,
+  "assets": [
+   "com.apple.sequoia.asset.mt.bi-en-es-de-it-fr-pt-nl.20",
+   "com.apple.sequoia.asset.mt.bi-en-es-de-it-fr-pt-nl.en.20",
+   "com.apple.sequoia.asset.mt.bi-en-es-de-it-fr-pt-nl.pt.20"
+  ],
+  "source": "all-languages run"
+ },
+ {
+  "code": "ru",
+  "name": "Russian",
+  "chrf": 60.00684260775486,
+  "ci": [
+   59.047610031507716,
+   61.00007184280195
+  ],
+  "n": 1012,
+  "comet": 0.8862182905138339,
+  "median_ms": 52.035583,
+  "p95_ms": 81.32579199999999,
+  "untranslated": 1,
+  "disk_bytes": 212946930,
+  "assets": [
+   "com.apple.sequoia.asset.mt.bi-en-ru-pl-uk.20",
+   "com.apple.sequoia.asset.mt.bi-en-ru-pl-uk.en.20",
+   "com.apple.sequoia.asset.mt.bi-en-ru-pl-uk.ru.20"
+  ],
+  "source": "all-languages run"
+ },
+ {
+  "code": "th",
+  "name": "Thai",
+  "chrf": 57.85529211979323,
+  "ci": [
+   56.91761298621093,
+   58.70424614356503
+  ],
+  "n": 1012,
+  "comet": 0.8793787252964427,
+  "median_ms": 50.665292,
+  "p95_ms": 68.898292,
+  "untranslated": 1,
+  "disk_bytes": 205678397,
+  "assets": [
+   "com.apple.sequoia.asset.mt.bi-en-id-th-vi.20",
+   "com.apple.sequoia.asset.mt.bi-en-id-th-vi.en.20",
+   "com.apple.sequoia.asset.mt.bi-en-id-th-vi.th.20"
+  ],
+  "source": "all-languages run"
+ },
+ {
+  "code": "tr",
+  "name": "Turkish",
+  "chrf": 65.67071284386738,
+  "ci": [
+   64.83602019502777,
+   66.55724749610503
+  ],
+  "n": 1012,
+  "comet": 0.9031116403162055,
+  "median_ms": 52.241417,
+  "p95_ms": 73.990542,
+  "untranslated": 1,
+  "disk_bytes": 155512348,
+  "assets": [
+   "com.apple.sequoia.asset.mt.bi-en-tr.20",
+   "com.apple.sequoia.asset.mt.bi-en-tr.en.20",
+   "com.apple.sequoia.asset.mt.bi-en-tr.tr.20"
+  ],
+  "source": "all-languages run"
+ },
+ {
+  "code": "uk",
+  "name": "Ukrainian",
+  "chrf": 61.814063095059865,
+  "ci": [
+   60.87231164412368,
+   62.73922327610163
+  ],
+  "n": 1012,
+  "comet": 0.8982565513833992,
+  "median_ms": 51.365666999999995,
+  "p95_ms": 79.305083,
+  "untranslated": 1,
+  "disk_bytes": 210363320,
+  "assets": [
+   "com.apple.sequoia.asset.mt.bi-en-ru-pl-uk.20",
+   "com.apple.sequoia.asset.mt.bi-en-ru-pl-uk.en.20",
+   "com.apple.sequoia.asset.mt.bi-en-ru-pl-uk.uk.20"
+  ],
+  "source": "all-languages run"
+ },
+ {
+  "code": "vi",
+  "name": "Vietnamese",
+  "chrf": 62.454460320717956,
+  "ci": [
+   61.580690863831,
+   63.30044590634446
+  ],
+  "n": 1012,
+  "comet": 0.8916615612648221,
+  "median_ms": 52.286541,
+  "p95_ms": 76.813458,
+  "untranslated": 0,
+  "disk_bytes": 208604482,
+  "assets": [
+   "com.apple.sequoia.asset.mt.bi-en-id-th-vi.20",
+   "com.apple.sequoia.asset.mt.bi-en-id-th-vi.en.20",
+   "com.apple.sequoia.asset.mt.bi-en-id-th-vi.vi.20"
+  ],
+  "source": "all-languages run"
+ },
+ {
+  "code": "zh",
+  "name": "Chinese (Simplified)",
+  "chrf": 40.292889515960354,
+  "ci": [
+   39.17739756843506,
+   41.463305877356134
+  ],
+  "n": 1012,
+  "comet": 0.871412638339921,
+  "median_ms": 55.646834,
+  "p95_ms": 79.21558300000001,
+  "untranslated": 1,
+  "disk_bytes": 273700953,
+  "assets": [
+   "com.apple.sequoia.asset.mt.bi-en-zh-ja-ko.20",
+   "com.apple.sequoia.asset.mt.bi-en-zh-ja-ko.en.20",
+   "com.apple.sequoia.asset.mt.bi-en-zh-ja-ko.zh.20"
+  ],
+  "source": "all-languages run"
+ },
+ {
+  "code": "zh-TW",
+  "name": "Chinese (Traditional)",
+  "chrf": 32.611648385099905,
+  "ci": [
+   31.666329748524134,
+   33.58186455799477
+  ],
+  "n": 1012,
+  "comet": 0.875266966403162,
+  "median_ms": 55.426708999999995,
+  "p95_ms": 80.22033300000001,
+  "untranslated": 1,
+  "disk_bytes": 273700953,
+  "assets": [
+   "com.apple.sequoia.asset.mt.bi-en-zh-ja-ko.20",
+   "com.apple.sequoia.asset.mt.bi-en-zh-ja-ko.en.20",
+   "com.apple.sequoia.asset.mt.bi-en-zh-ja-ko.zh.20"
+  ],
+  "source": "all-languages run"
+ }
+]
