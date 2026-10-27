@@ -8,12 +8,22 @@
 // Languages): installedSource sessions never show the download sheet, so the run fails fast instead.
 import EngineEvalKit
 import Foundation
-import Translation
+@preconcurrency import Translation
 
 func arg(_ name: String) -> String? {
     let a = CommandLine.arguments
     guard let i = a.firstIndex(of: name), i + 1 < a.count else { return nil }
     return a[i + 1]
+}
+
+if CommandLine.arguments.contains("--list") {
+    let english = Locale.Language(identifier: "en")
+    let languages = await LanguageAvailability().supportedLanguages
+    for language in languages.sorted(by: { $0.maximalIdentifier < $1.maximalIdentifier }) {
+        let status = await LanguageAvailability().status(from: english, to: language)
+        print("\(language.maximalIdentifier)\t\(language.minimalIdentifier)\t\(status)")
+    }
+    exit(0)
 }
 
 let setNames = ["flores", "flores-caption", "speech", "speech-caption", "edacc-lines"]

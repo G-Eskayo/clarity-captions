@@ -171,6 +171,12 @@ scripts/engine-eval/mlkit-android/run.sh en-es
 # Open models for every pair, then COMET, then the report
 scripts/engine-eval/translation-open-models.sh
 python -m translation_eval.cli comet --sets ~/translation-eval/sets/en-es --results ~/translation-eval/results/en-es
+# Every language Apple has installed, on FLORES devtest only (Apple alone; es/fr/de reused from the runs above)
+swift run --package-path Packages/EngineEval translation-eval --list     # en->X status per supported language
+python -m translation_eval.cli build-languages --data ~/translation-eval/data --edacc-lines ~/translation-eval/sets/en-es/edacc-lines.jsonl --out ~/translation-eval/sets-apple --codes ar-AE,hi,id,it,ja,ko,nl,pl,pt,ru,th,tr,uk,vi,zh,zh-TW
+scripts/engine-eval/translation-apple-languages.sh
+for c in ar-AE hi id it ja ko nl pl pt ru th tr uk vi zh zh-TW; do python -m translation_eval.cli comet --sets ~/translation-eval/sets-apple/en-$c --results ~/translation-eval/results-apple/en-$c; done
+python -m translation_eval.cli languages-report --sets ~/translation-eval/sets --results ~/translation-eval/results --speed-results ~/translation-eval/results-speed --language-sets ~/translation-eval/sets-apple --language-results ~/translation-eval/results-apple --out ../../docs/perf/translation-languages-results.md --json-out ../../docs/perf/translation-languages-results.json
 ```
 
 ## Not in this ticket
