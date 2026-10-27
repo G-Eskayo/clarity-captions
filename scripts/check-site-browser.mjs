@@ -25,6 +25,9 @@ try {
   page.on('pageerror', (e) => errors.push(e.message))
   await page.goto(BASE)
   await page.waitForSelector('[data-demo][data-ready]')
+  // A touch hands the demo to the person, so it doesn't start by itself under this walk-through (#169;
+  // check-site-motion.mjs covers starting by itself).
+  await page.dispatchEvent('[data-demo]', 'pointerdown')
   ok(await page.locator('[data-start]').isVisible(), 'Start visible on load')
   ok((await page.locator('[data-captions]').innerText()).includes('Captions show up here'), 'idle hint shown (static fallback replaced)')
   ok((await page.locator('[data-status]').innerText()) === 'Ready', 'status says Ready before starting')
@@ -105,10 +108,13 @@ try {
   await page.screenshot({ path: `${OUT}/04-desktop-harbor-atkinson-bigger.png` })
   await page.reload()
   await page.waitForSelector('[data-demo][data-ready]')
+  await page.dispatchEvent('[data-demo]', 'pointerdown')
   ok((await page.locator('.screen').evaluate((e) => getComputedStyle(e).backgroundColor)) === 'rgb(23, 51, 49)', 'theme remembered after reload')
   // Keyboard: Tab reaches the demo controls with a visible focus.
   await page.evaluate(() => localStorage.clear())
   await page.reload()
+  await page.waitForSelector('[data-demo][data-ready]')
+  await page.dispatchEvent('[data-demo]', 'pointerdown')
   await page.click('[data-gear]')
   await page.waitForTimeout(600)
   await page.screenshot({ path: `${OUT}/05-desktop-settings.png` })
@@ -126,6 +132,7 @@ try {
     const p = await c.newPage()
     await p.goto(BASE)
     await p.waitForSelector('[data-demo][data-ready]')
+    await p.dispatchEvent('[data-demo]', 'pointerdown')
     const sw = await p.evaluate(() => document.documentElement.scrollWidth)
     ok(sw <= w, `${w}px: no sideways scroll (scrollWidth ${sw})`)
     if (w !== 320) {

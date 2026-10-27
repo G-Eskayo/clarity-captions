@@ -1,0 +1,73 @@
+/* Scroll motion for the home and Versions pages (#169), driven by motion.js. Every rule that hides or moves something
+   sits under html.motion, which motion.js sets only when Reduce Motion is off; without it the page is plain and still.
+   Calm: about half a second, ease-out, each plays once. */
+
+/* ── sections rise in ── */
+html.motion [data-reveal] { opacity: 0; transform: translateY(18px);
+  transition: opacity .55s ease-out, transform .55s cubic-bezier(.2, .7, .2, 1); transition-delay: calc(var(--i, 0) * 90ms); }
+html.motion [data-reveal].in { opacity: 1; transform: none; }
+
+/* ── headline numbers (Versions) ── */
+.stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: 1.25rem 1.5rem; max-width: 50rem; margin: 0 0 2rem; }
+.stat { margin: 0; }
+.stat-n { display: block; font-size: clamp(1.9rem, 6vw, 3.1rem); font-weight: 800; line-height: 1.05; color: var(--accent);
+          font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.stat-l { display: block; color: var(--muted); font-size: .95rem; line-height: 1.4; margin-top: .3rem; }
+
+/* ── score bars inside the result tables (Versions) ── */
+table.data td[data-bar] { min-width: 7rem; vertical-align: top; }
+.bar-track { display: block; height: 6px; margin-top: .3rem; border-radius: 3px; background: var(--rule); overflow: hidden; }
+.bar-fill { display: block; height: 100%; border-radius: 3px; background: var(--muted); opacity: .6; transform-origin: left; }
+td.win .bar-fill { background: var(--teal); opacity: 1; }
+html.motion table[data-bars] .bar-fill { transform: scaleX(0);
+  transition: transform .8s cubic-bezier(.2, .7, .2, 1); transition-delay: calc(var(--r, 0) * 60ms); }
+html.motion table[data-bars].grown .bar-fill { transform: none; }
+/* The winner fills last, then glows once. */
+html.motion table[data-bars].grown td.win .bar-fill { transition-delay: calc(var(--r, 0) * 60ms + .45s);
+  animation: win-glow 1.2s ease-out calc(var(--r, 0) * 60ms + 1.2s) 1; }
+@keyframes win-glow { 0% { box-shadow: 0 0 0 0 var(--teal); } 40% { box-shadow: 0 0 10px 3px var(--teal); } 100% { box-shadow: 0 0 0 0 transparent; } }
+html.motion table[data-bars] td.win strong { transition: color .3s; }
+
+/* The engine chart's bars grow from zero; the chosen engine last, then it glows once. */
+html.motion figure.chart svg .bar { transform: scaleX(0); transform-box: fill-box; transform-origin: left;
+  transition: transform .8s cubic-bezier(.2, .7, .2, 1) .1s; }
+html.motion figure.chart svg .bar.pick { transition-delay: .55s; }
+html.motion figure.chart.grown svg .bar { transform: none; }
+html.motion figure.chart.grown svg .bar.pick { animation: pick-glow 1.2s ease-out 1.4s 1; }
+@keyframes pick-glow { 0%, 100% { filter: none; } 40% { filter: drop-shadow(0 0 6px var(--teal)); } }
+
+/* ── version switcher: the highlight slides, the version fades in ── */
+.version-nav.has-pill { position: relative; }
+.version-nav .pill { position: absolute; left: 0; top: 0; border-radius: 999px; background: var(--accent); pointer-events: none; }
+.version-nav .pill.ready { transition: transform .45s cubic-bezier(.3, .7, .2, 1), width .45s cubic-bezier(.3, .7, .2, 1); }
+.version-nav.has-pill a { position: relative; z-index: 1; transition: color .3s; }
+.version-nav.has-pill a[aria-current] { background: transparent; }
+html.motion .version.enter { animation: version-in .45s ease-out; }
+@keyframes version-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* ── home: the line down the 1-2-3 steps ── */
+.steps.has-line { position: relative; }
+.steps-line { position: absolute; z-index: 1; border-radius: 2px; background: var(--rule); pointer-events: none; overflow: hidden; }
+.steps-line i { position: absolute; inset: 0; background: var(--teal); transform-origin: left top; }
+.steps[data-dir="across"] .steps-line i { transform: scaleX(var(--fill, 0)); }
+.steps[data-dir="down"] .steps-line i { transform: scaleY(var(--fill, 0)); }
+.steps.has-line .step-n { position: relative; z-index: 2; background: var(--bg); color: var(--text); box-shadow: inset 0 0 0 3px var(--teal);
+                          transition: background .3s, color .3s; }
+.steps.has-line .step-n.lit { background: var(--teal); color: #fff; animation: step-pop .5s cubic-bezier(.3, 1.6, .5, 1) 1; }
+@keyframes step-pop { 0% { transform: scale(1); } 45% { transform: scale(1.3); } 100% { transform: scale(1); } }
+/* Stacked on a phone, the numbers move to the left of each card so the line runs down beside the words, not through them. */
+@media (max-width: 52rem) {
+  .steps.has-line .card { position: relative; padding-left: 4.1rem; }
+  .steps.has-line .step-n { position: absolute; left: 1.05rem; top: 1.35rem; margin: 0; }
+}
+
+/* ── home: one caption in each theme and lettering ── */
+.sample-wrap { max-width: 40rem; margin: 0 0 1.5rem; }
+.sample { --s-bg: #FAF5E6; --s-text: #141419; --s-spk: #14514B; margin: 0; background: var(--s-bg); color: var(--s-text); border-radius: 22px;
+          padding: 1.3rem 1.5rem 1.4rem; box-shadow: inset 0 0 0 1px var(--rule); transition: background .5s ease, color .5s ease; }
+.sample-spk { display: block; font: 800 .9rem/1.4 system-ui, sans-serif; letter-spacing: .02em; color: var(--s-spk); transition: color .5s ease; }
+.sample-text { font-family: 'OpenDyslexic', system-ui, sans-serif; font-size: clamp(1.25rem, 3.4vw, 1.6rem); line-height: 1.45; margin: .2rem 0 0; }
+.sample-bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: .6rem; color: var(--muted); font-size: .95rem; }
+.sample-bar button { border: 2px solid var(--accent); color: var(--accent); background: transparent; border-radius: 999px; padding: .3rem 1rem;
+                     font: 700 .95rem/1 inherit; font-family: inherit; cursor: pointer; min-height: 44px; min-width: 5.5rem; }
+@media (prefers-reduced-motion: reduce) { .sample, .sample-spk { transition: none; } }
