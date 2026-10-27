@@ -9,6 +9,7 @@
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="assets/favicon-64.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="assets/seal-icon-256.png">
+<link rel="stylesheet" href="motion.css">
 <style>
 
   @font-face { font-family: 'OpenDyslexic'; src: url('assets/fonts/OpenDyslexic-Regular.woff') format('woff'); font-weight: 400; font-display: swap; }
@@ -192,6 +193,10 @@
     <div class="wrap">
       <h2 id="eng-h">How we chose the caption engine</h2>
       <p class="intro">The engine is the part that turns speech into words. Everything else in Seal Speak depends on it, so we tested the candidates instead of guessing.</p>
+      <div class="stats">
+        <p class="stat"><span class="stat-n" data-count="20%">20%</span><span class="stat-l">fewer mistakes than Apple's engine in English conversations: 13.8 in 100 words against 17.2</span></p>
+        <p class="stat"><span class="stat-n" data-count="0.25 s">0.25 s</span><span class="stat-l">median wait for a correct word to show, against 0.67 s for Apple</span></p>
+      </div>
       <div class="prose">
         <p>Seal Speak 1.0 uses Apple's speech recognition, because it was the one built to run fully on the phone. Before settling on it for good, we wanted to know if something better exists, especially for people who speak with an accent. A caption app that works for one kind of voice is not good enough.</p>
         <p>So we found a set of real conversations, checked by people, from speakers all over the world, and ran every engine on exactly the same recordings.</p>
@@ -204,7 +209,7 @@
 <desc id="m-d">Four steps from top to bottom. The EdAcc corpus, 31.4 hours of conversations in many English accents under a CC BY-SA licence, is split into 32 shards. Each engine runs on the same clips on two Macs. Each engine's word error rate is scored with a 95% confidence interval. A separate live latency sample of 526 clips, 45 minutes of audio, measures how soon words appear when audio is fed as if live.</desc>
 <rect class="box" x="20" y="8" width="240" height="66" rx="14"/><text x="140.0" y="31" text-anchor="middle" font-size="15.5" class="b">EdAcc corpus</text><text class="m" x="140.0" y="50" text-anchor="middle" font-size="14">31.4 hours, 17,528 clips,</text><text class="m" x="140.0" y="66" text-anchor="middle" font-size="14">many English accents (CC BY-SA)</text><path class="arrow" d="M140 74V94"/><path class="arrowhead" d="M134 92L140 100L146 92Z"/><rect class="box" x="20" y="100" width="240" height="56" rx="14"/><text x="140.0" y="123" text-anchor="middle" font-size="15.5" class="b">32 shards</text><text class="m" x="140.0" y="142" text-anchor="middle" font-size="14">split so each Mac works in pieces</text><path class="arrow" d="M140 156V176"/><path class="arrowhead" d="M134 174L140 182L146 174Z"/><rect class="box" x="20" y="182" width="240" height="66" rx="14"/><text x="140.0" y="205" text-anchor="middle" font-size="15.5" class="b">Engines on two Macs</text><text class="m" x="140.0" y="224" text-anchor="middle" font-size="14">Apple, Parakeet builds,</text><text class="m" x="140.0" y="240" text-anchor="middle" font-size="14">sherpa-onnx; same clips each</text><path class="arrow" d="M140 248V268"/><path class="arrowhead" d="M134 266L140 274L146 266Z"/><rect class="box pick" x="20" y="274" width="240" height="66" rx="14"/><text x="140.0" y="297" text-anchor="middle" font-size="15.5" class="b">Word error rate</text><text class="m" x="140.0" y="316" text-anchor="middle" font-size="14">scored with a 95% confidence</text><text class="m" x="140.0" y="332" text-anchor="middle" font-size="14">interval (speaker bootstrap)</text><rect class="box" x="276" y="196" width="136" height="88" rx="14"/><text x="344" y="220" text-anchor="middle" font-size="15.5" class="b">Live latency</text><text class="m" x="344" y="240" text-anchor="middle" font-size="14">sample: 526 clips,</text><text class="m" x="344" y="256" text-anchor="middle" font-size="14">45 min of audio fed</text><text class="m" x="344" y="272" text-anchor="middle" font-size="14">as if live</text><path class="arrow" d="M260 215H268" stroke-dasharray="5 4"/><path class="arrowhead" d="M268 209L276 215L268 221Z"/>
 </svg>
-        <figcaption class="src">Source: <a href="https://github.com/G-Eskayo/clarity-captions/blob/feature/145-engine-eval/docs/perf/engine-accuracy-comparison.md">engine accuracy report</a> (header, Method, Live latency). Corpus: EdAcc, 122 speakers in this sample, licence CC BY-SA.</figcaption>
+        <figcaption class="src">Source: <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/engine-accuracy-comparison.md">engine accuracy report</a> (header, Method, Live latency). Corpus: EdAcc, 122 speakers in this sample, licence CC BY-SA.</figcaption>
       </figure>
 
       <div class="prose">
@@ -220,7 +225,7 @@
 <text x="314.6" y="56" font-size="15" class="b">13.8%</text><text x="336.5" y="108" font-size="15" class="b">15.5%</text><text x="343.8" y="160" font-size="15" class="b">16.1%</text><text x="358.5" y="212" font-size="15" class="b">17.2%</text>
 </svg>
         <details class="data"><summary>Show the numbers as a table</summary><div class="tablewrap"><table class="data"><caption class="sr-only">Word error rate by engine</caption><thead><tr><th scope="col">Engine</th><th class="n" scope="col">WER</th><th class="n" scope="col">95% CI</th><th class="n" scope="col">Correct word, median</th><th class="n" scope="col">Speed</th></tr></thead><tbody><tr><th scope="row">Parakeet Ultra 6-bit</th><td class="n">13.8%</td><td class="n">12.8% to 14.8%</td><td class="n">0.25 s</td><td class="n">101.6x real time</td></tr><tr><th scope="row">Parakeet v2</th><td class="n">15.5%</td><td class="n">14.5% to 16.6%</td><td class="n">0.24 s</td><td class="n">117.3x</td></tr><tr><th scope="row">sherpa-onnx</th><td class="n">16.1%</td><td class="n">14.9% to 17.2%</td><td class="n">0.39 s</td><td class="n">31.0x</td></tr><tr><th scope="row">Apple SpeechAnalyzer</th><td class="n">17.2%</td><td class="n">16.0% to 18.4%</td><td class="n">0.67 s</td><td class="n">43.6x</td></tr></tbody></table></div></details>
-        <figcaption class="src">Lower is better. Whiskers are the 95% confidence interval. Source: <a href="https://github.com/G-Eskayo/clarity-captions/blob/feature/145-engine-eval/docs/perf/engine-accuracy-comparison.md">engine accuracy report</a>, Overall, Speed and Live latency tables. 17,528 clips, 31.4 hours, all four engines on the same clips. Measured on a Mac, not an iPhone.</figcaption>
+        <figcaption class="src">Lower is better. Whiskers are the 95% confidence interval. Source: <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/engine-accuracy-comparison.md">engine accuracy report</a>, Overall, Speed and Live latency tables. 17,528 clips, 31.4 hours, all four engines on the same clips. Measured on a Mac, not an iPhone.</figcaption>
       </figure>
 
       <div class="prose">
@@ -236,7 +241,7 @@
 <line class="grid" x1="52" y1="300.0" x2="404" y2="300.0"/><text class="m" x="46" y="304.0" text-anchor="end" font-size="14">10%</text><line class="grid" x1="52" y1="231.0" x2="404" y2="231.0"/><text class="m" x="46" y="235.0" text-anchor="end" font-size="14">14%</text><line class="grid" x1="52" y1="162.0" x2="404" y2="162.0"/><text class="m" x="46" y="166.0" text-anchor="end" font-size="14">18%</text><line class="grid" x1="52" y1="93.0" x2="404" y2="93.0"/><text class="m" x="46" y="97.0" text-anchor="end" font-size="14">22%</text><line class="grid" x1="52" y1="24.0" x2="404" y2="24.0"/><text class="m" x="46" y="28.0" text-anchor="end" font-size="14">26%</text><text class="m" x="52.0" y="318" text-anchor="middle" font-size="14">0</text><text class="m" x="152.6" y="318" text-anchor="middle" font-size="14">200</text><text class="m" x="253.1" y="318" text-anchor="middle" font-size="14">400</text><text class="m" x="353.7" y="318" text-anchor="middle" font-size="14">600</text><text class="m" x="228" y="336" text-anchor="middle" font-size="14">Model size on disk (MB), smaller is left</text><text class="m" x="4" y="12" font-size="14">Word error rate, lower is better</text><line class="axis" x1="52" y1="300" x2="404" y2="300"/><line class="ref" x1="52" y1="175.8" x2="404" y2="175.8"/><text class="reflabel" x="404" y="169.8" text-anchor="end" font-size="14">Apple 17.2%</text><path class="whisk" d="M162.6 205.1V162.0M157.6 205.1H167.6M157.6 162.0H167.6"/><circle class="dot" cx="162.6" cy="184.4" r="7"/><text x="162.6" y="154.0" text-anchor="middle" font-size="14" class="b">Redux 2-bit</text><path class="whisk" d="M221.0 113.7V48.1M216.0 113.7H226.0M216.0 48.1H226.0"/><circle class="dot" cx="221.0" cy="80.9" r="7"/><text x="221.0" y="40.1" text-anchor="middle" font-size="14" class="b">v3 4-bit</text><path class="whisk" d="M228.0 236.2V199.9M223.0 236.2H233.0M223.0 199.9H233.0"/><circle class="dot" cx="228.0" cy="217.2" r="7"/><text x="222.0" y="252.2" text-anchor="end" font-size="14" class="b">Ultra 4-bit</text><path class="whisk" d="M285.3 222.4V186.1M280.3 222.4H290.3M280.3 186.1H290.3"/><circle class="dot" cx="285.3" cy="205.1" r="7"/><text x="273.3" y="209.1" text-anchor="end" font-size="14" class="b">v2</text><path class="whisk" d="M302.4 251.7V217.2M297.4 251.7H307.4M297.4 217.2H307.4"/><circle class="dot pick" cx="302.4" cy="234.4" r="7"/><text x="302.4" y="267.7" text-anchor="middle" font-size="14" class="b">Ultra 6-bit</text><path class="whisk" d="M369.8 253.4V218.9M364.8 253.4H374.8M364.8 218.9H374.8"/><circle class="dot" cx="369.8" cy="234.4" r="7"/><text x="373.8" y="210.9" text-anchor="middle" font-size="14" class="b">Ultra 8-bit</text>
 </svg>
         <details class="data"><summary>Show the numbers as a table</summary><div class="tablewrap"><table class="data"><caption class="sr-only">Size and word error rate of the Parakeet builds</caption><thead><tr><th scope="col">Build</th><th class="n" scope="col">On disk</th><th class="n" scope="col">WER</th><th class="n" scope="col">95% CI</th><th class="n" scope="col">Beats Apple?</th></tr></thead><tbody><tr><th scope="row">Redux (2-bit)</th><td class="n">220 MB</td><td class="n">16.7%</td><td class="n">15.5% to 18.0%</td><td class="n">no</td></tr><tr><th scope="row">v3 (4-bit)</th><td class="n">336 MB</td><td class="n">22.7%</td><td class="n">20.8% to 24.6%</td><td class="n">no</td></tr><tr><th scope="row">Ultra 4-bit</th><td class="n">350 MB</td><td class="n">14.8%</td><td class="n">13.7% to 15.8%</td><td class="n">yes</td></tr><tr><th scope="row">v2</th><td class="n">464 MB</td><td class="n">15.5%</td><td class="n">14.5% to 16.6%</td><td class="n">yes</td></tr><tr><th scope="row">Ultra 6-bit (chosen)</th><td class="n">498 MB</td><td class="n">13.8%</td><td class="n">12.8% to 14.8%</td><td class="n">yes</td></tr><tr><th scope="row">Ultra 8-bit (as published)</th><td class="n">632 MB</td><td class="n">13.8%</td><td class="n">12.7% to 14.7%</td><td class="n">yes</td></tr></tbody></table></div></details>
-        <figcaption class="src">Lower is better, left is smaller. The dashed line is Apple SpeechAnalyzer at 17.2% (its model is part of the phone's system, so it does not add to the app's size). Source: <a href="https://github.com/G-Eskayo/clarity-captions/blob/feature/145-engine-eval/docs/perf/engine-accuracy-comparison.md">engine accuracy report</a>, Size options table, and <a href="https://github.com/G-Eskayo/clarity-captions/blob/feature/145-engine-eval/docs/research/evidence-log.md">evidence log E12</a>. Measured on a Mac, not an iPhone.</figcaption>
+        <figcaption class="src">Lower is better, left is smaller. The dashed line is Apple SpeechAnalyzer at 17.2% (its model is part of the phone's system, so it does not add to the app's size). Source: <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/engine-accuracy-comparison.md">engine accuracy report</a>, Size options table, and <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/research/evidence-log.md">evidence log E12</a>. Measured on a Mac, not an iPhone.</figcaption>
       </figure>
 
       <div class="prose">
@@ -255,7 +260,7 @@
         <p class="note">What we have not shown yet: these tests ran on a Mac with one set of recordings. The next step is checking on an iPhone. Until then, Seal Speak uses Apple's recognition. The switch arrives in 1.1.0. Captions can still contain mistakes with any engine.</p>
       </div>
 
-      <p class="intro" style="margin-top:2rem">The full results, including every accent we tested, are in the <a href="https://github.com/G-Eskayo/clarity-captions/blob/feature/145-engine-eval/docs/perf/engine-accuracy-comparison.md">engine accuracy report</a> on GitHub. The research note behind the size test is <a href="https://github.com/G-Eskayo/clarity-captions/blob/feature/145-engine-eval/docs/research/evidence-log.md">evidence log E12</a>.</p>
+      <p class="intro" style="margin-top:2rem">The full results, including every accent we tested, are in the <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/engine-accuracy-comparison.md">engine accuracy report</a> on GitHub. The research note behind the size test is <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/research/evidence-log.md">evidence log E12</a>.</p>
     </div>
   </section>
 
@@ -263,13 +268,16 @@
     <div class="wrap">
       <h2 id="lang-h">How Parakeet did in other languages</h2>
       <p class="intro">Before promising a language, we measured it.</p>
+      <div class="stats">
+        <p class="stat"><span class="stat-n" data-count="40%">40%</span><span class="stat-l">fewer mistakes than Apple in French, 39% in German and 30% in Spanish</span></p>
+      </div>
       <div class="prose">
         <p>We ran Apple's speech recognition and Parakeet Ultra on the same recordings in Spanish, French and German, and counted mistakes the same way as in the English test: word error rate, with a 95% confidence interval. Lower is better.</p>
       </div>
       <div class="tablewrap">
-        <table class="data">
+        <table class="data" data-bars data-better="lower">
           <caption class="sr-only">Word error rate by language and engine</caption>
-          <thead><tr><th scope="col">Language</th><th class="n" scope="col">Apple</th><th class="n" scope="col">Parakeet Ultra</th></tr></thead>
+          <thead><tr><th scope="col">Language</th><th class="n" scope="col" data-bar-col>Apple</th><th class="n" scope="col" data-bar-col>Parakeet Ultra</th></tr></thead>
           <tbody>
             <tr><th scope="row">Spanish</th><td class="n">4.0% (3.4% to 4.5%)</td><td class="n"><strong>2.8%</strong> (2.4% to 3.3%)</td></tr>
             <tr><th scope="row">French</th><td class="n">7.5% (6.7% to 8.3%)</td><td class="n"><strong>4.5%</strong> (3.9% to 5.1%)</td></tr>
@@ -286,14 +294,19 @@
   <section class="band" id="translation" aria-labelledby="tr-h">
     <div class="wrap">
       <h2 id="tr-h">How we chose the translation engine</h2>
-      <p class="intro">Three engines can translate on the phone with no internet. We tested all three on the same sentences.</p>
+      <p class="intro">Three engines can translate on the phone with no internet. We tested all three on the same sentences, then tested the winner in every language it offers.</p>
+      <div class="stats">
+        <p class="stat"><span class="stat-n" data-count="19">19</span><span class="stat-l">languages tested with Apple's translation, 1,012 sentences each</span></p>
+        <p class="stat"><span class="stat-n" data-count="18 of 19">18 of 19</span><span class="stat-l">scored as well as Spanish, French and German, where Apple beat both other engines</span></p>
+        <p class="stat"><span class="stat-n" data-count="70 ms">70 ms</span><span class="stat-l">or less to translate a caption line (median, on a Mac)</span></p>
+      </div>
       <div class="prose">
         <p>We score translations with <strong>chrF</strong>: how closely a translation matches one written by a person, from 0 to 100. Higher is better. We tested two kinds of text: ordinary written sentences, and the same sentences the way captions arrive, in lower case with no punctuation.</p>
       </div>
       <div class="tablewrap">
-        <table class="data">
+        <table class="data" data-bars="100" data-better="higher">
           <caption class="sr-only">Translation score (chrF) by engine, English into each language</caption>
-          <thead><tr><th scope="col">English into</th><th scope="col">Text</th><th class="n" scope="col">Apple</th><th class="n" scope="col">OPUS-MT</th><th class="n" scope="col">Google ML Kit</th></tr></thead>
+          <thead><tr><th scope="col">English into</th><th scope="col">Text</th><th class="n" scope="col" data-bar-col>Apple</th><th class="n" scope="col" data-bar-col>OPUS-MT</th><th class="n" scope="col" data-bar-col>Google ML Kit</th></tr></thead>
           <tbody>
             <tr><th scope="row">Spanish</th><td>written</td><td class="n"><strong>56.8</strong></td><td class="n">55.0</td><td class="n">53.2</td></tr>
             <tr><th scope="row">Spanish</th><td>caption-style</td><td class="n"><strong>54.8</strong></td><td class="n">51.2</td><td class="n">51.8</td></tr>
@@ -305,9 +318,50 @@
         </table>
       </div>
       <div class="prose" style="margin-top:1.5rem">
-        <p>Apple's translation scored highest everywhere, and it lost the least when the punctuation was missing, which is how captions arrive. All three were fast enough for live captions. That is why 1.1.0 uses Apple's translation. We are now checking every other language it supports.</p>
+        <p>Apple's translation scored highest everywhere, and it lost the least when the punctuation was missing, which is how captions arrive. All three were fast enough for live captions. That is why 1.1.0 uses Apple's translation.</p>
       </div>
-      <p class="note src">Sentences from FLORES-200 (1,012 per language). Measured on a Mac, not an iPhone. Source: <a href="https://github.com/G-Eskayo/clarity-captions/blob/feature/159-translation-eval/docs/perf/translation-comparison.md">translation comparison report</a>, with every confidence interval and a second scoring method.</p>
+
+      <h3 id="tr-all" style="margin:2.5rem 0 .5rem;font-size:1.25rem">Every language Apple translates into</h3>
+      <div class="prose">
+        <p>Then we ran Apple's translation in all 19 languages it offered on our Mac, on the same 1,012 sentences. Here we add a second score, <strong>COMET</strong>, from 0 to 1, which judges whether the meaning came across and can be compared between languages. chrF can't: it always runs low for Japanese, Chinese and Korean, which don't put spaces between words.</p>
+      </div>
+      <div class="tablewrap">
+        <table class="data" data-bars="100" data-better="higher">
+          <caption class="sr-only">Apple's translation from English into 19 languages: chrF, COMET and median time per caption line</caption>
+          <thead><tr><th scope="col">English into</th><th class="n" scope="col" data-bar-col>chrF</th><th class="n" scope="col">COMET</th><th class="n" scope="col">Time per line</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Indonesian</th><td class="n">73.8</td><td class="n">0.920</td><td class="n">53 ms</td></tr>
+            <tr><th scope="row">Portuguese (Brazil)</th><td class="n">73.6</td><td class="n">0.899</td><td class="n">51 ms</td></tr>
+            <tr><th scope="row">French</th><td class="n">73.2</td><td class="n">0.879</td><td class="n">58 ms</td></tr>
+            <tr><th scope="row">German</th><td class="n">68.2</td><td class="n">0.883</td><td class="n">70 ms</td></tr>
+            <tr><th scope="row">Turkish</th><td class="n">65.7</td><td class="n">0.903</td><td class="n">52 ms</td></tr>
+            <tr><th scope="row">Arabic</th><td class="n">63.1</td><td class="n">0.870</td><td class="n">53 ms</td></tr>
+            <tr><th scope="row">Vietnamese</th><td class="n">62.5</td><td class="n">0.892</td><td class="n">52 ms</td></tr>
+            <tr><th scope="row">Ukrainian</th><td class="n">61.8</td><td class="n">0.898</td><td class="n">51 ms</td></tr>
+            <tr><th scope="row">Hindi</th><td class="n">60.9</td><td class="n">0.807</td><td class="n">52 ms</td></tr>
+            <tr><th scope="row">Italian</th><td class="n">60.4</td><td class="n">0.879</td><td class="n">52 ms</td></tr>
+            <tr><th scope="row">Russian</th><td class="n">60.0</td><td class="n">0.886</td><td class="n">52 ms</td></tr>
+            <tr><th scope="row">Dutch</th><td class="n">59.6</td><td class="n">0.879</td><td class="n">51 ms</td></tr>
+            <tr><th scope="row">Thai</th><td class="n">57.9</td><td class="n">0.879</td><td class="n">51 ms</td></tr>
+            <tr><th scope="row">Spanish</th><td class="n">56.8</td><td class="n">0.863</td><td class="n">59 ms</td></tr>
+            <tr><th scope="row">Polish</th><td class="n">53.8</td><td class="n">0.889</td><td class="n">52 ms</td></tr>
+            <tr><th scope="row">Japanese</th><td class="n">43.5</td><td class="n">0.912</td><td class="n">59 ms</td></tr>
+            <tr><th scope="row">Chinese (Simplified)</th><td class="n">40.3</td><td class="n">0.871</td><td class="n">56 ms</td></tr>
+            <tr><th scope="row">Korean</th><td class="n">38.0</td><td class="n">0.899</td><td class="n">56 ms</td></tr>
+            <tr><th scope="row">Chinese (Traditional)</th><td class="n">32.6</td><td class="n">0.875</td><td class="n">55 ms</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="prose" style="margin-top:1.5rem">
+        <ul>
+          <li>18 of the 19 scored a COMET of 0.86 or more, the same range as Spanish, French and German.</li>
+          <li>Hindi scored lowest (0.807). It needs a closer look before we offer it.</li>
+          <li>Simplified Chinese sometimes came back in Traditional characters, in about 2 of every 100 caption lines. We will check this on an iPhone.</li>
+          <li>Each language is a one-time download of 154 to 291 MB, made by iOS, not by Seal Speak.</li>
+        </ul>
+        <p>Which of these languages 1.1.0 offers is not decided yet.</p>
+      </div>
+      <p class="note src">Sentences from FLORES-200 (1,012 per language), written text rather than conversation. Measured on a Mac, not an iPhone. Sources: <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/translation-comparison.md">translation comparison report</a>, with every confidence interval, and <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/translation-languages-results.md">results for every language</a>.</p>
     </div>
   </section>
   </div>
@@ -356,5 +410,6 @@
   show(true, true)
 })()
 </script>
+<script type="module" src="motion.js"></script>
 </body>
 </html>

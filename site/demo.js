@@ -252,14 +252,15 @@ export function init(root, { reducedMotion = false, storage = null, now = () => 
     render()
     playFrom(step)
   }
-  function pause() {
+  // focus: false when the page pauses it (scrolled away, #169), so the page never jumps back to the demo.
+  function pause({ focus = true } = {}) {
     clearTimers()
     partial = null
     state = 'paused'
     veilOn = true
     statusSub.hidden = true
     render()
-    save.focus()
+    if (focus) save.focus()
   }
 
   // [ word ] buttons: when the word changes, the brackets ease to the new width while the old word fades out and the
@@ -499,6 +500,24 @@ export function init(root, { reducedMotion = false, storage = null, now = () => 
   return { startCaptions, pause, doSave, doNew, get state() { return state }, get step() { return step } }
 }
 
+// Starts the demo by itself once the phone is mostly in view, and pauses it when it scrolls away (#169). The first
+// touch, click or key inside the demo hands it to the person for good. Never called with Reduce Motion.
+export function autoplay(root, demo, { IO = globalThis.IntersectionObserver, delay = 900 } = {}) {
+  if (!IO) return null
+  let mine = true
+  let timer = null
+  const io = new IO(([e]) => {
+    if (!mine) return
+    clearTimeout(timer)
+    if (e.isIntersecting) timer = setTimeout(() => { if (mine && demo.state !== 'running' && demo.step < SCRIPT.length) demo.startCaptions() }, delay)
+    else if (demo.state === 'running') demo.pause({ focus: false })
+  }, { threshold: 0.5 })
+  const stop = () => { mine = false; clearTimeout(timer); io.disconnect() }
+  for (const ev of ['pointerdown', 'keydown']) root.addEventListener(ev, stop, { capture: true, once: true })
+  io.observe(root)
+  return { stop }
+}
+
 // The gummy button's lip (build.mjs lipColor): 28% lighter for a dark fill, 28% darker for a light one.
 export function lip(hex) {
   const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
@@ -511,5 +530,7 @@ if (typeof document !== 'undefined') {
   const root = document.querySelector('[data-demo]')
   let storage = null
   try { storage = window.localStorage } catch { storage = null }
-  if (root) init(root, { reducedMotion: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches, storage })
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  const demo = root && init(root, { reducedMotion, storage })
+  if (demo && !reducedMotion) autoplay(root, demo)
 }

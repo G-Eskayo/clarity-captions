@@ -12,6 +12,7 @@
 <meta property="og:title" content="Seal Speak: captions for conversations">
 <meta property="og:description" content="Follow the conversation at the table. Captions made on your iPhone, with no internet needed.">
 <meta property="og:image" content="assets/seal-icon-256.png">
+<link rel="stylesheet" href="motion.css">
 <style>
   @font-face { font-family: 'OpenDyslexic'; src: url('assets/fonts/OpenDyslexic-Regular.woff') format('woff'); font-weight: 400; font-display: swap; }
   @font-face { font-family: 'OpenDyslexic'; src: url('assets/fonts/OpenDyslexic-Bold.woff') format('woff'); font-weight: 700; font-display: swap; }
@@ -386,7 +387,7 @@
     <div class="wrap">
       <h2 id="how-h">What it does</h2>
       <p class="intro">One screen and one button to start. Nothing to set up each time.</p>
-      <div class="grid3">
+      <div class="grid3 steps">
         <div class="card"><span class="step-n" aria-hidden="true">1</span><h3>Put your phone on the table</h3><p>Open Seal Speak and tap Start captions. Words show up as people talk.</p></div>
         <div class="card"><span class="step-n" aria-hidden="true">2</span><h3>Read along</h3><p>When the voice changes, Seal starts a new line and labels it Speaker 1 or Speaker 2. Sounds like laughter or a doorbell show up as short labels.</p></div>
         <div class="card"><span class="step-n" aria-hidden="true">3</span><h3>Pause when you need to</h3><p>Tap ✕ and the words dim, with [&nbsp;Save&nbsp;] and [&nbsp;New&nbsp;] on top. Tap the dim to scroll back and reread. Hold an empty spot to bring the buttons back.</p></div>
@@ -416,6 +417,13 @@
     <div class="wrap">
       <h2 id="easy-h">Made to be easy to read</h2>
       <p class="intro">Everything on screen fades in and out. Nothing slides around while you read.</p>
+      <div class="sample-wrap">
+        <figure class="sample" data-sample aria-label="A caption shown in each of Seal's color themes and letterings">
+          <span class="sample-spk">Speaker 1</span>
+          <p class="sample-text">Is it on? Say something so we can see.</p>
+        </figure>
+        <div class="sample-bar"><span data-sample-name>Paper · OpenDyslexic</span><button type="button" data-sample-play hidden>Play</button></div>
+      </div>
       <div class="grid3">
         <div class="card"><h3>Large text</h3><p>Follows your phone's text size, with A− and A+ to go bigger or smaller.</p></div>
         <div class="card"><h3>Six color themes</h3><p>Three light and three dark. Every one keeps strong contrast between the words and the background.</p></div>
@@ -512,5 +520,6 @@
 </footer>
 
 <script type="module" src="demo.js"></script>
+<script type="module" src="motion.js"></script>
 </body>
 </html>
