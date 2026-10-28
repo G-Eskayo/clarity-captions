@@ -29,7 +29,18 @@ struct CallPopupView: View {
     let buttonTitle: String
     var buttonEnabled = true
     var onPrimary: () -> Void = {}
-    var onPickLook: (CaptionPreset) -> Void = { _ in }
+    /// The gear: Settings, as on the iPhone (#172 parity).
+    var onGear: () -> Void = {}
+    /// The list icon opposite the gear: saved conversations, as on the iPhone (#137 option A).
+    var onSaved: () -> Void = {}
+    /// A long click on the captions: brings back the dim with [ Save ] / [ New ], as a hold does on the iPhone.
+    var onHoldEmptySpace: () -> Void = {}
+    /// Right-click / Control-click on the captions: the same two choices as a menu.
+    var canSave = false
+    var onSave: () -> Void = {}
+    var onNew: () -> Void = {}
+    /// Drawn over the captions (the iPhone's dim with [ Save ] / [ New ]).
+    var captionsOverlay: AnyView? = nil
     @Binding var pinned: Bool
 
     private var speakerColors: [RGBA] {
@@ -41,7 +52,16 @@ struct CallPopupView: View {
     var body: some View {
         VStack(spacing: 0) {
             topBar
-            if lines.isEmpty { waiting } else { captions }
+            ZStack {
+                if lines.isEmpty { waiting } else { captions }
+                captionsOverlay
+            }
+            .contentShape(Rectangle())
+            .onLongPressGesture(minimumDuration: 0.5, perform: onHoldEmptySpace)
+            .contextMenu {
+                Button(String(localized: "Save conversation"), action: onSave).disabled(!canSave)
+                Button(String(localized: "New conversation"), action: onNew)
+            }
             Button(action: onPrimary) {
                 Text(buttonTitle)
                     .font(.system(size: 19, weight: .semibold))
@@ -69,17 +89,12 @@ struct CallPopupView: View {
 
     private var topBar: some View {
         HStack {
-            Menu {
-                ForEach(CaptionPreset.all, id: \.id) { preset in
-                    Button(preset.name) { onPickLook(preset) }
-                }
-            } label: {
+            Button(action: onGear) {
                 Image(systemName: "gearshape").font(.system(size: 17, weight: .regular)).foregroundStyle(style.gear.color)
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .help("Look")
+            .buttonStyle(.plain)
+            .help(String(localized: "Settings"))
+            .accessibilityLabel(String(localized: "Settings"))
             Spacer()
             HStack(spacing: 6) {
                 Circle().fill(status == .captioning ? style.saved.color : style.text.color.opacity(0.35)).frame(width: 7, height: 7)
@@ -93,6 +108,13 @@ struct CallPopupView: View {
             }
             .buttonStyle(.plain)
             .help(pinned ? "Stays on top of other windows" : "Doesn't stay on top")
+            Button(action: onSaved) {
+                Image(systemName: "list.bullet").font(.system(size: 17, weight: .regular)).foregroundStyle(style.gear.color)
+            }
+            .buttonStyle(.plain)
+            .padding(.leading, 10)
+            .help(String(localized: "Saved conversations"))
+            .accessibilityLabel(String(localized: "Saved conversations"))
         }
         .padding(.horizontal, 16)
         .padding(.top, 14)

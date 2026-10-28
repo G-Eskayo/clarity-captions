@@ -12,7 +12,8 @@ import SwiftUI
 enum MarvinScreenshot {
     static func runIfRequested() {
         let defaults = UserDefaults.standard
-        guard let path = defaults.string(forKey: "MarvinScreenshot") else { return }
+        // A `-MarvinScene` shot is of the live window (MarvinScene), not the mock-up.
+        guard let path = defaults.string(forKey: "MarvinScreenshot"), defaults.string(forKey: "MarvinScene") == nil else { return }
         let dark = defaults.string(forKey: "MarvinAppearance") == "dark"
         var style = CaptionStyle.standard
         let preset = CaptionPreset.all.first { $0.id == (dark ? "harbor" : "paper") }!
@@ -63,7 +64,7 @@ enum MarvinScreenshot {
         try write(host, to: url)
     }
 
-    private static func write(_ host: NSView, to url: URL) throws {
+    static func write(_ host: NSView, to url: URL) throws {
         let scale: CGFloat = 2
         let size = host.bounds.size
         guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(size.width * scale), pixelsHigh: Int(size.height * scale),
