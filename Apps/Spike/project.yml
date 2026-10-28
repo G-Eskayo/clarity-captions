@@ -61,7 +61,7 @@ targets:
         # The version shown on the App Store, and the build number App Store Connect needs on every upload (raise
         # CURRENT_PROJECT_VERSION for each TestFlight build). Beta reports carry both (ADR 0023).
         MARKETING_VERSION: "1.1"
-        CURRENT_PROJECT_VERSION: "6"   # 1.1 (6): iPad and iPhone Duo (#147)
+        CURRENT_PROJECT_VERSION: "7"   # 1.1 (7): Parakeet Ultra engine (#155), red Listening light (#181), Mac parity (#186)
         TARGETED_DEVICE_FAMILY: "1,2"  # iPhone and iPad from 1.1 (#147, owner approved the simulator look 2026-10-21); 1.0 was iPhone only (#137)
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: "$(APP_DISPLAY_NAME)"
