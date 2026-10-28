@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- An unlisted gift page: linked from nowhere on the site, kept out of search engines. -->
+<meta name="robots" content="noindex, nofollow">
+<title>For Mom: Seal Speak</title>
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/favicon-64.png" type="image/png" sizes="64x64">
+<link rel="apple-touch-icon" href="assets/seal-icon-256.png">
+<style>
+  @font-face { font-family: 'Atkinson Hyperlegible'; src: url('assets/fonts/AtkinsonHyperlegible-Regular.woff') format('woff'); font-weight: 400; font-display: swap; }
+
+  /* The home page's colours: the app's Peach theme in light, Harbor in dark. */
+  :root { --bg: #FBE8D2; --text: #2B1A10; --muted: #6B5545; --accent: #6E2E0A; --teal: #1F998B; --card: #F6DCBF; --rule: #EDCFAF; --lip: #6B5545;
+          --band: #0E5A56; --band-text: #FBF3E4; --band-lead: #FBE8C1;
+          --d-bg: #FAF5E6; --d-text: #141419; --d-s1: #14514B; --d-s2: #7A350C; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #173331; --text: #ECE4D3; --muted: #B9B3A6; --accent: #A3E3D9; --teal: #4FB3A9; --card: #1E3D3B; --rule: #2C4B48; --lip: #a9a498;
+            --band: #FBE8C1; --band-text: #141419; --band-lead: #0E5A56; }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; scroll-snap-type: y proximity; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 1.25rem/1.6 'Atkinson Hyperlegible', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+  a { color: var(--accent); }
+  :focus-visible { outline: 3px solid var(--teal); outline-offset: 3px; border-radius: 6px; }
+
+  /* Each part is one screen, like slides you scroll through. */
+  .slide { min-height: 100vh; min-height: 100svh; display: grid; align-items: center; padding: 4rem 1rem; scroll-snap-align: start; }
+  .inner { width: 100%; max-width: 46rem; margin: 0 auto; }
+  .center { text-align: center; }
+  h1 { font-size: clamp(2.6rem, 9vw, 4.6rem); line-height: 1.05; margin: 0 0 1rem; letter-spacing: -.01em; }
+  h2 { font-size: clamp(2rem, 6vw, 3rem); line-height: 1.12; margin: 0 0 1.25rem; }
+  p { margin: 0 0 1rem; }
+  .lede { font-size: clamp(1.35rem, 3.6vw, 1.7rem); color: var(--muted); }
+  .seal { width: clamp(120px, 30vw, 180px); height: auto; display: block; margin: 0 auto 1.5rem; }
+  .next { display: inline-block; margin-top: 2.5rem; color: var(--muted); text-decoration: none; font-size: 1rem; }
+  .next span { display: block; font-size: 1.6rem; animation: bob 2.2s ease-in-out infinite; }
+  @keyframes bob { 0%, 100% { transform: none; } 50% { transform: translateY(6px); } }
+  @media (prefers-reduced-motion: reduce) { .next span { animation: none; } }
+
+  /* A caption card in the app's Paper theme, with lines appearing as if spoken. */
+  .card { background: var(--d-bg); color: var(--d-text); border-radius: 28px; padding: 1.5rem 1.5rem 1.75rem; margin: 1.5rem 0 0;
+          box-shadow: 0 24px 50px -24px rgba(0,0,0,.35); font-size: clamp(1.3rem, 3.6vw, 1.6rem); line-height: 1.45; min-height: 13.5rem; }
+  .line + .line { margin-top: 1rem; }
+  .spk { font: 800 .95rem/1.4 system-ui, sans-serif; letter-spacing: .02em; }
+  .s1 { color: var(--d-s1); } .s2 { color: var(--d-s2); }
+  .card .live { opacity: .55; }
+
+  .facts { list-style: none; padding: 0; margin: 0; display: grid; gap: 1rem; }
+  .facts li { background: var(--card); border-radius: 22px; padding: 1.1rem 1.3rem; }
+  .facts strong { display: block; font-size: 1.35rem; }
+  .facts span { color: var(--muted); }
+
+  .steps { list-style: none; padding: 0; margin: 0; counter-reset: s; display: grid; gap: 1.25rem; }
+  .steps li { counter-increment: s; display: grid; grid-template-columns: 3rem 1fr; gap: 1rem; align-items: start; }
+  .steps li::before { content: counter(s); width: 3rem; height: 3rem; border-radius: 50%; display: grid; place-items: center;
+                      background: var(--text); color: var(--bg); font-weight: 800; font-size: 1.3rem; }
+  /* The home page's gummy button: a flat pill on a flat lip. */
+  .gummy { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; padding: 0 1.75rem; min-height: 60px; margin-top: .6rem;
+           background: var(--text); color: var(--bg); font-weight: 800; font-size: 1.15rem; letter-spacing: .03em;
+           box-shadow: 0 3px 0 var(--lip); text-decoration: none; }
+  .gummy:active { transform: scaleX(1.04) scaleY(.92) translateY(2px); box-shadow: 0 1px 0 var(--lip); }
+  .note { color: var(--muted); font-size: 1.05rem; }
+
+  .mac { background: var(--card); border-radius: 22px; padding: 1.25rem 1.4rem; margin-top: 1.25rem; }
+  .soon { display: inline-block; background: var(--teal); color: #fff; border-radius: 999px; padding: .15rem .7rem; font-size: .9rem; font-weight: 700; margin-bottom: .4rem; }
+
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .band { background: var(--band); color: var(--band-text); }
+  .band .lead { font-size: clamp(1.7rem, 5vw, 2.4rem); line-height: 1.25; font-weight: 700; color: var(--band-lead); }
+  .sign { font-weight: 700; font-size: 1.5rem; margin-top: 2rem; }
+
+  /* Rising in as each part scrolls into view. Only the script hides anything, so without it the page is complete. */
+  html.motion [data-reveal] { opacity: 0; transform: translateY(18px); transition: opacity .6s ease-out, transform .6s cubic-bezier(.2, .7, .2, 1);
+                              transition-delay: calc(var(--i, 0) * 110ms); }
+  html.motion [data-reveal].in { opacity: 1; transform: none; }
+</style>
+</head>
+<body>
+<main>
+  <section class="slide center" aria-labelledby="hi">
+    <div class="inner">
+      <img class="seal" src="assets/favicon.svg" alt="" width="180" height="180">
+      <h1 id="hi">Happy birthday, Mom.</h1>
+      <p class="lede">I made you something.</p>
+      <a class="next" href="#what">Scroll down<span aria-hidden="true">↓</span></a>
+    </div>
+  </section>
+
+  <section class="slide" id="what" aria-labelledby="what-h">
+    <div class="inner">
+      <h2 id="what-h" data-reveal>This is Seal Speak.</h2>
+      <p class="lede" data-reveal style="--i:1">It listens to the people around you and shows what they say as they say it, in big, clear words on your iPhone.</p>
+      <div class="card" data-reveal style="--i:2" data-convo aria-label="An example of captions">
+        <div class="line"><div class="spk s1">Speaker 1</div>Happy birthday! Can you read this?</div>
+        <div class="line"><div class="spk s2">Speaker 2</div>Every word. It's right there on the screen.</div>
+        <div class="line"><div class="spk s1">Speaker 1</div>It starts a new line when someone else talks.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" aria-labelledby="yours-h">
+    <div class="inner">
+      <h2 id="yours-h" data-reveal>Made for you.</h2>
+      <ul class="facts">
+        <li data-reveal style="--i:1"><strong>No internet needed</strong><span>It works at a restaurant, in the car, anywhere.</span></li>
+        <li data-reveal style="--i:2"><strong>Private</strong><span>Everything happens on your phone. Nothing is recorded or sent anywhere.</span></li>
+        <li data-reveal style="--i:3"><strong>Easy to read</strong><span>Pick the colors and the size of the words that suit your eyes.</span></li>
+        <li data-reveal style="--i:4"><strong>Keep a conversation</strong><span>Save one to read again later. It stays on your phone for 30 days.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="slide" id="get" aria-labelledby="get-h">
+    <div class="inner">
+      <h2 id="get-h" data-reveal>Get it on your iPhone.</h2>
+      <p class="note" data-reveal style="--i:1">I'll be with you on FaceTime while you do this.</p>
+      <ol class="steps">
+        <li data-reveal style="--i:2"><div><strong>Get TestFlight.</strong> It's Apple's free app for trying new apps before they're in the App Store.<br>
+          <a class="gummy" href="https://apps.apple.com/app/testflight/id899247664">Get TestFlight</a></div></li>
+        <li data-reveal style="--i:3"><div><strong>Get Seal Speak.</strong> Tap this, then tap Accept and Install.<br>
+          <a class="gummy" href="https://testflight.apple.com/join/b8YTVGSY">Get Seal Speak</a></div></li>
+        <li data-reveal style="--i:4"><div><strong>Open Seal Speak and tap Start captions.</strong> When it asks to use the microphone, tap Allow.
+          Then set your phone on the table and talk.</div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="slide" aria-labelledby="mac-h">
+    <div class="inner">
+      <h2 id="mac-h" data-reveal>It works on your computer too.</h2>
+      <p class="lede" data-reveal style="--i:1">On a Mac, Seal Speak shows the captions in a small window that stays on top of everything else.</p>
+      <div class="mac" data-reveal style="--i:2">
+        <span class="soon">Coming next</span>
+        <p><strong>Captions for your FaceTime calls.</strong> When you FaceTime someone on your Mac, Seal Speak will show what they're saying, live, in a window beside the call.</p>
+        <p class="note" style="margin:0">I'm building this right now.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide band center" aria-labelledby="end-h">
+    <div class="inner">
+      <h2 id="end-h" class="sr-only">From Gil</h2>
+      <p class="lead" data-reveal>Everyone deserves to be part of the conversation.</p>
+      <p data-reveal style="--i:1">I made this so you can be part of every conversation.</p>
+      <p class="sign" data-reveal style="--i:2">Love, Gil</p>
+    </div>
+  </section>
+</main>
+
+<script>
+  // Rise-in on scroll and the caption card "speaking" its lines. Nothing moves with Reduce Motion on, and nothing is
+  // hidden unless this script runs.
+  (() => {
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (still || !('IntersectionObserver' in window)) return
+    document.documentElement.classList.add('motion')
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target) }
+    }, { threshold: 0.2 })
+    document.querySelectorAll('[data-reveal]').forEach((el) => io.observe(el))
+
+    // The card types its lines in word by word, the way captions arrive, once it's on screen.
+    const card = document.querySelector('[data-convo]')
+    const lines = [...card.querySelectorAll('.line')].map((l) => ({ el: l, words: l.lastChild.textContent.split(' ') }))
+    lines.forEach(({ el }) => { el.lastChild.textContent = ''; el.hidden = true })
+    const play = async () => {
+      for (const { el, words } of lines) {
+        el.hidden = false
+        const span = el.lastChild
+        for (let i = 0; i < words.length; i++) {
+          span.textContent = words.slice(0, i + 1).join(' ')
+          await new Promise((r) => setTimeout(r, 170))
+        }
+        await new Promise((r) => setTimeout(r, 700))
+      }
+    }
+    const cardIO = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) { cardIO.disconnect(); setTimeout(play, 600) }
+    }, { threshold: 0.5 })
+    cardIO.observe(card)
+  })()
+</script>
+</body>
+</html>
