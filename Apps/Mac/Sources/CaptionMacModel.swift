@@ -14,6 +14,8 @@ enum ListenTo: String {
     case facetime
     /// The Mac's microphone, as before #172.
     case room
+    /// The room alone, the mic following the headphones as in `.both`: #178's mode while no call is being captioned.
+    case roomOnly
 
     static var current: ListenTo { ListenTo(rawValue: UserDefaults.standard.string(forKey: "listenTo") ?? "") ?? .both }
 
@@ -30,6 +32,7 @@ enum ListenTo: String {
         case .call: return ProcessTapAudioSource(target: .allSystemAudio)
         case .facetime: return ProcessTapAudioSource(target: .apps(bundleIDs: CallApps.faceTime))
         case .room: return MicAudioSource()
+        case .roomOnly: return RoomMicSource()
         }
     }
 }

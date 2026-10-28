@@ -30,7 +30,7 @@ final class CallFlow: ObservableObject {
     /// Called once the window is up, before captioning starts.
     func start() {
         guard Self.isEnabled else { return }
-        model.listenOverride = .room
+        model.listenOverride = .roomOnly
         watcher.onChange = { [weak self] live in self?.send(live ? .callStarted : .callEnded) }
         watcher.start()
         #if DEBUG
@@ -80,7 +80,7 @@ final class CallFlow: ObservableObject {
             model.start()
         case .stopCall:
             await model.stopAndWait()
-            model.listenOverride = .room
+            model.listenOverride = .roomOnly
         case .saveCall:
             let lines = model.stream.lines
             if SessionRetention.shouldSave(lines: lines) {
@@ -99,7 +99,7 @@ final class CallFlow: ObservableObject {
         pausedRoom = nil
         model.stream = room?.stream ?? CaptionStream()
         model.speakerNames = room?.names ?? SpeakerNames()
-        model.listenOverride = .room
+        model.listenOverride = .roomOnly
     }
 }
 
