@@ -215,14 +215,13 @@
   /* Light (Peach): the seal's deep teal, like its app icon. Dark (Harbor): the seal's cream. */
   section.band.story { background: #0E5A56; color: #FBF3E4; border-top: 0; }
   .story-card { display: grid; grid-template-columns: auto 1fr; gap: 2.5rem; align-items: center; max-width: 54rem; }
-  @media (max-width: 40rem) { .story-card { grid-template-columns: 1fr; gap: 1rem; justify-items: start; } .story-seal { width: 96px !important; } .story-lead::before { position: static; margin-right: .05em; } }
+  @media (max-width: 40rem) { .story-card { grid-template-columns: 1fr; gap: 1rem; justify-items: start; } .story-seal { width: 96px !important; } }
   .story-seal { width: 160px; height: auto; display: block; }
   .story-quote { margin: 0; }
   .story-quote blockquote { margin: 0; }
   .story-kicker { font-size: .85rem !important; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 .75rem !important; color: #D6EAE6; }
   .story p { margin: 0 0 .75rem; max-width: 36rem; }
   .story-lead { font-size: clamp(1.7rem, 3.6vw, 2.5rem); line-height: 1.15; font-weight: 800; color: #FBE8C1; margin-bottom: 1rem !important; position: relative; }
-  .story-lead::before { content: '\201C'; position: absolute; left: -.55em; top: -.1em; opacity: .5; }
   .story-sign { font-weight: 700; margin-top: 1.2rem; }
   .story-sign span { display: block; font-weight: 400; font-size: .9rem; color: #D6EAE6; }
   .story a { color: #FBE8C1; }
