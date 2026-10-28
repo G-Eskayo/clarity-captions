@@ -375,5 +375,5 @@ Macfixit, June 2026].
 - [ ] Ask recruited testers which phones they have first, then decide
 
 ### mac-scope: When the Mac app comes, which Macs?
-- [ ] Apple silicon only; Intel Macs never see it (recommended)
+- [x] Apple silicon only; Intel Macs never see it (recommended) (**decided by Gil 2026-10-28**; the site says "Apple silicon (M1 or later), macOS 26")
 - [ ] Also try Intel Macs on macOS 26 with the backup engine
