@@ -21,7 +21,8 @@ public struct AudioDeviceInfo: Equatable {
 
 /// Which microphone joins the call on the Mac (#172, owner 2026-10-28 ~10 a.m.).
 public enum RoomMicChoice: Equatable {
-    /// No headphones: the people in the room, through the Mac's input, echo cancelled (the call plays out loud).
+    /// No headphones: the people in the room, through the Mac's input (the call plays out loud; one stream keeps its echo
+    /// from doubling words).
     case room
     /// Headphones with a mic: the wearer only. The call is private, so the room is never picked up.
     case headset
@@ -71,8 +72,9 @@ public final class RoomMicSource: AudioSource {
         try queue.sync { try apply(Self.currentChoice()) }
         let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
             guard let self else { return }
-            // A connect fires output and input changes back to back: let them settle, then decide once.
-            self.queue.asyncAfter(deadline: .now() + 0.3) { try? self.apply(Self.currentChoice()) }
+            // A connect or disconnect fires output and input changes back to back and the hardware keeps switching for a
+            // moment: let it settle, then decide once.
+            self.queue.asyncAfter(deadline: .now() + 1) { try? self.apply(Self.currentChoice()) }
         }
         listener = block
         for selector in [kAudioHardwarePropertyDefaultOutputDevice, kAudioHardwarePropertyDefaultInputDevice] {
@@ -112,28 +114,34 @@ public final class RoomMicSource: AudioSource {
             Self.log.notice("room mic: \(Self.describeRoute(), privacy: .public)")
         }
         guard choice != .none else { return }
-        // The room plays the call out loud: cancel its echo. A headset hears only its wearer, through an AudioQueue on
-        // that device (AVAudioEngine gets only zeros from AirPods).
-        let mic: AudioSource = choice == .room
-            ? MicAudioSource(micMode: .voiceProcessing)
-            : HeadsetMicAudioSource(deviceUID: inputID.flatMap { Self.string($0, kAudioDevicePropertyDeviceUID) })
+        // The device's own mic through an AudioQueue, room or headset alike. No echo canceller: Apple's came back silent or
+        // garbled after headphones came and went. The call's echo can't double words anyway: mic and call are one stream.
+        let mic: AudioSource = DeviceMicAudioSource(deviceUID: inputID.flatMap { Self.string($0, kAudioDevicePropertyDeviceUID) })
         do {
             let inFormat = try mic.open()
-            // Echo-cancelled input on the Mac arrives as 7 channels with the cleaned voice on the first; converting 7 → 1
-            // gives silence (measured), so channel 0 is taken first and only the rate is converted.
+            // Only the first channel is used, then the rate converted (a 7-channel echo-cancelled input once gave silence).
             guard let mono = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: inFormat.sampleRate, channels: 1, interleaved: false),
                   let converter = AVAudioConverter(from: mono, to: Self.format) else { throw TranscriptionError.converterUnavailable }
             Self.log.notice("room mic: \(String(describing: choice), privacy: .public) started, attempt \(attempt), \(inFormat.channelCount) ch at \(inFormat.sampleRate) Hz")
-            var heard = false
+            let alive = Flag()
             try mic.start { buffer in
                 guard let first = Self.firstChannel(of: buffer, as: mono) else { return }
-                if !heard, let ch = first.floatChannelData, (0..<Int(first.frameLength)).contains(where: { abs(ch[0][$0]) > 0.001 }) {
-                    heard = true
+                if !alive.isSet, let ch = first.floatChannelData, (0..<Int(first.frameLength)).contains(where: { ch[0][$0] != 0 }) {
+                    alive.set()
                     Self.log.notice("room mic: sound arriving (\(String(describing: choice), privacy: .public))")
                 }
                 if let out = Self.convert(first, with: converter) { onBuffer(out) }
             }
             inner = mic
+            // A real mic never gives exact digital silence. One that does (measured: the Mac's mic right after AirPods
+            // disconnect) gets restarted; AirPods busy on an iPhone call stay silent, so it gives up after a few tries.
+            queue.asyncAfter(deadline: .now() + 2.5) { [weak self] in
+                guard let self, !alive.isSet, self.inner === mic, attempt < 6 else { return }
+                Self.log.notice("room mic: \(String(describing: choice), privacy: .public) gave only silence, restarting (attempt \(attempt + 1))")
+                mic.stop()
+                self.inner = nil
+                try? self.apply(Self.currentChoice(), attempt: attempt + 1)
+            }
         } catch {
             mic.stop()
             Self.log.error("room mic: \(String(describing: choice), privacy: .public) failed to start, attempt \(attempt): \(String(describing: error), privacy: .public)")
@@ -228,5 +236,12 @@ public final class RoomMicSource: AudioSource {
         guard AudioObjectGetPropertyData(object, &address, 0, nil, &size, &value) == noErr, let value else { return nil }
         return value.takeRetainedValue() as String
     }
+}
+/// A one-way switch that audio threads can set and others read.
+private final class Flag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = false
+    var isSet: Bool { lock.withLock { value } }
+    func set() { lock.withLock { value = true } }
 }
 #endif

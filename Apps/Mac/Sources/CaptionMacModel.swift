@@ -21,10 +21,11 @@ enum ListenTo: String {
         switch self {
         // Echo cancelled on the mic, so a call coming out of the speakers isn't heard twice over.
         case .both:
-            // The tap's device must not also hold the speakers, or the echo canceller starves it (measured: 0 frames).
+            // The tap's private device leaves the speakers out, so it isn't tied to whichever output is current (headphones
+            // come and go mid-call).
             let call = ProcessTapAudioSource(target: .allSystemAudio)
             call.usesOutputDevice = false
-            // The mic follows the headphones (owner, ~10 a.m.): none → the room, echo cancelled; with a mic → that mic only.
+            // The mic follows the headphones (owner, ~10 a.m.): none → the room; with a mic → that mic only.
             return MixedAudioSource([RoomMicSource(), call])
         case .call: return ProcessTapAudioSource(target: .allSystemAudio)
         case .facetime: return ProcessTapAudioSource(target: .apps(bundleIDs: CallApps.faceTime))
