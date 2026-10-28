@@ -25,25 +25,24 @@ struct CaptionWindowView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(model.stream.lines) { line in
                             HStack(alignment: .top, spacing: 8) {
-                                if let speakerState = SpeakerLabeling.state(for: line), case .resolved(let speakerId) = speakerState {
-                                    let palette = SpeakerPalette()
-                                    let color = palette.colorForSpeaker(speakerId)
+                                if case .resolved(let speakerId) = SpeakerLabeling.state(for: line) {
+                                    let colors = SpeakerPalette.colors(on: model.style.background, text: model.style.text)
                                     Circle()
-                                        .fill(color)
+                                        .fill(colors[speakerId % colors.count].color)
                                         .frame(width: 8, height: 8)
                                         .padding(.top, 4)
                                 }
                                 VStack(alignment: .leading, spacing: 4) {
                                     if case .resolved(let speakerId) = SpeakerLabeling.state(for: line) {
-                                        Text(model.speakerNames.name(for: speakerId))
+                                        Text(model.speakerNames.name(for: speakerId) ?? "Speaker \(speakerId + 1)")
                                             .font(.caption)
                                             .fontWeight(.semibold)
                                             .foregroundColor(.secondary)
                                     }
-                                    Text(line.displayText)
+                                    Text(line.text)
                                         .lineLimit(nil)
                                         .font(.system(.body, design: .monospaced))
-                                        .foregroundColor(model.style.captionColor)
+                                        .foregroundColor(model.style.text.color)
                                 }
                                 Spacer()
                             }
@@ -51,7 +50,7 @@ struct CaptionWindowView: View {
                     }
                     .padding()
                 }
-                .background(model.style.backgroundColor)
+                .background(model.style.background.color)
 
                 HStack(spacing: 12) {
                     Spacer()
@@ -62,7 +61,7 @@ struct CaptionWindowView: View {
                 }
                 .padding()
             }
-            .background(model.style.backgroundColor)
+            .background(model.style.background.color)
         }
         .onAppear {
             if let window = NSApplication.shared.windows.first(where: { $0.title == "Captions" }) {

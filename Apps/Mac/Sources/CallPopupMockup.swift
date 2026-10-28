@@ -49,7 +49,8 @@ struct CallPopupMockup: View {
             .padding(.horizontal, 18)
             .padding(.bottom, 14)
         }
-        .frame(width: 440, height: variant == .sourceSwitch ? 372 : 340)
+        .frame(width: 440)
+        .fixedSize(horizontal: false, vertical: true)
         .background(style.background.color)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .environment(\.colorScheme, style.background.isDark ? .dark : .light)
@@ -123,7 +124,7 @@ struct CallPopupMockup: View {
                 .multilineTextAlignment(.center)
             Spacer()
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, minHeight: 220)
         .padding(.horizontal, 24)
     }
 }
