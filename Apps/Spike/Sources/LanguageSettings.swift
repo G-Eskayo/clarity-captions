@@ -43,7 +43,6 @@ struct LanguageSettingsState: Equatable {
         state.purchaseMessage = translation.purchase.message
         #if DEBUG
         if let id = DemoMode.language { state.followsDevice = id == preferred.first }
-        if DemoMode.translate == nil && DemoMode.translationOwned == false && DemoMode.opensSettings { state.translationPrice = state.translationPrice ?? "$1.99" }
         if let p = DemoMode.translateProgress { state.downloadProgress = p }
         #endif
         return state

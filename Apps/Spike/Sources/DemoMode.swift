@@ -88,6 +88,13 @@ enum DemoMode {
     static var translate: String? { value(after: "-ClarityDemoTranslate") }
     static var translateProgress: Double? { value(after: "-ClarityDemoTranslateProgress").flatMap(Double.init) }
     static var translationOwned: Bool { flag("-ClarityDemoTranslationOwned") }
+    /// `-ClarityDemoFakeStore`: the translation purchase without the App Store (#53), for recordings of the flow on a
+    /// simulator run from the command line, where StoreKit's test file doesn't apply. Bought state is remembered.
+    static var fakeStore: Bool { flag("-ClarityDemoFakeStore") }
+    static var fakeStoreOwned: Bool {
+        get { UserDefaults.standard.bool(forKey: "demoFakeStoreOwned") }
+        set { UserDefaults.standard.set(newValue, forKey: "demoFakeStoreOwned") }
+    }
     /// `-ClarityDemoLaunch language`: first run asks for the caption language (#37).
     static var asksLanguage: Bool { launch == "language" }
     /// Round 2 (#118): three saved conversations to show the saved list (mock-up round2/02), written once on launch.

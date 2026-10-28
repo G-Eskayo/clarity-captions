@@ -1,7 +1,9 @@
 import CaptionCore
 import Foundation
+import OSLog
 import StoreKit
 import SwiftUI
+import UIKit
 import Translation
 
 /// Live translation (#53): the one-time purchase (StoreKit 2), on or off, the language it goes into, Apple's
@@ -10,6 +12,7 @@ import Translation
 @MainActor
 final class TranslationCenter: ObservableObject {
     static let shared = TranslationCenter()
+    private static let log = Logger(subsystem: "com.gileskayo.captions", category: "translation")
 
     @Published private(set) var purchase = TranslationPurchase()
     /// The App Store's price, as StoreKit formats it for her storefront.
@@ -53,6 +56,7 @@ final class TranslationCenter: ObservableObject {
     func start() async {
         #if DEBUG
         if DemoMode.translate != nil || DemoMode.translationOwned { purchase.entitlementChanged(owned: true); refreshConfiguration(); return }
+        if DemoMode.fakeStore { price = "$1.99"; purchase.entitlementChanged(owned: DemoMode.fakeStoreOwned); refreshConfiguration(); return }
         #endif
         if updates == nil {
             updates = Task { [weak self] in
@@ -62,7 +66,12 @@ final class TranslationCenter: ObservableObject {
                 }
             }
         }
-        product = try? await Product.products(for: [TranslationPurchase.productID]).first
+        do {
+            product = try await Product.products(for: [TranslationPurchase.productID]).first
+            if product == nil { Self.log.error("the App Store has no product \(TranslationPurchase.productID, privacy: .public)") }
+        } catch {
+            Self.log.error("products failed: \(String(describing: error), privacy: .public)")
+        }
         price = product?.displayPrice
         await refreshEntitlement()
     }
@@ -78,26 +87,48 @@ final class TranslationCenter: ObservableObject {
 
     func unlock() async {
         guard purchase.unlockTapped() else { return }
+        #if DEBUG
+        // `-ClarityDemoFakeStore`: no App Store on a command-line simulator run; the purchase succeeds after a moment.
+        if DemoMode.fakeStore {
+            try? await Task.sleep(for: .seconds(1.5))
+            purchase.buyFinished(.bought); DemoMode.fakeStoreOwned = true; setOn(true); return
+        }
+        #endif
         if product == nil { product = try? await Product.products(for: [TranslationPurchase.productID]).first; price = product?.displayPrice }
         guard let product else { purchase.buyFinished(.failed); return }
         do {
-            switch try await product.purchase() {
+            // Apple's sheet is shown over Seal's window (iOS 18.2+ wants the scene it confirms in).
+            let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first { $0.activationState == .foregroundActive }
+                ?? UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+            let result = if let scene { try await product.purchase(confirmIn: scene) } else { try await product.purchase() }
+            switch result {
             case .success(.verified(let t)):
                 await t.finish()
                 purchase.buyFinished(.bought)
                 // Bought to use it: turn it on.
                 setOn(true)
-            case .success(.unverified): purchase.buyFinished(.failed)
+            case .success(.unverified(_, let why)):
+                Self.log.error("purchase unverified: \(String(describing: why), privacy: .public)")
+                purchase.buyFinished(.failed)
             case .userCancelled: purchase.buyFinished(.cancelled)
             case .pending: purchase.buyFinished(.pending)
             @unknown default: purchase.buyFinished(.failed)
             }
-        } catch { purchase.buyFinished(.failed) }
+        } catch {
+            Self.log.error("purchase failed: \(String(describing: error), privacy: .public)")
+            purchase.buyFinished(.failed)
+        }
         refreshConfiguration()
     }
 
     func restore() async {
         guard purchase.restoreTapped() else { return }
+        #if DEBUG
+        if DemoMode.fakeStore {
+            try? await Task.sleep(for: .seconds(1.5))
+            purchase.restoreFinished(found: DemoMode.fakeStoreOwned); refreshConfiguration(); return
+        }
+        #endif
         do {
             try await AppStore.sync()
         } catch { purchase.restoreFailed(); return }
@@ -133,6 +164,10 @@ final class TranslationCenter: ObservableObject {
 
     /// A new session for the current pair, or none. Also reads whether the pair needs its language pack.
     func refreshConfiguration() {
+        #if DEBUG && targetEnvironment(simulator)
+        // Lines that landed before translation was bought or turned on get their stand-in now.
+        defer { if usesDemoTranslator { demoFill(latest) } }
+        #endif
         let source = CaptionLanguageCenter.engineLocale.language
         guard purchase.isOwned, isOn, let target else { configuration = nil; preparing = false; unsupportedPair = false; return }
         let wanted = TranslationSession.Configuration(source: source, target: target.language)
@@ -163,7 +198,7 @@ final class TranslationCenter: ObservableObject {
     /// The iOS Simulator has no Translation languages (every pair reports unsupported, 2026-10-28), so a demo launch
     /// with `-ClarityDemoTranslate` fills in the demo conversation's own English lines, to show the layout. Debug
     /// simulator builds only; a device always uses Apple's Translation.
-    private var usesDemoTranslator: Bool { DemoMode.translate != nil }
+    private var usesDemoTranslator: Bool { DemoMode.translate != nil || DemoMode.fakeStore }
 
     private func demoFill(_ lines: [CaptionLine]) {
         guard isOn, purchase.isOwned else { return }

@@ -115,6 +115,14 @@ struct TranslationTargetPage: View {
             if a.isCurrent != b.isCurrent { return a.isCurrent }
             return LanguageSettingsState.name(a.locale).localizedStandardCompare(LanguageSettingsState.name(b.locale)) == .orderedAscending
         }
+        #if DEBUG && targetEnvironment(simulator)
+        // The simulator has no Translation languages (every pair "unsupported"): demo runs show a device's view, the
+        // current pack installed and the rest downloadable. Debug simulator builds only.
+        if DemoMode.translate != nil || DemoMode.fakeStore {
+            for row in rows { status[row.id] = row.isCurrent ? .installed : .supported }
+            return
+        }
+        #endif
         let availability = LanguageAvailability()
         for row in rows { status[row.id] = await availability.status(from: language.captions.language, to: row.locale.language) }
     }

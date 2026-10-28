@@ -73,5 +73,3 @@ schemes:
       config: Release   # latency must be judged on an optimized build, not Debug under the debugger
       # #53: the translation purchase runs against this local StoreKit test file from Xcode (no App Store account).
       storeKitConfiguration: StoreKit/SealSpeak.storekit
-    test:
-      storeKitConfiguration: StoreKit/SealSpeak.storekit
