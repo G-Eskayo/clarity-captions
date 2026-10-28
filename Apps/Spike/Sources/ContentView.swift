@@ -1,5 +1,6 @@
 import AVFoundation
 import CaptionCore
+import CaptionUI
 import SwiftUI
 import UIKit
 
@@ -11,6 +12,18 @@ final class CaptionModel: ObservableObject {
     @Published var diag = ""
     @Published var startup = ""
     @Published var micMode: MicMode = .standard
+    /// Developer panel only (ADR 0025, no setting for users): which recognizer the next session uses.
+    @Published var engineChoice = CaptionEngineChoice.stored(developerBuild: CaptionEngineFactory.developerBuild) {
+        didSet {
+            UserDefaults.standard.set(engineChoice.rawValue, forKey: CaptionEngineChoice.key)
+            var history = EngineFallbackHistory()
+            history.clear()   // picked on purpose: an earlier fallback must not pin Apple during the phone checks
+            Task { @MainActor in
+                await EngineWarmupHost.shared.release()   // the warm engine was made for the other choice
+                EngineWarmupHost.shared.prepareIfAllowed(micMode: micMode)
+            }
+        }
+    }
     @Published var style: CaptionStyle = CaptionStyleStore().load() {
         didSet { CaptionStyleStore().save(style) }
     }
@@ -54,12 +67,7 @@ final class CaptionModel: ObservableObject {
             guard let self else { throw CancellationError() }
             // Loaded during the launch (or after the last pause), so Start is instant (#119).
             if let warm = EngineWarmupHost.shared.take(micMode: self.micMode) { return warm }
-            guard let url = Bundle.main.url(forResource: "Sortformer_v2.1", withExtension: "mlmodelc") else {
-                throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc"))
-            }
-            let rawText = VocabularyStore().loadRawText()
-            let vocabulary = VocabularyList(rawText: rawText).entries
-            return TranscriptionEngine(micMode: self.micMode, diarizerModelURL: url, contextualStrings: vocabulary)
+            return try CaptionEngineFactory.make(micMode: self.micMode)
         }, idleStopSetting: { [weak self] in self?.idleStop ?? .default })
 
         if let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
@@ -272,12 +280,16 @@ final class CaptionModel: ObservableObject {
                 // Warm up model once.
                 try await TranscriptionEngine.warmUp(diarizerModelURL: modelURL)
 
+                // The engine picked in the developer panel, so check C2 can run both on the same build (ADR 0025).
+                let recognizer: SpeechRecognizerSetup = engineChoice == .parakeet
+                    ? CaptionEngineFactory.parakeetModelURL.map { .parakeet(modelURL: $0) } ?? .apple : .apple
+
                 // Throwaway pass.
-                let warmupEngine = TranscriptionEngine(diarizerModelURL: modelURL)
+                let warmupEngine = TranscriptionEngine(diarizerModelURL: modelURL, recognizer: recognizer)
                 for try await _ in try await warmupEngine.startReplaying(fileURL: fixtureURL) {}
 
                 // Measured pass.
-                let engine = TranscriptionEngine(diarizerModelURL: modelURL)
+                let engine = TranscriptionEngine(diarizerModelURL: modelURL, recognizer: recognizer)
                 var lagSamples: [Double] = []
                 var firstCaptionTime: TimeInterval?
                 let startTime = Date()
@@ -292,10 +304,12 @@ final class CaptionModel: ObservableObject {
                 }
 
                 let report = CaptionLatencyReport(lagSamples: lagSamples, timeToFirstCaption: firstCaptionTime)
-                latencyReport = String(format: "Median: %.3f s, P95: %.3f s, First: %.3f s",
-                                       report.medianLagSeconds,
-                                       report.p95LagSeconds,
-                                       report.timeToFirstCaptionSeconds ?? 0)
+                latencyReport = engine.engineName + " " + String(format: "Median: %.3f s, P95: %.3f s, First: %.3f s",
+                                                                 report.medianLagSeconds,
+                                                                 report.p95LagSeconds,
+                                                                 report.timeToFirstCaptionSeconds ?? 0)
+                    + (engine.decodeSeconds.map { String(format: ", decode p50 %.2f s / p95 %.2f s", $0.p50, $0.p95) } ?? "")
+                    + (engine.fallbackReason.map { ", fell back: \($0.rawValue)" } ?? "")
             } catch {
                 latencyReport = "Error: \(error)"
             }
@@ -444,6 +458,7 @@ struct ContentView: View {
             }
             if DemoMode.seedsSaved { await seedDemoSaved() }
             model.runDemo()
+            if DemoMode.opensDeveloperPanel { developerTools = true }
             if DemoMode.opensSettings || DemoMode.settingsPush != nil {
                 // Debug only: open straight on Settings (or one of its pages) for screenshots, no fade.
                 nav.gearTapped()
@@ -629,7 +644,7 @@ struct ContentView: View {
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableIconStyle(tint: gearColor))
         .tourTarget(.gear)
         .accessibilityLabel(String(localized: "Settings"))
     }
@@ -645,7 +660,7 @@ struct ContentView: View {
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableIconStyle(tint: gearColor))
         .tourTarget(.savedList)
         .accessibilityLabel(String(localized: "Saved conversations"))
     }
@@ -676,7 +691,7 @@ struct ContentView: View {
             .opacity(0.8)
             .lineLimit(1)
             .minimumScaleFactor(0.7)
-            .onLongPressGesture(minimumDuration: 1.5) { developerTools.toggle() }
+            .modifier(DeveloperHold { developerTools.toggle() })
         }
         .padding(.horizontal, 52)   // never under the gear
         .accessibilityElement(children: .combine)
@@ -686,11 +701,7 @@ struct ContentView: View {
     private func renderStatusDot(_ dot: StatusDot) -> some View {
         switch dot {
         case .pulsing(let level):
-            let opacity = (level + 60) / 30.0
-            Circle()
-                .fill(style.text.color)
-                .opacity(opacity * 0.8)
-                .frame(width: 8, height: 8)
+            ListeningLightView(background: style.background, roomLevelDBFS: level)
         case .flatAmber:
             Circle()
                 .fill(Color(red: 1, green: 0.68, blue: 0))
@@ -926,6 +937,15 @@ struct ContentView: View {
         case "confirmnew": model.demoSetState(.idle); await wait(1); model.requestNew()
         case "jump": following = false
         case "canthear": model.demoSetState(.listening); model.activity = .cantHearAnything
+        case "listening":
+            // A pretend room for the Listening light (#180): someone talks, pauses, talks louder.
+            model.demoSetState(.listening); model.activity = .activelyListening
+            Task { @MainActor in
+                for level in Array(repeating: AliveDemoView.roomLevels, count: 20).joined() {
+                    model.roomLevelDBFS = level
+                    try? await Task.sleep(nanoseconds: 600_000_000)
+                }
+            }
         case "failed": model.demoSetState(.failed(String(localized: "The microphone stopped. Tap Start captions to try again.")))
         case "quiet": model.demoSetState(.pausedQuiet(minutes: 5))
         case "savedfromcaptions":
@@ -1352,6 +1372,12 @@ struct ContentView: View {
             }
             .pickerStyle(.segmented)
             .disabled(model.state == .listening || model.state == .preparing)
+            Picker("Engine", selection: $model.engineChoice) {
+                Text("Parakeet").tag(CaptionEngineChoice.parakeet)
+                Text("Apple").tag(CaptionEngineChoice.apple)
+            }
+            .pickerStyle(.segmented)
+            .disabled(model.state == .listening || model.state == .preparing)
             if model.micMode == .voiceProcessing {
                 Button("System mic modes (Voice Isolation)…") { AVCaptureDevice.showSystemUserInterface(.microphoneModes) }
                     .font(.footnote)
@@ -1375,5 +1401,19 @@ private struct TourTargetIf: ViewModifier {
     let active: Bool
     func body(content: Content) -> some View {
         if active { content.tourTarget(target) } else { content }
+    }
+}
+
+/// Holding the status word for 1.5 s opens the developer panel, in Xcode (debug) builds only: TestFlight and App Store
+/// users can never open it (owner, PR #155). The panel pushes the captions down only while it's open.
+private struct DeveloperHold: ViewModifier {
+    let toggle: () -> Void
+
+    func body(content: Content) -> some View {
+        #if DEBUG
+        content.onLongPressGesture(minimumDuration: 1.5, perform: toggle)
+        #else
+        content
+        #endif
     }
 }

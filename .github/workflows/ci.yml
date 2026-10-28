@@ -36,15 +36,17 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
-      - name: Cache the speaker model (about 240 MB, gitignored)
+      - name: Cache the bundled models (speaker + Parakeet, about 740 MB, gitignored)
         id: model
         uses: actions/cache@v4
         with:
           path: Apps/Spike/Resources/Models
-          key: diarizer-model-${{ hashFiles('scripts/fetch-diarizer-models.sh') }}
-      - name: Fetch the speaker model
+          key: bundled-models-${{ hashFiles('scripts/fetch-diarizer-models.sh', 'scripts/fetch-asr-models.sh', 'scripts/models/*.sha256') }}
+      - name: Fetch the speaker and Parakeet models
         if: steps.model.outputs.cache-hit != 'true'
-        run: sh scripts/fetch-diarizer-models.sh
+        run: |
+          sh scripts/fetch-diarizer-models.sh
+          sh scripts/fetch-asr-models.sh
       - name: Install xcodegen
         run: brew install xcodegen
       - name: Generate the project and build (signing off)

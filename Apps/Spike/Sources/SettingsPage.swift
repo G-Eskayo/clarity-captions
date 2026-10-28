@@ -1,4 +1,5 @@
 import CaptionCore
+import CaptionUI
 import SwiftUI
 
 /// Settings as approved in design #96 (image 08), on the one screen since round 2 (#118, mock-up round2/01): no
@@ -91,7 +92,7 @@ struct SettingsPage: View {
                         // this is Settings.
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressableIconStyle(tint: style.gear.color))
                 .accessibilityLabel(String(localized: "Back to captions"))
                 Spacer()
             }

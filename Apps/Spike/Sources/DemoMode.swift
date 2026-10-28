@@ -9,6 +9,7 @@ import Foundation
 ///   -ClarityDemoSettingsSection idleStop   scrolls those settings to a section (simctl can't scroll)
 ///   -ClarityDemoTheme night  -ClarityDemoFont serif   start with this look
 ///   -ClarityDemoGummy     a screen of gummy buttons pressing by themselves
+///   -ClarityDemoAlive     the Listening light in a pretend room and buttons pressing by themselves (#180)
 ///   -ClarityDemoPaused    pauses after the conversation: the dim with [ Save ] / [ New ] (#102)
 ///   -ClarityDemoSaved     paused and saved: [ Saved ] in green
 ///   -ClarityDemoVeilCleared  paused with the dim tapped away, and the hint
@@ -32,14 +33,16 @@ import Foundation
 ///   -ClarityDemoBetaPreview opens Settings' "What will be sent" (04)
 ///   -ClarityDemoFlow rate|feedback   pause, [ New ], tap 8 and the card fades; or Settings → preview → Messages
 ///   -ClarityDemoShow <id>  one state for the UI audit (2026-10-10; simctl can't tap): savedfromcaptions (#137), banner, preparing, confirmnew,
-///                         namespeaker, jump, canthear, failed, quiet, tour4save, savebeta
+///                         namespeaker, jump, canthear, listening, failed, quiet, tour4save, savebeta
 ///   -ClarityDemoSettingsPush saved|credits|deleteall   Settings opened on a sub-screen (with -ClarityDemoSettings)
+///   -ClarityDemoDeveloperPanel  opens the developer panel (mic mode, Engine picker, #150): simctl can't do the 1.5 s hold
 /// It feeds the same CaptionStream the real engine feeds, so what you see is the real caption view: speaker colours,
 /// names, line breaks and sound labels. No microphone, speech model or network is involved.
 enum DemoMode {
     static var isOn: Bool { flag("-ClarityDemo") || isStatic || tour != nil || show != nil }
     static var isStatic: Bool { flag("-ClarityDemoStatic") }
     static var opensSettings: Bool { flag("-ClarityDemoSettings") }
+    static var opensDeveloperPanel: Bool { flag("-ClarityDemoDeveloperPanel") }
     /// The section id to scroll Settings to, from `-ClarityDemoSettingsSection <id>`. Debug builds only.
     static var settingsSection: String? {
         #if DEBUG
@@ -57,6 +60,8 @@ enum DemoMode {
     static var font: CaptionFont? { value(after: "-ClarityDemoFont").flatMap(CaptionFont.init(rawValue:)) }
     /// `-ClarityDemoGummy`: a screen of gummy buttons that press and release by themselves (simctl can't tap).
     static var gummyDemo: Bool { flag("-ClarityDemoGummy") }
+    /// `-ClarityDemoAlive`: the Listening light in a pretend room and the buttons pressing by themselves (#180).
+    static var aliveDemo: Bool { flag("-ClarityDemoAlive") }
 
     /// Applies -ClarityDemoTheme / -ClarityDemoFont before the main screen reads the saved style.
     static func applyLookOverrides() {
@@ -91,7 +96,7 @@ enum DemoMode {
     static var betaNotice: Bool { flag("-ClarityDemoBetaNotice") }
     static var betaPreview: Bool { flag("-ClarityDemoBetaPreview") }
     /// Caption-screen demos and the gummy screen go straight in, so their screenshots stay repeatable.
-    static var skipsLaunchAnimation: Bool { launch == nil && (isOn || gummyDemo) }
+    static var skipsLaunchAnimation: Bool { launch == nil && (isOn || gummyDemo || aliveDemo) }
 
     /// The pretend system behind `-ClarityDemoLaunch`, or nil (always nil in a shipped app).
     static var launchDemoSystem: FirstRunSystem? {

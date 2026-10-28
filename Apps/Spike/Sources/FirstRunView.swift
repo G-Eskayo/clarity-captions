@@ -40,6 +40,7 @@ struct FirstRunSystem {
                     throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc"))
                 }
                 try await TranscriptionEngine.warmUp(diarizerModelURL: url)
+                try await CaptionEngineFactory.warmUpSpeechModel()   // Parakeet's first compile (ADR 0025)
                 store.markSpeakerModelWarm(forBuild: buildKey)
             },
             speechDownload: SpeechDownload.english())
@@ -236,6 +237,7 @@ struct RootView: View {
             Group {
                 // Demo mode (debug builds, launch flag only) goes straight to the caption screen.
                 if DemoMode.gummyDemo { GummyDemoView() }
+                else if DemoMode.aliveDemo { AliveDemoView() }
                 else if firstRun.finished || DemoMode.isOn { ContentView() } else { FirstRunView(model: firstRun) }
             }
             .accessibilityHidden(launch != nil)
