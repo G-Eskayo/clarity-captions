@@ -46,4 +46,20 @@ final class ThirdPartyNoticeTests: XCTestCase {
         }
         XCTAssertEqual(ThirdPartyNotice.all.first { $0.id == "sortformer" }?.sourceURL?.host, "huggingface.co")
     }
+
+    func testParakeetUltraIsCreditedWithTheChangeNoted() throws {
+        // CC BY 4.0: credit, a link to the license, and a note of changes (ADR 0025, design section 6).
+        let notice = try XCTUnwrap(ThirdPartyNotice.all.first { $0.id == "parakeetultra" })
+        XCTAssertEqual(notice.licenseName, "CC BY 4.0")
+        XCTAssertEqual(notice.licenseURL.absoluteString, "https://creativecommons.org/licenses/by/4.0/")
+        XCTAssertEqual(notice.sourceURL?.absoluteString, "https://huggingface.co/moondream/parakeet-ultra")
+        for credit in ["Moondream", "NVIDIA", "FluidInference", "6 bits"] {
+            XCTAssertTrue(notice.note.contains(credit), credit)
+        }
+        let repo = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let notices = try String(contentsOf: repo.appendingPathComponent("NOTICE.md"), encoding: .utf8)
+        XCTAssertTrue(notices.contains("## Parakeet Ultra"))
+        XCTAssertTrue(notices.contains("compressed to 6 bits"), "NOTICE.md notes the change")
+    }
 }

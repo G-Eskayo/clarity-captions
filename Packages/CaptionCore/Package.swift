@@ -6,7 +6,11 @@ import PackageDescription
 let package = Package(
     name: "CaptionCore",
     platforms: [.iOS("26.0"), .macOS("26.0")],
-    products: [.library(name: "CaptionCore", targets: ["CaptionCore"])],
+    products: [
+        .library(name: "CaptionCore", targets: ["CaptionCore"]),
+        // SwiftUI pieces both apps draw the same way (#180): the Listening light and button press feedback.
+        .library(name: "CaptionUI", targets: ["CaptionUI"]),
+    ],
     dependencies: [
         .package(url: "https://github.com/FluidInference/FluidAudio.git", from: "0.17.5"),
     ],
@@ -14,6 +18,11 @@ let package = Package(
         .target(
             name: "CaptionCore",
             dependencies: [.product(name: "FluidAudio", package: "FluidAudio")],
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
+        .target(
+            name: "CaptionUI",
+            dependencies: ["CaptionCore"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .testTarget(

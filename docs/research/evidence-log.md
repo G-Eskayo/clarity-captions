@@ -345,8 +345,39 @@ caveat), **Internal** (process detail, not for marketing).
 - **Public use:** Internal. Fine to say "the Mac app captions the sound of your call, on the Mac" once a real call is
   checked.
 
+## E25. Non-text contrast: the Listening light must stay at 3:1 even in a quiet room
+- **Source:** W3C, [WCAG 2.2 Success Criterion 1.4.11 Non-text Contrast](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html):
+  visual information needed to identify a UI component or its state needs a contrast ratio of at least 3:1 against
+  adjacent colours. Plus our own measurement: the contrast of the light's red against each of the six themes'
+  backgrounds, using the app's WCAG contrast function.
+- **What we took:** the light that follows the room (#180, option C) may fade toward the background only as far as
+  3:1. Faded 70% (as first mocked up) it fell to 1.4:1 on Harbor and 1.6:1 on Paper, where a quiet room would make it
+  look switched off. Faded at most 20%, every theme stays between about 3.3:1 (quiet) and 5:1 (talking). Full red
+  measures 4.4:1 to 5.1:1 across the themes.
+- **Confidence:** Strong (W3C guideline), with our own measurement of the themes.
+- **Drives:** `ListeningLight.quietDepth = 0.2`, enforced by `ListeningLightTests` on every theme (PR #181, #180).
+- **Public use:** Yes ("even in a silent room the Listening light keeps the 3:1 contrast WCAG asks of a status
+  indicator").
 
-## E24. Which languages Apple can caption, and which of those it can translate
+## E26. Parakeet through the whole app pipeline, on the Mac mini (before the phone checks)
+- **Source:** our own runs on `feature/150-parakeet-engine` (#150, PR #155), M4 Mac mini, 2026-10-24:
+  `CAPTION_PARAKEET=1 swift test --filter ParakeetIntegration` and
+  `CAPTION_LATENCY=1 CAPTION_ENGINE=<apple|parakeet> swift test -c release --filter CaptionLatencyBenchmark`, both
+  replaying `say -v Samantha` speech at real-time pace through `TranscriptionEngine` with the diarizer on and
+  `ModelHub.offlineMode` on.
+- **What we took:** the committed tail-window decoder gives the script word for word (0 of 39 word errors after the
+  text-alignment fix; 1 error, a repeated "the", before it). Parakeet decode time p50 0.085 s, p95 0.155 s per 0.5 s
+  hop. Replay lag (this benchmark's own metric): Parakeet median 0.10-0.15 s, p95 0.74-0.90 s; Apple median -0.22 s,
+  p95 -0.21 s, unchanged from `main` (-0.21 / -0.20 s), so the engine seam changed nothing for Apple. Apple's figure is
+  negative because the replay feeds each 0.26 s buffer before waiting, so audio runs ahead of the wall clock; the two
+  engines are comparable with each other, not as absolute lag. A memory warning mid-session hands over to Apple with
+  Parakeet's words kept as final.
+- **Confidence:** Ours (Mac, synthetic voice, one speaker; not the phone, not accented speech).
+- **Drives:** nothing on its own; it is the Mac reference for check C2 and shows why C2's "Apple × 1.10" rule needs
+  an absolute margin when Apple's figure is near zero.
+- **Public use:** Internal.
+
+## E27. Which languages Apple can caption, and which of those it can translate
 - **Source:** our own reading of Apple's APIs on the M4 Mac mini, macOS 26.5, 2026-10-28 (#171):
   [`SpeechTranscriber.supportedLocales`](https://developer.apple.com/documentation/speech/speechtranscriber) and
   `installedLocales`, and [`LanguageAvailability`](https://developer.apple.com/documentation/translation/languageavailability)

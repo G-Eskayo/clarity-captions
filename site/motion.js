@@ -200,23 +200,29 @@ function counts(el, still) {
 }
 
 // ── Versions: the highlight slides between 1.0 and 1.1; the version fades in ──────────────────────────────────────
-function switcher(nav) {
+// A pill that slides to the chosen item: the Versions switcher (aria-current) and the device tabs (aria-selected).
+export function slidingPill(nav, attr = 'aria-current') {
   const pill = document.createElement('span')
   pill.className = 'pill'
   pill.setAttribute('aria-hidden', 'true')
   nav.prepend(pill)
   nav.classList.add('has-pill')
   const place = () => {
-    const a = nav.querySelector('a[aria-current]')
-    if (!a) return
+    const a = nav.querySelector(attr === 'aria-current' ? '[aria-current]' : `[${attr}="true"]`)
+    if (!a || !a.offsetWidth) return
     pill.style.transform = `translate(${a.offsetLeft}px, ${a.offsetTop}px)`
     pill.style.width = a.offsetWidth + 'px'
     pill.style.height = a.offsetHeight + 'px'
+    if (!pill.classList.contains('ready')) requestAnimationFrame(() => requestAnimationFrame(() => pill.classList.add('ready')))
   }
   place()
-  requestAnimationFrame(() => requestAnimationFrame(() => pill.classList.add('ready')))
-  new MutationObserver(place).observe(nav, { subtree: true, attributes: true, attributeFilter: ['aria-current'] })
+  // The device tabs start hidden until their script runs; place the pill again once they show.
+  new MutationObserver(place).observe(nav, { subtree: true, attributes: true, attributeFilter: [attr, 'hidden'] })
   addEventListener('resize', place)
+}
+
+function switcher(nav) {
+  slidingPill(nav)
   for (const v of document.querySelectorAll('.version')) {
     new MutationObserver(() => {
       if (v.hidden) return
@@ -241,5 +247,7 @@ if (typeof document !== 'undefined') {
     for (const f of document.querySelectorAll('figure.chart')) if (f.querySelector('rect.bar')) chartBars(f)
     const nav = document.querySelector('.version-nav')
     if (nav) switcher(nav)
+    const devices = document.querySelector('[data-devices]')
+    if (devices) slidingPill(devices, 'aria-selected')
   }
 }

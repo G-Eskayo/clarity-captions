@@ -250,7 +250,7 @@ struct CaptionLanguageDownloadLine: View {
 
 #if DEBUG
 /// `SpeechTranscriber.supportedLocales` and `LanguageAvailability().supportedLanguages` on the M4 Mac mini, macOS
-/// 26.5, 2026-10-28 (evidence E24). Installed: what a phone set to English with Spanish captions would have.
+/// 26.5, 2026-10-28 (evidence E27). Installed: what a phone set to English with Spanish captions would have.
 enum DemoLanguages {
     static let speech = ["de-AT", "de-CH", "de-DE", "en-AU", "en-CA", "en-GB", "en-IE", "en-IN", "en-NZ", "en-SG", "en-US",
                          "en-ZA", "es-CL", "es-ES", "es-MX", "es-US", "fr-BE", "fr-CA", "fr-CH", "fr-FR", "it-CH", "it-IT",

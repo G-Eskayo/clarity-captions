@@ -39,10 +39,18 @@ targets:
       - path: Resources/Models/Sortformer_v2.1.mlmodelc
         type: folder
         buildPhase: resources
-      # (The latency fixture is NOT bundled: it is generated, not committed, and a missing bundled file breaks the build.
-      #  The package's latency test generates its own audio. Re-add this only together with a committed fixture.)
+      # Parakeet Ultra 6-bit (ADR 0025): scripts/fetch-asr-models.sh; generation fails without it, like Sortformer.
+      - path: Resources/Models/ParakeetUltra
+        type: folder
+        buildPhase: resources
+      # The developer panel's "Measure latency" replays this committed 19 s fixture (say -v Samantha, 16 kHz Int16), so
+      # iPhone check C2 runs both engines on the same audio (ADR 0025).
+      - path: Resources/latency-fixture.wav
+        buildPhase: resources
     dependencies:
       - package: CaptionCore
+      - package: CaptionCore
+        product: CaptionUI
     # Beta feedback recipient (ADR 0023): set in the gitignored Beta.xcconfig.local, never committed.
     configFiles:
       Debug: Beta.xcconfig

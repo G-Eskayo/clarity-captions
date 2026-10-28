@@ -31,7 +31,8 @@ struct CaptionMacApp: App {
 }
 
 /// The live pop-up (#172): the model's captions in `CallPopupView`, kept above other windows (a full-screen FaceTime
-/// call included) while pinned, and captioning from the moment it opens, as "Captions start when your call does" says.
+/// call included) while pinned. It opens with captions off, like the iPhone app: the owner presses Start captions
+/// (#188). Starting on open turned the mic on unasked, and that first session came up dead until Stop, Start.
 struct CallPopupWindow: View {
     @ObservedObject var model: CaptionMacModel
     @State private var window: NSWindow?
@@ -55,7 +56,6 @@ struct CallPopupWindow: View {
         .background(WindowFinder(window: $window))
         .onChange(of: window) { _, _ in applyPin() }
         .onChange(of: model.pinned) { _, _ in applyPin() }
-        .onAppear { if !CallAudioSelfTest.isRequested { model.start() } }
     }
 
     private func applyPin() {

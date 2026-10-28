@@ -29,7 +29,7 @@ privacy label "Data Not Collected"). A conversation holds other people's words, 
      version.
    - This is the only StoreKit call. Like the one-time speech-model download, it goes to Apple, and the app makes
      no network calls of its own.
-2. **Never collected, in any build:** caption text, audio, speaker names, vocabulary, saved conversations. A
+2. **Never collected, in any build:** caption text, audio, speaker names, saved conversations. A
    report holds only measurements and what the tester typed into the rating card.
 3. **The 2-second card.** After a conversation, at most once per conversation and never mid-conversation:
    *"How well could you follow the conversation?"* with 1 to 10 in one row, an optional *Add a note*, and *Skip*.

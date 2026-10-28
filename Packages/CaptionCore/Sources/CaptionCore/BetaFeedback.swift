@@ -2,7 +2,7 @@ import Foundation
 
 // Beta-tester feedback and metrics (ADR 0023, #112). TestFlight installs only: testers rate each conversation and
 // the app keeps measurements (lag, rewrites, speaker labels, how it ended, battery, heat). Never caption text, audio,
-// speaker names or vocabulary. App Store installs record nothing (fail closed).
+// or speaker names. App Store installs record nothing (fail closed).
 
 /// Where this install came from, as StoreKit reports it.
 public enum BetaEnvironment: String, Codable, Sendable {
@@ -166,6 +166,9 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
     public private(set) var launchToStartSeconds: Double?
     public private(set) var startToFirstCaptionSeconds: Double?
     public private(set) var launch: LaunchFacts?
+    /// The recognizer that captioned (the last one, if it switched) and why it left Parakeet (ADR 0025).
+    public private(set) var engine: String?
+    public private(set) var engineFallback: String?
 
     private var captioningSeconds = 0.0
     private var segmentStart: Date?
@@ -202,7 +205,7 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
         case id, startedAt, rating, ratingSkipped, note, asked, ending, leftWhileCaptioning, lowPowerModeSeen
         case maxThermal, launchToStartSeconds, startToFirstCaptionSeconds, launch
         case captioningSeconds, segmentStart, startPressedAt, lag, micLevel, changedWords, finalWords, relabels
-        case speakers, batteryDrop, batteryMinutes, segmentBattery
+        case speakers, batteryDrop, batteryMinutes, segmentBattery, engine, engineFallback
     }
 
     public init(id: UUID) { self.id = id }
@@ -227,6 +230,11 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
         shownWordCount = 0
         shownWordHashes = []
         utteranceSpeaker = nil
+    }
+
+    public mutating func engineUsed(_ name: String, fallback: String?) {
+        if !name.isEmpty { engine = name }
+        if let fallback { engineFallback = fallback }
     }
 
     public mutating func captionUpdate(text: String, isFinal: Bool, speaker: Int?, lagSeconds: Double?, at date: Date) {
@@ -336,7 +344,9 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
                            maxThermalState: maxThermal?.name),
             micLevel: .init(medianDBFS: micLevel.value(at: 0.5).map { Self.round($0, 1) },
                             quietFraction: micLevel.fraction(below: Self.quietThresholdDBFS).map { Self.round($0, 2) }),
-            launch: launch.map { .init(fullDance: $0.fullDance, barShown: $0.barShown) })
+            launch: launch.map { .init(fullDance: $0.fullDance, barShown: $0.barShown) },
+            engine: engine,
+            engineFallback: engineFallback)
     }
 
     private static func round(_ value: Double, _ places: Int) -> Double {
@@ -386,10 +396,12 @@ public struct ConversationReport: Codable, Equatable, Sendable {
     public var battery: Battery
     public var micLevel: MicLevel
     public var launch: Launch?
+    public var engine: String? = nil
+    public var engineFallback: String? = nil
 
     private enum CodingKeys: String, CodingKey {
         case id, startedAt, minutes, rating, ratingSkipped, note, lag, rewriteRate, speakers, launchToStartSeconds
-        case startToFirstCaptionSeconds, ending, battery, micLevel, launch
+        case startToFirstCaptionSeconds, ending, battery, micLevel, launch, engine, engineFallback
     }
 
     /// Every schema key is written, `null` when unknown, so every report has the same shape for MARVIN to read.
@@ -410,6 +422,8 @@ public struct ConversationReport: Codable, Equatable, Sendable {
         try c.encode(battery, forKey: .battery)
         try c.encode(micLevel, forKey: .micLevel)
         try c.encode(launch, forKey: .launch)
+        try c.encode(engine, forKey: .engine)
+        try c.encode(engineFallback, forKey: .engineFallback)
     }
 }
 

@@ -62,7 +62,7 @@ final class CaptionMacModel: ObservableObject {
             guard let url = Bundle.main.url(forResource: "Sortformer_v2.1", withExtension: "mlmodelc") else {
                 throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc"))
             }
-            return TranscriptionEngine(diarizerModelURL: url, audioSource: ListenTo.current.audioSource())
+            return TranscriptionEngine(micMode: .standard, diarizerModelURL: url, audioSource: ListenTo.current.audioSource())
         })
 
         controller.onStateChange = { [weak self] in self?.state = $0 }
