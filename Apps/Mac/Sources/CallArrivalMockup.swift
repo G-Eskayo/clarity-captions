@@ -35,7 +35,7 @@ struct CallArrivalMockup: View {
                 lines: step == .ringing ? room : call,
                 status: step == .ended ? .stopped("") : .captioning,
                 style: style,
-                buttonTitle: PrimaryControl.for(step == .ended ? .idle : .listening).title,
+                control: PrimaryControl.for(step == .ended ? .idle : .listening),
                 buttonEnabled: step != .ended,
                 statusOverride: step == .call ? CallSignal.captioningWords(app: "FaceTime") : step == .ended ? String(localized: "Call ended") : nil
             )

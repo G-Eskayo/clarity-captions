@@ -81,7 +81,7 @@ struct CallPopupWindow: View {
                     lines: model.popupLines,
                     status: CallPopupView.Status(model.state, hasLines: !model.popupLines.isEmpty),
                     style: style,
-                    buttonTitle: control.title,
+                    control: control,
                     buttonEnabled: control.isEnabled && calls.arrival.step != .ended,   // #178: answer the save question first
                     onPrimary: { control.action == .stop ? model.stop() : model.start() },
                     onGear: { model.go { $0.gearTapped() } },

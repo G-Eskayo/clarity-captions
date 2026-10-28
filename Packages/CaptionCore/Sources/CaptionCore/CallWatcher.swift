@@ -38,9 +38,10 @@ public enum CallSignal {
 
     public static func isCallLive(_ activity: [CallAudioActivity]) -> Bool { liveCallApp(activity) != nil }
 
-    /// The top bar's words while that app's call is captioned (owner, 2026-10-28).
+    /// The top bar's words while that app's call is captioned (owner, 2026-10-28). FaceTime calls and iPhone calls
+    /// handed to the Mac both run through FaceTime and can't be told apart, so neither is named (owner, ~21:20 UTC).
     public static func captioningWords(app: String) -> String {
-        String(localized: "Captioning your \(app) call")
+        app == "FaceTime" ? String(localized: "Captioning your call") : String(localized: "Captioning your \(app) call")
     }
 }
 

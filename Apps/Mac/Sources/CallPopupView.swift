@@ -27,7 +27,8 @@ struct CallPopupView: View {
     let lines: [Line]
     let status: Status
     let style: CaptionStyle
-    let buttonTitle: String
+    /// Start captions / Getting ready… as a pill; while captioning, the iPhone's small X (#178).
+    let control: PrimaryControl
     var buttonEnabled = true
     var onPrimary: () -> Void = {}
     /// The gear: Settings, as on the iPhone (#172 parity).
@@ -46,6 +47,9 @@ struct CallPopupView: View {
     var roomLevelDBFS: Double? = nil
     /// Replaces the top bar's words: "Captioning your FaceTime call" only while a call app is really in a call (#178).
     var statusOverride: String? = nil
+
+    /// The Start captions pill's height on the Mac (its size before the iPhone's control came in).
+    static let pillHeight: CGFloat = 47
 
     private var speakerColors: [RGBA] {
         let colors = style.preset?.speakers ?? SpeakerPalette.colors(on: style.background, text: style.text)
@@ -66,15 +70,18 @@ struct CallPopupView: View {
                 Button(String(localized: "Save conversation"), action: onSave).disabled(!canSave)
                 Button(String(localized: "New conversation"), action: onNew)
             }
-            Button(action: onPrimary) {
-                Text(buttonTitle)
-                    .font(.system(size: 19, weight: .semibold))
+            // The iPhone's control (#178): the pill sweeps into a small red X while captioning and back, Reduce Motion a
+            // crossfade. A gap above it so the newest words never run into it.
+            GeometryReader { geo in
+                MorphingControl(control: control, fullWidth: geo.size.width, fill: style.text, label: style.background,
+                                pillHeight: Self.pillHeight, titleFont: .system(size: 19, weight: .semibold), action: onPrimary)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
             }
-            .buttonStyle(GummyButtonStyle(style: style))
+            .frame(height: max(Self.pillHeight, PrimaryControl.compactDiameter) + GummyButtonStyle.restingLip)
             .disabled(!buttonEnabled)
+            .opacity(buttonEnabled ? 1 : 0.5)
             .keyboardShortcut(.space, modifiers: [])
+            .padding(.top, 14)
             .padding(.horizontal, 18)
             .padding(.bottom, 24)   // a little more room under Stop (owner, 2026-10-28)
         }

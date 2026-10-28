@@ -80,6 +80,12 @@ final class CallAppNameTests: XCTestCase {
 
     func testWordsForTheTopBar() {
         XCTAssertEqual(CallSignal.captioningWords(app: "Zoom"), "Captioning your Zoom call")
+        XCTAssertEqual(CallSignal.captioningWords(app: "Teams"), "Captioning your Teams call")
+    }
+
+    func testFaceTimeRunCallsAreNotNamed() {
+        // A FaceTime call or an iPhone call handed to the Mac: the Mac can't tell which, so just "your call".
+        XCTAssertEqual(CallSignal.captioningWords(app: "FaceTime"), "Captioning your call")
     }
 }
 
