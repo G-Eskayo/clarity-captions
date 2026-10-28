@@ -356,8 +356,13 @@ caveat), **Internal** (process detail, not for marketing).
   a call is live while FaceTime or its call services (`com.apple.FaceTime`, `avconferenced`, `callservicesd`) use the
   microphone; an end must hold 2 s. In the app, switching from the room to the call takes 1.0 s; speech after that
   was captioned word for word (pretend call, `say` speech through the tap).
-- **Confidence:** Medium. The API facts are Apple's. Which process holds the microphone during a real FaceTime or
-  Continuity call is **not yet confirmed on a live call** (update this entry when it is).
+- **Real FaceTime call (2026-10-28, 20:43–20:46 UTC, owner's MacBook Pro):** ringing showed only
+  `com.apple.FaceTime[out]` (not counted, correct); on answer `com.apple.avconferenced` opened the mic
+  (`[inout]`) and held it until hang-up, with one sub-second drop at 20:44:16 that the 2 s grace covers. The #178
+  build, launched idle during a second call, saw it by itself, switched to the call format, said "Captioning your
+  FaceTime call" and captioned both people live. Replayed as `RealFaceTimeCallReplayTests`.
+- **Confidence:** High for FaceTime video calls on this Mac. Continuity phone calls, Zoom/Teams/WhatsApp names: not
+  yet seen live.
 - **Drives:** #178's `CallSignal` / `CallWatcher`.
 
 ## E25. Non-text contrast: the Listening light must stay at 3:1 even in a quiet room

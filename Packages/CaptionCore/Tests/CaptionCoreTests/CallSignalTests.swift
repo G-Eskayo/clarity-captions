@@ -82,3 +82,39 @@ final class CallAppNameTests: XCTestCase {
         XCTAssertEqual(CallSignal.captioningWords(app: "Zoom"), "Captioning your Zoom call")
     }
 }
+
+/// A real FaceTime call to the owner's MacBook Pro (2026-10-28 20:43–20:44 UTC), as the probe saw Core Audio report it,
+/// replayed through the rule. Evidence E24.
+final class RealFaceTimeCallReplayTests: XCTestCase {
+    private func snapshot(_ entries: String) -> [CallAudioActivity] {
+        entries.split(separator: " ").map { entry in
+            let parts = entry.split(separator: "[")
+            let flags = parts.count > 1 ? String(parts[1].dropLast()) : ""
+            return CallAudioActivity(name: String(parts[0]), isRunningInput: flags.contains("in"), isRunningOutput: flags.contains("out"))
+        }
+    }
+
+    private let timeline: [(String, String, String?)] = [
+        ("20:43:20", "com.apple.FaceTime[out] com.gileskayo.captions[in]", nil),                                   // ringing
+        ("20:43:26", "com.apple.FaceTime[out] com.apple.avconferenced[inout] com.gileskayo.captions[in]", "FaceTime"),  // answered
+        ("20:43:31", "com.apple.CoreSpeech[in] com.apple.avconferenced[inout] com.gileskayo.captions[in]", "FaceTime"),
+        ("20:44:16", "com.apple.CoreSpeech[in] com.gileskayo.captions[in]", nil),                                  // a blip
+        ("20:44:16", "com.apple.CoreSpeech[in] com.apple.avconferenced[inout] com.gileskayo.captions[in]", "FaceTime"),
+        ("20:44:37", "com.apple.CoreSpeech[in] com.apple.FaceTime[out] com.apple.avconferenced[inout] com.gileskayo.captions[in]", "FaceTime"),
+        ("20:44:44", "com.apple.CoreSpeech[in] com.apple.FaceTime[out] com.gileskayo.captions[in] systemsoundserverd[out]", nil),  // hung up
+    ]
+
+    func testEachMomentOfTheRealCall() {
+        for (time, entries, expected) in timeline {
+            XCTAssertEqual(CallSignal.liveCallApp(snapshot(entries)), expected, time)
+        }
+    }
+
+    func testTheRingingAloneIsNotACall() {
+        XCTAssertFalse(CallSignal.isCallLive(snapshot(timeline[0].1)), "the banner waits for the answer")
+    }
+
+    func testOurOwnMicDuringTheCallNeverCounts() {
+        XCTAssertFalse(CallSignal.isCallLive(snapshot("com.gileskayo.captions[in] com.apple.CoreSpeech[in]")))
+    }
+}
