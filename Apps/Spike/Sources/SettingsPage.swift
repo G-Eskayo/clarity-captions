@@ -39,13 +39,15 @@ struct SettingsPage: View {
                     VStack(alignment: .leading, spacing: 0) {
                         // No Saved section: saved conversations live at the top right of the captions, one tap away, and
                         // two ways in felt redundant (owner, 2026-10-20, #139).
+                        // Translation is a one-time purchase (owner, #171): bought or not, it keeps this one place at the
+                        // top, with the same shape, so buying it changes what's in the space, never the layout. It sits
+                        // above the sample so the sample and the buttons that change it stay together (owner, #171).
+                        section("Translate captions", first: true, note: language.translationOwned ? translationNote : translationOfferNote) { translationRows }
+                            .id("translation")
                         preview
+                            .overlay(alignment: .top) { Rectangle().fill(rule).frame(height: 1) }
                         section("Colors", first: true) { colorsRow }
                         section("Size") { sizeRow }
-                        // Translation is a one-time purchase (owner, #171): bought or not, it keeps this one place above
-                        // Lettering, with the same shape, so buying it changes what's in the space, never the layout.
-                        section("Translate captions", note: language.translationOwned ? translationNote : translationOfferNote) { translationRows }
-                            .id("translation")
                         section("Lettering", note: String(localized: "OpenDyslexic was made for people with dyslexia. Atkinson Hyperlegible was designed by the Braille Institute for low vision.")) { letteringRows }
                             .id("lettering")
                         section("Stop when it's quiet") { idleStopRow }.id("idleStop")
