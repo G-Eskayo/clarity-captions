@@ -10,8 +10,24 @@ public enum FailureReason {
         if let se = error as? SpeakerModelError {
             return plainLanguage(for: se)
         }
+        #if os(macOS)
+        if let ce = error as? CallAudioError {
+            return plainLanguage(for: ce)
+        }
+        #endif
         return String(localized: "Something went wrong — tap to try again")
     }
+
+    #if os(macOS)
+    private static func plainLanguage(for error: CallAudioError) -> String {
+        switch error {
+        case .appNotPlayingSound:
+            return String(localized: "No call sound to caption yet — start the call, then try again")
+        case .coreAudio:
+            return String(localized: "Can't hear the call — check System Audio Recording in Privacy & Security, then try again")
+        }
+    }
+    #endif
 
     private static func plainLanguage(for error: TranscriptionError) -> String {
         switch error {

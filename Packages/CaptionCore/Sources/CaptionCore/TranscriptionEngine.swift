@@ -71,10 +71,12 @@ public enum SpeechRecognizerSetup: Sendable, Equatable {
     case parakeet(modelURL: URL)
 }
 
-/// Live microphone -> a speech recognizer behind `SpeechRecognizerBackend` (ADR 0001, ADR 0025), with the 16 kHz side
-/// path for the diarizer, the sound labeler and loudness.
+/// Live audio (the microphone, or call audio on the Mac, through `AudioSource`, #172) -> a speech recognizer behind
+/// `SpeechRecognizerBackend` (ADR 0001, ADR 0025), with the 16 kHz side path for the diarizer, the sound labeler and
+/// loudness.
 public final class TranscriptionEngine {
-    private let audioEngine = AVAudioEngine()
+    /// Where the sound comes from (#172): the microphone unless the app passes another source (call audio on the Mac).
+    private let source: AudioSource
     private let locale: Locale
     private let micMode: MicMode
     private let setup: SpeechRecognizerSetup
@@ -134,10 +136,11 @@ public final class TranscriptionEngine {
     /// `diarizerModelURL` has no default on purpose: the app must say where its bundled speaker model
     /// lives, so there is no accidental network path (ADR 0014). The same goes for Parakeet's folder.
     public init(locale: Locale = Locale(identifier: "en-US"), micMode: MicMode = .standard, diarizerModelURL: URL,
-                recognizer: SpeechRecognizerSetup = .apple, startReason: FallbackReason? = nil) {
+                recognizer: SpeechRecognizerSetup = .apple, startReason: FallbackReason? = nil, audioSource: AudioSource? = nil) {
         self.fallbackReason = startReason
         self.locale = locale
         self.micMode = micMode
+        self.source = audioSource ?? MicAudioSource(micMode: micMode)
         self.setup = recognizer
         self.diarizer = LiveDiarizer(modelURL: diarizerModelURL)
     }
@@ -253,27 +256,12 @@ public final class TranscriptionEngine {
         let fed = FedAudioClock()
         self.fed = fed
 
-        #if os(iOS)
-        let session = AVAudioSession.sharedInstance()
-        switch micMode {
-        case .raw: try session.setCategory(.record, mode: .measurement)
-        case .standard: try session.setCategory(.record, mode: .default)
-        case .voiceProcessing: try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
-        }
-        try session.setActive(true)
-        #endif
-        // Must happen before the tap format is read.
-        if micMode == .voiceProcessing { try audioEngine.inputNode.setVoiceProcessingEnabled(true) }
-
-        let input = audioEngine.inputNode
-        let inFormat = input.outputFormat(forBus: 0)
+        let inFormat = try source.open()
         let pieces = try await open(backend, inFormat: inFormat)
-        input.installTap(onBus: 0, bufferSize: 4096, format: inFormat) { buffer, _ in
+        let wallTime = FedWallTime()
+        try source.start { buffer in
             self.processBuffer(buffer, inFormat: inFormat, fed: fed)
         }
-        audioEngine.prepare()
-        let wallTime = FedWallTime()
-        try audioEngine.start()
         wallTime.set(Date())
         lap("audio start")
         startupReport = laps.joined(separator: " · ")
@@ -518,11 +506,10 @@ public final class TranscriptionEngine {
         pieceStreams = nil
     }
 
-    /// Releases the microphone, the recognizer and the helpers. Safe to call more than once.
+    /// Releases the audio source, the recognizer and the helpers. Safe to call more than once.
     public func stop() async {
         prepareLock.withLock { stopped = true }
-        audioEngine.inputNode.removeTap(onBus: 0)
-        audioEngine.stop()
+        source.stop()
         let unstarted = routeLock.withLock { route.started ? nil : route.backend }
         if let unstarted {
             routeLock.withLock { route = Route() }

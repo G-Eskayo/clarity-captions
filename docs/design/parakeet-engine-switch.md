@@ -392,7 +392,7 @@ What the build does differently from the text above, and why. Each is small and 
   panel and prints decode p50/p95.
 - **C2 rule:** this benchmark's lag for Apple is about -0.2 s on the Mac (the replay feeds a buffer ahead of the wall
   clock), so "Parakeet ≤ Apple × 1.10" can't be met by any engine. Suggestion for Gil, not applied: compare medians as
-  a difference (Parakeet ≤ Apple + 0.3 s) and keep decode p95 < 0.5 s. Evidence log E23.
+  a difference (Parakeet ≤ Apple + 0.3 s) and keep decode p95 < 0.5 s. Evidence log E26.
 - **Mac app:** stays on Apple (D6). It does not build, and every error is in code this branch doesn't change
   (`CaptionStyle` and window API drift in `Apps/Mac/Sources/CaptionWindowView.swift`, `CaptionMacApp.swift`, and the
   `Task` at `CaptionMacModel.swift:37`); the branch's only Mac change is dropping the vocabulary argument.

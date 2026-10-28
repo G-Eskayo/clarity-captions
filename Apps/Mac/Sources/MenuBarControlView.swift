@@ -25,7 +25,7 @@ struct MenuBarControlView: View {
             Divider()
 
             Button("Settings") {
-                if let window = NSApplication.shared.windows.first(where: { $0.title == "Captions" }) {
+                if let window = NSApplication.shared.windows.first(where: { $0.title == CaptionMacApp.windowTitle }) {
                     window.makeKeyAndOrderFront(nil)
                 }
             }
