@@ -120,7 +120,10 @@ final class BetaFeedbackCenter: ObservableObject {
 
     func captionUpdate(_ session: ConversationSession, _ u: CaptionUpdate) {
         guard isOn else { return }
-        update(session) { $0.captionUpdate(text: u.text, isFinal: u.isFinal, speaker: u.speaker, lagSeconds: u.lagSeconds, at: Date()) }
+        update(session) {
+            $0.engineUsed(u.engine, fallback: u.engineFallback?.rawValue)
+            $0.captionUpdate(text: u.text, isFinal: u.isFinal, speaker: u.speaker, lagSeconds: u.lagSeconds, at: Date())
+        }
     }
 
     func audioLevel(_ session: ConversationSession, _ dbfs: Double) {

@@ -177,6 +177,17 @@
         }
       }
     },
+    "Apple" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple"
+          }
+        }
+      }
+    },
     "Applause" : {
       "extractionState": "manual",
       "localizations": {
@@ -679,6 +690,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ends the tour. You can take it again from Settings."
+          }
+        }
+      }
+    },
+    "Engine" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Engine"
           }
         }
       }
@@ -1251,6 +1273,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Paper"
+          }
+        }
+      }
+    },
+    "Parakeet" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parakeet"
           }
         }
       }

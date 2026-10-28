@@ -83,8 +83,12 @@ public final class MixedAudioSource: AudioSource {
             do {
                 try entry.source.start { [weak self] buffer in
                     guard let self, let samples = Self.convert(buffer, with: entry.converter) else { return }
-                    let out = self.lock.withLock { self.mixer.push(samples, into: slot) }
-                    if !out.isEmpty, let mixed = Self.buffer(out) { onBuffer(mixed) }
+                    // Mix and hand over under one lock: each source calls back on its own thread, and the engine
+                    // handles one buffer at a time, in order (#155 merge).
+                    self.lock.withLock {
+                        let out = self.mixer.push(samples, into: slot)
+                        if !out.isEmpty, let mixed = Self.buffer(out) { onBuffer(mixed) }
+                    }
                 }
                 started += 1
             } catch {

@@ -84,7 +84,7 @@ final class CaptionMacModel: ObservableObject {
             guard let url = Bundle.main.url(forResource: "Sortformer_v2.1", withExtension: "mlmodelc") else {
                 throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc"))
             }
-            return TranscriptionEngine(diarizerModelURL: url, audioSource: ListenTo.current.audioSource())
+            return TranscriptionEngine(micMode: .standard, diarizerModelURL: url, audioSource: ListenTo.current.audioSource())
         }, idleStopSetting: { [weak self] in self?.idleStop ?? .default })
 
         if let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {

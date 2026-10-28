@@ -80,4 +80,37 @@ final class OneScreenSourceRulesTests: XCTestCase {
         XCTAssertEqual(occurrences(of: "SpeakerExplanation", in: files), [])
         XCTAssertEqual(occurrences(of: "Name this speaker", in: files), [], "naming speakers is out of v1 (#117)")
     }
+
+    /// #150: the developer panel (mic mode, Engine picker) opens by the 1.5 s hold on the status, or, for screenshots
+    /// (simctl can't hold), by `-ClarityDemoDeveloperPanel`, a DemoMode flag that is false in a shipped build.
+    func testDeveloperPanelOpensByHoldOrTheDemoFlagOnly() throws {
+        let files = try appSources()
+        let parsed = occurrences(of: "flag(\"-ClarityDemoDeveloperPanel\")", in: files)
+        XCTAssertEqual(parsed.count, 1, "\(parsed)")
+        XCTAssertTrue(parsed.allSatisfy { $0.hasPrefix("DemoMode.swift") }, "\(parsed)")
+        let opens = occurrences(of: "developerTools = true", in: files) + occurrences(of: "developerTools.toggle()", in: files)
+        XCTAssertEqual(opens.count, 2, "\(opens)")
+        XCTAssertTrue(opens.allSatisfy { $0.hasPrefix("ContentView.swift") }, "\(opens)")
+        let byFlag = occurrences(of: "if DemoMode.opensDeveloperPanel { developerTools = true }", in: files)
+        XCTAssertEqual(byFlag.count, 1, "\(byFlag)")
+        let documented = files.first { $0.name == "DemoMode.swift" }?.text ?? ""
+        XCTAssertTrue(documented.contains("///   -ClarityDemoDeveloperPanel"), "list the flag in DemoMode's header")
+    }
+
+    /// Owner, PR #155: the 1.5 s hold opens the developer panel in Xcode (debug) builds only, never TestFlight or the
+    /// App Store; the panel pushes the captions down only while it's open.
+    func testTheDeveloperHoldExistsInDebugBuildsOnly() throws {
+        let files = try appSources()
+        let holds = occurrences(of: "minimumDuration: 1.5", in: files)
+        XCTAssertEqual(holds.count, 1, "\(holds)")
+        let view = code(files.first { $0.name == "ContentView.swift" }?.text ?? "")
+        guard let hold = view.range(of: "minimumDuration: 1.5") else { return XCTFail("no developer hold") }
+        let before = view[..<hold.lowerBound]
+        let lastIf = before.range(of: "#if DEBUG", options: .backwards)?.lowerBound
+        let lastEnd = before.range(of: "#endif", options: .backwards)?.lowerBound
+        XCTAssertNotNil(lastIf, "the hold must sit inside #if DEBUG")
+        if let lastIf, let lastEnd { XCTAssertGreaterThan(lastIf, lastEnd, "the hold must sit inside #if DEBUG") }
+        XCTAssertEqual(occurrences(of: "CaptionEngineChoice.stored()", in: files), [],
+                       "pass developerBuild, so a release build ignores an old pick")
+    }
 }
