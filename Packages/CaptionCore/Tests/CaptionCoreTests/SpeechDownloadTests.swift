@@ -99,6 +99,16 @@ final class SpeechDownloadTests: XCTestCase {
             for word in jargon { XCTAssertFalse(text.contains(word), "\(problem) uses jargon: \(word)") }
         }
     }
+
+    /// #37: a download of another language names that language, not English.
+    func testTheOfflineWordsNameTheLanguageBeingDownloaded() {
+        let spanish = DownloadProblem.offline.message(language: "Spanish (Spain)")
+        XCTAssertTrue(spanish.contains("Spanish (Spain)"))
+        XCTAssertFalse(spanish.contains("English"))
+        XCTAssertTrue(spanish.lowercased().contains("try again"))
+        XCTAssertEqual(DownloadProblem.offline.message, DownloadProblem.offline.message(language: "English"))
+        XCTAssertEqual(DownloadProblem.stalled.message(language: "Spanish"), DownloadProblem.stalled.message)
+    }
 }
 
 private final class Box<T>: @unchecked Sendable {

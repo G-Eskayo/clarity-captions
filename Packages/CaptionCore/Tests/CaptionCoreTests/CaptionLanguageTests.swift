@@ -92,4 +92,33 @@ final class CaptionLanguageTests: XCTestCase {
         store.captionLanguage = nil
         XCTAssertNil(store.captionLanguage)
     }
+
+    // MARK: the saved choice (#37: Settings can switch language)
+
+    func testAChosenLanguageTheDeviceHasWinsOverTheDeviceLanguage() {
+        let c = CaptionLanguage.resolve(saved: Locale(identifier: "es-ES"), preferred: ["en-US"], supported: locales("en-US", "es-ES"))
+        XCTAssertEqual(c, .use(Locale(identifier: "es-ES")))
+    }
+
+    func testNothingSavedFollowsTheDevice() {
+        let c = CaptionLanguage.resolve(saved: nil, preferred: ["en-US"], supported: locales("en-US", "es-ES"))
+        XCTAssertEqual(c, .use(english))
+    }
+
+    func testASavedLanguageTheDeviceNoLongerHasFallsBackToTheDevice() {
+        let c = CaptionLanguage.resolve(saved: Locale(identifier: "ko-KR"), preferred: ["en-US"], supported: locales("en-US", "es-ES"))
+        XCTAssertEqual(c, .use(english))
+    }
+
+    func testASavedLanguageIsMatchedByItsFullCodeNotItsSpelling() {
+        // Saved as "es_ES" by an older build, listed as "es-ES" by the engine.
+        let c = CaptionLanguage.resolve(saved: Locale(identifier: "es_ES"), preferred: ["en-US"], supported: locales("en-US", "es-ES"))
+        XCTAssertEqual(c.locale.map(CaptionLanguage.bcp47), "es-ES")
+    }
+
+    func testAnEmptyEngineListStillUsesTheSavedLanguageRatherThanAsking() {
+        // The list can come back empty for a moment at launch; a saved choice mustn't be thrown away for it.
+        let c = CaptionLanguage.resolve(saved: Locale(identifier: "es-ES"), preferred: ["en-US"], supported: [])
+        XCTAssertEqual(c, .use(Locale(identifier: "es-ES")))
+    }
 }

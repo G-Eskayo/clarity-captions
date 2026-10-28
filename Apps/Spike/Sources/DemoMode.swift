@@ -88,6 +88,8 @@ enum DemoMode {
     static var translate: String? { value(after: "-ClarityDemoTranslate") }
     static var translateProgress: Double? { value(after: "-ClarityDemoTranslateProgress").flatMap(Double.init) }
     static var translationOwned: Bool { flag("-ClarityDemoTranslationOwned") }
+    /// `-ClarityDemoLaunch language`: first run asks for the caption language (#37).
+    static var asksLanguage: Bool { launch == "language" }
     /// Round 2 (#118): three saved conversations to show the saved list (mock-up round2/02), written once on launch.
     static var seedsSaved: Bool {
         flag("-ClarityDemoSavedSeed") || settingsPush == "saved" || settingsPush == "deleteall" || settingsPush == "conversation" || flow == "saved" || flow == "delete"
@@ -139,7 +141,9 @@ enum DemoMode {
                     }
                 }
                 state.installed = true
-            }))
+            }),
+            // "language": first run asks for the caption language, as on a device whose language doesn't settle it (#37).
+            readsCaptionLanguage: kind == "language")
         #else
         return nil
         #endif

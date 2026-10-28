@@ -22,6 +22,8 @@ final class EngineWarmupHost: ObservableObject {
     private var allowed = false
     /// The mic mode the loaded engine was made for; a session with another mode makes its own engine.
     private var loadedMicMode: MicMode?
+    /// The caption language the loaded engine was made for (#37); a session in another language makes its own.
+    private var loadedLocale: String?
     private var observers: [NSObjectProtocol] = []
 
     private init() {
@@ -52,7 +54,7 @@ final class EngineWarmupHost: ObservableObject {
             throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc"))
         }
         let vocabulary = VocabularyList(rawText: VocabularyStore().loadRawText()).entries
-        return TranscriptionEngine(micMode: micMode, diarizerModelURL: url, contextualStrings: vocabulary)
+        return TranscriptionEngine(locale: CaptionLanguageCenter.engineLocale, micMode: micMode, diarizerModelURL: url, contextualStrings: vocabulary)
     }
 
     /// First run is done: from now on the engine may load ahead of Start.
@@ -71,20 +73,24 @@ final class EngineWarmupHost: ObservableObject {
         if state == .idle || state == .failed {
             requested.micMode = micMode
             loadedMicMode = micMode
+            loadedLocale = CaptionLanguageCenter.engineLocale.identifier(.bcp47)
         }
         warmup.prepare()
     }
 
     /// The loaded (or loading) engine for a session, or nil if none matches; the session then makes its own.
     func take(micMode: MicMode) -> CaptioningEngine? {
-        guard loadedMicMode == micMode, let engine = warmup.take() else { return nil }
+        guard loadedMicMode == micMode, loadedLocale == CaptionLanguageCenter.engineLocale.identifier(.bcp47),
+              let engine = warmup.take() else { return nil }
         loadedMicMode = nil
+        loadedLocale = nil
         return engine
     }
 
     func release() async {
         await warmup.release()
         loadedMicMode = nil
+        loadedLocale = nil
     }
 
     #if DEBUG

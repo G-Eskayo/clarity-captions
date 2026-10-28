@@ -3,7 +3,7 @@ import Foundation
 public enum MicrophoneAccess: Equatable, Sendable { case undetermined, granted, denied }
 
 public enum FirstRunStep: Equatable, Sendable, CaseIterable {
-    case unsupported, welcome, microphone, microphoneDenied, speechModel, speakerModel, done
+    case unsupported, welcome, microphone, microphoneDenied, chooseLanguage, speechModel, speakerModel, done
 }
 
 /// Everything the first-run flow needs to know, as plain facts.
@@ -14,6 +14,9 @@ public struct FirstRunFacts: Equatable, Sendable {
     public var speakerModelWarm: Bool
     /// Whether this device can caption at all (#80). Defaults to supported so callers that don't check are unchanged.
     public var speechSupport: SpeechSupport
+    /// #37: false only when the device's language doesn't settle the caption language (several regions, or none
+    /// the engine has) and she hasn't picked one. Defaults to true so callers that don't check are unchanged.
+    public var captionLanguageChosen = true
     public init(hasSeenWelcome: Bool, microphone: MicrophoneAccess, speechModelInstalled: Bool, speakerModelWarm: Bool,
                 speechSupport: SpeechSupport = .supported) {
         self.speechSupport = speechSupport
@@ -37,6 +40,7 @@ public enum FirstRun {
         case .denied: return .microphoneDenied
         case .granted: break
         }
+        if !f.captionLanguageChosen { return .chooseLanguage }
         if !f.speechModelInstalled { return .speechModel }
         if !f.speakerModelWarm { return .speakerModel }
         return .done
@@ -68,10 +72,12 @@ public struct FirstRunCopy: Equatable, Sendable {
             FirstRunCopy(title: String(localized: "The microphone is off."),
                          message: String(localized: "Captions need it. Open Settings and turn on Microphone for Seal Speak."),
                          button: String(localized: "Open Settings"))
-        case .speechModel:
-            FirstRunCopy(title: String(localized: "Learning English"),
-                         message: String(localized: "A one-time download. Please keep Wi-Fi on. It only happens once."),
+        case .chooseLanguage:
+            FirstRunCopy(title: String(localized: "Which language do people around you speak?"),
+                         message: String(localized: "Seal captions it. You can change it any time in Settings."),
                          button: nil)
+        case .speechModel:
+            speechModel(language: String(localized: "English"))
         case .speakerModel:
             // Runs behind the launch animation (#119), so these words only show if nothing covers it. The honest-claims
             // table (#120): no "telling voices apart", no "never wait".
@@ -87,9 +93,16 @@ public struct FirstRunCopy: Equatable, Sendable {
 }
 
 extension FirstRunCopy {
+    /// The download screen, naming the caption language it downloads (#37).
+    public static func speechModel(language: String) -> FirstRunCopy {
+        FirstRunCopy(title: String(format: String(localized: "Learning %@"), language),
+                     message: String(localized: "A one-time download. Please keep Wi-Fi on. It only happens once."),
+                     button: nil)
+    }
+
     /// One screen for every download failure (mock-up round3/03, "Download stopped"): the reason sits in the second line.
-    public static func downloadStopped(_ problem: DownloadProblem) -> FirstRunCopy {
-        FirstRunCopy(title: String(localized: "The download didn't finish."), message: problem.message,
+    public static func downloadStopped(_ problem: DownloadProblem, language: String = String(localized: "English")) -> FirstRunCopy {
+        FirstRunCopy(title: String(localized: "The download didn't finish."), message: problem.message(language: language),
                      button: String(localized: "Try again"))
     }
 }

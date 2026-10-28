@@ -8,6 +8,9 @@ public enum CaptionLanguage {
         case use(Locale)
         /// First run asks. `suggested` are the regions of the device language when there are several, else empty.
         case ask(suggested: [Locale])
+
+        /// The language to use, when there's no need to ask.
+        public var locale: Locale? { if case .use(let l) = self { l } else { nil } }
     }
 
     /// The default caption language. The device's languages are tried in the person's order: an exact match is used;
@@ -28,6 +31,16 @@ public enum CaptionLanguage {
         return .ask(suggested: [])
     }
 
+    /// The caption language to use now: the one she chose, while the engine still has it (or while its list hasn't
+    /// come back), else the device's default.
+    public static func resolve(saved: Locale?, preferred: [String], supported: [Locale]) -> Choice {
+        if let saved {
+            if supported.isEmpty { return .use(saved) }
+            if let match = supported.first(where: { bcp47($0) == bcp47(saved) }) { return .use(match) }
+        }
+        return defaultChoice(preferred: preferred, supported: supported)
+    }
+
     /// Where translation goes by default: the first of the person's languages that isn't the caption language. Nil
     /// when they read only the caption language, so there's nothing to translate into until they pick one.
     public static func translationTarget(captions: Locale, preferred: [String]) -> Locale? {
@@ -44,7 +57,7 @@ public enum CaptionLanguage {
         Locale.Language(identifier: l.language.maximalIdentifier).script?.identifier
     }
 
-    static func bcp47(_ l: Locale) -> String { l.identifier(.bcp47) }
+    public static func bcp47(_ l: Locale) -> String { l.identifier(.bcp47) }
 }
 
 /// The list behind "Caption language" and translation's "From" (#37, #53): the language people around her speak.
@@ -129,5 +142,51 @@ public struct CaptionLanguageStore {
     public var translationTarget: Locale? {
         get { defaults.string(forKey: Self.translationTargetKey).map(Locale.init(identifier:)) }
         nonmutating set { defaults.set(newValue.map(CaptionLanguage.bcp47), forKey: Self.translationTargetKey) }
+    }
+}
+
+/// Switching the caption language (#37). Captions keep the old language until the new one's speech files are on the
+/// device; a failed download changes nothing and says why; only the newest choice counts.
+public struct CaptionLanguageSwitch: Equatable, Sendable {
+    public enum Phase: Equatable, Sendable {
+        case ready
+        case downloading(Locale, progress: Double)
+        case failed(Locale, DownloadProblem)
+    }
+
+    public private(set) var current: Locale
+    public private(set) var phase: Phase = .ready
+
+    public init(current: Locale) { self.current = current }
+
+    private var wanted: Locale? {
+        switch phase {
+        case .ready: nil
+        case .downloading(let l, _), .failed(let l, _): l
+        }
+    }
+
+    private static func same(_ a: Locale, _ b: Locale) -> Bool { CaptionLanguage.bcp47(a) == CaptionLanguage.bcp47(b) }
+
+    /// Returns the language to download, or nil when there's nothing to download.
+    public mutating func choose(_ locale: Locale, installed: Bool) -> Locale? {
+        if Self.same(locale, current) { phase = .ready; return nil }
+        if installed { current = locale; phase = .ready; return nil }
+        phase = .downloading(locale, progress: 0)
+        return locale
+    }
+
+    public mutating func progress(_ p: Double, for locale: Locale) {
+        guard case .downloading(let l, let shown) = phase, Self.same(l, locale) else { return }
+        phase = .downloading(l, progress: max(shown, min(p, 1)))
+    }
+
+    public mutating func finished(_ outcome: DownloadOutcome, for locale: Locale) {
+        guard let wanted, Self.same(wanted, locale), case .downloading = phase else { return }
+        switch outcome {
+        case .installed: current = wanted; phase = .ready
+        case .failed(let why): phase = .failed(wanted, why)
+        case .alreadyRunning: break
+        }
     }
 }

@@ -9,6 +9,8 @@ struct LanguageSettingsState: Equatable {
     var followsDevice: Bool
     var translationOn: Bool
     var target: Locale?
+    /// The caption language's own download (#37), while one runs or after one failed.
+    var captionDownload: CaptionLanguageSwitch.Phase = .ready
     /// The translation language pack for this pair: nil when it's on the device, else 0...1 while it downloads.
     var downloadProgress: Double?
     /// Translation is a one-time in-app purchase (owner, #171). Until StoreKit is wired (#53) nobody owns it.
@@ -17,15 +19,16 @@ struct LanguageSettingsState: Equatable {
     var translationPrice = "$1.99"
 
     /// The saved choices, with the device's language filling in what hasn't been picked.
+    @MainActor
     static func current(store: CaptionLanguageStore = CaptionLanguageStore(),
+                        languages: CaptionLanguageCenter = .shared,
                         preferred: [String] = Locale.preferredLanguages) -> LanguageSettingsState {
-        let saved = store.captionLanguage
-        // Until the engine's supported list is read (#37 wiring), the device's first language stands in.
-        let captions = saved ?? Locale(identifier: preferred.first ?? "en-US")
-        var state = LanguageSettingsState(captions: captions, followsDevice: saved == nil, translationOn: store.translationOn,
+        let captions = languages.current
+        var state = LanguageSettingsState(captions: captions, followsDevice: languages.followsDevice, translationOn: store.translationOn,
                                           target: store.translationTarget ?? CaptionLanguage.translationTarget(captions: captions, preferred: preferred))
+        state.captionDownload = languages.change.phase
         #if DEBUG
-        if let id = DemoMode.language { state.captions = Locale(identifier: id); state.followsDevice = id == preferred.first }
+        if let id = DemoMode.language { state.followsDevice = id == preferred.first }
         if let id = DemoMode.translate { state.translationOwned = true; state.translationOn = true; state.target = Locale(identifier: id) }
         if DemoMode.translationOwned { state.translationOwned = true }
         state.downloadProgress = DemoMode.translateProgress

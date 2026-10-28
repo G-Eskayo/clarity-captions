@@ -59,7 +59,7 @@ final class CaptionModel: ObservableObject {
             }
             let rawText = VocabularyStore().loadRawText()
             let vocabulary = VocabularyList(rawText: rawText).entries
-            return TranscriptionEngine(micMode: self.micMode, diarizerModelURL: url, contextualStrings: vocabulary)
+            return TranscriptionEngine(locale: CaptionLanguageCenter.engineLocale, micMode: self.micMode, diarizerModelURL: url, contextualStrings: vocabulary)
         }, idleStopSetting: { [weak self] in self?.idleStop ?? .default })
 
         if let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
@@ -314,8 +314,10 @@ struct ContentView: View {
     /// Round 2 (#118): the app is one screen. Which page shows; the page actually drawn (it changes at the midpoint of
     /// the fade, so the current page fades out before the next fades in); and the fade itself.
     @State private var nav = ScreenNavigator()
+    /// #37: the caption language, shared with first run and the engine.
+    @ObservedObject private var languages = CaptionLanguageCenter.shared
     /// #37 / #53: caption language and translation, as Settings and the language list show them.
-    @State private var language = LanguageSettingsState.current()
+    private var language: LanguageSettingsState { .current(languages: languages) }
     /// Height of the soft fade under the status row (#117 topedge); the first caption line starts below it (#137).
     static let captionsTopFade: CGFloat = 56
     @State private var shownScreen: AppScreen = .captions
@@ -437,6 +439,8 @@ struct ContentView: View {
             model.appActiveChanged(phase == .active)
             model.scenePhaseChanged(phase)
         }
+        // #37: settle the caption language from the engine's list (first run already did, on a first launch).
+        .task { await languages.refresh() }
         .task {
             guard DemoMode.isOn else { return }
             model.demoApplyPreset()
@@ -536,7 +540,8 @@ struct ContentView: View {
                          language: language,
                          onChooseCaptionLanguage: { go { $0.open(.captionLanguage) } })
         case .captionLanguage:
-            CaptionLanguagePage(style: style, language: language, onBack: { go { $0.back() } })
+            CaptionLanguagePage(style: style, language: language, onBack: { go { $0.back() } },
+                                onChoose: { locale in Task { await languages.choose(locale) } })
                 .padding(.horizontal, 16)
         case .saved:
             if let store = model.store {

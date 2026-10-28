@@ -25,17 +25,16 @@ struct CaptionLanguagePage: View {
                         .foregroundStyle(mutedColor(style))
                         .padding(.top, 18)
                         .padding(.bottom, 10)
-                    ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
-                        if index > 0 { ThinRule(style: style) }
-                        rowView(row)
-                    }
+                    CaptionLanguageDownloadLine(style: style, phase: language.captionDownload)
+                    CaptionLanguageRows(style: style, rows: rows, translatingInto: translatingInto, onChoose: onChoose)
                 }
                 .padding(.horizontal, 8)
                 .padding(.bottom, 40)
             }
         }
         .foregroundStyle(style.text.color)
-        .task { rows = await Self.loadRows(current: language.captions, into: translatingInto) }
+        // Ticks move as soon as a language is on the device: the list follows the caption language.
+        .task(id: CaptionLanguage.bcp47(language.captions)) { rows = await Self.loadRows(current: language.captions, into: translatingInto) }
     }
 
     private var intro: String {
@@ -43,6 +42,46 @@ struct CaptionLanguagePage: View {
             return String(format: String(localized: "Pick the language people around you speak. Seal captions it and translates it into %@."), LanguageSettingsState.name(into))
         }
         return String(localized: "Pick the language people around you speak. Seal captions it.")
+    }
+
+    /// What the engine has on this device. Debug demo launches use the list Apple reported on the Mini (2026-10-28),
+    /// so screenshots don't depend on what the simulator has installed.
+    static func loadRows(current: Locale, into: Locale?) async -> [CaptionLanguageList.Row] {
+        var speech = await SpeechTranscriber.supportedLocales
+        var installed = Array(await SpeechTranscriber.installedLocales)
+        var translatable = await LanguageAvailability().supportedLanguages
+        #if DEBUG
+        if DemoMode.isOn || DemoMode.opensSettings || DemoMode.settingsPush != nil {
+            speech = DemoLanguages.speech.map(Locale.init(identifier:))
+            installed = DemoLanguages.installed.map(Locale.init(identifier:))
+            translatable = DemoLanguages.translation.map(Locale.Language.init(identifier:))
+        }
+        #endif
+        let rows = CaptionLanguageList.rows(speech: speech, installed: installed, current: current,
+                                            translation: into.map { (into: $0, supported: translatable) })
+        // The chosen language stays first; the rest keep their groups and read in her own alphabet inside each.
+        guard let first = rows.first else { return rows }
+        return [first] + rows.dropFirst().sorted {
+            if $0.translation.listGroup != $1.translation.listGroup { return $0.translation.listGroup < $1.translation.listGroup }
+            return LanguageSettingsState.name($0.locale).localizedStandardCompare(LanguageSettingsState.name($1.locale)) == .orderedAscending
+        }
+    }
+}
+
+/// The rows of the caption language list: Settings' page and first run's question (#37).
+struct CaptionLanguageRows: View {
+    let style: CaptionStyle
+    let rows: [CaptionLanguageList.Row]
+    let translatingInto: Locale?
+    var onChoose: ((Locale) -> Void)?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
+                if index > 0 { ThinRule(style: style) }
+                rowView(row)
+            }
+        }
     }
 
     private func rowView(_ row: CaptionLanguageList.Row) -> some View {
@@ -62,6 +101,7 @@ struct CaptionLanguagePage: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .disabled(!row.supported)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(row.isCurrent ? .isSelected : [])
     }
@@ -85,27 +125,29 @@ struct CaptionLanguagePage: View {
         }
         return parts.joined(separator: " · ")
     }
+}
 
-    /// What the engine has on this device. Debug demo launches use the list Apple reported on the Mini (2026-10-28),
-    /// so screenshots don't depend on what the simulator has installed.
-    static func loadRows(current: Locale, into: Locale?) async -> [CaptionLanguageList.Row] {
-        var speech = await SpeechTranscriber.supportedLocales
-        var installed = Array(await SpeechTranscriber.installedLocales)
-        var translatable = await LanguageAvailability().supportedLanguages
-        #if DEBUG
-        if DemoMode.isOn || DemoMode.opensSettings || DemoMode.settingsPush != nil {
-            speech = DemoLanguages.speech.map(Locale.init(identifier:))
-            installed = DemoLanguages.installed.map(Locale.init(identifier:))
-            translatable = DemoLanguages.translation.map(Locale.Language.init(identifier:))
-        }
-        #endif
-        let rows = CaptionLanguageList.rows(speech: speech, installed: installed, current: current,
-                                            translation: into.map { (into: $0, supported: translatable) })
-        // The chosen language stays first; the rest keep their groups and read in her own alphabet inside each.
-        guard let first = rows.first else { return rows }
-        return [first] + rows.dropFirst().sorted {
-            if $0.translation.listGroup != $1.translation.listGroup { return $0.translation.listGroup < $1.translation.listGroup }
-            return LanguageSettingsState.name($0.locale).localizedStandardCompare(LanguageSettingsState.name($1.locale)) == .orderedAscending
+/// A caption language on its way (#37): real progress in plain words, or what went wrong (tapping the language again
+/// tries again). Nothing when there's no download.
+struct CaptionLanguageDownloadLine: View {
+    let style: CaptionStyle
+    let phase: CaptionLanguageSwitch.Phase
+
+    var body: some View {
+        switch phase {
+        case .ready: EmptyView()
+        case .downloading(let locale, let p):
+            VStack(alignment: .leading, spacing: 6) {
+                ProgressView(value: p).tint(style.gear.color)
+                Text(String(format: String(localized: "Downloading %@ · %lld%%"), LanguageSettingsState.name(locale), Int(p * 100)))
+                    .font(.subheadline.weight(.semibold)).foregroundStyle(mutedColor(style))
+            }
+            .padding(.vertical, 8)
+            .accessibilityElement(children: .combine)
+        case .failed(let locale, let why):
+            Text(why.message(language: LanguageSettingsState.name(locale)))
+                .font(.subheadline.weight(.semibold)).foregroundStyle(mutedColor(style))
+                .padding(.vertical, 8)
         }
     }
 }
