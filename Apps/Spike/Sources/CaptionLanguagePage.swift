@@ -51,7 +51,7 @@ struct CaptionLanguagePage: View {
         var installed = Array(await SpeechTranscriber.installedLocales)
         var translatable = await LanguageAvailability().supportedLanguages
         #if DEBUG
-        if DemoMode.isOn || DemoMode.opensSettings || DemoMode.settingsPush != nil {
+        if DemoMode.isOn || DemoMode.opensSettings || DemoMode.settingsPush != nil || DemoMode.asksLanguage {
             speech = DemoLanguages.speech.map(Locale.init(identifier:))
             installed = DemoLanguages.installed.map(Locale.init(identifier:))
             translatable = DemoLanguages.translation.map(Locale.Language.init(identifier:))
