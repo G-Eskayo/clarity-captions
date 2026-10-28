@@ -37,12 +37,13 @@ html.motion figure.chart.grown svg .bar.pick { animation: pick-glow 1.2s ease-ou
 @keyframes pick-glow { 0%, 100% { filter: none; } 40% { filter: drop-shadow(0 0 6px var(--teal)); } }
 
 /* ── version switcher: the highlight slides, the version fades in ── */
-.version-nav.has-pill { position: relative; }
-.version-nav .pill { position: absolute; left: 0; top: 0; border-radius: 999px; background: var(--accent); pointer-events: none; }
-.version-nav .pill.ready { transition: transform .45s cubic-bezier(.3, .7, .2, 1), width .45s cubic-bezier(.3, .7, .2, 1); }
-.version-nav.has-pill a { position: relative; z-index: 1; transition: color .3s; }
-.version-nav.has-pill a[aria-current] { background: transparent; }
-html.motion .version.enter { animation: version-in .45s ease-out; }
+/* The sliding pill: the Versions switcher and the home page's device tabs share it. */
+.has-pill { position: relative; }
+.has-pill .pill { position: absolute; left: 0; top: 0; border-radius: 999px; background: var(--accent); pointer-events: none; }
+.has-pill .pill.ready { transition: transform .45s cubic-bezier(.3, .7, .2, 1), width .45s cubic-bezier(.3, .7, .2, 1); }
+.has-pill > a, .has-pill > [role="tab"] { position: relative; z-index: 1; transition: color .3s; }
+.has-pill > a[aria-current], .has-pill > [aria-selected="true"] { background: transparent; }
+html.motion .version.enter, html.motion [data-device].enter { animation: version-in .45s ease-out; }
 @keyframes version-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 
 /* ── home: the line down the 1-2-3 steps ── */
