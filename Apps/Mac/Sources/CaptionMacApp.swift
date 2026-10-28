@@ -13,6 +13,7 @@ struct CaptionMacApp: App {
         MarvinScreenshot.runIfRequested()
         CallAudioSelfTest.runIfRequested()
         MarvinScreenshot.scheduleLiveSnapshotIfRequested()
+        HideCheck.runIfRequested()
     }
 
     var body: some Scene {
