@@ -214,11 +214,16 @@
   /* ── story (#142): a warm cream band of its own, the seal's colours, in light and dark ── */
   /* Light (Peach): the seal's deep teal, like its app icon. Dark (Harbor): the seal's cream. */
   section.band.story { background: #0E5A56; color: #FBF3E4; border-top: 0; }
-  .story-wrap { text-align: center; max-width: 44rem; }
-  .story-seal { width: 120px; height: auto; display: block; margin: 0 auto 1rem; }
-  .story p { margin: 0 auto 1rem; max-width: 36rem; }
-  .story-lead { font-size: clamp(1.4rem, 2.8vw, 1.9rem); line-height: 1.3; font-weight: 700; color: #FBE8C1; }
-  .story-sign { font-weight: 700; margin-top: 1.4rem !important; }
+  .story-card { display: grid; grid-template-columns: auto 1fr; gap: 2.5rem; align-items: center; max-width: 54rem; }
+  @media (max-width: 40rem) { .story-card { grid-template-columns: 1fr; gap: 1rem; justify-items: start; } .story-seal { width: 96px !important; } .story-lead::before { position: static; margin-right: .05em; } }
+  .story-seal { width: 160px; height: auto; display: block; }
+  .story-quote { margin: 0; }
+  .story-quote blockquote { margin: 0; }
+  .story-kicker { font-size: .85rem !important; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 .75rem !important; opacity: .8; }
+  .story p { margin: 0 0 .75rem; max-width: 36rem; }
+  .story-lead { font-size: clamp(1.7rem, 3.6vw, 2.5rem); line-height: 1.15; font-weight: 800; color: #FBE8C1; margin-bottom: 1rem !important; position: relative; }
+  .story-lead::before { content: '\201C'; position: absolute; left: -.55em; top: -.1em; opacity: .5; }
+  .story-sign { font-weight: 700; margin-top: 1.2rem; }
   .story-sign span { display: block; font-weight: 400; font-size: .9rem; color: #D6EAE6; }
   .story a { color: #FBE8C1; }
   @media (prefers-color-scheme: dark) {
@@ -405,15 +410,18 @@
   </div>
 
   <section class="band story" id="story" aria-labelledby="story-h">
-    <div class="wrap story-wrap">
-      <img class="story-seal" src="assets/favicon.svg" alt="" width="120" height="120">
-      <h2 id="story-h">Why I made Seal Speak</h2>
-      <!-- Owner-approved wording and look (#142, 2026-10-20). Don't rewrite it without the owner. -->
-      <p class="story-lead">Everyone deserves to be part of the conversation.</p>
-      <p>For people who are hard of hearing, like my mom, the right technology can give that back. I built Seal Speak as a birthday gift for her, and now it's here for you too.</p>
-      <p>Most live captioning costs a monthly fee and stops working without signal. Seal Speak runs entirely on your iPhone, works anywhere, and costs one price, once. No subscription, no account, no ads.</p>
-      <p>If it helps you stay close to the people you love, this app is for you.</p>
-      <p class="story-sign">Gil<span>Maker of Seal Speak</span></p>
+    <div class="wrap story-card">
+      <img class="story-seal" src="assets/favicon.svg" alt="" width="160" height="160">
+      <figure class="story-quote">
+        <!-- Proposed shorter wording and quote-card look (#184), for the owner to approve; the approved original is #142's. -->
+        <h2 id="story-h" class="story-kicker">Why I made Seal Speak</h2>
+        <blockquote>
+          <p class="story-lead">Everyone deserves to be part of the conversation.</p>
+          <p>I built Seal Speak as a birthday gift for my mom, who is hard of hearing. Now it's here for you too.</p>
+          <p>If it helps you stay close to the people you love, it's for you.</p>
+        </blockquote>
+        <figcaption class="story-sign">Gil<span>Maker of Seal Speak</span></figcaption>
+      </figure>
     </div>
   </section>
 
