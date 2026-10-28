@@ -68,6 +68,13 @@ domain understanding only.
   minimal buttons, no technical choices exposed. A hard constraint on every screen, not polish.
   See [[0013]].
 
+## Monetization
+
+- **Live translation (IAP)**: a $2 in-app purchase (one-time, same price on iPhone and iPad) that
+  translates captions to a second language in real time and displays them alongside the original
+  English. Decided in [[0026]]; the core app (speaker turns, captions, saved conversations, all
+  caption display settings) remains in the free part of the $5 purchase, never behind the IAP.
+
 ## Caption states
 
 - **Listening**: captioning is running and the app is working. Covers both "people are talking" and

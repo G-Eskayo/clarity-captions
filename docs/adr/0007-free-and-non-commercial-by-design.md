@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-09-08). **Superseded 2026-10-10:** v1 ships as a one-time $4.99 purchase; see "2026-10-10: paid at $4.99" below.
+Accepted (2026-09-08). **Superseded 2026-10-10:** v1 ships as a one-time $4.99 purchase; see "2026-10-10: paid at $4.99" below. **Further superseded 2026-10-26:** pricing and live-translation IAP decision moved to [[0026]]; this ADR's history is kept as context for why monetization changed from the original "never" to a single purchase model.
 
 ## Context
 

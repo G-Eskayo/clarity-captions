@@ -185,6 +185,7 @@ review notes don't mention them:
    interruption handling. Part of #10.
 4. **Faded background speech** (#6): still open, so the description doesn't mention it.
 5. **Other languages** (#37): the engine is fixed to en-US.
+6. **Live translation (IAP)** (ADR 0026): $2 in-app purchase for translated captions, decided but not yet built. The listing and support site still reference the $4.99 price only; once this feature ships, list the $2 IAP on the app's store detail page and update supporting docs.
 
 ## Owner decisions (2026-10-09)
 
