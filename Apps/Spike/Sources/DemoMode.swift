@@ -9,8 +9,7 @@ import Foundation
 ///   -ClarityDemoSettingsSection idleStop   scrolls those settings to a section (simctl can't scroll)
 ///   -ClarityDemoTheme night  -ClarityDemoFont serif   start with this look
 ///   -ClarityDemoGummy     a screen of gummy buttons pressing by themselves
-///   -ClarityDemoAlive     the #180 mock-up: Listening light options and buttons pressing by themselves
-///   -ClarityDemoPulse gentle|steady|room   how the Listening light breathes
+///   -ClarityDemoAlive     the Listening light in a pretend room and buttons pressing by themselves (#180)
 ///   -ClarityDemoPaused    pauses after the conversation: the dim with [ Save ] / [ New ] (#102)
 ///   -ClarityDemoSaved     paused and saved: [ Saved ] in green
 ///   -ClarityDemoVeilCleared  paused with the dim tapped away, and the hint
@@ -59,10 +58,8 @@ enum DemoMode {
     static var font: CaptionFont? { value(after: "-ClarityDemoFont").flatMap(CaptionFont.init(rawValue:)) }
     /// `-ClarityDemoGummy`: a screen of gummy buttons that press and release by themselves (simctl can't tap).
     static var gummyDemo: Bool { flag("-ClarityDemoGummy") }
-    /// `-ClarityDemoAlive`: the #180 mock-up screen, the Listening light options and buttons pressing by themselves.
+    /// `-ClarityDemoAlive`: the Listening light in a pretend room and the buttons pressing by themselves (#180).
     static var aliveDemo: Bool { flag("-ClarityDemoAlive") }
-    /// `-ClarityDemoPulse gentle|steady|room`: how the Listening light breathes (#180 mock-up options).
-    static var pulse: ListeningLight.Pulse? { value(after: "-ClarityDemoPulse").flatMap(ListeningLight.Pulse.init(rawValue:)) }
 
     /// Applies -ClarityDemoTheme / -ClarityDemoFont before the main screen reads the saved style.
     static func applyLookOverrides() {

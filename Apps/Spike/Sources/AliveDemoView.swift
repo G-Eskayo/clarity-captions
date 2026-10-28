@@ -1,12 +1,17 @@
 import CaptionCore
+import CaptionUI
 import SwiftUI
 
-/// Debug only (-ClarityDemoAlive, #180 mock-up): the Listening light options side by side and the buttons pressing by
-/// themselves (simctl can't tap), drawn with the real views on Paper (light) or Night (dark), following the system.
+/// Debug only (-ClarityDemoAlive, #180): the Listening light in a pretend room, with Reduce Motion beside it, and the
+/// buttons pressing by themselves (simctl can't tap), drawn with the real views on Paper (light) or Night (dark),
+/// following the system.
 struct AliveDemoView: View {
+    /// Someone talks, pauses, talks louder (dBFS), for the light to follow.
+    static let roomLevels: [Double] = [-50, -40, -34, -45, -58, -38, -31, -48]
+
     @Environment(\.colorScheme) private var scheme
     @State private var pressed = false
-    @State private var roomLevel: Double = -50
+    @State private var roomLevel: Double = roomLevels[0]
 
     private var style: CaptionStyle {
         CaptionStyle.standard.applying(CaptionPreset.all.first { $0.id == (scheme == .dark ? "night" : "paper") }!)
@@ -16,10 +21,8 @@ struct AliveDemoView: View {
         let style = style
         VStack(alignment: .leading, spacing: 18) {
             heading("Listening light", style)
-            lightRow("A  Gentle · 2.4 s", pulse: .gentle, style)
-            lightRow("B  Steady · 1.4 s", pulse: .steady, style)
-            lightRow("C  Follows the room", pulse: .room, style)
-            lightRow("Reduce Motion", pulse: .gentle, style, still: true)
+            lightRow("Follows the room", style)
+            lightRow("Reduce Motion", style, still: true)
 
             heading("Buttons", style).padding(.top, 12)
             HStack(spacing: 24) {
@@ -53,13 +56,11 @@ struct AliveDemoView: View {
             }
         }
         .task {
-            // A pretend room for option C: someone talks, pauses, talks louder.
-            let levels: [Double] = [-50, -40, -34, -45, -55, -38, -31, -48]
             var i = 0
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 600_000_000)
-                i = (i + 1) % levels.count
-                withAnimation(.easeInOut(duration: 0.5)) { roomLevel = levels[i] }
+                i = (i + 1) % Self.roomLevels.count
+                roomLevel = Self.roomLevels[i]
             }
         }
     }
@@ -72,11 +73,11 @@ struct AliveDemoView: View {
         Text(text).font(.footnote).foregroundStyle(style.text.color.opacity(0.6))
     }
 
-    private func lightRow(_ name: String, pulse: ListeningLight.Pulse, _ style: CaptionStyle, still: Bool = false) -> some View {
+    private func lightRow(_ name: String, _ style: CaptionStyle, still: Bool = false) -> some View {
         HStack {
             // The status line as the main screen draws it.
             HStack(spacing: 6) {
-                ListeningLightView(background: style.background, pulse: pulse, roomLevelDBFS: roomLevel, forceReduceMotion: still)
+                ListeningLightView(background: style.background, roomLevelDBFS: roomLevel, forceReduceMotion: still)
                 Text("Listening").font(.subheadline.weight(.semibold)).opacity(0.8)
             }
             .foregroundStyle(style.text.color)

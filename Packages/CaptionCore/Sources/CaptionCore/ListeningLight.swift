@@ -1,55 +1,50 @@
 import Foundation
 
-/// The Listening light (#180): red, breathing in colour, never in size. The colours and timings live here, free of
-/// any UI framework, so the iPhone and Mac apps draw the same light.
+/// The Listening light (#180): red, following the room in colour, never in size (owner, 2026-10-28: option C).
+/// Brighter while people talk, softer when it's quiet. The colours live here, free of any UI framework, so the
+/// iPhone and Mac apps draw the same light.
 public enum ListeningLight {
-    /// How the light breathes. The owner picks one (#180 Decisions); the others are mock-up options.
-    public enum Pulse: String, CaseIterable, Sendable {
-        /// A slow breathe: bright red to a soft red and back, 2.4 s a breath.
-        case gentle
-        /// The same breathe, quicker and deeper: 1.4 s a breath.
-        case steady
-        /// No timer: brighter when the room is louder, softer when it's quiet (the old grey dot's behaviour, in red).
-        case room
+    /// How far the quietest room fades the light toward the background. 0.2 keeps it at 3:1 or better on every look
+    /// (WCAG 1.4.11 non-text contrast), so a quiet room never makes it look switched off.
+    static let quietDepth = 0.2
+
+    /// The light's colour for this room level. Reduce Motion: steady full red, whatever the room does.
+    public static func color(on background: RGBA, roomLevelDBFS: Double?, reduceMotion: Bool) -> RGBA {
+        let red = red(on: background)
+        if reduceMotion { return red }
+        return red.mixed(with: background, by: quietDepth * (1 - brightness(roomLevelDBFS: roomLevelDBFS)))
     }
 
-    /// Seconds for one breath (bright → soft → bright); nil when the light follows the room instead.
-    public static func period(_ pulse: Pulse) -> Double? {
-        switch pulse {
-        case .gentle: 2.4
-        case .steady: 1.4
-        case .room: nil
-        }
-    }
-
-    /// How far the soft end of a breath fades toward the background, 0...1.
-    public static func depth(_ pulse: Pulse) -> Double {
-        switch pulse {
-        case .gentle: 0.55
-        case .steady: 0.7
-        case .room: 0.7
-        }
-    }
-
-    /// The bright end: the Stop circle's red on a light look, a lighter red on a dark look so it still reads.
-    public static func red(on background: RGBA) -> RGBA {
+    /// Full red: the Stop circle's red on a light look, a lighter red on a dark look so it still reads.
+    static func red(on background: RGBA) -> RGBA {
         background.isDark ? RGBA(1.0, 0.36, 0.33) : RGBA(0.80, 0.12, 0.12)
     }
 
-    /// The soft end of a breath: the red faded `depth` of the way toward the background.
-    public static func soft(on background: RGBA, pulse: Pulse) -> RGBA {
-        red(on: background).mixed(with: background, by: depth(pulse))
+    /// 0 (quiet, -60 dBFS or below, or no reading) ... 1 (loud, -30 dBFS or above).
+    static func brightness(roomLevelDBFS: Double?) -> Double {
+        guard let level = roomLevelDBFS, !level.isNaN else { return 0 }
+        return min(max((level + 60) / 30, 0), 1)
     }
+}
 
-    /// For `.room`: 0 (quiet, soft end) ... 1 (loud, bright end), from the room level in dBFS (-60 quiet, -30 loud).
-    public static func brightness(roomLevelDBFS: Double?) -> Double {
-        min(max(((roomLevelDBFS ?? -60) + 60) / 30, 0), 1)
-    }
+/// How buttons answer a press (#180, approved as shown 2026-10-28), shared so the iPhone and Mac apps feel the same.
+public enum PressFeedback {
+    /// Icon buttons (gear, saved list, close, back): dim and give a little.
+    public static let iconPressedOpacity = 0.5
+    public static let iconScale = 0.88
+    /// The round highlight behind an icon on Mac hover: the icon's colour at this opacity.
+    public static let hoverOpacity = 0.12
+    /// The Stop circle: darkens and gives a little.
+    public static let stopDarken = 0.22
+    public static let stopScale = 0.92
+    /// The spring every press uses; Reduce Motion drops the give and keeps a quick fade.
+    public static let springResponse = 0.22
+    public static let springDamping = 0.55
 }
 
 extension RGBA {
     /// This colour moved `amount` (0...1) of the way to `other`.
-    public func mixed(with other: RGBA, by amount: Double) -> RGBA {
+    func mixed(with other: RGBA, by amount: Double) -> RGBA {
         let t = min(max(amount, 0), 1)
         return RGBA(r + (other.r - r) * t, g + (other.g - g) * t, b + (other.b - b) * t, a + (other.a - a) * t)
     }

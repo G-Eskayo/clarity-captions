@@ -1,5 +1,6 @@
 import AVFoundation
 import CaptionCore
+import CaptionUI
 import SwiftUI
 import UIKit
 
@@ -922,7 +923,15 @@ struct ContentView: View {
         case "confirmnew": model.demoSetState(.idle); await wait(1); model.requestNew()
         case "jump": following = false
         case "canthear": model.demoSetState(.listening); model.activity = .cantHearAnything
-        case "listening": model.demoSetState(.listening); model.activity = .activelyListening
+        case "listening":
+            // A pretend room for the Listening light (#180): someone talks, pauses, talks louder.
+            model.demoSetState(.listening); model.activity = .activelyListening
+            Task { @MainActor in
+                for level in Array(repeating: AliveDemoView.roomLevels, count: 20).joined() {
+                    model.roomLevelDBFS = level
+                    try? await Task.sleep(nanoseconds: 600_000_000)
+                }
+            }
         case "failed": model.demoSetState(.failed(String(localized: "The microphone stopped. Tap Start captions to try again.")))
         case "quiet": model.demoSetState(.pausedQuiet(minutes: 5))
         case "savedfromcaptions":
