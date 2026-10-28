@@ -34,7 +34,14 @@ public final class MicAudioSource: AudioSource {
         try session.setActive(true)
         #endif
         // Must happen before the tap format is read.
-        if micMode == .voiceProcessing { try audioEngine.inputNode.setVoiceProcessingEnabled(true) }
+        if micMode == .voiceProcessing {
+            try audioEngine.inputNode.setVoiceProcessingEnabled(true)
+            #if os(macOS)
+            // On the Mac this mic runs during a call (#172): cancel the echo, but don't turn the call down.
+            audioEngine.inputNode.voiceProcessingOtherAudioDuckingConfiguration =
+                AVAudioVoiceProcessingOtherAudioDuckingConfiguration(enableAdvancedDucking: false, duckingLevel: .min)
+            #endif
+        }
         return audioEngine.inputNode.outputFormat(forBus: 0)
     }
 

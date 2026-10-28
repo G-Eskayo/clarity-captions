@@ -2,9 +2,12 @@ import Foundation
 import SwiftUI
 import CaptionCore
 
-/// What the window captions (#172). Until Gil picks the pop-up design (draft PR Decisions) there is no control for it:
-/// `defaults write com.gileskayo.captions listenTo room|call|facetime`. Default: the call, as the ticket asks.
+/// What the window captions (#172). Design A has no control for it; for testing:
+/// `defaults write com.gileskayo.captions listenTo both|call|facetime|room` (sandboxed builds: the container's prefs).
 enum ListenTo: String {
+    /// The call and the room together, in one stream, so the call's far side and the people at the Mac are captioned
+    /// with their own speaker labels. Default (owner, 2026-10-28).
+    case both
     /// Every sound the Mac plays except Seal Speak's own: FaceTime, a Continuity phone call, Zoom, anything.
     case call
     /// Only FaceTime and its call service (narrower; which process plays the far side is unverified on a live call).
@@ -12,13 +15,19 @@ enum ListenTo: String {
     /// The Mac's microphone, as before #172.
     case room
 
-    static var current: ListenTo { ListenTo(rawValue: UserDefaults.standard.string(forKey: "listenTo") ?? "") ?? .call }
+    static var current: ListenTo { ListenTo(rawValue: UserDefaults.standard.string(forKey: "listenTo") ?? "") ?? .both }
 
     func audioSource() -> AudioSource {
         switch self {
-        case .call: ProcessTapAudioSource(target: .allSystemAudio)
-        case .facetime: ProcessTapAudioSource(target: .apps(bundleIDs: CallApps.faceTime))
-        case .room: MicAudioSource()
+        // Echo cancelled on the mic, so a call coming out of the speakers isn't heard twice over.
+        case .both:
+            // The tap's device must not also hold the speakers, or the echo canceller starves it (measured: 0 frames).
+            let call = ProcessTapAudioSource(target: .allSystemAudio)
+            call.usesOutputDevice = false
+            return MixedAudioSource([MicAudioSource(micMode: .voiceProcessing), call])
+        case .call: return ProcessTapAudioSource(target: .allSystemAudio)
+        case .facetime: return ProcessTapAudioSource(target: .apps(bundleIDs: CallApps.faceTime))
+        case .room: return MicAudioSource()
         }
     }
 }

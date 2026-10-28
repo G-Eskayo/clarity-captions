@@ -33,6 +33,9 @@ public final class ProcessTapAudioSource: AudioSource {
     }
 
     public let target: Target
+    /// Clock the tap's private device from the speakers (Apple's sample does). Off lets a voice-processed microphone
+    /// run at the same time (#172: measured, the two fight over the output device).
+    public var usesOutputDevice = true
     private var tapID = AudioObjectID(kAudioObjectUnknown)
     private var aggregateID = AudioObjectID(kAudioObjectUnknown)
     private var procID: AudioDeviceIOProcID?
@@ -84,7 +87,7 @@ public final class ProcessTapAudioSource: AudioSource {
             }
 
             var subDevices: [[String: Any]] = []
-            if let outputUID = Self.defaultOutputUID() { subDevices = [[kAudioSubDeviceUIDKey: outputUID]] }
+            if usesOutputDevice, let outputUID = Self.defaultOutputUID() { subDevices = [[kAudioSubDeviceUIDKey: outputUID]] }
             let aggregate: [String: Any] = [
                 kAudioAggregateDeviceNameKey: "Seal Speak call captions",
                 kAudioAggregateDeviceUIDKey: "com.gileskayo.captions.tap.\(UUID().uuidString)",
