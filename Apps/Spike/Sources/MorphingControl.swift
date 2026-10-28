@@ -1,4 +1,5 @@
 import CaptionCore
+import CaptionUI
 import SwiftUI
 
 /// The one control at the bottom of the screen. Start, Getting ready, Try again and Stop are the SAME view in
@@ -94,9 +95,12 @@ private struct MorphingGummyStyle: ButtonStyle {
         @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
         var body: some View {
-            let pressed = showsLip && (configuration.isPressed || forcePressed)
+            let down = configuration.isPressed || forcePressed
+            let pressed = showsLip && down
             let sink = GummyButtonStyle.restingLip - GummyButtonStyle.pressedLip
             configuration.label
+                // The Stop circle has no lip to sink onto, so a press darkens it and it gives a little (#180).
+                .circlePress(!showsLip && down, in: shape)
                 .offset(y: pressed ? sink : 0)
                 .background(shape.fill(lip).offset(y: GummyButtonStyle.restingLip).opacity(showsLip ? 1 : 0))
                 .padding(.bottom, GummyButtonStyle.restingLip)
