@@ -186,6 +186,29 @@ enum DemoMode {
         .line(speaker: 0, text: "When the voice changes, yes. It can mix up voices that sound alike."),
         .line(speaker: 1, text: "Good to know. So what should we try first"),
     ]
+
+    /// The same conversation in Spanish, for `-ClarityDemoLanguage es-*` (#37, #53): what a translation demo translates.
+    static let spanishScript: [Step] = [
+        .line(speaker: 0, text: "¿Está encendido? Di algo para que lo veamos."),
+        .line(speaker: 1, text: "Hola. Mis palabras aparecen en la pantalla."),
+        .line(speaker: 0, text: "También funciona en modo avión. Nada sale del teléfono."),
+        .sound(.laughter),
+        .line(speaker: 1, text: "¿Y empieza una línea nueva cuando habla otra persona?"),
+        .line(speaker: 0, text: "Cuando cambia la voz, sí. Puede confundir voces que se parecen."),
+        .line(speaker: 1, text: "Bueno saberlo. Entonces, qué probamos primero"),
+    ]
+
+    /// The English line a Spanish demo line was translated from: the simulator's stand-in for Translation (#53).
+    static func englishLine(for spanish: String) -> String? {
+        let pairs = zip(spanishScript, script).compactMap { pair -> (String, String)? in
+            if case .line(_, let es) = pair.0, case .line(_, let en) = pair.1 { return (es, en) }
+            return nil
+        }
+        return pairs.first { $0.0.hasPrefix(spanish) || spanish.hasPrefix($0.0) }?.1
+    }
+
+    /// The script in the demo's caption language.
+    static var activeScript: [Step] { language?.hasPrefix("es") == true ? spanishScript : script }
 }
 
 extension CaptionModel {
@@ -194,7 +217,7 @@ extension CaptionModel {
     func runDemo() {
         state = .listening
         for (speaker, name) in DemoMode.speakers { speakerNames.apply(name, to: speaker) }
-        let steps = DemoMode.script
+        let steps = DemoMode.activeScript
         if DemoMode.isStatic {
             for (i, step) in steps.enumerated() { play(step, isFinal: i < steps.count - 1) }
             return

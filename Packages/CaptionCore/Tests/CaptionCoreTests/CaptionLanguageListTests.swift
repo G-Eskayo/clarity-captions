@@ -89,4 +89,28 @@ final class CaptionLanguageListTests: XCTestCase {
         XCTAssertEqual(kinds, kinds.sorted { order.firstIndex(of: $0)! < order.firstIndex(of: $1)! })
         XCTAssertEqual(rows().last?.translation, .yourLanguage)
     }
+
+    // MARK: Into (#53): the languages captions can be translated into
+
+    func testIntoListsEveryTranslationLanguageExceptTheOneBeingCaptioned() {
+        let r = TranslationTargetList.rows(supported: translation.map(Locale.Language.init(identifier:)), from: l("es-ES"), current: l("en-US"))
+        XCTAssertFalse(r.contains { $0.locale.language.languageCode?.identifier == "es" })
+        XCTAssertEqual(r.count, translation.count - 1)
+    }
+
+    func testIntoTicksTheCurrentTargetAndPutsItFirst() {
+        let r = TranslationTargetList.rows(supported: translation.map(Locale.Language.init(identifier:)), from: l("es-ES"), current: l("fr-FR"))
+        XCTAssertEqual(r.first?.locale.language.languageCode?.identifier, "fr")
+        XCTAssertEqual(r.filter(\.isCurrent).count, 1)
+    }
+
+    func testIntoNamesEachLanguageOnceEvenWhenTheFrameworkRepeatsIt() {
+        let twice = ["en-Latn-US", "en-Latn-US", "de-Latn-DE"].map(Locale.Language.init(identifier:))
+        XCTAssertEqual(TranslationTargetList.rows(supported: twice, from: l("es-ES"), current: nil).count, 2)
+    }
+
+    func testIntoKeepsBothChineseScripts() {
+        let r = TranslationTargetList.rows(supported: translation.map(Locale.Language.init(identifier:)), from: l("en-US"), current: nil)
+        XCTAssertEqual(r.filter { $0.locale.language.languageCode?.identifier == "zh" }.count, 2)
+    }
 }

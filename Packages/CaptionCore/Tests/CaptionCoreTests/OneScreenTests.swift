@@ -83,6 +83,7 @@ final class OneScreenTests: XCTestCase {
         XCTAssertEqual(AppScreen.savedConversation(UUID()).parent, .saved)
         XCTAssertEqual(AppScreen.licenseText.parent, .credits)
         XCTAssertEqual(AppScreen.captionLanguage.parent, .settings)
+        XCTAssertEqual(AppScreen.translationTarget.parent, .settings)
     }
 
     /// #37 / #53: the caption language list opens from Settings (its own row, or translation's From row) and goes

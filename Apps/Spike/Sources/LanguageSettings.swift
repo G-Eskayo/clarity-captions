@@ -11,27 +11,40 @@ struct LanguageSettingsState: Equatable {
     var target: Locale?
     /// The caption language's own download (#37), while one runs or after one failed.
     var captionDownload: CaptionLanguageSwitch.Phase = .ready
-    /// The translation language pack for this pair: nil when it's on the device, else 0...1 while it downloads.
+    /// The translation language pack for this pair: nil when it's on the device, else 0...1 while it downloads. Apple's
+    /// download sheet reports no progress, so a real download shows `translationPreparing` instead (demo screens only).
     var downloadProgress: Double?
-    /// Translation is a one-time in-app purchase (owner, #171). Until StoreKit is wired (#53) nobody owns it.
+    /// Apple's language pack download for this pair is open or running (#53).
+    var translationPreparing = false
+    /// The pair can't be translated (Cantonese): said plainly, not hidden (#53).
+    var unsupportedPair = false
+    /// Translation is a one-time in-app purchase (owner, #171).
     var translationOwned = false
-    /// The App Store's price for it, as StoreKit shows it; the mock-up uses the planned US price.
-    var translationPrice = "$1.99"
+    /// The App Store's price for it, as StoreKit shows it; nil until the store answers.
+    var translationPrice: String?
+    /// A purchase or restore is open: the buttons don't take a second tap.
+    var purchaseBusy = false
+    /// A plain line from the purchase (Ask to Buy, nothing to restore, didn't go through), or nil.
+    var purchaseMessage: String?
 
     /// The saved choices, with the device's language filling in what hasn't been picked.
     @MainActor
-    static func current(store: CaptionLanguageStore = CaptionLanguageStore(),
-                        languages: CaptionLanguageCenter = .shared,
+    static func current(languages: CaptionLanguageCenter = .shared, translation: TranslationCenter = .shared,
                         preferred: [String] = Locale.preferredLanguages) -> LanguageSettingsState {
         let captions = languages.current
-        var state = LanguageSettingsState(captions: captions, followsDevice: languages.followsDevice, translationOn: store.translationOn,
-                                          target: store.translationTarget ?? CaptionLanguage.translationTarget(captions: captions, preferred: preferred))
+        var state = LanguageSettingsState(captions: captions, followsDevice: languages.followsDevice,
+                                          translationOn: translation.isOn, target: translation.target)
         state.captionDownload = languages.change.phase
+        state.translationOwned = translation.purchase.isOwned
+        state.translationPrice = translation.price
+        state.translationPreparing = translation.preparing
+        state.unsupportedPair = translation.unsupportedPair
+        state.purchaseBusy = [.buying, .restoring].contains(translation.purchase.activity)
+        state.purchaseMessage = translation.purchase.message
         #if DEBUG
         if let id = DemoMode.language { state.followsDevice = id == preferred.first }
-        if let id = DemoMode.translate { state.translationOwned = true; state.translationOn = true; state.target = Locale(identifier: id) }
-        if DemoMode.translationOwned { state.translationOwned = true }
-        state.downloadProgress = DemoMode.translateProgress
+        if DemoMode.translate == nil && DemoMode.translationOwned == false && DemoMode.opensSettings { state.translationPrice = state.translationPrice ?? "$1.99" }
+        if let p = DemoMode.translateProgress { state.downloadProgress = p }
         #endif
         return state
     }

@@ -190,3 +190,34 @@ public struct CaptionLanguageSwitch: Equatable, Sendable {
         }
     }
 }
+
+/// The Into list (#53): every language Apple's Translation has, except the one being captioned, each once, the current
+/// one first. Scripts stay apart (Simplified and Traditional Chinese are two rows).
+public enum TranslationTargetList {
+    public struct Row: Equatable, Sendable, Identifiable {
+        public let locale: Locale
+        public let isCurrent: Bool
+        public var id: String { CaptionLanguage.bcp47(locale) }
+    }
+
+    public static func rows(supported: [Locale.Language], from captions: Locale, current: Locale?) -> [Row] {
+        var seen = Set<String>()
+        // Named the way a person reads them: the script only where it tells two apart (Chinese).
+        let locales = supported.map { lang -> Locale in
+            let full = Locale.Language(identifier: lang.maximalIdentifier)
+            let code = full.languageCode?.identifier ?? lang.maximalIdentifier
+            let parts = [code, code == "zh" ? full.script?.identifier : nil, full.region?.identifier].compactMap { $0 }
+            return Locale(identifier: parts.joined(separator: "-"))
+        }
+            .filter { !CaptionLanguage.sameLanguage($0, captions) && seen.insert(CaptionLanguage.bcp47($0)).inserted }
+            .sorted { CaptionLanguage.bcp47($0) < CaptionLanguage.bcp47($1) }
+        let isCurrent = { (l: Locale) in current.map { CaptionLanguage.sameLanguage($0, l) && ($0.region == nil || $0.region == l.region) } ?? false }
+        var rows = locales.map { Row(locale: $0, isCurrent: isCurrent($0)) }
+        // One tick: the closest match to the current target.
+        if let i = rows.firstIndex(where: \.isCurrent) {
+            let first = rows.remove(at: i)
+            rows = [first] + rows.map { Row(locale: $0.locale, isCurrent: false) }
+        }
+        return rows
+    }
+}

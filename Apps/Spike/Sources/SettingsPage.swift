@@ -53,8 +53,11 @@ struct SettingsPage: View {
                         section("Stop when it's quiet") { idleStopRow }.id("idleStop")
                         if beta.isOn { testVersionSection.id("betaFeedback") }
                         if showsTourReplay { section("How to use Seal") { tourRow }.id("tour") }
-                        section("Caption language", note: String(localized: "Seal captions the language people are speaking. Change it when you're somewhere they speak another language.")) { captionLanguageRow }
-                            .id("language")
+                        section("Caption language", note: String(localized: "Seal captions the language people are speaking. Change it when you're somewhere they speak another language.")) {
+                            captionLanguageRow
+                            CaptionLanguageDownloadLine(style: style, phase: language.captionDownload)
+                        }
+                        .id("language")
                         section("About") { aboutRows }.id("about")
                     }
                     .padding(.horizontal, 20)
@@ -185,14 +188,20 @@ struct SettingsPage: View {
 
     @ViewBuilder private var translationRows: some View {
         if language.translationOwned { ownedTranslationRows } else { translationOfferRows }
+        if let message = language.purchaseMessage {
+            Text(verbatim: message).font(scaled(13, .semibold)).foregroundStyle(muted)
+        }
     }
 
     /// Not bought yet: the same pill row the bought section starts with, so the section keeps its size.
     private var translationOfferRows: some View {
         HStack(spacing: 8) {
-            offerPill(String(format: String(localized: "Unlock · %@"), language.translationPrice), filled: true) { onBuyTranslation?() }
+            offerPill(language.translationPrice.map { String(format: String(localized: "Unlock · %@"), $0) } ?? String(localized: "Unlock"),
+                      filled: true) { onBuyTranslation?() }
             offerPill(String(localized: "Restore purchase"), filled: false) { onRestorePurchases?() }
         }
+        .disabled(language.purchaseBusy)
+        .opacity(language.purchaseBusy ? 0.6 : 1)
     }
 
     private func offerPill(_ title: String, filled: Bool, action: @escaping () -> Void) -> some View {
@@ -236,6 +245,17 @@ struct SettingsPage: View {
                     Text(String(format: String(localized: "Downloading the language pack · %lld%%"), Int(p * 100)))
                         .font(scaled(13, .semibold)).foregroundStyle(muted)
                 }
+            } else if language.translationPreparing {
+                // Apple's own download sheet runs this one and reports no progress (#159).
+                HStack(spacing: 8) {
+                    ProgressView().tint(style.gear.color)
+                    Text(String(localized: "Getting the language pack ready…")).font(scaled(13, .semibold)).foregroundStyle(muted)
+                }
+            }
+            if language.unsupportedPair {
+                Text(String(format: String(localized: "%@ can't be translated into %@ yet. Captions still show what was said."),
+                            LanguageSettingsState.name(language.captions), language.target.map(LanguageSettingsState.name) ?? ""))
+                    .font(scaled(13, .semibold)).foregroundStyle(muted)
             }
         }
     }

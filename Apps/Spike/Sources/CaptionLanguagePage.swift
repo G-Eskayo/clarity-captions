@@ -68,6 +68,94 @@ struct CaptionLanguagePage: View {
     }
 }
 
+/// #53: the language captions are translated into: every language Apple's Translation has on this device, except
+/// the one being captioned. Each says whether its language pack is here, downloads once, or can't be done from the
+/// caption language (said plainly, not hidden).
+struct TranslationTargetPage: View {
+    let style: CaptionStyle
+    let language: LanguageSettingsState
+    let onBack: () -> Void
+    var onChoose: ((Locale) -> Void)?
+    @State private var rows: [TranslationTargetList.Row] = []
+    @State private var status: [String: LanguageAvailability.Status] = [:]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            PageHeader(style: style, title: String(localized: "Translate into"), backTitle: String(localized: "Settings"), onBack: onBack)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(String(format: String(localized: "Pick the language you read. Seal translates %@ into it, on this %@."),
+                                LanguageSettingsState.name(language.captions), LanguageSettingsState.deviceWord))
+                        .font(.body)
+                        .foregroundStyle(mutedColor(style))
+                        .padding(.top, 18)
+                        .padding(.bottom, 10)
+                    ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
+                        if index > 0 { ThinRule(style: style) }
+                        rowView(row)
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.bottom, 40)
+            }
+        }
+        .foregroundStyle(style.text.color)
+        .task(id: language.target.map(CaptionLanguage.bcp47)) { await load() }
+    }
+
+    private func load() async {
+        var supported = await LanguageAvailability().supportedLanguages
+        #if DEBUG
+        if DemoMode.isOn || DemoMode.opensSettings || DemoMode.settingsPush != nil {
+            supported = DemoLanguages.translation.map(Locale.Language.init(identifier:))
+        }
+        #endif
+        let list = TranslationTargetList.rows(supported: supported, from: language.captions, current: language.target)
+        rows = list.sorted { a, b in
+            if a.isCurrent != b.isCurrent { return a.isCurrent }
+            return LanguageSettingsState.name(a.locale).localizedStandardCompare(LanguageSettingsState.name(b.locale)) == .orderedAscending
+        }
+        let availability = LanguageAvailability()
+        for row in rows { status[row.id] = await availability.status(from: language.captions.language, to: row.locale.language) }
+    }
+
+    private func rowView(_ row: TranslationTargetList.Row) -> some View {
+        let unsupported = status[row.id] == .unsupported
+        return Button { onChoose?(row.locale) } label: {
+            HStack(alignment: .center, spacing: 10) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(verbatim: LanguageSettingsState.name(row.locale)).font(.headline.weight(.heavy))
+                    Text(verbatim: detail(row)).font(.subheadline).foregroundStyle(mutedColor(style))
+                }
+                Spacer()
+                if row.isCurrent {
+                    Image(systemName: "checkmark").font(.body.weight(.heavy)).foregroundStyle(style.gear.color)
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(unsupported)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(row.isCurrent ? .isSelected : [])
+    }
+
+    private func detail(_ row: TranslationTargetList.Row) -> String {
+        var parts: [String] = []
+        let own = row.locale.localizedString(forIdentifier: row.locale.identifier) ?? ""
+        if own != LanguageSettingsState.name(row.locale) { parts.append(own) }
+        switch status[row.id] {
+        case .installed: parts.append(String(format: String(localized: "On this %@"), LanguageSettingsState.deviceWord))
+        case .supported: parts.append(String(localized: "Downloads once"))
+        case .unsupported: parts.append(String(format: String(localized: "can't translate from %@ yet"), LanguageSettingsState.name(language.captions)))
+        default: break
+        }
+        return parts.joined(separator: " · ")
+    }
+}
+
 /// The rows of the caption language list: Settings' page and first run's question (#37).
 struct CaptionLanguageRows: View {
     let style: CaptionStyle

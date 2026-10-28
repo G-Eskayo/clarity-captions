@@ -1,0 +1,40 @@
+{
+  "identifier" : "5A3C9E1B",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "1.99",
+      "familyShareable" : true,
+      "internalID" : "6754000001",
+      "localizations" : [
+        {
+          "description" : "Read what people say translated into your language, on this device.",
+          "displayName" : "Live translation",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.gileskayo.captions.translation",
+      "referenceName" : "Live translation",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6754000000",
+    "_developerTeamID" : "",
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

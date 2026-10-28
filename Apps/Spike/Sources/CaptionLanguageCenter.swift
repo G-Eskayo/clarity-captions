@@ -82,6 +82,8 @@ final class CaptionLanguageCenter: ObservableObject {
             needsChoice = false
         }
         Self.box.set(locale)
+        // Translation starts from the caption language (#53): its session follows.
+        TranslationCenter.shared.captionLanguageChanged()
         // An engine loaded ahead of Start was made for the old language.
         Task { await EngineWarmupHost.shared.release(); EngineWarmupHost.shared.prepareIfAllowed() }
         objectWillChange.send()
