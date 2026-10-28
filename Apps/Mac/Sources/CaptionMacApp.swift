@@ -17,7 +17,7 @@ struct CaptionMacApp: App {
 
     var body: some Scene {
         WindowGroup(CaptionMacApp.windowTitle, id: "main") {
-            CallPopupWindow(model: model)
+            CallPopupWindow(model: model, calls: model.calls)
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 440, height: 420)
@@ -33,10 +33,12 @@ struct CaptionMacApp: App {
 /// call included) while pinned, and captioning from the moment it opens, as "Captions start when your call does" says.
 struct CallPopupWindow: View {
     @ObservedObject var model: CaptionMacModel
+    @ObservedObject var calls: CallFlow
     @State private var window: NSWindow?
 
     var body: some View {
         let control = PrimaryControl.for(model.state)
+        VStack(spacing: 0) {
         CallPopupView(
             lines: model.popupLines,
             status: CallPopupView.Status(model.state, hasLines: !model.popupLines.isEmpty),
@@ -48,13 +50,17 @@ struct CallPopupWindow: View {
                 model.style.background = preset.background
                 model.style.text = preset.text
             },
-            pinned: $model.pinned
+            pinned: $model.pinned,
+            statusWords: calls.statusWords(for: model.state)
         )
         .frame(minWidth: 360, minHeight: 300)
+        CallBannerSlot(calls: calls, style: model.style)   // #178: a call arriving mid-conversation
+        }
+        .background(model.style.background.color)
         .background(WindowFinder(window: $window))
         .onChange(of: window) { _, _ in applyPin() }
         .onChange(of: model.pinned) { _, _ in applyPin() }
-        .onAppear { if !CallAudioSelfTest.isRequested { model.start() } }
+        .onAppear { if !CallAudioSelfTest.isRequested { calls.start(); model.start() } }
     }
 
     private func applyPin() {

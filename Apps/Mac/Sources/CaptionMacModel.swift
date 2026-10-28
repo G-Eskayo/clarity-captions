@@ -42,6 +42,9 @@ final class CaptionMacModel: ObservableObject {
     @Published var speakerNames = SpeakerNames()
     /// The pop-up stays above other windows (#172).
     @Published var pinned = true
+    /// What to caption instead of `ListenTo.current`, while a call arriving is handled (#178).
+    var listenOverride: ListenTo?
+    private(set) lazy var calls = CallFlow(model: self)
 
     /// The caption lines as the pop-up draws them.
     var popupLines: [CallPopupView.Line] {
@@ -56,11 +59,11 @@ final class CaptionMacModel: ObservableObject {
     private var controller: CaptionSessionController!
 
     init() {
-        controller = CaptionSessionController(makeEngine: {
+        controller = CaptionSessionController(makeEngine: { [weak self] in
             guard let url = Bundle.main.url(forResource: "Sortformer_v2.1", withExtension: "mlmodelc") else {
                 throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc"))
             }
-            return TranscriptionEngine(diarizerModelURL: url, audioSource: ListenTo.current.audioSource())
+            return TranscriptionEngine(diarizerModelURL: url, audioSource: (self?.listenOverride ?? ListenTo.current).audioSource())
         })
 
         controller.onStateChange = { [weak self] in self?.state = $0 }
@@ -76,4 +79,6 @@ final class CaptionMacModel: ObservableObject {
     func start() { controller.start() }
 
     func stop() { controller.stop() }
+
+    func stopAndWait() async { await controller.stopAndWait() }
 }
