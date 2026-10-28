@@ -8,6 +8,7 @@ struct CaptionMacApp: App {
     init() {
         BundledFonts.register()
         MarvinScreenshot.runIfRequested()
+        CallAudioSelfTest.runIfRequested()
     }
 
     var body: some Scene {

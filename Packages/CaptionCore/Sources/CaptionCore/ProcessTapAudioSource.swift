@@ -199,7 +199,7 @@ public final class ProcessTapAudioSource: AudioSource {
     /// Core Audio's objects for processes that currently have audio clients.
     static func processObjects() -> [AudioObjectID] { objectList(kAudioHardwarePropertyProcessObjectList) }
 
-    static func processObject(for pid: pid_t) -> AudioObjectID? {
+    public static func processObject(for pid: pid_t) -> AudioObjectID? {
         var address = address(kAudioHardwarePropertyTranslatePIDToProcessObject)
         var pid = pid
         var object = AudioObjectID(kAudioObjectUnknown)
