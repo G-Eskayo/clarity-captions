@@ -49,6 +49,8 @@ targets:
         buildPhase: resources
     dependencies:
       - package: CaptionCore
+      - package: CaptionCore
+        product: CaptionUI
     # Beta feedback recipient (ADR 0023): set in the gitignored Beta.xcconfig.local, never committed.
     configFiles:
       Debug: Beta.xcconfig
