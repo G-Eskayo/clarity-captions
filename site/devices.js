@@ -40,7 +40,11 @@ function tabs() {
   const buttons = [...list.querySelectorAll('[role="tab"]')]
   const ownerOf = (id) => document.getElementById(id)?.closest('[data-device]')?.dataset.device || null
   const show = (dev, { push = false, focus = false } = {}) => {
-    for (const p of panels) p.toggleAttribute('data-off', p.dataset.device !== dev)
+    for (const p of panels) {
+      const was = p.hasAttribute('data-off'), off = p.dataset.device !== dev
+      p.toggleAttribute('data-off', off)
+      if (was && !off) { p.classList.remove('enter'); void p.offsetWidth; p.classList.add('enter') } // the same fade as a version
+    }
     for (const b of buttons) {
       const on = b.dataset.tab === dev
       b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1
@@ -119,8 +123,30 @@ function mac(win) {
   })
 }
 
+// A picture that draws itself once it comes into view (bars grow, the iPad grows to scale, lines arrive).
+function grow(el) {
+  if (still) { el.classList.add('in'); return }
+  el.querySelectorAll('li').forEach((li, i) => li.style.setProperty('--i', i))
+  const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { el.classList.add('in'); io.disconnect() } }, { threshold: 0.35 })
+  io.observe(el)
+}
+
+// A call rings, it is captioned, it ends: the three pictures light in turn while they're in view.
+function story(list) {
+  const items = [...list.children]
+  if (still) { items.forEach((li) => li.classList.add('on')); return }
+  let i = 0, timer = null
+  const light = () => { items.forEach((li, k) => li.classList.toggle('on', k === i)); i = (i + 1) % items.length }
+  new IntersectionObserver(([e]) => {
+    if (e.isIntersecting && !timer) { light(); timer = setInterval(light, 2200) }
+    if (!e.isIntersecting && timer) { clearInterval(timer); timer = null }
+  }, { threshold: 0.5 }).observe(list)
+}
+
 if (typeof document !== 'undefined') {
   tabs()
+  document.querySelectorAll('[data-grow]').forEach(grow)
+  const s = document.querySelector('[data-story]'); if (s) story(s)
   const t = document.querySelector('[data-tablet]'); if (t) tablet(t)
   const m = document.querySelector('[data-mac]'); if (m) mac(m)
 }

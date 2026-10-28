@@ -239,7 +239,6 @@
       <a href="#how">What it does</a>
       <a href="#private">Privacy</a>
       <a href="#faq">Questions</a>
-      <a href="#next">Coming next</a>
       <a href="versions.html">Versions</a>
       <a href="support.html">Support</a>
     </nav>
@@ -431,17 +430,12 @@
     <div class="hero">
       <div>
         <h1>Talk across the table, in two languages.</h1>
-        <p class="lede">On iPad, Seal Speak is planned to split the screen in two. Lay it flat between you: one half faces you, the other faces the person across the table, and each of you reads the conversation in your own language.</p>
-        <ul class="status" aria-label="What works on iPad">
-          <li><span class="badge now">Today</span>Seal Speak runs on iPad, in the iPhone-sized layout.</li>
-          <li><span class="badge">Coming in 1.0.1</span>A full-screen iPad layout.</li>
-          <li><span class="badge">Planned</span>Split-screen translation. Not built yet, no date.</li>
-        </ul>
-        <ul class="facts" aria-label="At a glance">
-          <li>Made on the iPad</li>
-          <li>Works with no internet</li>
-          <li>Translations are marked</li>
-        </ul>
+        <p class="lede">Lay the iPad flat between you. Each of you reads the conversation in your own language.</p>
+        <ol class="when" aria-label="Where iPad is">
+          <li class="done"><b>Today</b>Runs in the iPhone layout</li>
+          <li><b>1.0.1</b>The whole screen</li>
+          <li><b>Planned</b>Two languages, split screen</li>
+        </ol>
       </div>
       <div class="tablet-wrap" data-tablet>
         <div class="tablet" role="img" aria-label="An iPad lying flat, split in two. The bottom half, facing you, shows the conversation in English. The top half is upside down, facing the other person, and shows it in Spanish. Lines from the other person are marked as translated.">
@@ -459,45 +453,71 @@
           </div>
         </div>
         <button class="flip" data-flip aria-pressed="false" hidden>↻ See their side</button>
-        <p class="tablet-hint">A made-up conversation, drawn to show the plan. The top half is upside down because it faces the other person.</p>
+        <p class="tablet-hint">A made-up conversation. The top half is upside down because it faces them.</p>
       </div>
     </div>
   </div>
 
-  <section class="band" id="ipad-how" aria-labelledby="ipad-how-h">
+  <section class="band scene" id="ipad-screen" aria-labelledby="ipad-screen-h">
+    <div class="wrap scene-grid">
+      <div>
+        <h2 id="ipad-screen-h">Four times the screen.</h2>
+        <p class="intro">Same words, same number of lines, letters about two and a half times taller. Readable from across a table.</p>
+      </div>
+      <figure class="to-scale" data-grow aria-label="An iPhone 12 screen and an 11-inch iPad screen drawn to the same scale, each showing the same caption. The iPad's is about four times the area, with letters about two and a half times taller.">
+        <div class="ts-phone" aria-hidden="true"><p>Dinner is almost ready.</p></div>
+        <div class="ts-pad" aria-hidden="true"><p>Dinner is almost ready.</p></div>
+        <figcaption><span>iPhone 12</span><span>11-inch iPad</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="band scene" id="ipad-languages" aria-labelledby="ipad-languages-h">
     <div class="wrap">
-      <h2 id="ipad-how-h">What it does on iPad</h2>
-      <p class="intro">A bigger screen, for a table full of people. Everything the iPhone app does, the iPad does too.</p>
-      <div class="grid3">
-        <div class="card"><span class="badge now">Today</span><h3>The iPhone app, on iPad</h3><p>Captions, Speaker 1 and Speaker 2, sound labels, copy, save and share all work on iPad now, in the iPhone-sized layout.</p></div>
-        <div class="card"><span class="badge">Coming in 1.0.1</span><h3>The whole screen for captions</h3><p>The captions use the full iPad screen, so they can be bigger and easier to read from across the table.</p></div>
-        <div class="card"><span class="badge">Planned</span><h3>Two languages, face to face</h3><p>Each of you picks a language. Your half shows what you said, and what they said translated for you. Theirs does the same the other way round.</p></div>
+      <h2 id="ipad-languages-h">19 languages, as fast as people talk.</h2>
+      <div class="stats">
+        <p class="stat"><span class="stat-n" data-count="70 ms">70 ms</span><span class="stat-l">or less to translate a line</span></p>
+        <p class="stat"><span class="stat-n" data-count="18">18</span><span class="stat-l">of 19 languages as good as Spanish, French and German</span></p>
       </div>
-      <div class="grid3">
-        <div class="card"><span class="badge">Planned</span><h3>Translations are marked</h3><p>Every translated line says so, so nobody mistakes a translation for what was actually said.</p></div>
-        <div class="card"><span class="badge">Planned</span><h3>Made on the iPad</h3><p>Speech and translation both run on the iPad. After a one-time download of each language, no internet is needed and nothing leaves the device.</p></div>
-        <div class="card"><span class="badge">Planned for 1.1</span><h3>More languages</h3><p>Captions in 25 European languages, and live translation of the captions, on iPhone and iPad.</p></div>
-      </div>
+      <figure class="comet" data-grow>
+        <figcaption>How well the meaning came across, 0 to 1. The bars start at 0.75.</figcaption>
+        <ul aria-label="Translation score by language">
+            <li style="--v:0.850"><span class="lang">Indonesian</span><span class="track"><span class="fill"></span></span><span class="val">0.920</span></li>
+            <li style="--v:0.810"><span class="lang">Japanese</span><span class="track"><span class="fill"></span></span><span class="val">0.912</span></li>
+            <li style="--v:0.765"><span class="lang">Turkish</span><span class="track"><span class="fill"></span></span><span class="val">0.903</span></li>
+            <li style="--v:0.745"><span class="lang">Portuguese</span><span class="track"><span class="fill"></span></span><span class="val">0.899</span></li>
+            <li style="--v:0.745"><span class="lang">Korean</span><span class="track"><span class="fill"></span></span><span class="val">0.899</span></li>
+            <li style="--v:0.740"><span class="lang">Ukrainian</span><span class="track"><span class="fill"></span></span><span class="val">0.898</span></li>
+            <li style="--v:0.710"><span class="lang">Vietnamese</span><span class="track"><span class="fill"></span></span><span class="val">0.892</span></li>
+            <li style="--v:0.695"><span class="lang">Polish</span><span class="track"><span class="fill"></span></span><span class="val">0.889</span></li>
+            <li style="--v:0.680"><span class="lang">Russian</span><span class="track"><span class="fill"></span></span><span class="val">0.886</span></li>
+            <li style="--v:0.665"><span class="lang">German</span><span class="track"><span class="fill"></span></span><span class="val">0.883</span></li>
+            <li style="--v:0.645"><span class="lang">French</span><span class="track"><span class="fill"></span></span><span class="val">0.879</span></li>
+            <li style="--v:0.645"><span class="lang">Italian</span><span class="track"><span class="fill"></span></span><span class="val">0.879</span></li>
+            <li style="--v:0.645"><span class="lang">Dutch</span><span class="track"><span class="fill"></span></span><span class="val">0.879</span></li>
+            <li style="--v:0.645"><span class="lang">Thai</span><span class="track"><span class="fill"></span></span><span class="val">0.879</span></li>
+            <li style="--v:0.625"><span class="lang">Chinese (Trad.)</span><span class="track"><span class="fill"></span></span><span class="val">0.875</span></li>
+            <li style="--v:0.605"><span class="lang">Chinese (Simpl.)</span><span class="track"><span class="fill"></span></span><span class="val">0.871</span></li>
+            <li style="--v:0.600"><span class="lang">Arabic</span><span class="track"><span class="fill"></span></span><span class="val">0.870</span></li>
+            <li style="--v:0.565"><span class="lang">Spanish</span><span class="track"><span class="fill"></span></span><span class="val">0.863</span></li>
+            <li class="low" style="--v:0.285"><span class="lang">Hindi</span><span class="track"><span class="fill"></span></span><span class="val">0.807</span></li>
+        </ul>
+        <p class="src">The line marks 0.86, where Spanish, French and German sit. Apple's translation beat two other engines in those three. Hindi needs a closer look; which languages 1.1 offers isn't decided. Written sentences, on a Mac. <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/translation-languages-results.md">Every result</a>.</p>
+      </figure>
     </div>
   </section>
   </div>
-
   <div data-device="mac" id="panel-mac" role="tabpanel" aria-labelledby="tab-mac">
   <div class="wrap">
     <p class="device-name">Mac</p>
     <div class="hero">
       <div>
         <h1>Captions for your calls.</h1>
-        <p class="lede">On a Mac, Seal Speak opens a small window that stays on top of your call and captions it as people talk. It captions the people in the room with you too.</p>
-        <ul class="status" aria-label="Where the Mac app is">
-          <li><span class="badge">In testing</span>Being tested now. Not on the App Store yet.</li>
-        </ul>
-        <ul class="facts" aria-label="At a glance">
-          <li>Any call app</li>
-          <li>Made on your Mac</li>
-          <li>Room and call together</li>
-        </ul>
-        <span class="soon-note">For a Mac with macOS 26 or later.</span>
+        <p class="lede">A small window that stays on top of your call. &#8984;H hides it.</p>
+        <ol class="when" aria-label="Where the Mac app is">
+          <li class="done"><b>In testing</b>Not on the App Store yet</li>
+          <li><b>Needs</b>macOS 26 or later</li>
+        </ol>
       </div>
       <div class="tablet-wrap">
         <div class="mac" data-mac role="img" aria-label="A video call window on a Mac, with the small Seal Speak window on top of it, captioning the call line by line with Speaker 1 and Speaker 2 labels.">
@@ -511,28 +531,52 @@
             <div class="pop-stop">Stop</div>
           </div>
         </div>
-        <ul class="sources" aria-label="Calls it captions">
-          <li>FaceTime</li><li>iPhone calls</li><li>Zoom</li><li>Teams</li><li>Google Meet</li><li>WhatsApp</li>
-        </ul>
-        <p class="tablet-hint">A made-up call, drawn to show the window.</p>
+        <p class="tablet-hint">A made-up call.</p>
       </div>
     </div>
   </div>
 
-  <section class="band" id="mac-how" aria-labelledby="mac-how-h">
+  <section class="band scene" id="mac-apps" aria-labelledby="mac-apps-h">
+    <div class="wrap scene-grid">
+      <div>
+        <h2 id="mac-apps-h">Any call app.</h2>
+        <p class="intro">Seal Speak captions the sound your Mac plays, so the app doesn't have to support it.</p>
+      </div>
+      <figure class="flow" aria-label="FaceTime, iPhone calls, Zoom, Teams, Google Meet and WhatsApp all flow into one Seal Speak window.">
+        <ul class="flow-apps" aria-hidden="true"><li>FaceTime</li><li>iPhone calls</li><li>Zoom</li><li>Teams</li><li>Google Meet</li><li>WhatsApp</li></ul>
+        <div class="flow-lines" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div class="flow-seal" aria-hidden="true"><img src="assets/favicon.svg" alt="" width="56" height="56"><span>Seal Speak</span></div>
+      </figure>
+    </div>
+  </section>
+
+  <section class="band scene" id="mac-room" aria-labelledby="mac-room-h">
+    <div class="wrap scene-grid">
+      <div>
+        <h2 id="mac-room-h">The room and the call, one conversation.</h2>
+        <p class="intro">Everyone gets their own label, whether they're beside you or on the screen.</p>
+      </div>
+      <figure class="merge" data-grow aria-label="The Mac's microphone hears the room and the call comes from the app. They join into one stream, and the captions label each voice Speaker 1, Speaker 2 or Speaker 3.">
+        <div class="m-src" aria-hidden="true"><span class="m-in room">In the room</span><span class="m-in call">On the call</span></div>
+        <div class="m-join" aria-hidden="true"></div>
+        <div class="m-out" aria-hidden="true">
+          <p class="room"><b>Speaker 1</b>Is everyone there?</p>
+          <p class="call"><b>Speaker 2</b>We're all here!</p>
+          <p class="room"><b>Speaker 3</b>Hi from the kitchen.</p>
+        </div>
+      </figure>
+    </div>
+  </section>
+
+  <section class="band scene" id="mac-ring" aria-labelledby="mac-ring-h">
     <div class="wrap">
-      <h2 id="mac-how-h">What it does on Mac</h2>
-      <p class="intro">Calls are where a Mac helps most: the captions sit right next to the faces.</p>
-      <div class="grid3">
-        <div class="card"><span class="badge">In testing</span><h3>Any call app</h3><p>FaceTime, phone calls from your iPhone, Zoom, Teams, Google Meet, WhatsApp and more. Seal Speak captions the sound your Mac plays, so the call app doesn't need to support it.</p></div>
-        <div class="card"><span class="badge">In testing</span><h3>The room and the call together</h3><p>It listens to the call and to the people around your Mac at once. When the voice changes, it starts a new line and labels it Speaker 1 or Speaker 2.</p></div>
-        <div class="card"><span class="badge">In testing</span><h3>A small window on top</h3><p>The window stays above your call, so the captions are always next to the faces. Press &#8984;H to hide it.</p></div>
-      </div>
-      <div class="grid3">
-        <div class="card"><span class="badge">In testing</span><h3>Offers to caption a call</h3><p>When a FaceTime or iPhone call rings, Seal Speak offers to caption it. For other apps, press Start.</p></div>
-        <div class="card"><span class="badge">In testing</span><h3>Keep the call's words if you want</h3><p>When the call ends, you choose whether to save what was said. Saved conversations stay on your Mac for 30 days.</p></div>
-        <div class="card"><span class="badge">In testing</span><h3>Made on your Mac</h3><p>The call is captioned on your Mac. Its sound is never recorded or sent anywhere.</p></div>
-      </div>
+      <h2 id="mac-ring-h">A call rings. Seal offers to caption it.</h2>
+      <ol class="story3" data-story aria-label="When a call rings">
+        <li class="on"><div class="mini"><b>You're getting a call</b><span class="btns"><i>Caption call</i><i>Not now</i></span></div><p>It rings</p></li>
+        <li><div class="mini"><b><span class="dot"></span>Captioning your FaceTime call</b><span class="ln">Hi! Can you read me okay?</span></div><p>It captions</p></li>
+        <li><div class="mini"><b>Call ended</b><span class="btns"><i>Save transcript</i><i>Don't save</i></span></div><p>You choose</p></li>
+      </ol>
+      <p class="src">FaceTime and iPhone calls. For other apps, press Start.</p>
     </div>
   </section>
   </div>
@@ -552,13 +596,19 @@
 
   <section class="band" id="private" aria-labelledby="private-h">
     <div class="wrap">
-      <h2 id="private-h">Private by design</h2>
-      <p class="intro">A conversation holds other people's words. They stay on your phone.</p>
-      <ul class="ticks">
-        <li>Captions are made on your iPhone. Audio is never recorded or sent anywhere.</li>
-        <li>Works with no internet connection after a one-time setup, including in airplane mode.</li>
-        <li>No account, no ads, no tracking.</li>
-        <li>Saved conversations stay on your phone for 30 days and aren't backed up to iCloud. You can delete any of them sooner. Read the <a href="privacy.html">privacy policy</a>.</li>
+      <h2 id="private-h">Nothing leaves your device.</h2>
+      <figure class="private" data-grow aria-label="Voices go into the device and come out as words on its screen. The path to the internet is crossed out.">
+        <span class="pv voice" aria-hidden="true"><svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M10 20v8M18 14v20M26 8v32M34 16v16M42 21v6"/></svg></span>
+        <span class="pv arrow" aria-hidden="true"></span>
+        <span class="pv device" aria-hidden="true"><svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><rect x="13" y="4" width="22" height="40" rx="5"/><path d="M19 16h10M19 22h10M19 28h6"/></svg></span>
+        <span class="pv arrow" aria-hidden="true"></span>
+        <span class="pv words" aria-hidden="true">Aa</span>
+        <span class="pv cloud" aria-hidden="true"><svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M14 36h22a8 8 0 0 0 0-16 12 12 0 0 0-23-2A9 9 0 0 0 14 36z"/><path class="x" d="M6 6l36 36"/></svg></span>
+      </figure>
+      <ul class="pv-facts">
+        <li><b>Never recorded</b>The sound is turned into words, then gone.</li>
+        <li><b>No internet</b>Works in airplane mode after a one-time setup.</li>
+        <li><b>No account</b>No ads, no tracking. <a href="privacy.html">Privacy policy</a></li>
       </ul>
     </div>
   </section>
@@ -655,22 +705,6 @@
           </div>
           <p class="src">These are people reading sentences aloud in a quiet room, so every engine does better here than in a real conversation.</p>
         </div>
-        <div class="card">
-          <h3>Translation, tested in 19 languages</h3>
-          <p>Live translation is planned for 1.1. We compared three ways to translate, and Apple's came closest to a person's translation in Spanish, French and German. Then we tried it in all 19 languages it offers: 18 did as well as those three, and each line took 70 ms or less (on a Mac).</p>
-          <div class="tablewrap">
-            <table class="data results-t" style="--cols:3" data-bars="100" data-better="higher">
-              <caption class="sr-only">How close each translator came to a person's translation, 0 to 100</caption>
-              <thead><tr><th scope="col" class="rowhead">Closeness to a person, 0 to 100</th><th class="n" scope="col" data-bar-col>Apple</th><th class="n" scope="col" data-bar-col>OPUS-MT</th><th class="n" scope="col" data-bar-col>Google ML Kit</th></tr></thead>
-              <tbody>
-                <tr><th scope="row">Spanish</th><td class="n">56.8</td><td class="n">55.0</td><td class="n">53.2</td></tr>
-                <tr><th scope="row">French</th><td class="n">73.2</td><td class="n">69.8</td><td class="n">65.4</td></tr>
-                <tr><th scope="row">German</th><td class="n">68.2</td><td class="n">63.6</td><td class="n">59.0</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <p class="src">Higher is better. 1,012 sentences in each language.</p>
-        </div>
       </div>
       <details class="data">
         <summary>For the curious: how we tested</summary>
@@ -698,15 +732,10 @@
           <li>FLEURS test sets (CC BY 4.0): read speech, 908 Spanish, 676 French and German clips. Accent marks count: <i>esta</i> for <i>está</i> is a mistake.</li>
           <li>Spanish 4.0% (3.4 to 4.5) against 2.8% (2.4 to 3.3); French 7.5% (6.7 to 8.3) against 4.5% (3.9 to 5.1); German 7.2% (6.5 to 7.9) against 4.4% (3.8 to 5.0). The ranges don't overlap.</li>
         </ul>
-        <h3>Translation</h3>
-        <ul>
-          <li>FLORES-200 devtest, 1,012 sentences, scored with chrF (0 to 100) and COMET (0 to 1), with 95% intervals.</li>
-          <li>Apple led in every language, also on caption-style text with no capitals or punctuation, where it lost the least.</li>
-          <li>Across 19 languages, 18 scored a COMET of 0.86 or more. Hindi scored 0.807 and needs a closer look.</li>
-        </ul>
-        <p class="src">Measured on a Mac, not yet on an iPhone. Reports: <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/engine-accuracy-comparison.md">captions in English</a>, <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/language-accuracy-comparison.md">other languages</a>, <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/translation-comparison.md">translation</a>.</p>
+        <p class="src">Measured on a Mac, not yet on an iPhone. Reports: <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/engine-accuracy-comparison.md">captions in English</a>, <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/language-accuracy-comparison.md">other languages</a>.</p>
       </details>
-      <p style="margin-top:1.5rem"><a href="versions.html#engine">Every chart and the full story are on the Versions page &rarr;</a></p>
+      <p class="src" style="margin-top:1.5rem">Captions are made by a computer and can contain mistakes with any engine.</p>
+      <p><a href="versions.html#engine">Every chart and the full story are on the Versions page &rarr;</a></p>
     </div>
   </section>
 
@@ -714,40 +743,19 @@
     <div class="wrap">
       <h2 id="faq-h">Questions</h2>
       <div class="faq">
-        <h3>What does it cost?</h3>
-        <p>$4.99, once. No subscription, no in-app purchases, no ads.</p>
-        <h3>Does it need the internet?</h3>
-        <p>Only once. The first time you start, your iPhone may download Apple's speech files. After that it captions with no connection at all, airplane mode included.</p>
+        <h3>Which devices does it work on?</h3>
+        <p>iPhone 12 or newer with iOS 26 or later, and iPad with an A14 chip or newer on iPadOS 26 or later. The Mac version is in testing.</p>
         <h3>Does it record or upload conversations?</h3>
-        <p>No. Sound is turned into text on your phone and the audio isn't kept. Text is only kept if you tap [&nbsp;Save&nbsp;], and it stays on your phone.</p>
-        <h3>Which phones does it work on?</h3>
-        <p>iPhone 12 or newer with iOS 26 or later. It's iPhone only for now, and captions are in English.</p>
-        <h3>Does it recognize people?</h3>
-        <p>No. Seal goes by the sound of the voice and labels lines Speaker 1 and Speaker 2. It can mix people up, especially voices that sound alike, and it doesn't know anyone's name.</p>
-        <h3>How accurate are the captions?</h3>
-        <p>Captions are made by a computer and can contain mistakes, names most of all. For anything important, check with the person speaking.</p>
+        <p>No. Sound is turned into text on your device and the audio is never kept. Nothing is sent anywhere, and after a one-time setup it needs no internet at all. Text is kept only if you tap [&nbsp;Save&nbsp;].</p>
         <h3>How long are saved conversations kept?</h3>
         <p>30 days, then they're deleted on their own. They aren't backed up to iCloud. Open one from the list icon and tap [&nbsp;Delete&nbsp;] to remove it sooner.</p>
         <h3>What if I forget to stop it?</h3>
         <p>Seal stops by itself after 5 minutes with no one talking. In Settings you can change that to 15 or 30 minutes, or never.</p>
-        <h3>Is Seal Speak a medical device?</h3>
-        <p>No. Seal Speak is not a medical device. It's an app that shows conversation as text.</p>
       </div>
       <p class="intro" style="margin-top:2rem">More answers on the <a href="support.html">support page</a>.</p>
     </div>
   </section>
 
-  <section class="band" id="next" aria-labelledby="next-h">
-    <div class="wrap">
-      <h2 id="next-h">What's coming next</h2>
-      <p class="intro">These are planned. They're not in the app yet, and there are no dates.</p>
-      <ul class="ticks">
-        <li><strong>Choose your language.</strong> Captions are English only today. Picking another language is planned.</li>
-        <li><strong>Live translation on the phone.</strong> Read what someone says in your own language, worked out on the iPhone like the captions are. Planned.</li>
-      </ul>
-      <p class="intro" style="margin-top:2rem">Seal Speak's code is public. You can see what's being worked on, or report a problem, on <a href="https://github.com/G-Eskayo/clarity-captions">GitHub</a>.</p>
-    </div>
-  </section>
 </main>
 
 <footer>

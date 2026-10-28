@@ -116,7 +116,7 @@ try {
     ok(a === await p.locator('[data-sample]').evaluate((e) => getComputedStyle(e).getPropertyValue('--s-bg').trim()), `${tag}: Pause stops the sample`)
     // Home: the test results (#182) grow as bars too, with the better engine marked in each row.
     await scrollThrough(p)
-    await checkBars(p, `${tag} home`, 2 + 3 * 2 + 3 * 3, 7)
+    await checkBars(p, `${tag} home`, 2 + 3 * 2, 4)
     const sw = await p.evaluate(() => document.documentElement.scrollWidth)
     ok(sw <= w, `${tag}: home has no sideways scroll (scrollWidth ${sw})`)
 
@@ -167,7 +167,16 @@ try {
     const selected = () => dp.$$eval('[role="tab"][aria-selected="true"]', (ts) => ts.map((t) => t.dataset.tab).join(','))
     await dp.goto(BASE); await wait(dp, 300)
     ok((await shown()) === 'iphone' && (await selected()) === 'iphone', `${tag}: iPhone shows first (${await shown()})`)
-    await dp.click('[role="tab"][data-tab="mac"]'); await wait(dp, 200)
+    await dp.click('[role="tab"][data-tab="mac"]'); await wait(dp, 120)
+    const pillOnTab = () => dp.evaluate(() => {
+      const pill = document.querySelector('[data-devices] .pill'), t = document.querySelector('[data-devices] [aria-selected="true"]')
+      if (!pill) return 'no pill'
+      const r = pill.getBoundingClientRect(), s = t.getBoundingClientRect()
+      return Math.abs(r.left - s.left) < 2 && Math.abs(r.width - s.width) < 2 ? 'ok' : `pill ${r.left},${r.width} vs ${s.left},${s.width}`
+    })
+    ok((await pillOnTab()) !== 'ok', `${tag}: the pill slides to Mac (is not there yet after 120 ms)`)
+    await wait(dp, 600)
+    ok((await pillOnTab()) === 'ok', `${tag}: the pill ends on Mac (${await pillOnTab()})`)
     ok((await shown()) === 'mac' && (await selected()) === 'mac', `${tag}: the Mac tab shows only the Mac part (${await shown()})`)
     ok(new URL(dp.url()).hash === '#mac', `${tag}: the address says #mac (${dp.url()})`)
     await dp.keyboard.press('ArrowLeft'); await wait(dp, 100)

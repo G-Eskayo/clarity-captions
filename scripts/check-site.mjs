@@ -53,7 +53,7 @@ for (const [re, why] of BANNED) {
   const m = pageText.match(re)
   check(!m, `index.html ${why}: "${m?.[0]}"`)
 }
-check(/not a medical device/i.test(pageText), 'index.html must say Seal is not a medical device')
+// The home page no longer says "not a medical device" (owner, 2026-10-28: nobody reads it as one); it still makes no hearing claim.
 check(/can (contain|get|make) mistakes|can mix (people|up)/i.test(pageText), 'index.html must say captions can be wrong')
 // The banned patterns must catch real claims and spare honest disclaimers.
 check(BANNED[0][0].test('Seal shows who is speaking') && !BANNED[0][0].test("It doesn't know who anyone is"), 'BANNED[0] self-test')
@@ -164,12 +164,11 @@ const cell = (text, rowStart, col) => {
   const row = text.split('\n').find((l) => l.startsWith(rowStart))
   return row ? row.split('|')[col + 1].match(/\d+\.\d+/)?.[0] : undefined
 }
-const engines = report('engine-accuracy-comparison.md'), langs = report('language-accuracy-comparison.md'), tr = report('translation-comparison.md')
-const LANGS = ['Spanish', 'French', 'German'], PAIRS = ['en-es', 'en-fr', 'en-de']
+const engines = report('engine-accuracy-comparison.md'), langs = report('language-accuracy-comparison.md')
+const LANGS = ['Spanish', 'French', 'German']
 const homeTables = [
   [cell(engines, '| apple-speechanalyzer |', 1), cell(engines, '| parakeet-fluidaudio (ultra-pal6) |', 1)],
-  LANGS.flatMap((l) => [cell(langs, `| ${l} |`, 1), cell(langs, `| ${l} |`, 2)]),
-  PAIRS.flatMap((pr) => [2, 3, 5].map((c) => cell(tr, `| ${pr} | FLORES |`, c)))
+  LANGS.flatMap((l) => [cell(langs, `| ${l} |`, 1), cell(langs, `| ${l} |`, 2)])
 ]
 const shown = [...tested.matchAll(/<table class="data[^"]*"[^>]*data-bars[\s\S]*?<\/table>/g)]
   .map((t) => [...t[0].matchAll(/<td class="n">([^<]*)<\/td>/g)].map((m) => m[1]))
@@ -190,12 +189,18 @@ for (const l of TABLE_TALK) {
   check(you.text === l.en && them.text === l.es, `lineFor: each half reads its own language ("${l.en}")`)
   check(you.translated === (l.side === 'them') && them.translated === (l.side === 'you'), `lineFor: only the other side's words are marked translated ("${l.en}")`)
 }
-// The iPad and Mac parts promise nothing as available that isn't: every card there carries a badge.
+// The iPad and Mac parts say where they are (Today, 1.0.1, Planned, In testing) before anything else.
 for (const d of ['ipad', 'mac']) {
-  const part = html.match(new RegExp(`<div data-device="${d}"[\\s\\S]*?<\\/section>`))?.[0] || ''
-  const cards = part.match(/<div class="card">[\s\S]*?<\/div>/g) || []
-  check(cards.length >= 6 && cards.every((c) => /class="badge/.test(c)), `index.html ${d}: every card says Today, Coming, Planned or In testing (${cards.length} cards)`)
+  const part = html.match(new RegExp(`<div data-device="${d}"[\\s\\S]*?<ol class="when"[\\s\\S]*?<\\/ol>`))?.[0] || ''
+  check(/<li class="done">/.test(part) && /(Planned|In testing)/.test(part), `index.html ${d}: the hero says where ${d} is`)
 }
+// The iPad's 19 translation scores are the measured ones, and each bar is as long as its score.
+const langRows = readFileSync(path.join(SITE, '..', 'docs', 'perf', 'translation-languages-results.md'), 'utf-8').split('\n').filter((l) => /^\| [A-Z]/.test(l) && !l.startsWith('| Language'))
+const measuredComet = langRows.map((l) => l.split('|')[5].trim()).sort()
+const shownComet = [...html.matchAll(/<li(?: class="low")? style="--v:([\d.]+)">[\s\S]*?<span class="val">([\d.]+)<\/span><\/li>/g)]
+check(JSON.stringify(shownComet.map((m) => m[2]).sort()) === JSON.stringify(measuredComet), `index.html iPad: translation scores ${shownComet.map((m) => m[2])} are not the report's ${measuredComet}`)
+for (const [, v, c] of shownComet) check(Math.abs(+v - (+c - 0.75) / 0.2) < 0.001, `index.html iPad: the bar for ${c} is ${v} long`)
+check(shownComet.filter(([, , c]) => +c >= 0.86).length === 18, 'index.html iPad: "18 of 19" matches the scores')
 
 if (failures.length) {
   console.error(`site check: ${failures.length} problem(s)\n- ${failures.join('\n- ')}`)
