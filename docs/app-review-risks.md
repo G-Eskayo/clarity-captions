@@ -139,8 +139,8 @@ The listing doc's draft notes are good; add these points to them.
    a real-iPad test. Dropping it (`TARGETED_DEVICE_FAMILY: "1"`) removes risks 1 and 4 on iPad, but the
    iPhone 11/SE 2 problem remains, so the device check is needed anyway.
 3. **Mac in v1?** Recommended: no.
-4. **Trader or non-trader under the EU DSA?** A free app with no ads or IAP from an individual is plausibly
-   non-trader, but Apple won't decide for you. Trader means your contact details are public in the EU.
+4. **Trader or non-trader under the EU DSA?** A paid app ($5 purchase, no v1 IAP) sold by an individual;
+   Apple won't decide trader status for you. Trader means your contact details are public in the EU.
 5. Should Seal also be available as an iPhone app on Apple silicon Macs until the native Mac app ships?
    It is untested there.
 6. Which phone number and email should App Review contact during the window?

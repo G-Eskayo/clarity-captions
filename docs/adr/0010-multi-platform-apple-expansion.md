@@ -15,7 +15,7 @@ meant for anyone with needs like the primary user's, and people with hearing los
 one device.
 
 Constraints that did not change: the 2026-10-25 date is for **iPhone only**. On-device-only,
-no per-user training ([[0008]]), and free forever ([[0007]]) apply to every platform.
+no per-user training ([[0008]]), and the pricing model ([[0026]]) apply to every platform.
 
 ## Decision
 
