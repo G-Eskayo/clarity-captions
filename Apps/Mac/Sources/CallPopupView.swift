@@ -33,6 +33,8 @@ struct CallPopupView: View {
     @Binding var pinned: Bool
     /// Replaces the top bar's words, e.g. "Captioning the room" while no call is being captioned (#178).
     var statusWords: String? = nil
+    /// Replaces the empty window's words, e.g. while captioning the room rather than waiting for a call (#178).
+    var emptyWords: String? = nil
 
     private var speakerColors: [RGBA] {
         let colors = style.preset?.speakers ?? SpeakerPalette.colors(on: style.background, text: style.text)
@@ -149,7 +151,8 @@ struct CallPopupView: View {
     }
 
     private var waitingWords: String {
-        switch status {
+        if let emptyWords { return emptyWords }
+        return switch status {
         case .stopped(let words): words
         case .starting: String(localized: "Getting ready…")
         case .waiting, .captioning: String(localized: "Captions start when your call does.")

@@ -51,7 +51,8 @@ struct CallPopupWindow: View {
                 model.style.text = preset.text
             },
             pinned: $model.pinned,
-            statusWords: calls.statusWords(for: model.state)
+            statusWords: calls.statusWords(for: model.state),
+            emptyWords: calls.emptyWords(for: model.state)
         )
         .frame(minWidth: 360, minHeight: 300)
         CallBannerSlot(calls: calls, style: model.style)   // #178: a call arriving mid-conversation
@@ -60,6 +61,7 @@ struct CallPopupWindow: View {
         .background(WindowFinder(window: $window))
         .onChange(of: window) { _, _ in applyPin() }
         .onChange(of: model.pinned) { _, _ in applyPin() }
+        .onChange(of: model.state) { _, state in NSLog("[calls] state %@", "\(state)") }
         .onAppear { if !CallAudioSelfTest.isRequested { calls.start(); model.start() } }
     }
 
