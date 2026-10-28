@@ -67,6 +67,13 @@ function tabs() {
     if (dev) show(dev)
   }
   addEventListener('hashchange', fromHash)
+  // Every device has its own questions: the header's Questions goes to the ones on the page you're on.
+  document.querySelector('header.top a[href="#faq"]')?.addEventListener('click', (e) => {
+    const faq = document.querySelector('[data-device]:not([data-off]) [data-faq]')
+    if (!faq) return
+    e.preventDefault()
+    faq.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'start' })
+  })
   fromHash()
 }
 

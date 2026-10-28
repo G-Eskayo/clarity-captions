@@ -202,6 +202,22 @@ check(JSON.stringify(shownComet.map((m) => m[2]).sort()) === JSON.stringify(meas
 for (const [, v, c] of shownComet) check(Math.abs(+v - (+c - 0.75) / 0.2) < 0.001, `index.html iPad: the bar for ${c} is ${v} long`)
 check(shownComet.filter(([, , c]) => +c >= 0.86).length === 18, 'index.html iPad: "18 of 19" matches the scores')
 
+// The iPad's translation table: written rows from the comparison report, caption-style rows from its full results.
+const trSum = report('translation-comparison.md'), trAll = report('translation-comparison-results.md')
+const captionStyle = (pair, engine) => trAll.split(`## ${pair}`)[1]?.split('caption-style')[1]?.split('\n').find((l) => l.startsWith(`| ${engine} |`))?.split('|')[3].trim().split(' ')[0]
+const ipadWant = ['en-es', 'en-fr', 'en-de'].flatMap((pr) => [
+  ...[2, 3, 5].map((c) => cell(trSum, `| ${pr} | FLORES |`, c)),
+  ...['apple', 'opus-mt', 'mlkit'].map((e) => captionStyle(pr, e))])
+const ipadPart = html.match(/<section class="band" id="ipad-tested"[\s\S]*?<\/section>/)?.[0] || ''
+const ipadShown = [...ipadPart.matchAll(/<td class="n">([^<]*)<\/td>/g)].map((m) => m[1])
+check(ipadWant.every(Boolean) && JSON.stringify(ipadShown) === JSON.stringify(ipadWant), `index.html iPad translation table shows ${JSON.stringify(ipadShown)}, the reports say ${JSON.stringify(ipadWant)}`)
+// Each device has its own questions, and only the iPhone part has the general sections.
+for (const d of ['iphone', 'ipad', 'mac']) {
+  const part = html.match(new RegExp(`<div data-device="${d}"[\\s\\S]*?(?=<div data-device=|<\\/main>)`))?.[0] || ''
+  check((part.match(/data-faq/g) || []).length === 1, `index.html ${d}: has its own questions, once`)
+  for (const id of ['story', 'private', 'easy', 'why', 'tested']) check((d === 'iphone') === part.includes(`id="${id}"`), `index.html: #${id} belongs to the iPhone part only (${d})`)
+}
+
 if (failures.length) {
   console.error(`site check: ${failures.length} problem(s)\n- ${failures.join('\n- ')}`)
   process.exit(1)

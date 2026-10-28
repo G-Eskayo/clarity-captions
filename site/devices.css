@@ -149,4 +149,21 @@ html.motion .private.in .x { stroke-dashoffset: 0; }
 @media (max-width: 40rem) { .pv-facts { grid-template-columns: 1fr; } }
 .pv-facts b { display: block; font-size: 1.25rem; color: var(--accent); }
 
+/* iPad: each language's written row, then the same sentences as captions arrive */
+table.data tr.cap th { font-weight: 400; color: var(--muted); padding-left: 1.4rem; }
+table.data tr:not(.cap) > * { border-bottom: 0; }
+
+/* every device's questions end with a pointer to the support page */
+.faq p.more { margin-top: 1.6rem; }
+
+/* Mac: what's been checked, what hasn't yet */
+.checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; max-width: 50rem; }
+@media (max-width: 40rem) { .checks { grid-template-columns: 1fr; } }
+.checks ul { list-style: none; margin: 0; padding: 1.1rem 1.25rem; border-radius: 22px; background: var(--card); display: grid; gap: .6rem; }
+.checks ul::before { content: attr(aria-label); font-weight: 800; color: var(--accent); }
+.checks li { padding-left: 1.8rem; position: relative; }
+.checks li::before { position: absolute; left: 0; top: .05em; width: 1.25rem; height: 1.25rem; border-radius: 50%; display: grid; place-items: center; font-size: .8rem; font-weight: 800; }
+.checks li.yes::before { content: '✓'; background: var(--teal); color: #fff; }
+.checks li.no::before { content: ''; border: 2px dashed var(--muted); box-sizing: border-box; }
+
 @media (prefers-reduced-motion: reduce) { .tablet { transition: none; } .t-line.new, .pop-line.new { animation: none; } }

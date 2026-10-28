@@ -34,7 +34,7 @@ const hiddenText = (p) => p.evaluate(() => [...document.querySelectorAll('main h
 
 // Every bar is full grown and matches its number; the winner in each row is the best number in it.
 async function checkBars(p, tag, minBars, minRows) {
-  const bars = await p.$$eval('[data-bar]', (cells) => cells.map((c) => {
+  const bars = await p.$$eval('[data-bar]', (cells) => cells.filter((c) => c.getClientRects().length).map((c) => {
     const bar = c.querySelector('.bar-fill'); if (!bar) return { text: c.textContent, err: 'no bar' }
     const want = +c.dataset.bar, got = bar.getBoundingClientRect().width / bar.parentElement.getBoundingClientRect().width
     return { text: c.textContent.trim(), want, got, win: c.classList.contains('win') }
@@ -42,7 +42,7 @@ async function checkBars(p, tag, minBars, minRows) {
   ok(bars.length >= minBars, `${tag}: every score has a bar (${bars.length})`)
   for (const b of bars) ok(!b.err && Math.abs(b.got - b.want) < 0.02, `${tag}: bar for "${b.text}" is ${b.got?.toFixed(3)}, should be ${b.want}`)
   // The winner in each row is the best number in it: the lowest error rate, the highest translation score.
-  const rows = await p.$$eval('table[data-bars]', (ts) => ts.flatMap((t) => [...t.tBodies[0].rows].map((r) => {
+  const rows = await p.$$eval('table[data-bars]', (ts) => ts.filter((t) => t.getClientRects().length).flatMap((t) => [...t.tBodies[0].rows].map((r) => {
     const cells = [...r.querySelectorAll('[data-bar]')]; if (cells.length < 2) return null
     const vals = cells.map((c) => parseFloat(c.textContent)); const lower = t.dataset.better === 'lower'
     const best = lower ? Math.min(...vals) : Math.max(...vals)
@@ -210,6 +210,18 @@ try {
     await dp.goto(BASE + '#mac'); await dp.locator('[data-mac]').scrollIntoViewIfNeeded(); await wait(dp, 7500)
     const pop = await dp.$$eval('[data-pop-lines] .pop-line', (ls) => ls.map((l) => l.textContent))
     ok(pop.length === 3 && pop[2] === 'Speaker 2Hi Grandpa! We miss you.', `${tag}: the Mac window captions the call, newest three lines (${pop.join(' | ')})`)
+    // Questions in the header stays on the device you're on and goes to its own questions.
+    await dp.goto(BASE + '#mac'); await wait(dp, 300)
+    if (w > 500) {
+      await dp.click('header.top a[href="#faq"]'); await wait(dp, 1200)
+      ok((await shown()) === 'mac', `${tag}: Questions keeps you on Mac (${await shown()})`)
+      // At the top of the window, or as far as the page goes when they're at the very end.
+      const [top, atEnd] = await dp.$eval('#mac-faq', (e) => [Math.round(e.getBoundingClientRect().top), Math.abs(innerHeight + scrollY - document.documentElement.scrollHeight) < 2])
+      ok(Math.abs(top) < 5 || (atEnd && top > 0 && top < 844 / 2), `${tag}: Questions scrolls to the Mac questions (top ${top})`)
+    }
+    // The iPad's translation results grow as bars, the best translator marked in each row.
+    await dp.goto(BASE + '#ipad'); await scrollThrough(dp); await wait(dp, 800)
+    await checkBars(dp, `${tag} iPad`, 18, 6)
     ok(errors.length === 0, `${tag}: no page errors (${errors.join('; ')})`)
     await dc.close()
   }
