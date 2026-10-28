@@ -12,6 +12,7 @@ import { fileURLToPath } from 'url'
 import { THEMES, SCRIPT, LETTERING, SAVED_EXAMPLE } from '../site/seal-data.js'
 import { chunksOf, blocksFor, lip, transcriptOf, previewOf, savedTitle, autoplay } from '../site/demo.js'
 import { barFractions, winners, countFrame, SAMPLE_STEPS } from '../site/motion.js'
+import { DEVICES, deviceFor, lineFor, TABLE_TALK } from '../site/devices.js'
 
 const SITE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'site')
 const failures = []
@@ -32,7 +33,7 @@ for (const f of pages) {
   for (const m of html.matchAll(/url\(\s*['"]?([^'")]+)/gi)) check(isLocal(m[1]), `${f}: CSS url() loads from off-site: ${m[1]}`)
   check(!/<script(?![^>]*\bsrc=)[^>]*>[^<]*(gtag|analytics|plausible|fbq)\b/i.test(html), `${f}: looks like analytics`)
 }
-for (const js of ['demo.js', 'seal-data.js']) {
+for (const js of ['demo.js', 'seal-data.js', 'motion.js', 'devices.js']) {
   const src = read(js)
   check(!/\b(fetch|XMLHttpRequest|sendBeacon|WebSocket|import\s*\(\s*['"]https?:)/.test(src), `${js}: makes network requests`)
   for (const m of src.matchAll(/from\s+['"]([^'"]+)['"]/g)) check(m[1].startsWith('./'), `${js}: imports from off-site: ${m[1]}`)
@@ -52,7 +53,7 @@ for (const [re, why] of BANNED) {
   const m = pageText.match(re)
   check(!m, `index.html ${why}: "${m?.[0]}"`)
 }
-check(/not a medical device/i.test(pageText), 'index.html must say Seal is not a medical device')
+// The home page no longer says "not a medical device" (owner, 2026-10-28: nobody reads it as one); it still makes no hearing claim.
 check(/can (contain|get|make) mistakes|can mix (people|up)/i.test(pageText), 'index.html must say captions can be wrong')
 // The banned patterns must catch real claims and spare honest disclaimers.
 check(BANNED[0][0].test('Seal shows who is speaking') && !BANNED[0][0].test("It doesn't know who anyone is"), 'BANNED[0] self-test')
@@ -163,12 +164,11 @@ const cell = (text, rowStart, col) => {
   const row = text.split('\n').find((l) => l.startsWith(rowStart))
   return row ? row.split('|')[col + 1].match(/\d+\.\d+/)?.[0] : undefined
 }
-const engines = report('engine-accuracy-comparison.md'), langs = report('language-accuracy-comparison.md'), tr = report('translation-comparison.md')
-const LANGS = ['Spanish', 'French', 'German'], PAIRS = ['en-es', 'en-fr', 'en-de']
+const engines = report('engine-accuracy-comparison.md'), langs = report('language-accuracy-comparison.md')
+const LANGS = ['Spanish', 'French', 'German']
 const homeTables = [
   [cell(engines, '| apple-speechanalyzer |', 1), cell(engines, '| parakeet-fluidaudio (ultra-pal6) |', 1)],
-  LANGS.flatMap((l) => [cell(langs, `| ${l} |`, 1), cell(langs, `| ${l} |`, 2)]),
-  PAIRS.flatMap((pr) => [2, 3, 5].map((c) => cell(tr, `| ${pr} | FLORES |`, c)))
+  LANGS.flatMap((l) => [cell(langs, `| ${l} |`, 1), cell(langs, `| ${l} |`, 2)])
 ]
 const shown = [...tested.matchAll(/<table class="data[^"]*"[^>]*data-bars[\s\S]*?<\/table>/g)]
   .map((t) => [...t[0].matchAll(/<td class="n">([^<]*)<\/td>/g)].map((m) => m[1]))
@@ -177,6 +177,46 @@ homeTables.forEach((want, i) => check(want.every(Boolean) && JSON.stringify(show
   `index.html #tested table ${i + 1} shows ${JSON.stringify(shown[i])}, the reports say ${JSON.stringify(want)}`))
 const lat = (row) => engines.split('## Live latency')[1]?.split('\n').find((l) => l.startsWith(row))?.split('|')[3].trim()
 for (const t of [lat('| parakeet-fluidaudio (ultra-pal6) |'), lat('| apple-speechanalyzer')]) check(t && visible(tested).includes(t), `index.html #tested: latency ${t} missing`)
+
+// 8. device tabs (#184)
+const owner = (id) => ({ how: 'iphone', 'ipad-how': 'ipad', 'mac-how': 'mac' })[id] || null
+check(deviceFor('', owner) === 'iphone' && deviceFor('#mac', owner) === 'mac' && deviceFor('#ipad', owner) === 'ipad', 'deviceFor: no hash is iPhone; a device name opens it')
+check(deviceFor('#mac-how', owner) === 'mac' && deviceFor('#how', owner) === 'iphone', 'deviceFor: a link inside a device opens that device')
+check(deviceFor('#faq', owner) === null, 'deviceFor: a shared part keeps the device you are on')
+for (const d of DEVICES) check(new RegExp(`data-device="${d}"`).test(html) && new RegExp(`data-tab="${d}"`).test(html), `index.html has a tab and a part for ${d}`)
+for (const l of TABLE_TALK) {
+  const you = lineFor('you', l), them = lineFor('them', l)
+  check(you.text === l.en && them.text === l.es, `lineFor: each half reads its own language ("${l.en}")`)
+  check(you.translated === (l.side === 'them') && them.translated === (l.side === 'you'), `lineFor: only the other side's words are marked translated ("${l.en}")`)
+}
+// The iPad and Mac parts say where they are (Today, 1.0.1, Planned, In testing) before anything else.
+for (const d of ['ipad', 'mac']) {
+  const part = html.match(new RegExp(`<div data-device="${d}"[\\s\\S]*?<ol class="when"[\\s\\S]*?<\\/ol>`))?.[0] || ''
+  check(/<li class="done">/.test(part) && /(Planned|In testing)/.test(part), `index.html ${d}: the hero says where ${d} is`)
+}
+// The iPad's 19 translation scores are the measured ones, and each bar is as long as its score.
+const langRows = readFileSync(path.join(SITE, '..', 'docs', 'perf', 'translation-languages-results.md'), 'utf-8').split('\n').filter((l) => /^\| [A-Z]/.test(l) && !l.startsWith('| Language'))
+const measuredComet = langRows.map((l) => l.split('|')[5].trim()).sort()
+const shownComet = [...html.matchAll(/<li(?: class="low")? style="--v:([\d.]+)">[\s\S]*?<span class="val">([\d.]+)<\/span><\/li>/g)]
+check(JSON.stringify(shownComet.map((m) => m[2]).sort()) === JSON.stringify(measuredComet), `index.html iPad: translation scores ${shownComet.map((m) => m[2])} are not the report's ${measuredComet}`)
+for (const [, v, c] of shownComet) check(Math.abs(+v - (+c - 0.75) / 0.2) < 0.001, `index.html iPad: the bar for ${c} is ${v} long`)
+check(shownComet.filter(([, , c]) => +c >= 0.86).length === 18, 'index.html iPad: "18 of 19" matches the scores')
+
+// The iPad's translation table: written rows from the comparison report, caption-style rows from its full results.
+const trSum = report('translation-comparison.md'), trAll = report('translation-comparison-results.md')
+const captionStyle = (pair, engine) => trAll.split(`## ${pair}`)[1]?.split('caption-style')[1]?.split('\n').find((l) => l.startsWith(`| ${engine} |`))?.split('|')[3].trim().split(' ')[0]
+const ipadWant = ['en-es', 'en-fr', 'en-de'].flatMap((pr) => [
+  ...[2, 3, 5].map((c) => cell(trSum, `| ${pr} | FLORES |`, c)),
+  ...['apple', 'opus-mt', 'mlkit'].map((e) => captionStyle(pr, e))])
+const ipadPart = html.match(/<section class="band" id="ipad-tested"[\s\S]*?<\/section>/)?.[0] || ''
+const ipadShown = [...ipadPart.matchAll(/<td class="n">([^<]*)<\/td>/g)].map((m) => m[1])
+check(ipadWant.every(Boolean) && JSON.stringify(ipadShown) === JSON.stringify(ipadWant), `index.html iPad translation table shows ${JSON.stringify(ipadShown)}, the reports say ${JSON.stringify(ipadWant)}`)
+// Each device has its own questions, and only the iPhone part has the general sections.
+for (const d of ['iphone', 'ipad', 'mac']) {
+  const part = html.match(new RegExp(`<div data-device="${d}"[\\s\\S]*?(?=<div data-device=|<\\/main>)`))?.[0] || ''
+  check((part.match(/data-faq/g) || []).length === 1, `index.html ${d}: has its own questions, once`)
+  for (const id of ['story', 'private', 'easy', 'why', 'tested']) check((d === 'iphone') === part.includes(`id="${id}"`), `index.html: #${id} belongs to the iPhone part only (${d})`)
+}
 
 if (failures.length) {
   console.error(`site check: ${failures.length} problem(s)\n- ${failures.join('\n- ')}`)
