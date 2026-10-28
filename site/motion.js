@@ -76,7 +76,7 @@ function riseIn() {
   addEventListener('beforeprint', () => { for (const el of chosen) el.classList.add('in') })
 }
 
-// ── a line fills down each set of 1-2-3 steps as you scroll (home, and the gift page's two) ─────────────────────────────────────────────────────────
+// ── home: a line fills down the 1-2-3 steps as you scroll ─────────────────────────────────────────────────────────
 function steps(grid) {
   const nums = [...grid.querySelectorAll('.step-n')]
   if (nums.length < 2) return
@@ -236,7 +236,8 @@ if (typeof document !== 'undefined') {
   if (box) sample(box, still)
   if (!still) {
     riseIn()
-    for (const grid of document.querySelectorAll('.steps')) steps(grid)
+    const grid = document.querySelector('.steps')
+    if (grid) steps(grid)
     for (const f of document.querySelectorAll('figure.chart')) if (f.querySelector('rect.bar')) chartBars(f)
     const nav = document.querySelector('.version-nav')
     if (nav) switcher(nav)

@@ -54,22 +54,11 @@
   .card h3 { margin: 0 0 .35rem; font-size: 1.35rem; line-height: 1.3; }
   .card p { margin: 0; }
   .card p + p { margin-top: .6rem; }
-  ul.ticks { list-style: none; padding: 0; margin: 2rem 0 0; display: grid; gap: .8rem; }
-  ul.ticks li { padding-left: 1.9rem; position: relative; }
-  ul.ticks li::before { content: ''; position: absolute; left: .2rem; top: .5em; width: .75rem; height: .75rem; border-radius: 50%; background: var(--teal); }
   .gummy { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; padding: 0 1.75rem; min-height: 60px; margin-top: .9rem;
            background: var(--text); color: var(--bg); font-weight: 800; font-size: 1.15rem; letter-spacing: .03em;
            box-shadow: 0 3px 0 var(--lip); text-decoration: none; }
   .gummy:active { transform: scaleX(1.04) scaleY(.92) translateY(2px); box-shadow: 0 1px 0 var(--lip); }
   @media (prefers-reduced-motion: reduce) { .gummy:active { transform: none; } }
-
-  /* The home page's 1-2-3 steps, always stacked with the number beside each card, so motion.js's line runs down
-     beside the words. Placed after motion.css so it wins at every width. */
-  .steps { display: grid; gap: 1rem; }
-  .step-n { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--teal); color: #fff; font-weight: 800; }
-  .steps .card { position: relative; padding-left: 4.3rem; }
-  .steps .step-n, .steps.has-line .step-n { position: absolute; left: 1.1rem; top: 1.4rem; margin: 0; }
-  .fine { display: block; margin-top: .6rem; font-size: 1.05rem; color: var(--muted); }
 
   /* ── the demo phone: the home page's, in the app's Paper theme ── */
   .demo { display: flex; flex-direction: column; align-items: center; gap: .9rem; margin-top: 1rem; }
@@ -100,30 +89,42 @@
   .f { transition: opacity .35s ease, transform .12s ease; }
   .f[data-off] { opacity: 0; }
 
-  /* ── the Mac: a FaceTime call with the Seal Speak pop-up on top (design A, PR #174) ── */
-  .stage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 21rem); align-items: end; margin-top: 2rem; }
-  .ft { grid-column: 1 / -1; grid-row: 1; margin-right: 6rem; background: #1C1C1E; color: #F2F2F7; border-radius: 16px; overflow: hidden;
+  /* ── the Mac, at a glance: the call on the left, Seal Speak's words on the right, an arrow between ── */
+  .call { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 1rem; margin-top: 2rem; }
+  .call figure { margin: 0; display: flex; flex-direction: column; gap: .8rem; height: 100%; }
+  .call figcaption { text-align: center; font-weight: 700; font-size: 1.15rem; }
+  .arrow { width: 52px; height: 52px; border-radius: 50%; background: var(--teal); color: #fff; display: grid; place-items: center; font-size: 1.6rem; font-weight: 800; }
+  .ft { flex: 1; display: flex; flex-direction: column; background: #1C1C1E; color: #F2F2F7; border-radius: 22px; overflow: hidden;
         box-shadow: 0 30px 60px -24px rgba(0,0,0,.45); font: 15px/1.3 system-ui, sans-serif; }
-  .ft-bar { display: flex; gap: 7px; padding: 12px 14px; }
-  .ft-bar i { width: 12px; height: 12px; border-radius: 50%; background: #FF5F57; } .ft-bar i + i { background: #FEBC2E; } .ft-bar i + i + i { background: #28C840; }
-  .ft-video { position: relative; min-height: 25rem; display: grid; place-items: center; align-content: center; gap: .9rem;
+  .ft-video { flex: 1; min-height: 16rem; display: grid; place-items: center; align-content: center; gap: .7rem;
               background: radial-gradient(120% 90% at 40% 30%, #3A5552 0%, #1F2E2D 60%, #151C1C 100%); }
-  .ft-face { width: 120px; height: 120px; border-radius: 50%; background: #5E7F7B; display: grid; place-items: center; color: #DCE9E6; }
-  .ft-face svg { width: 64px; height: 64px; }
-  .ft[data-call="live"].talking .ft-face { animation: talk 1.1s ease-in-out infinite; }
-  @keyframes talk { 0%, 100% { box-shadow: 0 0 0 0 rgba(163, 227, 217, .55); } 50% { box-shadow: 0 0 0 12px rgba(163, 227, 217, 0); } }
+  .ft-face { width: 110px; height: 110px; border-radius: 50%; background: #5E7F7B; display: grid; place-items: center; color: #DCE9E6; }
+  .ft-face svg { width: 60px; height: 60px; }
+  .ft-name { font-size: 22px; font-weight: 700; }
+  .ft-label { opacity: .75; }
   .ft[data-call="ringing"] .ft-face { animation: ring 1.2s ease-in-out infinite; }
-  @keyframes ring { 0%, 100% { transform: none; } 50% { transform: scale(1.05); } }
-  @media (prefers-reduced-motion: reduce) { .ft-face, .phone[data-state="running"] .d-status .dot { animation: none !important; } }
-  .ft-label { font-weight: 600; opacity: .85; }
-  .ft-controls { display: flex; justify-content: center; gap: 14px; padding: 14px; }
-  .ft-controls span { width: 44px; height: 44px; border-radius: 50%; background: #3A3A3C; display: grid; place-items: center; }
+  @keyframes ring { 0%, 100% { transform: none; } 50% { transform: scale(1.06); } }
+  /* A little sound wave under the caller while they talk. */
+  .ft-wave { display: flex; gap: 4px; height: 22px; align-items: center; }
+  .ft-wave i { width: 5px; height: 100%; border-radius: 3px; background: #A3E3D9; transform: scaleY(.2); }
+  .ft.talking .ft-wave i { animation: wave .9s ease-in-out infinite; }
+  .ft.talking .ft-wave i:nth-child(2) { animation-delay: .15s; } .ft.talking .ft-wave i:nth-child(3) { animation-delay: .3s; }
+  .ft.talking .ft-wave i:nth-child(4) { animation-delay: .45s; } .ft.talking .ft-wave i:nth-child(5) { animation-delay: .6s; }
+  @keyframes wave { 0%, 100% { transform: scaleY(.2); } 50% { transform: scaleY(1); } }
+  .ft-controls { display: flex; justify-content: center; gap: 14px; padding: 12px; }
+  .ft-controls span { width: 40px; height: 40px; border-radius: 50%; background: #3A3A3C; display: grid; place-items: center; }
   .ft-controls span + span { background: #FF3B30; }
-  .ft-controls svg { width: 20px; height: 20px; }
+  .ft-controls svg { width: 18px; height: 18px; }
+  @media (prefers-reduced-motion: reduce) { .ft-face, .ft-wave i, .phone[data-state="running"] .d-status .dot { animation: none !important; } }
+  @media (max-width: 44rem) {
+    .call { grid-template-columns: minmax(0, 1fr); }
+    .arrow { justify-self: center; transform: rotate(90deg); }
+    .ft-video { min-height: 12rem; }
+  }
 
   /* The pop-up in the app's Paper look in light and its Harbor look in dark, as in PR #174's screenshots. */
   .pop { --p-bg: #FAF5E6; --p-text: #141419; --p-gear: #14514B; --p-spk: #14514B; --p-live: #12512F; --p-lip: #565659;
-         grid-column: 2; grid-row: 1; z-index: 2; margin: 0 0 -1.5rem; background: var(--p-bg); color: var(--p-text); border-radius: 22px;
+         flex: 1; background: var(--p-bg); color: var(--p-text); border-radius: 22px;
          box-shadow: 0 30px 60px -20px rgba(0,0,0,.45), 0 0 0 1px rgba(0,0,0,.06); display: flex; flex-direction: column; }
   @media (prefers-color-scheme: dark) {
     .pop { --p-bg: #173331; --p-text: #ECE4D3; --p-gear: #F2DDB5; --p-spk: #A3E3D9; --p-live: #A6E8BC; --p-lip: #a9a498; box-shadow: 0 30px 60px -20px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.08); }
@@ -134,7 +135,7 @@
   .p-status { text-align: center; color: color-mix(in srgb, var(--p-text) 75%, transparent); }
   .p-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: middle; background: color-mix(in srgb, var(--p-text) 35%, transparent); transition: background .3s; }
   .pop[data-status="captioning"] .p-dot { background: var(--p-live); }
-  .p-body { position: relative; height: 17rem; overflow: hidden; }
+  .p-body { position: relative; flex: 1; min-height: 17.5rem; overflow: hidden; }
   .p-lines { position: absolute; inset: 0; padding: 0 18px 10px; display: flex; flex-direction: column; gap: 10px; font: 1.2rem/1.6 'OpenDyslexic', system-ui, sans-serif; }
   .p-lines > :first-child { margin-top: auto; }
   .p-spk { display: block; font: 600 13px/1.4 system-ui, sans-serif; color: var(--p-spk); }
@@ -142,16 +143,9 @@
   .p-wait svg { width: 36px; height: 36px; color: var(--p-gear); }
   .p-btn { margin: 0 18px 14px; padding: 12px; border-radius: 999px; text-align: center; background: var(--p-text); color: var(--p-bg);
            box-shadow: 0 3px 0 var(--p-lip); font: 600 19px/1.2 system-ui, sans-serif; }
-  @media (max-width: 40rem) {
-    .ft { margin-right: 0; }
-    .ft-video { min-height: 15rem; }
-    .pop { grid-column: 1 / -1; grid-row: 2; margin: -4rem .75rem 0; }
-  }
-
   /* Play again, like the home page's theme sample button. */
   .replay { border: 2px solid var(--accent); color: var(--accent); background: transparent; border-radius: 999px; padding: .4rem 1.2rem;
             font: 700 1.05rem/1 inherit; font-family: inherit; cursor: pointer; min-height: 48px; min-width: 7rem; }
-  .stage + .replay-row { margin-top: 3rem; }
   .replay-row { display: flex; justify-content: center; margin-top: 1rem; }
 
   /* ── the closing note: the home page's story band ── */
@@ -167,13 +161,39 @@
 
   /* ── page motion, on top of motion.css. Only the script sets html.motion, and only with Reduce Motion off. ── */
   /* The greeting arrives word by word, the way captions do. */
-  html.motion .greet .w { display: inline-block; opacity: 0; transform: translateY(.3em); transition: opacity .45s ease-out, transform .5s cubic-bezier(.2, .7, .2, 1); }
-  html.motion .greet .w.on { opacity: 1; transform: none; }
+  html.motion .pop-words .w { display: inline-block; opacity: 0; transform: translateY(.3em) scale(.6); transition: opacity .35s ease-out, transform .6s cubic-bezier(.3, 1.6, .5, 1); }
+  html.motion .pop-words .w.on { opacity: 1; transform: none; }
   html.motion .later { opacity: 0; transition: opacity .8s ease-out; }
   html.motion .later.in { opacity: 1; }
   html.motion .seal { animation: hello 1.4s cubic-bezier(.3, 1.4, .5, 1) .2s 1 both; transform-origin: 50% 90%; }
   @keyframes hello { 0% { opacity: 0; transform: translateY(24px) scale(.85); } 40% { opacity: 1; transform: rotate(-8deg); } 65% { transform: rotate(6deg); } 100% { transform: none; } }
   html.motion .story.in .story-seal { animation: hello 1.4s cubic-bezier(.3, 1.4, .5, 1) .1s 1 both; }
+
+  /* Birthday confetti, in the site's own theme colours. Only the script adds it, and never with Reduce Motion on. */
+  .confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 20; }
+  .confetti i { position: absolute; top: -24px; left: var(--l); width: var(--w); height: var(--h); border-radius: var(--br); background: var(--c);
+                animation: fall var(--d) cubic-bezier(.3, .5, .5, 1) var(--delay) 1 both; }
+  @keyframes fall { 0% { transform: translate3d(0, 0, 0) rotate(0); opacity: 1; } 85% { opacity: 1; }
+                    100% { transform: translate3d(var(--x), 110vh, 0) rotate(var(--r)); opacity: 0; } }
+
+  /* Balloons at the close. Still they sit in the corners; with motion they float up into place. */
+  .story { position: relative; overflow: hidden; }
+  .balloons { position: absolute; inset: 0; pointer-events: none; }
+  .balloon { position: absolute; width: clamp(38px, 7vw, 64px); }
+  .b4 { fill: #FBF3E4; }
+  @media (prefers-color-scheme: dark) { .b4 { fill: #1F998B; } }
+  .balloon:nth-child(1) { left: 5%; top: 12%; } .balloon:nth-child(2) { left: 13%; top: 30%; width: clamp(30px, 5vw, 48px); }
+  .balloon:nth-child(3) { right: 6%; top: 10%; } .balloon:nth-child(4) { right: 14%; top: 34%; width: clamp(30px, 5vw, 48px); }
+  html.motion .balloon { transform: translateY(110vh); }
+  html.motion .story.in .balloon { animation: float-up 3.2s cubic-bezier(.2, .7, .3, 1) var(--delay, 0s) 1 both, sway 4s ease-in-out calc(var(--delay, 0s) + 3.2s) infinite; }
+  @keyframes float-up { from { transform: translateY(110vh) rotate(-6deg); } to { transform: none; } }
+  @keyframes sway { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(5deg) translateY(-6px); } }
+
+  /* The one button: download for her computer. */
+  .get { text-align: center; padding: 4.5rem 0 5rem; }
+  .get .gummy { min-height: 72px; padding: 0 2.25rem; font-size: clamp(1.2rem, 4vw, 1.45rem); }
+  html.motion .get .gummy { animation: nudge 2.4s ease-in-out 1.2s 2; }
+  @keyframes nudge { 0%, 100% { transform: none; } 50% { transform: scale(1.05); } }
 </style>
 </head>
 <body>
@@ -182,7 +202,7 @@
   <section class="band center" aria-labelledby="hi">
     <div class="wrap">
       <img class="seal" src="assets/favicon.svg" alt="" width="180" height="180">
-      <h1 id="hi" class="greet">Happy birthday, Mom.</h1>
+      <h1 id="hi" class="greet pop-words">Happy birthday, Mom.</h1>
       <p class="lede later">I made you something.</p>
       <a class="next later" href="#what">Scroll down<span aria-hidden="true">↓</span></a>
     </div>
@@ -216,11 +236,6 @@
         </div>
         <button class="replay" data-replay="phone" hidden>Play again</button>
       </div>
-      <ul class="ticks">
-        <li>No internet needed. It works at a restaurant, in the car, anywhere.</li>
-        <li>Private. Everything happens on your own device. Nothing is recorded or sent anywhere.</li>
-        <li>Easy to read. Pick the colors and the size of the words that suit your eyes.</li>
-      </ul>
     </div>
   </section>
 
@@ -229,42 +244,31 @@
     <div class="wrap">
       <span class="kicker">First, your MacBook</span>
       <h2 id="mac-h">Captions for your FaceTime calls.</h2>
-      <p class="intro">On your MacBook, Seal Speak shows what the other person on a FaceTime call is saying, in a small window that stays on top of the call.</p>
-      <p class="note">Your Mac needs macOS 26 or newer.</p>
-      <div class="steps">
-        <div class="card"><span class="step-n" aria-hidden="true">1</span><h3>Get TestFlight from the Mac App Store.</h3>
-          <p>It's Apple's app for trying new apps before they're in the App Store.</p>
-          <a class="gummy" href="https://apps.apple.com/app/testflight/id899247664">Get TestFlight</a></div>
-        <div class="card"><span class="step-n" aria-hidden="true">2</span><h3>Accept the invitation.</h3>
-          <p>An email from TestFlight invites you to test Seal Speak. Open it and accept.</p></div>
-        <div class="card"><span class="step-n" aria-hidden="true">3</span><h3>Install Seal Speak.</h3>
-          <p>In TestFlight, click Install next to Seal Speak.</p></div>
-        <div class="card"><span class="step-n" aria-hidden="true">4</span><h3>Open Seal Speak and click Allow.</h3>
-          <p>Your Mac asks twice. Allow <strong>System Audio Recording</strong>, so Seal Speak can hear the call, and
-            <strong>Speech Recognition</strong>, so it can turn what it hears into words.</p>
-          <span class="fine">If your Mac opens System Settings instead: Privacy &amp; Security, then Screen &amp; System Audio Recording,
-            and switch on Seal Speak under System Audio Recording Only.</span></div>
-        <div class="card"><span class="step-n" aria-hidden="true">5</span><h3>Start a FaceTime call.</h3>
-          <p>The words show up in the Seal Speak window as the other person talks.</p></div>
-      </div>
+      <p class="intro">When someone FaceTimes you on your MacBook, Seal Speak shows what they say, in its own little window.</p>
     </div>
     <div class="wrap wide">
-      <div class="stage" data-rise>
-        <p class="sr-only">An example: a FaceTime call on a Mac, with the Seal Speak window on top of it. When the call starts, the window
+      <div class="call" data-rise>
+        <p class="sr-only">An example: on the left, a FaceTime call from Gil. On the right, the Seal Speak window. When the call starts, it
           says "Captioning your FaceTime call" and shows, under Speaker 1: "Hi Mom! Happy birthday!", "Can you read me okay on the computer?"
           and "These are my words, showing up as I talk."</p>
-        <div class="ft" data-ft data-call="live" aria-hidden="true">
-          <div class="ft-bar"><i></i><i></i><i></i></div>
+        <figure aria-hidden="true">
+        <div class="ft" data-ft data-call="live">
           <div class="ft-video">
             <div class="ft-face"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4.2"/><path d="M3.5 21c.6-4.4 4-7 8.5-7s7.9 2.6 8.5 7z"/></svg></div>
-            <div class="ft-label" data-ft-label>FaceTime</div>
+            <div class="ft-name">Gil</div>
+            <div class="ft-label" data-ft-label>FaceTime Video</div>
+            <div class="ft-wave"><i></i><i></i><i></i><i></i><i></i></div>
           </div>
           <div class="ft-controls">
             <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></span>
             <span><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 14.5c4.8-4.6 13.2-4.6 18 0l-2.4 2.6-3.6-1.8v-2.6c-2-.6-4-.6-6 0v2.6l-3.6 1.8z"/></svg></span>
           </div>
         </div>
-        <div class="pop" data-pop data-status="captioning" aria-hidden="true">
+          <figcaption>Your FaceTime call</figcaption>
+        </figure>
+        <div class="arrow" aria-hidden="true">→</div>
+        <figure aria-hidden="true">
+        <div class="pop" data-pop data-status="captioning">
           <div class="p-top">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             <span class="p-status"><span class="p-dot"></span><span data-pop-status>Captioning your FaceTime call</span></span>
@@ -284,38 +288,44 @@
           </div>
           <div class="p-btn">Stop</div>
         </div>
+          <figcaption>Seal Speak shows what they say</figcaption>
+        </figure>
       </div>
       <div class="replay-row"><button class="replay" data-replay="pop" hidden>Play again</button></div>
     </div>
   </section>
 
   <!-- 4. The iPhone -->
-  <section class="band" id="phone" aria-labelledby="phone-h">
+  <section class="band center" id="phone" aria-labelledby="phone-h" style="min-height:auto; padding:5rem 0">
     <div class="wrap">
       <span class="kicker">Then, your iPhone</span>
-      <h2 id="phone-h">Captions at the table.</h2>
-      <p class="intro">Dad and I will help you set this up.</p>
-      <div class="steps">
-        <div class="card"><span class="step-n" aria-hidden="true">1</span><h3>Get TestFlight.</h3>
-          <p>The same app as on your Mac, this time on your iPhone.</p>
-          <a class="gummy" href="https://apps.apple.com/app/testflight/id899247664">Get TestFlight</a></div>
-        <div class="card"><span class="step-n" aria-hidden="true">2</span><h3>Get Seal Speak.</h3>
-          <p>Tap this, then tap Accept and Install.</p>
-          <a class="gummy" href="https://testflight.apple.com/join/b8YTVGSY">Get Seal Speak</a></div>
-        <div class="card"><span class="step-n" aria-hidden="true">3</span><h3>Open Seal Speak and tap Start captions.</h3>
-          <p>When it asks to use the microphone, tap Allow. Then set your phone on the table and talk.</p></div>
-      </div>
+      <h2 id="phone-h">And at the table, on your iPhone.</h2>
+      <p class="intro" style="margin:0">Dad and I will help you set this up.</p>
     </div>
   </section>
 
   <!-- 5. The closing note -->
   <section class="band story center" aria-labelledby="end-h">
-    <div class="wrap">
+    <div class="balloons" aria-hidden="true">
+      <svg class="balloon" style="--delay:.1s" viewBox="0 0 40 70"><path d="M20 2C9 2 3 11 3 20c0 12 10 22 17 24 7-2 17-12 17-24C37 11 31 2 20 2z" fill="#F2C994"/><path d="M17 46h6l-3-3z" fill="#F2C994"/><path d="M20 46c-3 7 3 12 0 22" stroke="currentColor" stroke-opacity=".5" fill="none"/></svg>
+      <svg class="balloon" style="--delay:.5s" viewBox="0 0 40 70"><path d="M20 2C9 2 3 11 3 20c0 12 10 22 17 24 7-2 17-12 17-24C37 11 31 2 20 2z" fill="#A3E3D9"/><path d="M17 46h6l-3-3z" fill="#A3E3D9"/><path d="M20 46c-3 7 3 12 0 22" stroke="currentColor" stroke-opacity=".5" fill="none"/></svg>
+      <svg class="balloon" style="--delay:.3s" viewBox="0 0 40 70"><path d="M20 2C9 2 3 11 3 20c0 12 10 22 17 24 7-2 17-12 17-24C37 11 31 2 20 2z" fill="#E9967A"/><path d="M17 46h6l-3-3z" fill="#E9967A"/><path d="M20 46c-3 7 3 12 0 22" stroke="currentColor" stroke-opacity=".5" fill="none"/></svg>
+      <svg class="balloon" style="--delay:.7s" viewBox="0 0 40 70"><path d="M20 2C9 2 3 11 3 20c0 12 10 22 17 24 7-2 17-12 17-24C37 11 31 2 20 2z" class="b4"/><path d="M17 46h6l-3-3z" class="b4"/><path d="M20 46c-3 7 3 12 0 22" stroke="currentColor" stroke-opacity=".5" fill="none"/></svg>
+    </div>
+    <div class="wrap" style="position:relative">
       <img class="story-seal" src="assets/favicon.svg" alt="" width="120" height="120">
       <h2 id="end-h" class="sr-only">From Gil</h2>
-      <p class="story-lead">Happy birthday, Mom.</p>
+      <p class="story-lead pop-words">Happy birthday, Mom.</p>
       <p>Everyone deserves to be part of the conversation. I made Seal Speak so you can be part of every one: at the table, and on FaceTime.</p>
       <p class="story-sign">Love, Gil</p>
+    </div>
+  </section>
+
+  <!-- The one button -->
+  <section class="get" aria-labelledby="get-h">
+    <div class="wrap">
+      <h2 id="get-h" class="sr-only">Get Seal Speak</h2>
+      <a class="gummy" data-download href="https://github.com/G-Eskayo/clarity-captions/releases/latest/download/Seal-Speak-mac.dmg">Download Seal Speak for your computer</a>
     </div>
   </section>
 </main>
@@ -396,9 +406,9 @@
     popAgain.hidden = true
     popBox.replaceChildren(); popWait.hidden = false
     pop.dataset.status = 'waiting'; popStatus.textContent = 'Waiting for a FaceTime call'
-    ft.dataset.call = 'ringing'; ftLabel.textContent = 'FaceTime · Calling…'
+    ft.dataset.call = 'ringing'; ftLabel.textContent = 'Calling…'
     await wait(2200); if (run.pop !== id) return
-    ft.dataset.call = 'live'; ftLabel.textContent = 'FaceTime'
+    ft.dataset.call = 'live'; ftLabel.textContent = 'FaceTime Video'
     await wait(500); if (run.pop !== id) return
     popWait.hidden = true
     pop.dataset.status = 'captioning'; popStatus.textContent = 'Captioning your FaceTime call'
@@ -428,14 +438,38 @@
   } else {
     document.documentElement.classList.add('motion')
 
-    // The greeting, a word at a time; then the line under it fades in.
+    // Birthday words pop in one at a time, the way captions arrive. Returns how long that takes.
+    const popWords = (el, delay) => {
+      el.setAttribute('aria-label', el.textContent)
+      const words = el.textContent.split(' ').map((w) => Object.assign(document.createElement('span'), { className: 'w', textContent: w }))
+      words.forEach((w) => w.setAttribute('aria-hidden', 'true'))
+      el.replaceChildren(...words.flatMap((w, i) => (i ? [' ', w] : [w])))
+      return () => { words.forEach((w, i) => setTimeout(() => w.classList.add('on'), delay + i * 260)); return delay + words.length * 260 }
+    }
+
+    // Confetti falls from the top of the screen, once, in the site's theme colours, then clears itself away.
+    const COLOURS = ['#1F998B', '#F2C994', '#A3E3D9', '#7A350C', '#93DCD1', '#FBE8C1', '#0E5A56', '#E9967A']
+    const confetti = (count = 90) => {
+      const box = document.createElement('div')
+      box.className = 'confetti'
+      box.setAttribute('aria-hidden', 'true')
+      const rnd = (a, b) => a + Math.random() * (b - a)
+      for (let i = 0; i < count; i++) {
+        const piece = document.createElement('i')
+        const round = Math.random() < 0.3, w = rnd(7, 12)
+        Object.entries({ '--l': rnd(0, 100) + '%', '--w': w + 'px', '--h': (round ? w : rnd(10, 18)) + 'px', '--br': round ? '50%' : '2px',
+          '--c': COLOURS[i % COLOURS.length], '--d': rnd(2.6, 4.4) + 's', '--delay': rnd(0, 1.2) + 's',
+          '--x': rnd(-120, 120) + 'px', '--r': rnd(-720, 720) + 'deg' }).forEach(([k, v]) => piece.style.setProperty(k, v))
+        box.append(piece)
+      }
+      document.body.append(box)
+      setTimeout(() => box.remove(), 6500)
+    }
+
     const h1 = document.querySelector('.greet')
-    h1.setAttribute('aria-label', h1.textContent)
-    const words = h1.textContent.split(' ').map((w) => Object.assign(document.createElement('span'), { className: 'w', textContent: w }))
-    words.forEach((w) => w.setAttribute('aria-hidden', 'true'))
-    h1.replaceChildren(...words.flatMap((w, i) => (i ? [' ', w] : [w])))
-    words.forEach((w, i) => setTimeout(() => w.classList.add('on'), 700 + i * 260))
-    setTimeout(() => document.querySelectorAll('.later').forEach((el) => el.classList.add('in')), 700 + words.length * 260 + 400)
+    const done = popWords(h1, 700)()
+    setTimeout(() => confetti(), 500)
+    setTimeout(() => document.querySelectorAll('.later').forEach((el) => el.classList.add('in')), done + 400)
 
     // The demos rise in like the rest of the page, then play.
     const io = new IntersectionObserver((es) => {
@@ -443,7 +477,8 @@
     }, { rootMargin: '0px 0px -8% 0px' })
     for (const el of document.querySelectorAll('[data-rise]')) { el.dataset.reveal = ''; io.observe(el) }
     const story = document.querySelector('.story')
-    onceInView(story, () => story.classList.add('in'), 0.3)
+    const lead = popWords(story.querySelector('.story-lead'), 300)
+    onceInView(story, () => { story.classList.add('in'); lead(); setTimeout(() => confetti(70), 400) }, 0.3)
 
     phone.dataset.ready = '2'
     phoneBox.replaceChildren(); phone.dataset.state = 'idle'; phoneStatus.textContent = 'Ready'
