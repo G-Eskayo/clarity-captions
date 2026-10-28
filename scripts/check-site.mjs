@@ -12,6 +12,7 @@ import { fileURLToPath } from 'url'
 import { THEMES, SCRIPT, LETTERING, SAVED_EXAMPLE } from '../site/seal-data.js'
 import { chunksOf, blocksFor, lip, transcriptOf, previewOf, savedTitle, autoplay } from '../site/demo.js'
 import { barFractions, winners, countFrame, SAMPLE_STEPS } from '../site/motion.js'
+import { DEVICES, deviceFor, lineFor, TABLE_TALK } from '../site/devices.js'
 
 const SITE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'site')
 const failures = []
@@ -32,7 +33,7 @@ for (const f of pages) {
   for (const m of html.matchAll(/url\(\s*['"]?([^'")]+)/gi)) check(isLocal(m[1]), `${f}: CSS url() loads from off-site: ${m[1]}`)
   check(!/<script(?![^>]*\bsrc=)[^>]*>[^<]*(gtag|analytics|plausible|fbq)\b/i.test(html), `${f}: looks like analytics`)
 }
-for (const js of ['demo.js', 'seal-data.js']) {
+for (const js of ['demo.js', 'seal-data.js', 'motion.js', 'devices.js']) {
   const src = read(js)
   check(!/\b(fetch|XMLHttpRequest|sendBeacon|WebSocket|import\s*\(\s*['"]https?:)/.test(src), `${js}: makes network requests`)
   for (const m of src.matchAll(/from\s+['"]([^'"]+)['"]/g)) check(m[1].startsWith('./'), `${js}: imports from off-site: ${m[1]}`)
@@ -177,6 +178,24 @@ homeTables.forEach((want, i) => check(want.every(Boolean) && JSON.stringify(show
   `index.html #tested table ${i + 1} shows ${JSON.stringify(shown[i])}, the reports say ${JSON.stringify(want)}`))
 const lat = (row) => engines.split('## Live latency')[1]?.split('\n').find((l) => l.startsWith(row))?.split('|')[3].trim()
 for (const t of [lat('| parakeet-fluidaudio (ultra-pal6) |'), lat('| apple-speechanalyzer')]) check(t && visible(tested).includes(t), `index.html #tested: latency ${t} missing`)
+
+// 8. device tabs (#184)
+const owner = (id) => ({ how: 'iphone', 'ipad-how': 'ipad', 'mac-how': 'mac' })[id] || null
+check(deviceFor('', owner) === 'iphone' && deviceFor('#mac', owner) === 'mac' && deviceFor('#ipad', owner) === 'ipad', 'deviceFor: no hash is iPhone; a device name opens it')
+check(deviceFor('#mac-how', owner) === 'mac' && deviceFor('#how', owner) === 'iphone', 'deviceFor: a link inside a device opens that device')
+check(deviceFor('#faq', owner) === null, 'deviceFor: a shared part keeps the device you are on')
+for (const d of DEVICES) check(new RegExp(`data-device="${d}"`).test(html) && new RegExp(`data-tab="${d}"`).test(html), `index.html has a tab and a part for ${d}`)
+for (const l of TABLE_TALK) {
+  const you = lineFor('you', l), them = lineFor('them', l)
+  check(you.text === l.en && them.text === l.es, `lineFor: each half reads its own language ("${l.en}")`)
+  check(you.translated === (l.side === 'them') && them.translated === (l.side === 'you'), `lineFor: only the other side's words are marked translated ("${l.en}")`)
+}
+// The iPad and Mac parts promise nothing as available that isn't: every card there carries a badge.
+for (const d of ['ipad', 'mac']) {
+  const part = html.match(new RegExp(`<div data-device="${d}"[\\s\\S]*?<\\/section>`))?.[0] || ''
+  const cards = part.match(/<div class="card">[\s\S]*?<\/div>/g) || []
+  check(cards.length >= 6 && cards.every((c) => /class="badge/.test(c)), `index.html ${d}: every card says Today, Coming, Planned or In testing (${cards.length} cards)`)
+}
 
 if (failures.length) {
   console.error(`site check: ${failures.length} problem(s)\n- ${failures.join('\n- ')}`)

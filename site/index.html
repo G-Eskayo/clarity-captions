@@ -13,6 +13,7 @@
 <meta property="og:description" content="Follow the conversation at the table. Captions made on your iPhone, with no internet needed.">
 <meta property="og:image" content="assets/seal-icon-256.png">
 <link rel="stylesheet" href="motion.css">
+<link rel="stylesheet" href="devices.css">
 <style>
   @font-face { font-family: 'OpenDyslexic'; src: url('assets/fonts/OpenDyslexic-Regular.woff') format('woff'); font-weight: 400; font-display: swap; }
   @font-face { font-family: 'OpenDyslexic'; src: url('assets/fonts/OpenDyslexic-Bold.woff') format('woff'); font-weight: 700; font-display: swap; }
@@ -247,6 +248,16 @@
 
 <main id="main">
   <div class="wrap">
+    <div class="devices" role="tablist" aria-label="Choose your device" data-devices hidden>
+      <button role="tab" data-tab="iphone" id="tab-iphone" aria-controls="panel-iphone" aria-selected="true">iPhone</button>
+      <button role="tab" data-tab="ipad" id="tab-ipad" aria-controls="panel-ipad" aria-selected="false" tabindex="-1">iPad</button>
+      <button role="tab" data-tab="mac" id="tab-mac" aria-controls="panel-mac" aria-selected="false" tabindex="-1">Mac</button>
+    </div>
+  </div>
+
+  <div data-device="iphone" id="panel-iphone" role="tabpanel" aria-labelledby="tab-iphone">
+  <div class="wrap">
+    <p class="device-name">iPhone</p>
     <div class="hero">
       <div>
         <h1>Follow the conversation at the table.</h1>
@@ -395,19 +406,6 @@
     </div>
   </div>
 
-  <section class="band story" id="story" aria-labelledby="story-h">
-    <div class="wrap story-wrap">
-      <img class="story-seal" src="assets/favicon.svg" alt="" width="120" height="120">
-      <h2 id="story-h">Why I made Seal Speak</h2>
-      <!-- Owner-approved wording and look (#142, 2026-10-20). Don't rewrite it without the owner. -->
-      <p class="story-lead">Everyone deserves to be part of the conversation.</p>
-      <p>For people who are hard of hearing, like my mom, the right technology can give that back. I built Seal Speak as a birthday gift for her, and now it's here for you too.</p>
-      <p>Most live captioning costs a monthly fee and stops working without signal. Seal Speak runs entirely on your iPhone, works anywhere, and costs one price, once. No subscription, no account, no ads.</p>
-      <p>If it helps you stay close to the people you love, this app is for you.</p>
-      <p class="story-sign">Gil<span>Maker of Seal Speak</span></p>
-    </div>
-  </section>
-
   <section class="band" id="how" aria-labelledby="how-h">
     <div class="wrap">
       <h2 id="how-h">What it does</h2>
@@ -422,6 +420,133 @@
         <div class="card"><h3>Keep a conversation</h3><p>Tap [&nbsp;Save&nbsp;]. Your saved conversations are behind the list icon at the top right. Each one stays on your phone for 30 days, then it's deleted.</p></div>
         <div class="card"><h3>Share it if you want</h3><p>Open a saved conversation and tap [&nbsp;Share&nbsp;] to send the text to Notes, Messages, Mail, Files or AirDrop. [&nbsp;Delete&nbsp;] gets rid of it now.</p></div>
       </div>
+    </div>
+  </section>
+
+  </div>
+
+  <div data-device="ipad" id="panel-ipad" role="tabpanel" aria-labelledby="tab-ipad">
+  <div class="wrap">
+    <p class="device-name">iPad</p>
+    <div class="hero">
+      <div>
+        <h1>Talk across the table, in two languages.</h1>
+        <p class="lede">On iPad, Seal Speak is planned to split the screen in two. Lay it flat between you: one half faces you, the other faces the person across the table, and each of you reads the conversation in your own language.</p>
+        <ul class="status" aria-label="What works on iPad">
+          <li><span class="badge now">Today</span>Seal Speak runs on iPad, in the iPhone-sized layout.</li>
+          <li><span class="badge">Coming in 1.0.1</span>A full-screen iPad layout.</li>
+          <li><span class="badge">Planned</span>Split-screen translation. Not built yet, no date.</li>
+        </ul>
+        <ul class="facts" aria-label="At a glance">
+          <li>Made on the iPad</li>
+          <li>Works with no internet</li>
+          <li>Translations are marked</li>
+        </ul>
+      </div>
+      <div class="tablet-wrap" data-tablet>
+        <div class="tablet" role="img" aria-label="An iPad lying flat, split in two. The bottom half, facing you, shows the conversation in English. The top half is upside down, facing the other person, and shows it in Spanish. Lines from the other person are marked as translated.">
+          <div class="t-screen" aria-hidden="true">
+            <div class="t-half them" data-half="them">
+              <div class="t-head">Español</div>
+              <p class="t-line tr" data-mark="Traducido del inglés">Largo, pero los niños durmieron todo el camino.</p>
+              <p class="t-line">Qué bien. La cena está casi lista.</p>
+            </div>
+            <div class="t-half you" data-half="you">
+              <div class="t-head">English</div>
+              <p class="t-line">Long, but the kids slept the whole way.</p>
+              <p class="t-line tr" data-mark="Translated from Spanish">Good. Dinner is almost ready.</p>
+            </div>
+          </div>
+        </div>
+        <button class="flip" data-flip aria-pressed="false" hidden>↻ See their side</button>
+        <p class="tablet-hint">A made-up conversation, drawn to show the plan. The top half is upside down because it faces the other person.</p>
+      </div>
+    </div>
+  </div>
+
+  <section class="band" id="ipad-how" aria-labelledby="ipad-how-h">
+    <div class="wrap">
+      <h2 id="ipad-how-h">What it does on iPad</h2>
+      <p class="intro">A bigger screen, for a table full of people. Everything the iPhone app does, the iPad does too.</p>
+      <div class="grid3">
+        <div class="card"><span class="badge now">Today</span><h3>The iPhone app, on iPad</h3><p>Captions, Speaker 1 and Speaker 2, sound labels, copy, save and share all work on iPad now, in the iPhone-sized layout.</p></div>
+        <div class="card"><span class="badge">Coming in 1.0.1</span><h3>The whole screen for captions</h3><p>The captions use the full iPad screen, so they can be bigger and easier to read from across the table.</p></div>
+        <div class="card"><span class="badge">Planned</span><h3>Two languages, face to face</h3><p>Each of you picks a language. Your half shows what you said, and what they said translated for you. Theirs does the same the other way round.</p></div>
+      </div>
+      <div class="grid3">
+        <div class="card"><span class="badge">Planned</span><h3>Translations are marked</h3><p>Every translated line says so, so nobody mistakes a translation for what was actually said.</p></div>
+        <div class="card"><span class="badge">Planned</span><h3>Made on the iPad</h3><p>Speech and translation both run on the iPad. After a one-time download of each language, no internet is needed and nothing leaves the device.</p></div>
+        <div class="card"><span class="badge">Planned for 1.1</span><h3>More languages</h3><p>Captions in 25 European languages, and live translation of the captions, on iPhone and iPad.</p></div>
+      </div>
+    </div>
+  </section>
+  </div>
+
+  <div data-device="mac" id="panel-mac" role="tabpanel" aria-labelledby="tab-mac">
+  <div class="wrap">
+    <p class="device-name">Mac</p>
+    <div class="hero">
+      <div>
+        <h1>Captions for your calls.</h1>
+        <p class="lede">On a Mac, Seal Speak opens a small window that stays on top of your call and captions it as people talk. It captions the people in the room with you too.</p>
+        <ul class="status" aria-label="Where the Mac app is">
+          <li><span class="badge">In testing</span>Being tested now. Not on the App Store yet.</li>
+        </ul>
+        <ul class="facts" aria-label="At a glance">
+          <li>Any call app</li>
+          <li>Made on your Mac</li>
+          <li>Room and call together</li>
+        </ul>
+        <span class="soon-note">For a Mac with macOS 26 or later.</span>
+      </div>
+      <div class="tablet-wrap">
+        <div class="mac" data-mac role="img" aria-label="A video call window on a Mac, with the small Seal Speak window on top of it, captioning the call line by line with Speaker 1 and Speaker 2 labels.">
+          <div class="mac-call" aria-hidden="true"><div class="mac-tile"></div><div class="mac-self"></div></div>
+          <div class="pop" aria-hidden="true">
+            <div class="pop-top"><span class="dot"></span>Captioning your call</div>
+            <div class="pop-lines" data-pop-lines>
+              <p class="pop-line s1"><b>Speaker 1</b>Grandpa wants to say hi to everyone.</p>
+              <p class="pop-line s2"><b>Speaker 2</b>Hi Grandpa! We miss you.</p>
+            </div>
+            <div class="pop-stop">Stop</div>
+          </div>
+        </div>
+        <ul class="sources" aria-label="Calls it captions">
+          <li>FaceTime</li><li>iPhone calls</li><li>Zoom</li><li>Teams</li><li>Google Meet</li><li>WhatsApp</li>
+        </ul>
+        <p class="tablet-hint">A made-up call, drawn to show the window.</p>
+      </div>
+    </div>
+  </div>
+
+  <section class="band" id="mac-how" aria-labelledby="mac-how-h">
+    <div class="wrap">
+      <h2 id="mac-how-h">What it does on Mac</h2>
+      <p class="intro">Calls are where a Mac helps most: the captions sit right next to the faces.</p>
+      <div class="grid3">
+        <div class="card"><span class="badge">In testing</span><h3>Any call app</h3><p>FaceTime, phone calls from your iPhone, Zoom, Teams, Google Meet, WhatsApp and more. Seal Speak captions the sound your Mac plays, so the call app doesn't need to support it.</p></div>
+        <div class="card"><span class="badge">In testing</span><h3>The room and the call together</h3><p>It listens to the call and to the people around your Mac at once. When the voice changes, it starts a new line and labels it Speaker 1 or Speaker 2.</p></div>
+        <div class="card"><span class="badge">In testing</span><h3>A small window on top</h3><p>The window stays above your call, so the captions are always next to the faces. Press &#8984;H to hide it.</p></div>
+      </div>
+      <div class="grid3">
+        <div class="card"><span class="badge">In testing</span><h3>Offers to caption a call</h3><p>When a FaceTime or iPhone call rings, Seal Speak offers to caption it. For other apps, press Start.</p></div>
+        <div class="card"><span class="badge">In testing</span><h3>Keep the call's words if you want</h3><p>When the call ends, you choose whether to save what was said. Saved conversations stay on your Mac for 30 days.</p></div>
+        <div class="card"><span class="badge">In testing</span><h3>Made on your Mac</h3><p>The call is captioned on your Mac. Its sound is never recorded or sent anywhere.</p></div>
+      </div>
+    </div>
+  </section>
+  </div>
+
+  <section class="band story" id="story" aria-labelledby="story-h">
+    <div class="wrap story-wrap">
+      <img class="story-seal" src="assets/favicon.svg" alt="" width="120" height="120">
+      <h2 id="story-h">Why I made Seal Speak</h2>
+      <!-- Owner-approved wording and look (#142, 2026-10-20). Don't rewrite it without the owner. -->
+      <p class="story-lead">Everyone deserves to be part of the conversation.</p>
+      <p>For people who are hard of hearing, like my mom, the right technology can give that back. I built Seal Speak as a birthday gift for her, and now it's here for you too.</p>
+      <p>Most live captioning costs a monthly fee and stops working without signal. Seal Speak runs entirely on your iPhone, works anywhere, and costs one price, once. No subscription, no account, no ads.</p>
+      <p>If it helps you stay close to the people you love, this app is for you.</p>
+      <p class="story-sign">Gil<span>Maker of Seal Speak</span></p>
     </div>
   </section>
 
@@ -641,5 +766,6 @@
 
 <script type="module" src="demo.js"></script>
 <script type="module" src="motion.js"></script>
+<script type="module" src="devices.js"></script>
 </body>
 </html>
