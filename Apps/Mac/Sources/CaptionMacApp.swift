@@ -3,6 +3,9 @@ import CaptionCore
 
 @main
 struct CaptionMacApp: App {
+    /// The app's name everywhere a person sees it: Dock, menu bar, window (#172; "CaptionMac" was the working name from #41).
+    static let windowTitle = "Seal Speak"
+
     @StateObject private var model = CaptionMacModel()
 
     init() {
@@ -13,14 +16,14 @@ struct CaptionMacApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("Captions", id: "main") {
+        WindowGroup(CaptionMacApp.windowTitle, id: "main") {
             CallPopupWindow(model: model)
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 440, height: 420)
         .windowResizability(.contentMinSize)
 
-        MenuBarExtra("Seal", systemImage: MenuBarPresentation.symbolName(for: model.state)) {
+        MenuBarExtra("Seal Speak", systemImage: MenuBarPresentation.symbolName(for: model.state)) {
             MenuBarControlView(model: model)
         }
     }

@@ -43,6 +43,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.gileskayo.captions
+        # The name in the Dock, the app menu, Finder and TestFlight; the target keeps its working name.
+        PRODUCT_NAME: "Seal Speak"
         CODE_SIGN_ENTITLEMENTS: CaptionMac.entitlements
         ENABLE_HARDENED_RUNTIME: YES
         # TestFlight for macOS on the iPhone app's App Store Connect record (same bundle ID: universal purchase).

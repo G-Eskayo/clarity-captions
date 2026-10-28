@@ -38,7 +38,7 @@ enum MarvinScreenshot {
         guard let path = defaults.string(forKey: "MarvinLiveSnapshot") else { return }
         let delay = defaults.double(forKey: "MarvinLiveSnapshotAfter")
         DispatchQueue.main.asyncAfter(deadline: .now() + max(delay, 1)) {
-            guard let view = NSApplication.shared.windows.first(where: { $0.title == "Captions" })?.contentView else { return }
+            guard let view = NSApplication.shared.windows.first(where: { $0.title == CaptionMacApp.windowTitle })?.contentView else { return }
             do { try write(view, to: URL(fileURLWithPath: path)) } catch {
                 FileHandle.standardError.write("live snapshot failed: \(error)\n".data(using: .utf8)!)
             }
