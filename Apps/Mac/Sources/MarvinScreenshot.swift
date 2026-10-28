@@ -6,7 +6,9 @@ import SwiftUI
 /// The MARVIN Mac screenshot contract (marvin #727): launched with `-MarvinScreenshot <png>` (and optionally
 /// `-MarvinAppearance light|dark`) plus a scene's own arguments, the app draws that scene off-screen, writes the PNG
 /// at 2x and quits. Needs no Screen Recording permission. Scenes:
-///   `-SealPopupMockup auto|switch|waiting`  the #172 pop-up mock-up (Paper when light, Harbor when dark)
+///   `-SealPopupMockup auto|waiting|stopped`
+/// `-MarvinLiveSnapshot <png> -MarvinLiveSnapshotAfter <seconds>` instead snapshots the live window while the app keeps
+/// running (proof of a real run, without Screen Recording).  the #172 pop-up mock-up (Paper when light, Harbor when dark)
 enum MarvinScreenshot {
     static func runIfRequested() {
         let defaults = UserDefaults.standard
@@ -31,6 +33,18 @@ enum MarvinScreenshot {
         }
     }
 
+    static func scheduleLiveSnapshotIfRequested() {
+        let defaults = UserDefaults.standard
+        guard let path = defaults.string(forKey: "MarvinLiveSnapshot") else { return }
+        let delay = defaults.double(forKey: "MarvinLiveSnapshotAfter")
+        DispatchQueue.main.asyncAfter(deadline: .now() + max(delay, 1)) {
+            guard let view = NSApplication.shared.windows.first(where: { $0.title == "Captions" })?.contentView else { return }
+            do { try write(view, to: URL(fileURLWithPath: path)) } catch {
+                FileHandle.standardError.write("live snapshot failed: \(error)\n".data(using: .utf8)!)
+            }
+        }
+    }
+
     private static func render<V: View>(_ view: V, to url: URL, dark: Bool) throws {
         let host = NSHostingView(rootView: view)
         host.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
@@ -38,6 +52,10 @@ enum MarvinScreenshot {
         let window = NSWindow(contentRect: host.frame, styleMask: .borderless, backing: .buffered, defer: false)
         window.contentView = host
         host.layoutSubtreeIfNeeded()
+        try write(host, to: url)
+    }
+
+    private static func write(_ host: NSView, to url: URL) throws {
         let scale: CGFloat = 2
         let size = host.bounds.size
         guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(size.width * scale), pixelsHigh: Int(size.height * scale),

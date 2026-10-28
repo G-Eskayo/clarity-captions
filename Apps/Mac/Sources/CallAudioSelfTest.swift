@@ -9,6 +9,8 @@ import Foundation
 enum CallAudioSelfTest {
     static let sentence = "She sells seashells by the seashore. The harbor is calm this morning."
 
+    static var isRequested: Bool { UserDefaults.standard.string(forKey: "CallAudioSelfTest") != nil }
+
     static func runIfRequested() {
         guard let mode = UserDefaults.standard.string(forKey: "CallAudioSelfTest") else { return }
         Task.detached {

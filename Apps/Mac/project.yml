@@ -20,6 +20,7 @@ targets:
     platform: macOS
     sources:
       - Sources
+      - Assets.xcassets
       # Seal Speak's look, shared with the iPhone app rather than copied (#172 pop-up).
       - path: ../Spike/Sources/GummyButtonStyle.swift
       - path: ../Spike/Sources/CaptionStyle+SwiftUI.swift
@@ -42,11 +43,20 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.gileskayo.captions
+        CODE_SIGN_ENTITLEMENTS: CaptionMac.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
+        # TestFlight for macOS on the iPhone app's App Store Connect record (same bundle ID: universal purchase).
+        MARKETING_VERSION: "1.1"
+        CURRENT_PROJECT_VERSION: "1"
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.utilities
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: "$(APP_DISPLAY_NAME)"
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "Captions need the microphone to show what people nearby are saying."
         INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "Captions turn speech into on-screen text on this device."
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      configs:
+        Debug:
+          CODE_SIGN_ENTITLEMENTS: CaptionMac-Debug.entitlements
 schemes:
   CaptionMac:
     build:

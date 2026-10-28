@@ -31,6 +31,18 @@ final class CaptionMacModel: ObservableObject {
         didSet { CaptionStyleStore().save(style) }
     }
     @Published var speakerNames = SpeakerNames()
+    /// The pop-up stays above other windows (#172).
+    @Published var pinned = true
+
+    /// The caption lines as the pop-up draws them.
+    var popupLines: [CallPopupView.Line] {
+        stream.lines.map { line in
+            var speaker: Int?
+            if case .resolved(let s) = SpeakerLabeling.state(for: line) { speaker = s }
+            return CallPopupView.Line(id: line.id, speaker: speaker, name: speaker.flatMap { speakerNames.name(for: $0) },
+                                      text: line.text, volatile: !line.isFinal)
+        }
+    }
 
     private var controller: CaptionSessionController!
 
