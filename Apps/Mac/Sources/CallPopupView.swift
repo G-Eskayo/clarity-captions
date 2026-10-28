@@ -76,7 +76,7 @@ struct CallPopupView: View {
             .disabled(!buttonEnabled)
             .keyboardShortcut(.space, modifiers: [])
             .padding(.horizontal, 18)
-            .padding(.bottom, 14)
+            .padding(.bottom, 24)   // a little more room under Stop (owner, 2026-10-28)
         }
         .background(style.background.color)
         .environment(\.colorScheme, style.background.isDark ? .dark : .light)

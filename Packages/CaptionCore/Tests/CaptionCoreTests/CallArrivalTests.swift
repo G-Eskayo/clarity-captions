@@ -55,16 +55,37 @@ final class CallArrivalTests: XCTestCase {
         XCTAssertFalse(effects.contains(.saveCall))
     }
 
-    func testAnsweredWhileNotCaptioningGoesStraightToTheCall() {
+    func testACallWhileCaptionsAreOffStillRings() {
+        // Owner, 2026-10-28 ~21:05 UTC: whenever a call comes in, Seal Speak always offers to caption it.
         let (flow, effects) = run([(.callStarted, false)])
-        XCTAssertEqual(flow.step, .call)
-        XCTAssertEqual(effects, [.startCall], "nothing to pause, no banner")
+        XCTAssertEqual(flow.step, .ringing)
+        XCTAssertEqual(flow.banner, .ringing)
+        XCTAssertEqual(effects, [], "nothing starts until they choose")
     }
 
-    func testAfterACallThatInterruptedNothingTheRoomIsNotStartedBehindTheirBack() {
-        let (flow, effects) = run([(.callStarted, false), (.callEnded, false), (.saveTranscript, false)])
+    func testNotNowWithCaptionsOffLeavesThemOff() {
+        let (flow, effects) = run([(.callStarted, false), (.notNow, false), (.callEnded, false)])
         XCTAssertEqual(flow.step, .room)
-        XCTAssertEqual(effects, [.startCall, .stopCall, .saveCall], "the room wasn't being captioned, so don't resume it")
+        XCTAssertEqual(effects, [])
+    }
+
+    func testCaptionCallWithCaptionsOffCaptionsTheCallThenPutsTheConversationBackWithoutStartingIt() {
+        let (flow, effects) = run([(.callStarted, false), (.captionCall, false), (.callEnded, true), (.saveTranscript, false)])
+        XCTAssertEqual(flow.step, .room)
+        XCTAssertEqual(effects, [.pauseRoom, .startCall, .stopCall, .saveCall, .restoreRoom],
+                       "the conversation on screen comes back, but captions weren't on, so they stay off")
+    }
+
+    func testReturnWithCaptionsOffAlsoPutsTheConversationBack() {
+        let (_, effects) = run([(.callStarted, false), (.captionCall, false), (.callEnded, true), (.returnToConversation, false)])
+        XCTAssertEqual(effects.last, .restoreRoom)
+        XCTAssertFalse(effects.contains(.resumeRoom))
+    }
+
+    func testWhetherToResumeIsJudgedWhenTheyTapCaptionCall() {
+        // Captions turned on while the banner was up: they were captioning when the call took over, so resume after.
+        let (_, effects) = run([(.callStarted, false), (.captionCall, true), (.callEnded, true), (.returnToConversation, false)])
+        XCTAssertEqual(effects.last, .resumeRoom)
     }
 
     func testAButtonFromAStaleBannerDoesNothing() {
@@ -101,5 +122,15 @@ final class CallArrivalTests: XCTestCase {
         let (flow, effects) = run(one + [(.callStarted, true)])
         XCTAssertEqual(flow.step, .ringing)
         XCTAssertEqual(effects, [.pauseRoom, .startCall, .stopCall, .resumeRoom])
+    }
+
+    func testEveryEndOfCallPutsAConversationBack() {
+        // Whatever was on screen before the call, the call view never stays behind after the answer.
+        for captioning in [true, false] {
+            for answer in [CallArrival.Event.saveTranscript, .returnToConversation] {
+                let (_, effects) = run([(.callStarted, captioning), (.captionCall, captioning), (.callEnded, true), (answer, false)])
+                XCTAssertTrue(effects.last == .resumeRoom || effects.last == .restoreRoom, "\(captioning) \(answer)")
+            }
+        }
     }
 }

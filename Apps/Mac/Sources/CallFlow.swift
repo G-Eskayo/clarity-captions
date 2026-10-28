@@ -20,8 +20,10 @@ final class CallFlow: ObservableObject {
 
     private unowned let model: CaptionMacModel
     private let watcher = CallWatcher()
+    private let notifier = CallNotifier()
     @Published private var pausedRoom: (stream: CaptionStream, names: SpeakerNames, session: ConversationSession)?
-    var hasPausedRoom: Bool { pausedRoom != nil }
+    /// A conversation with words was set aside for the call (an empty window has nothing to come back to).
+    var hasPausedRoom: Bool { pausedRoom.map { ConversationSession.hasContent($0.stream.lines) } ?? false }
     private var callStartedAt = Date()
     private var queue: Task<Void, Never>?
     init(model: CaptionMacModel) { self.model = model }
@@ -29,7 +31,12 @@ final class CallFlow: ObservableObject {
     /// Called once the window is up. The watcher always runs, so the top bar can name a call app that is really in a
     /// call; the call-arriving flow only when #178 is on.
     func start() {
-        if Self.isEnabled { model.listenOverride = .roomOnly }
+        if Self.isEnabled {
+            model.listenOverride = .roomOnly
+            notifier.onCaption = { [weak self] in self?.send(.captionCall) }
+            notifier.onNotNow = { [weak self] in self?.send(.notNow) }
+            notifier.setUp()
+        }
         watcher.onChange = { [weak self] app in
             guard let self else { return }
             let wasLive = self.callApp != nil
@@ -45,7 +52,12 @@ final class CallFlow: ObservableObject {
 
     func send(_ event: CallArrival.Event) {
         let captioning = model.state == .listening || model.state == .preparing
+        let wasRinging = arrival.banner == .ringing
         let effects = arrival.handle(event, captioning: captioning)
+        // The notification: up when the call starts ringing and she isn't looking at the window, gone once it's answered
+        // either way or the call ends.
+        if arrival.banner == .ringing, !wasRinging, !CallNotifier.windowInFront { notifier.show(detail: ringingDetail) }
+        if wasRinging, arrival.banner != .ringing { notifier.remove() }
         NSLog("[calls] %@ while %@ -> %@ %@", "\(event)", captioning ? "captioning" : "not captioning", "\(arrival.step)", "\(effects)")
         guard !effects.isEmpty else { return }
         let previous = queue
@@ -53,6 +65,14 @@ final class CallFlow: ObservableObject {
             await previous?.value
             for effect in effects { await self?.perform(effect) }
         }
+    }
+
+    /// Whether there's a conversation on screen for a call to pause.
+    var hasConversation: Bool { ConversationSession.hasContent(model.stream.lines) }
+
+    /// The ringing banner's question: pausing only makes sense with a conversation on screen.
+    var ringingDetail: String {
+        hasConversation ? String(localized: "Pause this conversation and caption the call?") : String(localized: "Caption the call?")
     }
 
     /// The pop-up's top-bar words; nil keeps its own ("Listening", "Captioning"). A call app is named only while its call
@@ -91,10 +111,11 @@ final class CallFlow: ObservableObject {
                 // Into the same saved list as every conversation (Saved, kept 30 days).
                 try? await model.store?.save(SavedConversation.from(sessionStart: callStartedAt, lines: lines, speakerNames: model.speakerNames))
             }
-            finishCall()
         case .resumeRoom:
             finishCall()
             model.start()
+        case .restoreRoom:
+            finishCall()
         }
     }
 
@@ -122,7 +143,7 @@ struct CallBannerSlot: View {
         Group {
             switch calls.arrival.banner {
             case .ringing:
-                CallBannerView(kind: .ringing, style: style, onPrimary: { calls.send(.captionCall) }, onSecondary: { calls.send(.notNow) })
+                CallBannerView(kind: .ringing, style: style, detailOverride: calls.ringingDetail, onPrimary: { calls.send(.captionCall) }, onSecondary: { calls.send(.notNow) })
             case .ended:
                 CallBannerView(kind: .ended, style: style, onPrimary: { calls.send(.saveTranscript) }, onSecondary: { calls.send(.returnToConversation) })
             case nil:
@@ -157,12 +178,14 @@ extension CallFlow {
             DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { MainActor.assumeIsolated { work() } }
         }
         let shot = { (name: String) in if let shots { Self.snapshotWindow(to: URL(fileURLWithPath: shots).appendingPathComponent("\(name).png")) } }
-        // The app opens with captions off (#188): press Start, as the owner would, so the call finds them running.
-        at(1) { self.model.start() }
+        // The app opens with captions off (#188): press Start, as the owner would, unless `-SealFakeStart no`.
+        if defaults.string(forKey: "SealFakeStart") != "no" { at(1) { self.model.start() } }
+        // `-SealFakeHide yes`: the app hidden (⌘H) when the call comes, so the offer comes as a notification.
+        if defaults.string(forKey: "SealFakeHide") == "yes" { at(times[0] - 0.5) { NSApp.hide(nil) } }
         at(times[0] - 1) { shot("0-room") }
         at(times[0]) { self.callApp = "FaceTime"; self.send(.callStarted) }
         at(times[0] + 1.2) { shot("1-ringing") }
-        at(times[0] + 2) { self.send(choice) }
+        at(times[0] + 2) { if choice == .captionCall { CallNotifier.bringWindowForward() }; self.send(choice) }
         at(times[1] - 1) { shot("2-call") }
         at(times[1]) { self.callApp = nil; self.send(.callEnded) }
         at(times[1] + 1.5) { shot("3-ended") }

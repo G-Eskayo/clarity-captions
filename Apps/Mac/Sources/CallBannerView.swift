@@ -16,6 +16,8 @@ struct CallBannerView: View {
     let style: CaptionStyle
     /// Where the ring animation is, 0...1, for frozen screenshot frames. Nil: animate live.
     var phase: Double? = nil
+    /// The question under the title, when it differs (no conversation on screen to pause).
+    var detailOverride: String? = nil
     var onPrimary: () -> Void = {}
     var onSecondary: () -> Void = {}
 
@@ -67,7 +69,8 @@ struct CallBannerView: View {
     }
 
     private var detail: String {
-        switch kind {
+        if let detailOverride { return detailOverride }
+        return switch kind {
         case .ringing: String(localized: "Pause this conversation and caption the call?")
         case .ended: String(localized: "Save this call's transcript, or go back to your conversation where it left off.")
         }

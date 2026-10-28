@@ -7,7 +7,8 @@ import Foundation
 /// - [ Caption call ]: the room's conversation is paused (kept), the call is captioned.
 /// - The call ends: captioning stops and the banner asks to save the call's transcript; either answer resumes the room,
 ///   if it was being captioned when the call came.
-/// - A call while nothing is captioned goes straight to the call, no banner.
+/// - Every call rings, captions on or off (owner, 2026-10-28 ~21:05 UTC: Seal Speak always offers to caption a call).
+///   With captions off, the conversation on screen comes back after the call, and captions stay off.
 public struct CallArrival: Equatable, Sendable {
     public enum Step: Equatable, Sendable {
         /// No call, or none we're involved in.
@@ -38,6 +39,8 @@ public struct CallArrival: Equatable, Sendable {
         case saveCall
         /// Bring the room's conversation back and carry on captioning it.
         case resumeRoom
+        /// Bring the conversation that was on screen back, captions still off (they were off when the call came).
+        case restoreRoom
     }
 
     public enum Banner: Equatable, Sendable { case ringing, ended }
@@ -60,16 +63,11 @@ public struct CallArrival: Equatable, Sendable {
     public mutating func handle(_ event: Event, captioning: Bool) -> [Effect] {
         switch (step, event) {
         case (.room, .callStarted):
-            if captioning {
-                step = .ringing
-                return []
-            }
-            step = .call
-            resumeRoomAfter = false
-            return [.startCall]
+            step = .ringing
+            return []
         case (.ringing, .captionCall):
             step = .call
-            resumeRoomAfter = true
+            resumeRoomAfter = captioning
             return [.pauseRoom, .startCall]
         case (.ringing, .notNow):
             step = .declined
@@ -83,7 +81,7 @@ public struct CallArrival: Equatable, Sendable {
         case (.ended, .saveTranscript), (.ended, .returnToConversation):
             step = .room
             var effects: [Effect] = event == .saveTranscript ? [.saveCall] : []
-            if resumeRoomAfter { effects.append(.resumeRoom) }
+            effects.append(resumeRoomAfter ? .resumeRoom : .restoreRoom)
             resumeRoomAfter = false
             return effects
         default:
