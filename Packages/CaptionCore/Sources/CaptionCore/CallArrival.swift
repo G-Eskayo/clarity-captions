@@ -25,7 +25,7 @@ public struct CallArrival: Equatable, Sendable {
     public enum Event: Equatable, Sendable {
         case callStarted, callEnded
         case captionCall, notNow
-        case saveTranscript, dontSave
+        case saveTranscript, returnToConversation
     }
 
     public enum Effect: Equatable, Sendable {
@@ -80,7 +80,7 @@ public struct CallArrival: Equatable, Sendable {
         case (.call, .callEnded):
             step = .ended
             return [.stopCall]
-        case (.ended, .saveTranscript), (.ended, .dontSave):
+        case (.ended, .saveTranscript), (.ended, .returnToConversation):
             step = .room
             var effects: [Effect] = event == .saveTranscript ? [.saveCall] : []
             if resumeRoomAfter { effects.append(.resumeRoom) }

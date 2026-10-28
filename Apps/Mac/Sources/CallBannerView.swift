@@ -8,7 +8,7 @@ struct CallBannerView: View {
     enum Kind: Equatable {
         /// A call is ringing or has just started: caption it instead of the room?
         case ringing
-        /// The call ended: keep its transcript with the saved conversations?
+        /// The call ended: save its transcript, or return to the conversation (owner, 2026-10-28).
         case ended
     }
 
@@ -69,7 +69,7 @@ struct CallBannerView: View {
     private var detail: String {
         switch kind {
         case .ringing: String(localized: "Pause this conversation and caption the call?")
-        case .ended: String(localized: "Save this call's transcript? Then your conversation picks up where it left off.")
+        case .ended: String(localized: "Save this call's transcript, or go back to your conversation where it left off.")
         }
     }
 
@@ -83,7 +83,7 @@ struct CallBannerView: View {
     private var secondaryTitle: String {
         switch kind {
         case .ringing: String(localized: "Not now")
-        case .ended: String(localized: "Don't save")
+        case .ended: String(localized: "Return")
         }
     }
 

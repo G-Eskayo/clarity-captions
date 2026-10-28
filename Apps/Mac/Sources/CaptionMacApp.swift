@@ -40,23 +40,27 @@ struct CallPopupWindow: View {
     var body: some View {
         let control = PrimaryControl.for(model.state)
         VStack(spacing: 0) {
-        CallPopupView(
-            lines: model.popupLines,
-            status: CallPopupView.Status(model.state, hasLines: !model.popupLines.isEmpty),
-            style: model.style,
-            buttonTitle: control.title,
-            buttonEnabled: control.isEnabled,
-            onPrimary: { control.action == .stop ? model.stop() : model.start() },
-            onPickLook: { preset in
-                model.style.background = preset.background
-                model.style.text = preset.text
-            },
-            pinned: $model.pinned,
-            statusWords: calls.statusWords(for: model.state),
-            emptyWords: calls.emptyWords(for: model.state)
-        )
-        .frame(minWidth: 360, minHeight: 300)
-        CallBannerSlot(calls: calls, style: model.style)   // #178: a call arriving mid-conversation
+            ZStack {
+                CallPopupView(
+                    lines: model.popupLines,
+                    status: CallPopupView.Status(model.state, hasLines: !model.popupLines.isEmpty),
+                    style: model.style,
+                    buttonTitle: control.title,
+                    buttonEnabled: control.isEnabled && calls.arrival.step != .ended,   // #178: answer the save question first
+                    onPrimary: { control.action == .stop ? model.stop() : model.start() },
+                    onPickLook: { preset in
+                        model.style.background = preset.background
+                        model.style.text = preset.text
+                    },
+                    pinned: $model.pinned,
+                    statusWords: calls.statusWords(for: model.state),
+                    emptyWords: calls.emptyWords(for: model.state)
+                )
+                .frame(minWidth: 360, minHeight: 300)
+                .id(calls.conversationToken)   // #178: room and call conversations fade across
+                .transition(.opacity)
+            }
+            CallBannerSlot(calls: calls, style: model.style)   // #178: a call arriving mid-conversation
         }
         .background(model.style.background.color)
         .background(WindowFinder(window: $window))

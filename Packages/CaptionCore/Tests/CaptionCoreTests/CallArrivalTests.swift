@@ -48,8 +48,8 @@ final class CallArrivalTests: XCTestCase {
         XCTAssertEqual(effects.suffix(2), [.saveCall, .resumeRoom], "saved before the room's conversation comes back")
     }
 
-    func testDontSaveStillResumesTheRoom() {
-        let (flow, effects) = run([(.callStarted, true), (.captionCall, true), (.callEnded, true), (.dontSave, false)])
+    func testReturnWithoutSavingStillResumesTheRoom() {
+        let (flow, effects) = run([(.callStarted, true), (.captionCall, true), (.callEnded, true), (.returnToConversation, false)])
         XCTAssertEqual(flow.step, .room)
         XCTAssertEqual(effects.last, .resumeRoom)
         XCTAssertFalse(effects.contains(.saveCall))
@@ -97,7 +97,7 @@ final class CallArrivalTests: XCTestCase {
     }
 
     func testTwoCallsInARowEachGetTheirOwnTurn() {
-        let one: [(CallArrival.Event, Bool)] = [(.callStarted, true), (.captionCall, true), (.callEnded, true), (.dontSave, false)]
+        let one: [(CallArrival.Event, Bool)] = [(.callStarted, true), (.captionCall, true), (.callEnded, true), (.returnToConversation, false)]
         let (flow, effects) = run(one + [(.callStarted, true)])
         XCTAssertEqual(flow.step, .ringing)
         XCTAssertEqual(effects, [.pauseRoom, .startCall, .stopCall, .resumeRoom])

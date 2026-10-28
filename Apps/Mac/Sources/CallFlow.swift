@@ -11,6 +11,8 @@ import SwiftUI
 @MainActor
 final class CallFlow: ObservableObject {
     @Published private(set) var arrival = CallArrival()
+    /// Changes whenever the window switches conversation (room -> call, call -> room), so the captions fade across.
+    @Published private(set) var conversationToken = 0
 
     static var isEnabled: Bool { UserDefaults.standard.object(forKey: "listenTo") == nil }
 
@@ -66,14 +68,19 @@ final class CallFlow: ObservableObject {
         return String(localized: "Captions show up here when someone speaks.")
     }
 
+    static let fade = Animation.easeInOut(duration: 0.6)
+
     private func perform(_ effect: CallArrival.Effect) async {
         switch effect {
         case .pauseRoom:
             await model.stopAndWait()
             pausedRoom = (model.stream, model.speakerNames)
         case .startCall:
-            model.stream = CaptionStream()
-            model.speakerNames = SpeakerNames()
+            withAnimation(Self.fade) {
+                model.stream = CaptionStream()
+                model.speakerNames = SpeakerNames()
+                conversationToken += 1
+            }
             callStartedAt = Date()
             model.listenOverride = .both
             NSLog("[calls] call engine starting")
@@ -97,8 +104,12 @@ final class CallFlow: ObservableObject {
     private func finishCall() {
         let room = pausedRoom
         pausedRoom = nil
-        model.stream = room?.stream ?? CaptionStream()
-        model.speakerNames = room?.names ?? SpeakerNames()
+        // The call view fades back to the conversation it interrupted (owner, 2026-10-28).
+        withAnimation(Self.fade) {
+            model.stream = room?.stream ?? CaptionStream()
+            model.speakerNames = room?.names ?? SpeakerNames()
+            conversationToken += 1
+        }
         model.listenOverride = .roomOnly
     }
 }
@@ -114,7 +125,7 @@ struct CallBannerSlot: View {
             case .ringing:
                 CallBannerView(kind: .ringing, style: style, onPrimary: { calls.send(.captionCall) }, onSecondary: { calls.send(.notNow) })
             case .ended:
-                CallBannerView(kind: .ended, style: style, onPrimary: { calls.send(.saveTranscript) }, onSecondary: { calls.send(.dontSave) })
+                CallBannerView(kind: .ended, style: style, onPrimary: { calls.send(.saveTranscript) }, onSecondary: { calls.send(.returnToConversation) })
             case nil:
                 if calls.arrival.step == .call && calls.hasPausedRoom { PausedConversationNote(style: style) }
             }
@@ -130,7 +141,7 @@ import os
 
 /// DEBUG only: drives a pretend call through the real app, so the whole flow can be run and captured without a phone.
 /// `-SealFakeCall 8,30` starts a call 8 s after launch and ends it at 30 s; `-SealFakeChoice caption|notnow` and
-/// `-SealFakeSave yes|no` answer the banners 2 s after they show; `-SealFakeShots <dir>` saves the live window at each
+/// `-SealFakeSave yes|no` (no: Return) answer the banners 2 s after they show; `-SealFakeShots <dir>` saves the live window at each
 /// step (no Screen Recording permission needed).
 extension CallFlow {
     static let log = Logger(subsystem: "com.gileskayo.captions", category: "calls")
@@ -141,7 +152,7 @@ extension CallFlow {
         let times = spec.split(separator: ",").compactMap { Double($0) }
         guard times.count == 2 else { return }
         let choice: CallArrival.Event = defaults.string(forKey: "SealFakeChoice") == "notnow" ? .notNow : .captionCall
-        let save: CallArrival.Event = defaults.string(forKey: "SealFakeSave") == "no" ? .dontSave : .saveTranscript
+        let save: CallArrival.Event = defaults.string(forKey: "SealFakeSave") == "no" ? .returnToConversation : .saveTranscript
         let shots = defaults.string(forKey: "SealFakeShots")
         let at = { (seconds: Double, work: @escaping @MainActor () -> Void) in
             DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { MainActor.assumeIsolated { work() } }
@@ -155,6 +166,7 @@ extension CallFlow {
         at(times[1]) { self.send(.callEnded) }
         at(times[1] + 1.5) { shot("3-ended") }
         at(times[1] + 3) { self.send(save) }
+        at(times[1] + 3.5) { shot("3b-fading") }
         at(times[1] + 10) { shot("4-resumed") }
     }
 
