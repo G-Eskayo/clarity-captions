@@ -3,7 +3,7 @@ import SwiftUI
 import CaptionCore
 
 /// What the window captions (#172). Design A has no control for it; for testing:
-/// `defaults write com.gileskayo.captions listenTo both|call|facetime|room` (sandboxed builds: the container's prefs).
+/// `defaults write com.gileskayo.captions.mac listenTo both|call|facetime|room` (sandboxed builds: the container's prefs).
 enum ListenTo: String {
     /// The call plus a microphone, in one stream, each voice with its own speaker label. Without headphones the mic is the
     /// room's; with headphones that have a mic, only the wearer's; headphones without a mic, the call alone. Default.

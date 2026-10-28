@@ -376,3 +376,14 @@ caveat), **Internal** (process detail, not for marketing).
 - **Drives:** nothing on its own; it is the Mac reference for check C2 and shows why C2's "Apple × 1.10" rule needs
   an absolute margin when Apple's figure is near zero.
 - **Public use:** Internal.
+
+## E27. Universal Purchase comes from one record and one bundle ID
+- **Source:** Apple Developer, [Offering universal purchase](https://developer.apple.com/support/universal-purchase/)
+  (checked 2026-10-28): a macOS app added to an iOS app's record "uses the same Apple ID (an app identifier), SKU, and
+  bundle ID as the iOS app".
+- **What we took:** sharing the bundle ID and record is what makes one purchase cover every platform; a different
+  bundle ID and record keep them separate.
+- **Confidence:** Strong (official documentation).
+- **Drives:** ADR 0028 (the Mac sold separately), #176.
+- **Public use:** Internal.
+
