@@ -44,6 +44,8 @@ final class CaptionMacModel: ObservableObject {
     @Published var speakerNames = SpeakerNames()
     /// The pop-up stays above other windows (#172).
     @Published var pinned = true
+    /// How loud the room is, for the Listening light (#180); nil when not listening.
+    @Published var roomLevelDBFS: Double?
 
     // iPhone parity (#172, owner ~10:10): the same conversation, Save / New, Settings and Saved as the iPhone app.
     /// Which page the pop-up shows: the captions, Settings, Saved, credits.
@@ -96,6 +98,7 @@ final class CaptionMacModel: ObservableObject {
 
         controller.onStateChange = { [weak self] in self?.handle($0) }
         controller.onSoundLabel = { [weak self] in self?.stream.insertSoundLabel($0) }
+        controller.onAudioLevel = { [weak self] in self?.roomLevelDBFS = $0 }
         controller.onUpdate = { [weak self] u in
             guard let self else { return }
             var range: ClosedRange<Double>?
@@ -126,6 +129,7 @@ final class CaptionMacModel: ObservableObject {
             }
         case .idle, .failed, .pausedQuiet:
             tickTask?.cancel()
+            roomLevelDBFS = nil
         }
     }
 

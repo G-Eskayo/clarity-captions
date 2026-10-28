@@ -1,4 +1,5 @@
 import CaptionCore
+import CaptionUI
 import SwiftUI
 
 /// The call-captions pop-up (#172, design A approved in PR #174): a small always-on-top window that captions the call
@@ -41,6 +42,8 @@ struct CallPopupView: View {
     var onNew: () -> Void = {}
     /// Drawn over the captions (the iPhone's dim with [ Save ] / [ New ]).
     var captionsOverlay: AnyView? = nil
+    /// The room's loudness for the Listening light (#180): red, brighter while people talk.
+    var roomLevelDBFS: Double? = nil
     @Binding var pinned: Bool
 
     private var speakerColors: [RGBA] {
@@ -92,12 +95,16 @@ struct CallPopupView: View {
             Button(action: onGear) {
                 Image(systemName: "gearshape").font(.system(size: 17, weight: .regular)).foregroundStyle(style.gear.color)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableIconStyle(tint: style.gear.color))
             .help(String(localized: "Settings"))
             .accessibilityLabel(String(localized: "Settings"))
             Spacer()
             HStack(spacing: 6) {
-                Circle().fill(status == .captioning ? style.saved.color : style.text.color.opacity(0.35)).frame(width: 7, height: 7)
+                if status == .captioning || status == .waiting {
+                    ListeningLightView(background: style.background, roomLevelDBFS: roomLevelDBFS, size: 7)
+                } else {
+                    Circle().fill(style.text.color.opacity(0.35)).frame(width: 7, height: 7)
+                }
                 Text(statusWords)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(style.text.color.opacity(0.75))
@@ -106,12 +113,12 @@ struct CallPopupView: View {
             Button { pinned.toggle() } label: {
                 Image(systemName: pinned ? "pin.fill" : "pin").font(.system(size: 13)).foregroundStyle(style.gear.color.opacity(0.7))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableIconStyle(tint: style.gear.color))
             .help(pinned ? "Stays on top of other windows" : "Doesn't stay on top")
             Button(action: onSaved) {
                 Image(systemName: "list.bullet").font(.system(size: 17, weight: .regular)).foregroundStyle(style.gear.color)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableIconStyle(tint: style.gear.color))
             .padding(.leading, 10)
             .help(String(localized: "Saved conversations"))
             .accessibilityLabel(String(localized: "Saved conversations"))

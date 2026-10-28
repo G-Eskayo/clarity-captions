@@ -29,6 +29,7 @@ struct CallPopupMockup: View {
             status: CallPopupView.Status(state, hasLines: variant == .auto),
             style: style,
             buttonTitle: PrimaryControl.for(state).title,
+            roomLevelDBFS: variant == .auto ? -28 : -60,   // someone talking; a quiet room
             pinned: .constant(true)
         )
         .frame(width: 440)

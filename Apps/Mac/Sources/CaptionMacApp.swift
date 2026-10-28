@@ -87,6 +87,7 @@ struct CallPopupWindow: View {
             onSave: { withAnimation(Fluid.saveMorph(reduceMotion)) { model.save() } },
             onNew: { withAnimation(veilAnimation) { model.requestNew() } },
             captionsOverlay: AnyView(pauseVeil),
+            roomLevelDBFS: model.roomLevelDBFS,
             pinned: $model.pinned
         )
     }
