@@ -16,9 +16,13 @@ environment, not from reading the code.
   `-ClarityDemoSettingsSection <id>`), switch with `xcrun simctl ui booted appearance light|dark`, and save with
   `xcrun simctl io booted screenshot`. The MARVIN pipeline does this automatically for its own PRs. If a screen
   can't be reached that way, add a demo flag that reaches it.
-- Images must be visible in the PR description itself: an image on the pushed branch
-  (`https://github.com/G-Eskayo/clarity-captions/blob/<branch>/<path>?raw=true`) or one dragged into the description.
-  A repo-relative path does not render in a PR description.
+- Images must be visible in the PR description itself, **pinned to a full commit SHA on the raw host**:
+  `https://raw.githubusercontent.com/G-Eskayo/clarity-captions/<40-character sha>/<path>`, or dragged into the
+  description. Run `pr-shots <image>::<what to look at> ...` in the PR's worktree: it commits the images, pushes, pins
+  them and writes them into the PR body (run it again after any later look change to re-pin). A repo-relative path
+  doesn't render; a link by branch name shows whatever is newest, not what was reviewed; and `blob/...?raw=true`
+  doesn't load in the MARVIN dashboard. The `gh` gate on the owner's Macs refuses to open, ready or merge a PR that
+  changes the look without current, pinned images (marvin #735).
 - Tickets that change the look carry images too (a mock-up or a screenshot of the intended result) before they
   are built, so the owner approves what he can see.
 - "N/A" is only acceptable for changes with no visible effect (docs, tests, internal logic).
