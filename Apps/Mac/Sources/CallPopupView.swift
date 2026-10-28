@@ -50,6 +50,15 @@ struct CallPopupView: View {
 
     /// The Start captions pill's height on the Mac (its size before the iPhone's control came in).
     static let pillHeight: CGFloat = 47
+    /// The 14 pt between the newest words and the control.
+    static let controlGap: CGFloat = 14
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private var compact: Bool { control.presentation == .compact }
+    /// Room kept at the bottom of the captions for the control: the X's corner while captioning, the pill's row otherwise.
+    private var controlReserve: CGFloat {
+        (compact ? PrimaryControl.compactDiameter + 16 : Self.pillHeight + GummyButtonStyle.restingLip + 24) + Self.controlGap
+    }
 
     private var speakerColors: [RGBA] {
         let colors = style.preset?.speakers ?? SpeakerPalette.colors(on: style.background, text: style.text)
@@ -70,20 +79,25 @@ struct CallPopupView: View {
                 Button(String(localized: "Save conversation"), action: onSave).disabled(!canSave)
                 Button(String(localized: "New conversation"), action: onNew)
             }
-            // The iPhone's control (#178): the pill sweeps into a small red X while captioning and back, Reduce Motion a
-            // crossfade. A gap above it so the newest words never run into it.
+            // The captions run down to the control, keeping a gap so the newest words never run into it.
+            .padding(.bottom, controlReserve)
+        }
+        // The iPhone's control and layout (#178, owner 2026-10-28): the Start pill centered at the bottom; while
+        // captioning it sweeps into the small red X in the bottom-right corner, so captions get the screen. Reduce
+        // Motion: a crossfade.
+        .overlay(alignment: .bottom) {
             GeometryReader { geo in
                 MorphingControl(control: control, fullWidth: geo.size.width, fill: style.text, label: style.background,
                                 pillHeight: Self.pillHeight, titleFont: .system(size: 19, weight: .semibold), action: onPrimary)
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: compact ? .bottomTrailing : .bottom)
             }
             .frame(height: max(Self.pillHeight, PrimaryControl.compactDiameter) + GummyButtonStyle.restingLip)
             .disabled(!buttonEnabled)
             .opacity(buttonEnabled ? 1 : 0.5)
             .keyboardShortcut(.space, modifiers: [])
-            .padding(.top, 14)
-            .padding(.horizontal, 18)
-            .padding(.bottom, 24)   // a little more room under Stop (owner, 2026-10-28)
+            .padding(.horizontal, compact ? 16 : 18)
+            .padding(.bottom, compact ? 16 : 24)   // a little more room under Start (owner, 2026-10-28)
+            .animation(Fluid.quick(reduceMotion), value: compact)
         }
         .background(style.background.color)
         .environment(\.colorScheme, style.background.isDark ? .dark : .light)
