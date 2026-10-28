@@ -236,6 +236,7 @@ struct RootView: View {
             Group {
                 // Demo mode (debug builds, launch flag only) goes straight to the caption screen.
                 if DemoMode.gummyDemo { GummyDemoView() }
+                else if DemoMode.aliveDemo { AliveDemoView() }
                 else if firstRun.finished || DemoMode.isOn { ContentView() } else { FirstRunView(model: firstRun) }
             }
             .accessibilityHidden(launch != nil)
