@@ -7,6 +7,7 @@ import SwiftUI
 /// `-MarvinAppearance light|dark`) plus a scene's own arguments, the app draws that scene off-screen, writes the PNG
 /// at 2x and quits. Needs no Screen Recording permission. Scenes:
 ///   `-SealPopupMockup auto|waiting|stopped`
+///   `-SealCallMockup ringing|call|ended` (`-SealCallPhase 0...1`): a call arriving mid-conversation (#178)
 /// `-MarvinLiveSnapshot <png> -MarvinLiveSnapshotAfter <seconds>` instead snapshots the live window while the app keeps
 /// running (proof of a real run, without Screen Recording).  the #172 pop-up mock-up (Paper when light, Harbor when dark)
 enum MarvinScreenshot {
@@ -20,7 +21,13 @@ enum MarvinScreenshot {
         style.text = preset.text
 
         let variant = CallPopupMockup.Variant(rawValue: defaults.string(forKey: "SealPopupMockup") ?? "auto") ?? .auto
-        let view = CallPopupMockup(variant: variant, style: style)
+        let view = Group {
+            if let step = defaults.string(forKey: "SealCallMockup").flatMap(CallArrivalMockup.Step.init) {
+                CallArrivalMockup(step: step, style: style, phase: defaults.object(forKey: "SealCallPhase") == nil ? 0.18 : defaults.double(forKey: "SealCallPhase"))
+            } else {
+                CallPopupMockup(variant: variant, style: style)
+            }
+        }
             .padding(24)
             .background(Color(white: dark ? 0.16 : 0.86))   // a plain desktop behind, so the rounded corners show
 

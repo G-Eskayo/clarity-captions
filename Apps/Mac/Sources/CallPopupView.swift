@@ -31,6 +31,8 @@ struct CallPopupView: View {
     var onPrimary: () -> Void = {}
     var onPickLook: (CaptionPreset) -> Void = { _ in }
     @Binding var pinned: Bool
+    /// Replaces the top bar's words, e.g. "Captioning the room" while no call is being captioned (#178).
+    var statusWords: String? = nil
 
     private var speakerColors: [RGBA] {
         let colors = style.preset?.speakers ?? SpeakerPalette.colors(on: style.background, text: style.text)
@@ -58,8 +60,9 @@ struct CallPopupView: View {
         .environment(\.colorScheme, style.background.isDark ? .dark : .light)
     }
 
-    private var statusWords: String {
-        switch status {
+    private var topWords: String {
+        if let statusWords { return statusWords }
+        return switch status {
         case .waiting: String(localized: "Waiting for a FaceTime call")
         case .captioning: String(localized: "Captioning your FaceTime call")
         case .starting: String(localized: "Getting ready…")
@@ -83,7 +86,7 @@ struct CallPopupView: View {
             Spacer()
             HStack(spacing: 6) {
                 Circle().fill(status == .captioning ? style.saved.color : style.text.color.opacity(0.35)).frame(width: 7, height: 7)
-                Text(statusWords)
+                Text(topWords)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(style.text.color.opacity(0.75))
             }
