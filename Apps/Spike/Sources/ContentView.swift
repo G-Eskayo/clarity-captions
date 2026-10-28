@@ -314,6 +314,8 @@ struct ContentView: View {
     /// Round 2 (#118): the app is one screen. Which page shows; the page actually drawn (it changes at the midpoint of
     /// the fade, so the current page fades out before the next fades in); and the fade itself.
     @State private var nav = ScreenNavigator()
+    /// #37 / #53: caption language and translation, as Settings and the language list show them.
+    @State private var language = LanguageSettingsState.current()
     /// Height of the soft fade under the status row (#117 topedge); the first caption line starts below it (#137).
     static let captionsTopFade: CGFloat = 56
     @State private var shownScreen: AppScreen = .captions
@@ -455,6 +457,7 @@ struct ContentView: View {
                         nav.open(.savedConversation(newest.id))
                     }
                 case "credits": nav.open(.credits)
+                case "language": nav.open(.captionLanguage)   // #37 / #53: the caption language list
                 case "license": nav.open(.credits); nav.open(.licenseText)
                 default: break
                 }
@@ -529,7 +532,12 @@ struct ContentView: View {
                              model.tour.did(.closedSettings)
                              go { $0.gearTapped() }
                          },
-                         onOpen: { screen in go { $0.open(screen) } })
+                         onOpen: { screen in go { $0.open(screen) } },
+                         language: language,
+                         onChooseCaptionLanguage: { go { $0.open(.captionLanguage) } })
+        case .captionLanguage:
+            CaptionLanguagePage(style: style, language: language, onBack: { go { $0.back() } })
+                .padding(.horizontal, 16)
         case .saved:
             if let store = model.store {
                 SavedConversationsPage(backTitle: nav.savedOpenedFromCaptions ? String(localized: "Captions") : String(localized: "Settings"),

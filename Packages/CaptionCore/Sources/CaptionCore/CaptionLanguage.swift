@@ -47,6 +47,66 @@ public enum CaptionLanguage {
     static func bcp47(_ l: Locale) -> String { l.identifier(.bcp47) }
 }
 
+/// The list behind "Caption language" and translation's "From" (#37, #53): the language people around her speak.
+/// Apple's speech engine is told one language before it starts and doesn't detect it, so this is chosen, never guessed.
+/// Pure: the engine's lists are passed in.
+public enum CaptionLanguageList {
+    public enum Translation: Equatable, Sendable {
+        /// Translation is off or not bought: the list says nothing about it.
+        case off
+        /// Translates into her language.
+        case translates
+        /// Captioned, but Apple's Translation doesn't have it (Cantonese, 2026-10-28): said plainly, not hidden (#53).
+        case captionsOnly
+        /// Her own language: nothing to translate.
+        case yourLanguage
+
+        /// Where it sits in the list: what translates first, then captions-only, then her own language.
+        public var listGroup: Int {
+            switch self {
+            case .off, .translates: 0
+            case .captionsOnly: 1
+            case .yourLanguage: 2
+            }
+        }
+    }
+
+    public struct Row: Equatable, Sendable, Identifiable {
+        public let locale: Locale
+        public let isCurrent: Bool
+        /// The speech model is on the device: no download.
+        public let onDevice: Bool
+        public let translation: Translation
+        /// False only for a chosen language the engine no longer lists, kept so she can see what's set.
+        public let supported: Bool
+        public var id: String { CaptionLanguage.bcp47(locale) }
+    }
+
+    /// The chosen language first, then every language the engine has, in a fixed order, grouped by `listGroup`.
+    /// `translation`: where captions are translated into and the languages Translation has; nil when it's off.
+    public static func rows(speech: [Locale], installed: [Locale], current: Locale,
+                            translation: (into: Locale, supported: [Locale.Language])?) -> [Row] {
+        let key = CaptionLanguage.bcp47
+        let installedIDs = Set(installed.map(key))
+        func row(_ locale: Locale, supported: Bool) -> Row {
+            let t: Translation
+            if let translation {
+                if CaptionLanguage.sameLanguage(locale, translation.into) { t = .yourLanguage }
+                else if translation.supported.contains(where: { CaptionLanguage.sameLanguage(locale, Locale(identifier: $0.maximalIdentifier)) }) { t = .translates }
+                else { t = .captionsOnly }
+            } else { t = .off }
+            return Row(locale: locale, isCurrent: key(locale) == key(current), onDevice: installedIDs.contains(key(locale)),
+                       translation: t, supported: supported)
+        }
+        var seen = Set<String>()
+        let others = speech.filter { seen.insert(key($0)).inserted && key($0) != key(current) }.sorted { key($0) < key($1) }
+        let currentSupported = speech.contains { key($0) == key(current) }
+        let rest = others.map { row($0, supported: true) }.enumerated()
+            .sorted { ($0.element.translation.listGroup, $0.offset) < ($1.element.translation.listGroup, $1.offset) }.map(\.element)
+        return [row(current, supported: currentSupported)] + rest
+    }
+}
+
 /// The caption language and translation choices, saved like the other settings. No stored caption language means
 /// "follow the device".
 public struct CaptionLanguageStore {

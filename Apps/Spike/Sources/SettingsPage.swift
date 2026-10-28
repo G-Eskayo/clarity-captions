@@ -224,17 +224,12 @@ struct SettingsPage: View {
             }
         }
         if language.translationOn {
-            Button { onChooseTranslationTarget?() } label: {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text("Into").font(scaled(15, .bold)).foregroundStyle(muted)
-                    Text(language.target.map(LanguageSettingsState.name) ?? String(localized: "Choose a language"))
-                        .font(scaled(18, .heavy))
-                    Spacer()
-                    Text(verbatim: "›").font(scaled(20, .heavy)).foregroundStyle(muted)
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
+            // From is the caption language: the same setting as "Caption language" below, opening the same list. Apple's
+            // speech engine needs it named before it starts (it doesn't detect it), so it's chosen, right next to Into.
+            languagePairRow(String(localized: "From"), LanguageSettingsState.name(language.captions),
+                            label: String(localized: "Translate from, ")) { onChooseCaptionLanguage?() }
+            languagePairRow(String(localized: "Into"), language.target.map(LanguageSettingsState.name) ?? String(localized: "Choose a language"),
+                            label: String(localized: "Translate into, ")) { onChooseTranslationTarget?() }
             if let p = language.downloadProgress {
                 VStack(alignment: .leading, spacing: 6) {
                     ProgressView(value: p).tint(style.gear.color)
@@ -245,12 +240,28 @@ struct SettingsPage: View {
         }
     }
 
+    /// "From  Spanish (Spain)  ›" and "Into  English (US)  ›": the words line up so the pair reads as one sentence.
+    private func languagePairRow(_ word: String, _ value: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(verbatim: word).font(scaled(15, .bold)).foregroundStyle(muted)
+                    .frame(minWidth: UIFontMetrics.default.scaledValue(for: 44), alignment: .leading)
+                Text(verbatim: value).font(scaled(18, .heavy))
+                Spacer()
+                Text(verbatim: "›").font(scaled(20, .heavy)).foregroundStyle(muted)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label + value)
+    }
+
     private var translationOfferNote: String {
         String(format: String(localized: "Read what people say in your own language, translated on this %@ with no internet. Each caption shows its translation on top, with what was said underneath. One-time purchase."), LanguageSettingsState.deviceWord)
     }
 
     private var translationNote: String {
-        String(localized: "Each caption shows its translation on top, with what was said in smaller text underneath. What was said always stays. The first time, the language pack downloads once (about 200 MB); after that it works with no internet.")
+        String(localized: "From is the language people around you speak. Each caption shows its translation on top, with what was said in smaller text underneath. The first time, the language pack downloads once (about 200 MB); after that it works with no internet.")
     }
 
     private func section<C: View>(_ title: LocalizedStringKey, first: Bool = false, note: String? = nil, @ViewBuilder _ content: () -> C) -> some View {
