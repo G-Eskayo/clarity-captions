@@ -43,6 +43,14 @@ enum MarvinScreenshot {
     static func scheduleLiveSnapshotIfRequested() {
         let defaults = UserDefaults.standard
         guard let path = defaults.string(forKey: "MarvinLiveSnapshot") else { return }
+        #if DEBUG
+        // Debug only: `com.gileskayo.captions.snapshot` (a distributed notification) snapshots the window now.
+        DistributedNotificationCenter.default().addObserver(forName: .init("com.gileskayo.captions.snapshot"), object: nil, queue: .main) { _ in
+            guard let view = NSApplication.shared.windows.first(where: { $0.title == CaptionMacApp.windowTitle })?.contentView else { return }
+            try? write(view, to: URL(fileURLWithPath: path))
+        }
+        guard defaults.object(forKey: "MarvinLiveSnapshotAfter") != nil else { return }
+        #endif
         let delay = defaults.double(forKey: "MarvinLiveSnapshotAfter")
         DispatchQueue.main.asyncAfter(deadline: .now() + max(delay, 1)) {
             guard let view = NSApplication.shared.windows.first(where: { $0.title == CaptionMacApp.windowTitle })?.contentView else { return }
