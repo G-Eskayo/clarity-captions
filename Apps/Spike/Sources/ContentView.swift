@@ -1,5 +1,6 @@
 import AVFoundation
 import CaptionCore
+import CaptionUI
 import SwiftUI
 import UIKit
 
@@ -629,7 +630,7 @@ struct ContentView: View {
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableIconStyle(tint: gearColor))
         .tourTarget(.gear)
         .accessibilityLabel(String(localized: "Settings"))
     }
@@ -645,7 +646,7 @@ struct ContentView: View {
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableIconStyle(tint: gearColor))
         .tourTarget(.savedList)
         .accessibilityLabel(String(localized: "Saved conversations"))
     }
@@ -686,11 +687,7 @@ struct ContentView: View {
     private func renderStatusDot(_ dot: StatusDot) -> some View {
         switch dot {
         case .pulsing(let level):
-            let opacity = (level + 60) / 30.0
-            Circle()
-                .fill(style.text.color)
-                .opacity(opacity * 0.8)
-                .frame(width: 8, height: 8)
+            ListeningLightView(background: style.background, roomLevelDBFS: level)
         case .flatAmber:
             Circle()
                 .fill(Color(red: 1, green: 0.68, blue: 0))
@@ -926,6 +923,15 @@ struct ContentView: View {
         case "confirmnew": model.demoSetState(.idle); await wait(1); model.requestNew()
         case "jump": following = false
         case "canthear": model.demoSetState(.listening); model.activity = .cantHearAnything
+        case "listening":
+            // A pretend room for the Listening light (#180): someone talks, pauses, talks louder.
+            model.demoSetState(.listening); model.activity = .activelyListening
+            Task { @MainActor in
+                for level in Array(repeating: AliveDemoView.roomLevels, count: 20).joined() {
+                    model.roomLevelDBFS = level
+                    try? await Task.sleep(nanoseconds: 600_000_000)
+                }
+            }
         case "failed": model.demoSetState(.failed(String(localized: "The microphone stopped. Tap Start captions to try again.")))
         case "quiet": model.demoSetState(.pausedQuiet(minutes: 5))
         case "savedfromcaptions":
