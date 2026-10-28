@@ -16,6 +16,7 @@ enum CallAudioSelfTest {
     static var isRequested: Bool { UserDefaults.standard.string(forKey: "CallAudioSelfTest") != nil }
 
     static func runIfRequested() {
+        if UserDefaults.standard.bool(forKey: "MarvinRouteWatch") { Task.detached { await watchRoute() } ; return }
         guard let mode = UserDefaults.standard.string(forKey: "CallAudioSelfTest") else { return }
         Task.detached {
             let ok: Bool
@@ -36,9 +37,9 @@ enum CallAudioSelfTest {
         case "mic": return MicAudioSource(micMode: .standard)
         case "mic-vp": return MicAudioSource(micMode: .voiceProcessing)
         case "both", "both-raw", "both-taponly":
-            let mic = LevelMeter(MicAudioSource(micMode: mode == "both-raw" ? .standard : .voiceProcessing))
+            let mic = LevelMeter(mode == "both" ? RoomMicSource() : MicAudioSource(micMode: mode == "both-raw" ? .standard : .voiceProcessing))
             let tapSource = ProcessTapAudioSource(target: .allSystemAudio)
-            tapSource.usesOutputDevice = mode != "both-taponly"
+            tapSource.usesOutputDevice = mode == "both-raw"
             let tap = LevelMeter(tapSource)
             parts = [("mic", mic), ("tap", tap)]
             return MixedAudioSource([mic, tap])
@@ -93,6 +94,27 @@ enum CallAudioSelfTest {
         let times = text.components(separatedBy: "harbor").count - 1
         log("'harbor' heard \(times) time(s)")
         return times == 1 && (text.contains("seashells") || text.contains("sea shells"))
+    }
+
+    /// `-MarvinRouteWatch YES`: runs the room mic until quit and prints every route change, the mic it chose and how loud
+    /// it is, so headphones can be connected and disconnected while it runs. Never touches the call.
+    private static func watchRoute() async {
+        let room = RoomMicSource()
+        let meter = LevelMeter(room)
+        do {
+            _ = try meter.open()
+            try meter.start { _ in }
+        } catch { log("FAILED: \(error)"); exit(1) }
+        var last = ""
+        for second in 0..<3600 {
+            let route = RoomMicSource.describeRoute()
+            if route != last { log("t=\(second)s \(route)"); last = route }
+            if second % 5 == 4 { log("t=\(second + 1)s mic now \(room.choice), peak so far \(String(format: "%.3f", meter.peak)), frames \(meter.frames), choices \(room.history)") }
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+        }
+        log("choices made: \(room.history)")
+        meter.stop()
+        exit(0)
     }
 
     @discardableResult

@@ -5,8 +5,8 @@ import CaptionCore
 /// What the window captions (#172). Design A has no control for it; for testing:
 /// `defaults write com.gileskayo.captions listenTo both|call|facetime|room` (sandboxed builds: the container's prefs).
 enum ListenTo: String {
-    /// The call and the room together, in one stream, so the call's far side and the people at the Mac are captioned
-    /// with their own speaker labels. Default (owner, 2026-10-28).
+    /// The call plus a microphone, in one stream, each voice with its own speaker label. Without headphones the mic is the
+    /// room's; with headphones that have a mic, only the wearer's; headphones without a mic, the call alone. Default.
     case both
     /// Every sound the Mac plays except Seal Speak's own: FaceTime, a Continuity phone call, Zoom, anything.
     case call
@@ -24,7 +24,8 @@ enum ListenTo: String {
             // The tap's device must not also hold the speakers, or the echo canceller starves it (measured: 0 frames).
             let call = ProcessTapAudioSource(target: .allSystemAudio)
             call.usesOutputDevice = false
-            return MixedAudioSource([MicAudioSource(micMode: .voiceProcessing), call])
+            // The mic follows the headphones (owner, ~10 a.m.): none → the room, echo cancelled; with a mic → that mic only.
+            return MixedAudioSource([RoomMicSource(), call])
         case .call: return ProcessTapAudioSource(target: .allSystemAudio)
         case .facetime: return ProcessTapAudioSource(target: .apps(bundleIDs: CallApps.faceTime))
         case .room: return MicAudioSource()
