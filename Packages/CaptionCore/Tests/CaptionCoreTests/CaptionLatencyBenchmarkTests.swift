@@ -4,6 +4,7 @@ import XCTest
 
 /// Opt-in latency measurement against a fixed audio fixture.
 /// Run with: CAPTION_LATENCY=1 swift test -c release --filter CaptionLatencyBenchmark
+/// Parakeet (ADR 0025): add CAPTION_ENGINE=parakeet (needs scripts/fetch-asr-models.sh).
 /// Results are compared against the baseline in docs/perf/caption-latency-baseline.md.
 final class CaptionLatencyBenchmarkTests: XCTestCase {
     private func fixtureURL() throws -> URL {
@@ -61,11 +62,15 @@ final class CaptionLatencyBenchmarkTests: XCTestCase {
             .map { URL(fileURLWithPath: $0) }
             ?? repo.appendingPathComponent("Apps/Spike/Resources/Models/Sortformer_v2.1.mlmodelc")
 
+        let recognizer: SpeechRecognizerSetup = ProcessInfo.processInfo.environment["CAPTION_ENGINE"] == "parakeet"
+            ? .parakeet(modelURL: repo.appendingPathComponent("Apps/Spike/Resources/Models/ParakeetUltra")) : .apple
+        print("LATENCY-ENGINE \(recognizer)")
+
         // Warm up: model load + ANE prep don't count toward regression.
         try await TranscriptionEngine.warmUp(diarizerModelURL: diarModel)
 
         // First pass: throwaway, discard numbers.
-        let engine1 = TranscriptionEngine(diarizerModelURL: diarModel)
+        let engine1 = TranscriptionEngine(diarizerModelURL: diarModel, recognizer: recognizer)
         var count = 0
         for try await _ in try await engine1.startReplaying(fileURL: fixtureURL) {
             count += 1
@@ -73,7 +78,7 @@ final class CaptionLatencyBenchmarkTests: XCTestCase {
         print("LATENCY-WARMUP threw away \(count) captions")
 
         // Measured pass.
-        let engine = TranscriptionEngine(diarizerModelURL: diarModel)
+        let engine = TranscriptionEngine(diarizerModelURL: diarModel, recognizer: recognizer)
         var lagSamples: [Double] = []
         var firstCaptionTime: TimeInterval?
         let startTime = Date()
@@ -95,6 +100,9 @@ final class CaptionLatencyBenchmarkTests: XCTestCase {
                      report.medianLagSeconds,
                      report.p95LagSeconds,
                      report.timeToFirstCaptionSeconds ?? 0))
+        if let decode = engine.decodeSeconds {
+            print(String(format: "LATENCY-DECODE p50 %.3f s, p95 %.3f s", decode.p50, decode.p95))
+        }
 
         // Check against baseline.
         if let baseline = try loadBaseline() {

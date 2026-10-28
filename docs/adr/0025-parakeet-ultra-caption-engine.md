@@ -2,10 +2,10 @@
 
 ## Status
 
-Proposed (2026-10-22). Would supersede [[0001]]'s engine choice (SpeechAnalyzer) as the default engine; Apple's
-engine stays in the app. Extends [[0014]] (bundled models) to the speech model. Design:
-`docs/design/parakeet-engine-switch.md`. Accepted only after the owner answers the design's decisions; the
-phone checks there gate shipping, not this record.
+Accepted (2026-10-23, owner). Proposed 2026-10-22. Supersedes [[0001]]'s engine choice (SpeechAnalyzer) as the
+default engine; Apple's engine stays in the app. Extends [[0014]] (bundled models) to the speech model. Design:
+`docs/design/parakeet-engine-switch.md`, whose Decisions section holds the owner's answers. The phone checks there
+gate shipping, not this record.
 
 ## Context
 
@@ -42,8 +42,15 @@ it loads a compressed Parakeet folder from a local path with no network (`AsrMod
    from NVIDIA Parakeet TDT 0.6B v3, Core ML conversion by FluidInference, with the change noted (encoder compressed
    to 6 bits for Seal Speak).
 5. **Ships only if the iPhone checks pass** (design section 7: offline load, latency against Apple on the same phone,
-   memory with Sortformer, 60-minute heat and battery, real-room accuracy, fallbacks). If 6-bit fails memory or heat,
-   4-bit is tried; if both fail, build 7 ships with the flag on Apple.
+   memory with Sortformer, 60-minute heat and battery, real-room accuracy, fallbacks), run on a real Release build
+   on the owner's iPhone with both engines in it. If 6-bit fails memory or heat, 4-bit is tried; if both fail, the
+   owner decides what build 7 ships with the real numbers in hand.
+6. **The custom vocabulary list is removed** from the app, with its storage, its tests and its plumbing into the
+   engine. It does not come back as an option or a later feature.
+7. **Hosting:** the compressed model is a GitHub Release asset on this repo, pinned by a per-file sha256 manifest in
+   the repo, with the Mac mini's copy as a fallback source. Two fetch scripts (diarizer, speech model). Apple's
+   speech asset still installs in first run so the fallback works offline. The Mac app stays on Apple's engine in
+   1.1. Decoding starts at a 0.5 s adaptive hop.
 
 ## Consequences
 
@@ -53,7 +60,7 @@ it loads a compressed Parakeet folder from a local path with no network (`AsrMod
   for it.
 - An offline model in a live loop re-encodes audio: each decode is a full 15 s encoder pass. Battery and heat are
   the main risk, handled by an adaptive decode interval, a silence gate and the thermal fallback.
-- The custom vocabulary list only affects the Apple fallback until Parakeet vocabulary boosting is built.
+- No custom vocabulary list on either engine.
 - [[0015]]'s budget exempts model swaps and its baseline is still unmeasured, so the switch is judged against Apple's
   engine measured on the same phone in the same build.
 - Two engines to keep working. The seam keeps the Apple path tested with the same fakes.
