@@ -64,7 +64,8 @@ public enum TranscriptionError: Error {
 /// Live microphone -> on-device SpeechAnalyzer/SpeechTranscriber (ADR 0001).
 /// Spike-grade: no diarization yet, no interruption/route-change handling yet.
 public final class TranscriptionEngine {
-    private let audioEngine = AVAudioEngine()
+    /// Where the sound comes from (#172): the microphone unless the app passes another source (call audio on the Mac).
+    private let source: AudioSource
     private var analyzer: SpeechAnalyzer?
     private var inputBuilder: AsyncStream<AnalyzerInput>.Continuation?
     private let locale: Locale
@@ -97,9 +98,10 @@ public final class TranscriptionEngine {
 
     /// `diarizerModelURL` has no default on purpose: the app must say where its bundled speaker model
     /// lives, so there is no accidental network path (ADR 0014).
-    public init(locale: Locale = Locale(identifier: "en-US"), micMode: MicMode = .standard, diarizerModelURL: URL, contextualStrings: [String] = []) {
+    public init(locale: Locale = Locale(identifier: "en-US"), micMode: MicMode = .standard, diarizerModelURL: URL, contextualStrings: [String] = [], audioSource: AudioSource? = nil) {
         self.locale = locale
         self.micMode = micMode
+        self.source = audioSource ?? MicAudioSource(micMode: micMode)
         self.diarizer = LiveDiarizer(modelURL: diarizerModelURL)
         self.contextualStrings = contextualStrings
     }
@@ -197,36 +199,21 @@ public final class TranscriptionEngine {
         let (sequence, builder) = AsyncStream.makeStream(of: AnalyzerInput.self)
         self.inputBuilder = builder
 
-        #if os(iOS)
-        let session = AVAudioSession.sharedInstance()
-        switch micMode {
-        case .raw: try session.setCategory(.record, mode: .measurement)
-        case .standard: try session.setCategory(.record, mode: .default)
-        case .voiceProcessing: try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
-        }
-        try session.setActive(true)
-        #endif
-        // Must happen before the tap format is read.
-        if micMode == .voiceProcessing { try audioEngine.inputNode.setVoiceProcessingEnabled(true) }
-
-        let input = audioEngine.inputNode
-        let inFormat = input.outputFormat(forBus: 0)
+        let inFormat = try source.open()
         guard let converter = AVAudioConverter(from: inFormat, to: format),
               let diarFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000, channels: 1, interleaved: false),
               let diarConverter = AVAudioConverter(from: inFormat, to: diarFormat) else {
             throw TranscriptionError.converterUnavailable
-        }
-        input.installTap(onBus: 0, bufferSize: 4096, format: inFormat) { buffer, _ in
-            self.processBuffer(buffer, inFormat: inFormat, converter: converter, diarConverter: diarConverter, format: format, diarFormat: diarFormat, fed: fed, builder: builder)
         }
         if !contextualStrings.isEmpty {
             let context = AnalysisContext()
             context.contextualStrings[.general] = contextualStrings
             try await analyzer.setContext(context)
         }
-        audioEngine.prepare()
         let wallTime = FedWallTime()
-        try audioEngine.start()
+        try source.start { buffer in
+            self.processBuffer(buffer, inFormat: inFormat, converter: converter, diarConverter: diarConverter, format: format, diarFormat: diarFormat, fed: fed, builder: builder)
+        }
         wallTime.set(Date())
         try await analyzer.start(inputSequence: sequence)
         analyzerStarted = true
@@ -432,8 +419,7 @@ public final class TranscriptionEngine {
     /// Releases the microphone, the speech analyzer and the helpers. Safe to call more than once.
     public func stop() async {
         prepareLock.withLock { stopped = true }
-        audioEngine.inputNode.removeTap(onBus: 0)
-        audioEngine.stop()
+        source.stop()
         inputBuilder?.finish()
         inputBuilder = nil
         if let analyzer {
