@@ -32,6 +32,26 @@ const hiddenText = (p) => p.evaluate(() => [...document.querySelectorAll('main h
   .filter((e) => { for (let n = e; n && n !== document.body; n = n.parentElement) { const s = getComputedStyle(n); if (+s.opacity < 0.99 || (s.transform !== 'none' && s.transform !== 'matrix(1, 0, 0, 1, 0, 0)' && !n.closest('.phone'))) return true } return false })
   .map((e) => e.tagName + ':' + (e.textContent || '').trim().slice(0, 40)))
 
+// Every bar is full grown and matches its number; the winner in each row is the best number in it.
+async function checkBars(p, tag, minBars, minRows) {
+  const bars = await p.$$eval('[data-bar]', (cells) => cells.map((c) => {
+    const bar = c.querySelector('.bar-fill'); if (!bar) return { text: c.textContent, err: 'no bar' }
+    const want = +c.dataset.bar, got = bar.getBoundingClientRect().width / bar.parentElement.getBoundingClientRect().width
+    return { text: c.textContent.trim(), want, got, win: c.classList.contains('win') }
+  }))
+  ok(bars.length >= minBars, `${tag}: every score has a bar (${bars.length})`)
+  for (const b of bars) ok(!b.err && Math.abs(b.got - b.want) < 0.02, `${tag}: bar for "${b.text}" is ${b.got?.toFixed(3)}, should be ${b.want}`)
+  // The winner in each row is the best number in it: the lowest error rate, the highest translation score.
+  const rows = await p.$$eval('table[data-bars]', (ts) => ts.flatMap((t) => [...t.tBodies[0].rows].map((r) => {
+    const cells = [...r.querySelectorAll('[data-bar]')]; if (cells.length < 2) return null
+    const vals = cells.map((c) => parseFloat(c.textContent)); const lower = t.dataset.better === 'lower'
+    const best = lower ? Math.min(...vals) : Math.max(...vals)
+    return { row: r.cells[0].textContent, ok: cells.every((c, i) => c.classList.contains('win') === (vals[i] === best)) }
+  })).filter(Boolean))
+  for (const r of rows) ok(r.ok, `${tag}: winner marked wrong in "${r.row}"`)
+  ok(rows.length >= minRows, `${tag}: comparison rows found (${rows.length})`)
+}
+
 try {
   for (const [w, h, scheme] of [[1280, 900, 'light'], [390, 800, 'dark']]) {
     const tag = `${w}-${scheme}`
@@ -94,6 +114,9 @@ try {
     await p.click('[data-sample-play]'); await wait(p, 100)
     const a = await p.locator('[data-sample]').evaluate((e) => getComputedStyle(e).getPropertyValue('--s-bg').trim()); await wait(p, 3500)
     ok(a === await p.locator('[data-sample]').evaluate((e) => getComputedStyle(e).getPropertyValue('--s-bg').trim()), `${tag}: Pause stops the sample`)
+    // Home: the test results (#182) grow as bars too, with the better engine marked in each row.
+    await scrollThrough(p)
+    await checkBars(p, `${tag} home`, 2 + 3 * 2 + 3 * 3, 7)
     const sw = await p.evaluate(() => document.documentElement.scrollWidth)
     ok(sw <= w, `${tag}: home has no sideways scroll (scrollWidth ${sw})`)
 
@@ -115,23 +138,7 @@ try {
     await p.screenshot({ path: `${OUT}/motion-versions-switch-${tag}.png` })
     await scrollThrough(p)
     ok((await hiddenText(p)).length === 0, `${tag}: Versions text still hidden or moved after scrolling: ${(await hiddenText(p)).slice(0, 4).join(' | ')}`)
-    // Every bar is full grown and as long as its number says.
-    const bars = await p.$$eval('[data-bar]', (cells) => cells.map((c) => {
-      const bar = c.querySelector('.bar-fill'); if (!bar) return { text: c.textContent, err: 'no bar' }
-      const want = +c.dataset.bar, got = bar.getBoundingClientRect().width / bar.parentElement.getBoundingClientRect().width
-      return { text: c.textContent.trim(), want, got, win: c.classList.contains('win') }
-    }))
-    ok(bars.length >= 3 * 2 + 6 * 3 + 19, `${tag}: every score has a bar (${bars.length})`)
-    for (const b of bars) ok(!b.err && Math.abs(b.got - b.want) < 0.02, `${tag}: bar for "${b.text}" is ${b.got?.toFixed(3)}, should be ${b.want}`)
-    // The winner in each row is the best number in it: the lowest error rate, the highest translation score.
-    const rows = await p.$$eval('table[data-bars]', (ts) => ts.flatMap((t) => [...t.tBodies[0].rows].map((r) => {
-      const cells = [...r.querySelectorAll('[data-bar]')]; if (cells.length < 2) return null
-      const vals = cells.map((c) => parseFloat(c.textContent)); const lower = t.dataset.better === 'lower'
-      const best = lower ? Math.min(...vals) : Math.max(...vals)
-      return { row: r.cells[0].textContent, ok: cells.every((c, i) => c.classList.contains('win') === (vals[i] === best)) }
-    })).filter(Boolean))
-    for (const r of rows) ok(r.ok, `${tag}: winner marked wrong in "${r.row}"`)
-    ok(rows.length >= 9, `${tag}: comparison rows found (${rows.length})`)
+    await checkBars(p, `${tag} versions`, 3 * 2 + 6 * 3 + 19, 9)
     const counts = await p.$$eval('[data-count]', (es) => es.map((e) => ({ shown: e.textContent, real: e.dataset.count, sr: e.previousElementSibling?.textContent })))
     ok(counts.length >= 4, `${tag}: headline numbers present (${counts.length})`)
     for (const c of counts) ok(c.shown === c.real && c.sr === c.real, `${tag}: number counted to "${c.shown}", should be "${c.real}" (screen reader "${c.sr}")`)
