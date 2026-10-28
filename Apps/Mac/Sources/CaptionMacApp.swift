@@ -38,7 +38,7 @@ struct CaptionMacApp: App {
 }
 
 /// The live pop-up (#172): the model's captions in `CallPopupView`, kept above other windows (a full-screen FaceTime
-/// call included) while pinned, and captioning from the moment it opens, as "Captions start when your call does" says.
+/// call included; there's no pin to switch that off, owner 2026-10-28, ⌘H hides it), and captioning from the moment it opens, as "Captions start when your call does" says.
 struct CallPopupWindow: View {
     @ObservedObject var model: CaptionMacModel
     @State private var window: NSWindow?
@@ -60,8 +60,7 @@ struct CallPopupWindow: View {
         .frame(minWidth: 360, minHeight: 300)
         .background(model.style.background.color)
         .background(WindowFinder(window: $window))
-        .onChange(of: window) { _, _ in applyPin() }
-        .onChange(of: model.pinned) { _, _ in applyPin() }
+        .onChange(of: window) { _, _ in keepOnTop() }
         .onAppear {
             if MarvinScene.isOn { MarvinScene.run(model) } else if !CallAudioSelfTest.isRequested { model.start() }
         }
@@ -87,8 +86,7 @@ struct CallPopupWindow: View {
             onSave: { withAnimation(Fluid.saveMorph(reduceMotion)) { model.save() } },
             onNew: { withAnimation(veilAnimation) { model.requestNew() } },
             captionsOverlay: AnyView(pauseVeil),
-            roomLevelDBFS: model.roomLevelDBFS,
-            pinned: $model.pinned
+            roomLevelDBFS: model.roomLevelDBFS
         )
     }
 
@@ -170,10 +168,10 @@ struct CallPopupWindow: View {
         }
     }
 
-    private func applyPin() {
+    private func keepOnTop() {
         guard let window else { return }
-        window.level = model.pinned ? .floating : .normal
-        window.collectionBehavior = model.pinned ? [.canJoinAllSpaces, .fullScreenAuxiliary] : []
+        window.level = .floating
+        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         window.isMovableByWindowBackground = true
     }
 }

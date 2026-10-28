@@ -44,7 +44,6 @@ struct CallPopupView: View {
     var captionsOverlay: AnyView? = nil
     /// The room's loudness for the Listening light (#180): red, brighter while people talk.
     var roomLevelDBFS: Double? = nil
-    @Binding var pinned: Bool
 
     private var speakerColors: [RGBA] {
         let colors = style.preset?.speakers ?? SpeakerPalette.colors(on: style.background, text: style.text)
@@ -110,16 +109,10 @@ struct CallPopupView: View {
                     .foregroundStyle(style.text.color.opacity(0.75))
             }
             Spacer()
-            Button { pinned.toggle() } label: {
-                Image(systemName: pinned ? "pin.fill" : "pin").font(.system(size: 13)).foregroundStyle(style.gear.color.opacity(0.7))
-            }
-            .buttonStyle(PressableIconStyle(tint: style.gear.color))
-            .help(pinned ? "Stays on top of other windows" : "Doesn't stay on top")
             Button(action: onSaved) {
                 Image(systemName: "list.bullet").font(.system(size: 17, weight: .regular)).foregroundStyle(style.gear.color)
             }
             .buttonStyle(PressableIconStyle(tint: style.gear.color))
-            .padding(.leading, 10)
             .help(String(localized: "Saved conversations"))
             .accessibilityLabel(String(localized: "Saved conversations"))
         }

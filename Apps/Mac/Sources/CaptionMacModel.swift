@@ -42,8 +42,6 @@ final class CaptionMacModel: ObservableObject {
         didSet { if !MarvinScene.isOn { CaptionStyleStore().save(style) } }
     }
     @Published var speakerNames = SpeakerNames()
-    /// The pop-up stays above other windows (#172).
-    @Published var pinned = true
     /// How loud the room is, for the Listening light (#180); nil when not listening.
     @Published var roomLevelDBFS: Double?
 
