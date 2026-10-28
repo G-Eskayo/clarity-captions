@@ -14,6 +14,8 @@ enum ListenTo: String {
     case facetime
     /// The Mac's microphone, as before #172.
     case room
+    /// The room alone, the mic following the headphones as in `.both`: #178's mode while no call is being captioned.
+    case roomOnly
 
     static var current: ListenTo { ListenTo(rawValue: UserDefaults.standard.string(forKey: "listenTo") ?? "") ?? .both }
 
@@ -30,6 +32,7 @@ enum ListenTo: String {
         case .call: return ProcessTapAudioSource(target: .allSystemAudio)
         case .facetime: return ProcessTapAudioSource(target: .apps(bundleIDs: CallApps.faceTime))
         case .room: return MicAudioSource()
+        case .roomOnly: return RoomMicSource()
         }
     }
 }
@@ -66,6 +69,9 @@ final class CaptionMacModel: ObservableObject {
 
     var hasConversation: Bool { ConversationSession.hasContent(stream.lines) }
     var veilShowing: Bool { veil.isVisible(state: state, hasConversation: hasConversation) }
+    /// What to caption instead of `ListenTo.current`, while a call arriving is handled (#178).
+    var listenOverride: ListenTo?
+    private(set) lazy var calls = CallFlow(model: self)
 
     /// The caption lines as the pop-up draws them.
     var popupLines: [CallPopupView.Line] {
@@ -80,11 +86,11 @@ final class CaptionMacModel: ObservableObject {
     private var controller: CaptionSessionController!
 
     init() {
-        controller = CaptionSessionController(makeEngine: {
+        controller = CaptionSessionController(makeEngine: { [weak self] in
             guard let url = Bundle.main.url(forResource: "Sortformer_v2.1", withExtension: "mlmodelc") else {
                 throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc"))
             }
-            return TranscriptionEngine(micMode: .standard, diarizerModelURL: url, audioSource: ListenTo.current.audioSource())
+            return TranscriptionEngine(micMode: .standard, diarizerModelURL: url, audioSource: (self?.listenOverride ?? ListenTo.current).audioSource())
         }, idleStopSetting: { [weak self] in self?.idleStop ?? .default })
 
         if let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
@@ -108,6 +114,8 @@ final class CaptionMacModel: ObservableObject {
     func start() { controller.start() }
 
     func stop() { controller.stop() }
+
+    func stopAndWait() async { await controller.stopAndWait() }
 
     /// As on the iPhone: resuming continues the same conversation on a new line; pausing keeps it on screen.
     private func handle(_ newState: CaptionState) {

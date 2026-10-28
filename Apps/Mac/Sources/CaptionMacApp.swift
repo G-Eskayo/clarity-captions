@@ -18,7 +18,7 @@ struct CaptionMacApp: App {
 
     var body: some Scene {
         WindowGroup(CaptionMacApp.windowTitle, id: "main") {
-            CallPopupWindow(model: model)
+            CallPopupWindow(model: model, calls: model.calls)
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 440, height: 420)
@@ -43,6 +43,7 @@ struct CaptionMacApp: App {
 /// session came up dead until Stop, Start.
 struct CallPopupWindow: View {
     @ObservedObject var model: CaptionMacModel
+    @ObservedObject var calls: CallFlow
     @State private var window: NSWindow?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -64,7 +65,8 @@ struct CallPopupWindow: View {
         .background(WindowFinder(window: $window))
         .onChange(of: window) { _, _ in keepOnTop() }
         // No start on open (#188): captions start on Start captions. Only a screenshot scene acts on appear.
-        .onAppear { if MarvinScene.isOn { MarvinScene.run(model) } }
+        .onAppear { if MarvinScene.isOn { MarvinScene.run(model) } else { calls.start() } }   // #178: watch for calls
+        .onChange(of: model.state) { _, state in NSLog("[calls] state %@", "\(state)") }
     }
 
     private var style: CaptionStyle { model.style }
@@ -73,28 +75,38 @@ struct CallPopupWindow: View {
     private var captionsPage: some View {
         let control = PrimaryControl.for(model.state)
         let saveState = model.session.saveButton(lines: model.stream.lines, names: model.speakerNames)
-        return CallPopupView(
-            lines: model.popupLines,
-            status: CallPopupView.Status(model.state, hasLines: !model.popupLines.isEmpty),
-            style: style,
-            buttonTitle: control.title,
-            buttonEnabled: control.isEnabled,
-            onPrimary: { control.action == .stop ? model.stop() : model.start() },
-            onGear: { model.go { $0.gearTapped() } },
-            onSaved: { model.go { $0.openSavedFromCaptions() } },
-            onHoldEmptySpace: { withAnimation(veilAnimation) { model.veil.holdOnEmptySpace(state: model.state) } },
-            canSave: saveState == .save,
-            onSave: { withAnimation(Fluid.saveMorph(reduceMotion)) { model.save() } },
-            onNew: { withAnimation(veilAnimation) { model.requestNew() } },
-            captionsOverlay: AnyView(pauseVeil),
-            roomLevelDBFS: model.roomLevelDBFS
-        )
+        return VStack(spacing: 0) {
+            ZStack {
+                CallPopupView(
+                    lines: model.popupLines,
+                    status: CallPopupView.Status(model.state, hasLines: !model.popupLines.isEmpty),
+                    style: style,
+                    control: control,
+                    buttonEnabled: control.isEnabled && calls.arrival.step != .ended,   // #178: answer the save question first
+                    onPrimary: { control.action == .stop ? model.stop() : model.start() },
+                    onGear: { model.go { $0.gearTapped() } },
+                    onSaved: { model.go { $0.openSavedFromCaptions() } },
+                    onHoldEmptySpace: { withAnimation(veilAnimation) { model.veil.holdOnEmptySpace(state: model.state) } },
+                    canSave: saveState == .save,
+                    onSave: { withAnimation(Fluid.saveMorph(reduceMotion)) { model.save() } },
+                    onNew: { withAnimation(veilAnimation) { model.requestNew() } },
+                    captionsOverlay: AnyView(pauseVeil),
+                    roomLevelDBFS: model.roomLevelDBFS,
+                    statusOverride: calls.statusWords(for: model.state)
+                )
+                .id(calls.conversationToken)   // #178: room and call conversations fade across
+                .transition(.opacity)
+            }
+            CallBannerSlot(calls: calls, style: style)   // #178: a call arriving mid-conversation
+        }
+        .background(style.background.color)
     }
 
     /// The iPhone's dim over a paused conversation (mock-up 02): [ Save ] over [ New ], or New's question in their place.
     /// One click on the dim clears it, to read, scroll and copy.
     private var pauseVeil: some View {
-        DimLayer(visible: model.veilShowing, color: style.background.color, reduceMotion: reduceMotion, onTap: {
+        // #178: never over the call banner.
+        DimLayer(visible: model.veilShowing && calls.arrival.banner == nil, color: style.background.color, reduceMotion: reduceMotion, onTap: {
             withAnimation(veilAnimation) {
                 model.newQuestion.keep()
                 model.veil.tap(state: model.state)

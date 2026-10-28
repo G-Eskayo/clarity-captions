@@ -27,7 +27,8 @@ struct CallPopupView: View {
     let lines: [Line]
     let status: Status
     let style: CaptionStyle
-    let buttonTitle: String
+    /// Start captions / Getting ready… as a pill; while captioning, the iPhone's small X (#178).
+    let control: PrimaryControl
     var buttonEnabled = true
     var onPrimary: () -> Void = {}
     /// The gear: Settings, as on the iPhone (#172 parity).
@@ -44,6 +45,20 @@ struct CallPopupView: View {
     var captionsOverlay: AnyView? = nil
     /// The room's loudness for the Listening light (#180): red, brighter while people talk.
     var roomLevelDBFS: Double? = nil
+    /// Replaces the top bar's words: "Captioning your FaceTime call" only while a call app is really in a call (#178).
+    var statusOverride: String? = nil
+
+    /// The Start captions pill's height on the Mac (its size before the iPhone's control came in).
+    static let pillHeight: CGFloat = 47
+    /// The 14 pt between the newest words and the control.
+    static let controlGap: CGFloat = 14
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private var compact: Bool { control.presentation == .compact }
+    /// Room kept at the bottom of the captions for the control: the X's corner while captioning, the pill's row otherwise.
+    private var controlReserve: CGFloat {
+        (compact ? PrimaryControl.compactDiameter + 16 : Self.pillHeight + GummyButtonStyle.restingLip + 24) + Self.controlGap
+    }
 
     private var speakerColors: [RGBA] {
         let colors = style.preset?.speakers ?? SpeakerPalette.colors(on: style.background, text: style.text)
@@ -64,26 +79,37 @@ struct CallPopupView: View {
                 Button(String(localized: "Save conversation"), action: onSave).disabled(!canSave)
                 Button(String(localized: "New conversation"), action: onNew)
             }
-            Button(action: onPrimary) {
-                Text(buttonTitle)
-                    .font(.system(size: 19, weight: .semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
+            // The captions run down to the control, keeping a gap so the newest words never run into it.
+            .padding(.bottom, controlReserve)
+        }
+        // The iPhone's control and layout (#178, owner 2026-10-28): the Start pill centered at the bottom; while
+        // captioning it sweeps into the small red X in the bottom-right corner, so captions get the screen. Reduce
+        // Motion: a crossfade.
+        .overlay(alignment: .bottom) {
+            GeometryReader { geo in
+                MorphingControl(control: control, fullWidth: geo.size.width, fill: style.text, label: style.background,
+                                pillHeight: Self.pillHeight, titleFont: .system(size: 19, weight: .semibold), action: onPrimary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: compact ? .bottomTrailing : .bottom)
             }
-            .buttonStyle(GummyButtonStyle(style: style))
+            .frame(height: max(Self.pillHeight, PrimaryControl.compactDiameter) + GummyButtonStyle.restingLip)
             .disabled(!buttonEnabled)
+            .opacity(buttonEnabled ? 1 : 0.5)
             .keyboardShortcut(.space, modifiers: [])
-            .padding(.horizontal, 18)
-            .padding(.bottom, 14)
+            .padding(.horizontal, compact ? 16 : 18)
+            .padding(.bottom, compact ? 16 : 24)   // a little more room under Start (owner, 2026-10-28)
+            .animation(Fluid.quick(reduceMotion), value: compact)
         }
         .background(style.background.color)
         .environment(\.colorScheme, style.background.isDark ? .dark : .light)
     }
 
-    private var statusWords: String {
-        switch status {
-        case .waiting: String(localized: "Waiting for a FaceTime call")
-        case .captioning: String(localized: "Captioning your FaceTime call")
+    /// Never names a call app unless one is really in a call (owner, 2026-10-28): the Mac hears every sound plus the mic,
+    /// so "FaceTime" or "the room" would often be wrong.
+    private var topWords: String {
+        if let statusOverride { return statusOverride }
+        return switch status {
+        case .waiting: String(localized: "Listening")
+        case .captioning: String(localized: "Captioning")
         case .starting: String(localized: "Getting ready…")
         case .stopped: String(localized: "Captions are off")
         }
@@ -104,7 +130,7 @@ struct CallPopupView: View {
                 } else {
                     Circle().fill(style.text.color.opacity(0.35)).frame(width: 7, height: 7)
                 }
-                Text(statusWords)
+                Text(topWords)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(style.text.color.opacity(0.75))
             }
@@ -171,7 +197,7 @@ struct CallPopupView: View {
         switch status {
         case .stopped(let words): words
         case .starting: String(localized: "Getting ready…")
-        case .waiting, .captioning: String(localized: "Captions start when your call does.")
+        case .waiting, .captioning: String(localized: "Captions appear when someone speaks.")
         }
     }
 }
