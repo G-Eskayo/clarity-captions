@@ -38,3 +38,47 @@ final class CallSignalTests: XCTestCase {
         XCTAssertFalse(CallSignal.isCallLive([p("com.apple.FaceTimeWidget", input: true), p("avconferenced-helper", input: true)]))
     }
 }
+
+/// The owner's rule (2026-10-28): the top bar names a call app only while that app is really in a call, by the name of
+/// the app that is in it ("Captioning your Zoom call"), and otherwise says no app at all.
+final class CallAppNameTests: XCTestCase {
+    private func p(_ id: String, input: Bool = true, output: Bool = true) -> CallAudioActivity {
+        CallAudioActivity(name: id, isRunningInput: input, isRunningOutput: output)
+    }
+
+    func testNoCallNamesNoApp() {
+        XCTAssertNil(CallSignal.liveCallApp([]))
+        XCTAssertNil(CallSignal.liveCallApp([p("com.apple.CoreSpeech"), p("com.gileskayo.captions")]))
+    }
+
+    func testFaceTimeAndItsServicesAreAllFaceTime() {
+        for id in ["com.apple.FaceTime", "avconferenced", "callservicesd", "com.apple.TelephonyUtilities"] {
+            XCTAssertEqual(CallSignal.liveCallApp([p(id, output: false)]), "FaceTime", id)
+        }
+    }
+
+    func testOtherCallAppsAreNamedForThemselves() {
+        XCTAssertEqual(CallSignal.liveCallApp([p("us.zoom.xos")]), "Zoom")
+        XCTAssertEqual(CallSignal.liveCallApp([p("com.microsoft.teams2")]), "Teams")
+        XCTAssertEqual(CallSignal.liveCallApp([p("net.whatsapp.WhatsApp")]), "WhatsApp")
+    }
+
+    func testAZoomMeetingIsACallToo() {
+        XCTAssertTrue(CallSignal.isCallLive([p("us.zoom.xos", output: false)]))
+    }
+
+    func testACallAppOnlyPlayingSoundIsNotNamed() {
+        // Zoom's test tone, FaceTime's ringtone: sound, but no call.
+        XCTAssertNil(CallSignal.liveCallApp([p("us.zoom.xos", input: false), p("com.apple.FaceTime", input: false)]))
+    }
+
+    func testTwoCallAppsAtOnceGiveOneStableName() {
+        let both = [p("us.zoom.xos"), p("com.apple.FaceTime")]
+        XCTAssertEqual(CallSignal.liveCallApp(both), CallSignal.liveCallApp(both.reversed()), "the name must not flicker with list order")
+        XCTAssertEqual(CallSignal.liveCallApp(both), "FaceTime")
+    }
+
+    func testWordsForTheTopBar() {
+        XCTAssertEqual(CallSignal.captioningWords(app: "Zoom"), "Captioning your Zoom call")
+    }
+}

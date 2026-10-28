@@ -24,6 +24,12 @@ targets:
       # Seal Speak's look, shared with the iPhone app rather than copied (#172 pop-up).
       - path: ../Spike/Sources/GummyButtonStyle.swift
       - path: ../Spike/Sources/CaptionStyle+SwiftUI.swift
+      # iPhone parity (#172, owner ~10:10): the same Settings, Saved and credits screens, shared, not redrawn.
+      - path: ../Spike/Sources/OneScreenPieces.swift
+      - path: ../Spike/Sources/SettingsPage.swift
+      - path: ../Spike/Sources/SavedConversationsView.swift
+      - path: ../Spike/Sources/SystemTextSizeCategory+DynamicTypeSize.swift
+      - path: ../Spike/Sources/AboutCreditsView.swift
       - path: ../Spike/Resources/Fonts
         type: folder
         buildPhase: resources
@@ -34,6 +40,9 @@ targets:
         buildPhase: resources
     dependencies:
       - package: CaptionCore
+      # #180 / #181: the red Listening light and the press feedback, shared with the iPhone.
+      - package: CaptionCore
+        product: CaptionUI
     info:
       path: Resources/Info.plist
       properties:

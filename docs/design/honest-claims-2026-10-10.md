@@ -41,3 +41,10 @@ Every user-facing claim found, checked against that. "Keep" means it's already h
 | docs/app-store-listing.md, description | "Captions are made by a computer and can contain mistakes. Seal is not a medical device." | Keep | Honest, and needed for review. |
 
 Nothing found claims a reading or hearing benefit. Keep it that way in the marketing site (#44) and the portfolio page.
+
+## 2026-10-28: the home page drops "not a medical device" (#184)
+
+Gil: "I don't think we need the part about the medical device because I don't think anyone looks at it and thinks that
+it is." The home page FAQ is cut to four questions and no longer says it. Seal is still for anyone who wants to follow a
+conversation, with people who are hard of hearing as the main audience, and the rule against claiming a reading or
+hearing benefit stays (`scripts/check-site.mjs`). The App Store description keeps its disclaimer.

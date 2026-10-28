@@ -13,27 +13,30 @@ final class CallFlow: ObservableObject {
     @Published private(set) var arrival = CallArrival()
     /// Changes whenever the window switches conversation (room -> call, call -> room), so the captions fade across.
     @Published private(set) var conversationToken = 0
+    /// The call app in a call right now ("FaceTime", "Zoom"), from the call watcher; nil when there's no call.
+    @Published private(set) var callApp: String?
 
     static var isEnabled: Bool { UserDefaults.standard.object(forKey: "listenTo") == nil }
 
     private unowned let model: CaptionMacModel
     private let watcher = CallWatcher()
-    @Published private var pausedRoom: (stream: CaptionStream, names: SpeakerNames)?
+    @Published private var pausedRoom: (stream: CaptionStream, names: SpeakerNames, session: ConversationSession)?
     var hasPausedRoom: Bool { pausedRoom != nil }
     private var callStartedAt = Date()
     private var queue: Task<Void, Never>?
-    private lazy var store: SavedConversationStore? = {
-        guard let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
-        return try? SavedConversationStore(directory: dir.appendingPathComponent("SavedConversations"))
-    }()
-
     init(model: CaptionMacModel) { self.model = model }
 
-    /// Called once the window is up, before captioning starts.
+    /// Called once the window is up. The watcher always runs, so the top bar can name a call app that is really in a
+    /// call; the call-arriving flow only when #178 is on.
     func start() {
-        guard Self.isEnabled else { return }
-        model.listenOverride = .roomOnly
-        watcher.onChange = { [weak self] live in self?.send(live ? .callStarted : .callEnded) }
+        if Self.isEnabled { model.listenOverride = .roomOnly }
+        watcher.onChange = { [weak self] app in
+            guard let self else { return }
+            let wasLive = self.callApp != nil
+            self.callApp = app
+            guard Self.isEnabled, wasLive != (app != nil) else { return }
+            self.send(app != nil ? .callStarted : .callEnded)
+        }
         watcher.start()
         #if DEBUG
         runFakeCallIfRequested()
@@ -52,20 +55,13 @@ final class CallFlow: ObservableObject {
         }
     }
 
-    /// The pop-up's top-bar words while #178 is running; nil keeps #172's own.
+    /// The pop-up's top-bar words; nil keeps its own ("Listening", "Captioning"). A call app is named only while its call
+    /// is what's being captioned (owner, 2026-10-28).
     func statusWords(for state: CaptionState) -> String? {
-        guard Self.isEnabled else { return nil }
-        switch arrival.step {
-        case .call: return nil
-        case .ended: return String(localized: "Call ended")
-        case .room, .ringing, .declined: return state == .listening ? String(localized: "Captioning the room") : nil
-        }
-    }
-
-    /// The empty window's words while the room is captioned; nil keeps #172's "Captions start when your call does."
-    func emptyWords(for state: CaptionState) -> String? {
-        guard Self.isEnabled, arrival.step != .call, state == .listening else { return nil }
-        return String(localized: "Captions show up here when someone speaks.")
+        if Self.isEnabled, arrival.step == .ended { return String(localized: "Call ended") }
+        let captioningTheCall = !Self.isEnabled || arrival.step == .call
+        guard state == .listening, captioningTheCall, let callApp else { return nil }
+        return CallSignal.captioningWords(app: callApp)
     }
 
     static let fade = Animation.easeInOut(duration: 0.6)
@@ -74,11 +70,12 @@ final class CallFlow: ObservableObject {
         switch effect {
         case .pauseRoom:
             await model.stopAndWait()
-            pausedRoom = (model.stream, model.speakerNames)
+            pausedRoom = (model.stream, model.speakerNames, model.session)
         case .startCall:
             withAnimation(Self.fade) {
                 model.stream = CaptionStream()
                 model.speakerNames = SpeakerNames()
+                model.session = ConversationSession()
                 conversationToken += 1
             }
             callStartedAt = Date()
@@ -91,7 +88,8 @@ final class CallFlow: ObservableObject {
         case .saveCall:
             let lines = model.stream.lines
             if SessionRetention.shouldSave(lines: lines) {
-                try? await store?.save(SavedConversation.from(sessionStart: callStartedAt, lines: lines, speakerNames: model.speakerNames))
+                // Into the same saved list as every conversation (Saved, kept 30 days).
+                try? await model.store?.save(SavedConversation.from(sessionStart: callStartedAt, lines: lines, speakerNames: model.speakerNames))
             }
             finishCall()
         case .resumeRoom:
@@ -108,6 +106,7 @@ final class CallFlow: ObservableObject {
         withAnimation(Self.fade) {
             model.stream = room?.stream ?? CaptionStream()
             model.speakerNames = room?.names ?? SpeakerNames()
+            model.session = room?.session ?? ConversationSession()
             conversationToken += 1
         }
         model.listenOverride = .roomOnly
@@ -158,12 +157,14 @@ extension CallFlow {
             DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { MainActor.assumeIsolated { work() } }
         }
         let shot = { (name: String) in if let shots { Self.snapshotWindow(to: URL(fileURLWithPath: shots).appendingPathComponent("\(name).png")) } }
+        // The app opens with captions off (#188): press Start, as the owner would, so the call finds them running.
+        at(1) { self.model.start() }
         at(times[0] - 1) { shot("0-room") }
-        at(times[0]) { self.send(.callStarted) }
+        at(times[0]) { self.callApp = "FaceTime"; self.send(.callStarted) }
         at(times[0] + 1.2) { shot("1-ringing") }
         at(times[0] + 2) { self.send(choice) }
         at(times[1] - 1) { shot("2-call") }
-        at(times[1]) { self.send(.callEnded) }
+        at(times[1]) { self.callApp = nil; self.send(.callEnded) }
         at(times[1] + 1.5) { shot("3-ended") }
         at(times[1] + 3) { self.send(save) }
         at(times[1] + 3.5) { shot("3b-fading") }

@@ -14,16 +14,33 @@ public struct CallAudioActivity: Equatable, Sendable {
     }
 }
 
-/// How the Mac app knows a call is live (#178). CallKit's call observer is unavailable on macOS, so it reads Core
-/// Audio instead: a call is up while FaceTime or its call services are using the microphone. Public API, no
-/// permission needed.
+/// How the Mac app knows a call is live, and in which app (#178). CallKit's call observer is unavailable on macOS, so
+/// it reads Core Audio instead: a call is up while a call app (FaceTime and its call services, Zoom, …) is using the
+/// microphone. Public API, no permission needed.
 public enum CallSignal {
-    /// FaceTime video and audio calls, and iPhone calls handed to the Mac (Continuity), which run through FaceTime.
-    public static let callProcesses: Set<String> = ["com.apple.FaceTime", "avconferenced", "com.apple.avconferenced",
-                                                    "callservicesd", "com.apple.TelephonyUtilities"]
+    /// The call apps, by process, with the name a person knows them by, in the order a name is chosen when two are in a
+    /// call at once. FaceTime covers FaceTime video and audio, and iPhone calls handed to the Mac (Continuity), which run
+    /// through FaceTime and its call services.
+    public static let callApps: [(name: String, processes: Set<String>)] = [
+        ("FaceTime", ["com.apple.FaceTime", "avconferenced", "com.apple.avconferenced", "callservicesd", "com.apple.TelephonyUtilities"]),
+        ("Zoom", ["us.zoom.xos"]),
+        ("Teams", ["com.microsoft.teams2", "com.microsoft.teams"]),
+        ("WhatsApp", ["net.whatsapp.WhatsApp"]),
+        ("Webex", ["Cisco-Systems.Spark"]),
+    ]
 
-    public static func isCallLive(_ activity: [CallAudioActivity]) -> Bool {
-        activity.contains { $0.isRunningInput && callProcesses.contains($0.name) }
+    /// The call app that is in a call right now: one that is using the microphone. Its sound alone isn't a call
+    /// (a ringtone, a join chime, a test tone).
+    public static func liveCallApp(_ activity: [CallAudioActivity]) -> String? {
+        let recording = Set(activity.filter(\.isRunningInput).map(\.name))
+        return callApps.first { !$0.processes.isDisjoint(with: recording) }?.name
+    }
+
+    public static func isCallLive(_ activity: [CallAudioActivity]) -> Bool { liveCallApp(activity) != nil }
+
+    /// The top bar's words while that app's call is captioned (owner, 2026-10-28).
+    public static func captioningWords(app: String) -> String {
+        String(localized: "Captioning your \(app) call")
     }
 }
 
@@ -34,9 +51,10 @@ import Darwin
 /// Tells the app when a call starts and ends, from Core Audio's change notifications (no polling). An end must hold
 /// for `endGrace` seconds, so a call's audio route changing (headphones in, a Bluetooth switch) doesn't end it.
 public final class CallWatcher {
-    /// On the main queue: true when a call starts, false when it ends.
-    public var onChange: (Bool) -> Void = { _ in }
-    public private(set) var isCallLive = false
+    /// On the main queue: the call app's name when a call starts (or a different app takes over), nil when it ends.
+    public var onChange: (String?) -> Void = { _ in }
+    public private(set) var liveApp: String?
+    public var isCallLive: Bool { liveApp != nil }
     public var endGrace: TimeInterval = 2
 
     private let queue = DispatchQueue(label: "seal.callwatcher")
@@ -73,26 +91,25 @@ public final class CallWatcher {
         for object in watched.subtracting(objects) { unwatch(object) }
         watched = objects
 
-        let live = CallSignal.isCallLive(objects.map { Self.activity(of: $0) })
-        if live {
+        if let app = CallSignal.liveCallApp(objects.map { Self.activity(of: $0) }) {
             pendingEnd?.cancel()
             pendingEnd = nil
-            publish(true)
+            publish(app)
         } else if isCallLive, pendingEnd == nil {
             let end = DispatchWorkItem { [weak self] in
                 guard let self else { return }
                 self.pendingEnd = nil
-                if !CallSignal.isCallLive(Self.snapshot()) { self.publish(false) }
+                if !CallSignal.isCallLive(Self.snapshot()) { self.publish(nil) }
             }
             pendingEnd = end
             queue.asyncAfter(deadline: .now() + endGrace, execute: end)
         }
     }
 
-    private func publish(_ live: Bool) {
-        guard live != isCallLive else { return }
-        isCallLive = live
-        DispatchQueue.main.async { self.onChange(live) }
+    private func publish(_ app: String?) {
+        guard app != liveApp else { return }
+        liveApp = app
+        DispatchQueue.main.async { self.onChange(app) }
     }
 
     private static let watchedSelectors = [kAudioProcessPropertyIsRunningInput, kAudioProcessPropertyIsRunningOutput]

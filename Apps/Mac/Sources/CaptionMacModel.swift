@@ -42,11 +42,33 @@ final class CaptionMacModel: ObservableObject {
     @Published var state: CaptionState = .idle
     @Published var stream = CaptionStream()
     @Published var style: CaptionStyle = CaptionStyleStore().load() {
-        didSet { CaptionStyleStore().save(style) }
+        didSet { if !MarvinScene.isOn { CaptionStyleStore().save(style) } }
     }
     @Published var speakerNames = SpeakerNames()
-    /// The pop-up stays above other windows (#172).
-    @Published var pinned = true
+    /// How loud the room is, for the Listening light (#180); nil when not listening.
+    @Published var roomLevelDBFS: Double?
+
+    // iPhone parity (#172, owner ~10:10): the same conversation, Save / New, Settings and Saved as the iPhone app.
+    /// Which page the pop-up shows: the captions, Settings, Saved, credits.
+    @Published var nav = ScreenNavigator()
+    /// Saved conversations, kept 30 days (ADR 0022), in the app's own folder.
+    private(set) var store: SavedConversationStoring?
+    /// The conversation on screen, kept across pauses until [ New ]; saved only on [ Save ].
+    @Published var session = ConversationSession()
+    /// The dim over a paused conversation, with [ Save ] and [ New ].
+    @Published var veil = PauseVeil()
+    /// [ ✔ ] shows briefly between [ Save ] and [ Saved ].
+    @Published var showingSaveCheck = false
+    /// [ New ]'s one question, asked in place when the conversation isn't saved.
+    @Published var newQuestion = InPlaceQuestion<NewConversationQuestion>()
+    /// ADR 0019, read by the controller on every tick.
+    @Published var idleStop: IdleStopSetting = IdleStopStore().load() {
+        didSet { IdleStopStore().save(idleStop) }
+    }
+    private var tickTask: Task<Void, Never>?
+
+    var hasConversation: Bool { ConversationSession.hasContent(stream.lines) }
+    var veilShowing: Bool { veil.isVisible(state: state, hasConversation: hasConversation) }
     /// What to caption instead of `ListenTo.current`, while a call arriving is handled (#178).
     var listenOverride: ListenTo?
     private(set) lazy var calls = CallFlow(model: self)
@@ -69,10 +91,18 @@ final class CaptionMacModel: ObservableObject {
                 throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc"))
             }
             return TranscriptionEngine(micMode: .standard, diarizerModelURL: url, audioSource: (self?.listenOverride ?? ListenTo.current).audioSource())
-        })
+        }, idleStopSetting: { [weak self] in self?.idleStop ?? .default })
 
-        controller.onStateChange = { [weak self] in self?.state = $0 }
+        if let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+            // Screenshot scenes write to a folder of their own, never the real saved list.
+            let dir = MarvinScene.storeDirectory ?? support.appendingPathComponent("SavedConversations")
+            store = try? SavedConversationStore(directory: dir)
+            Task { [store] in try? await store?.purgeExpired(now: Date()) }
+        }
+
+        controller.onStateChange = { [weak self] in self?.handle($0) }
         controller.onSoundLabel = { [weak self] in self?.stream.insertSoundLabel($0) }
+        controller.onAudioLevel = { [weak self] in self?.roomLevelDBFS = $0 }
         controller.onUpdate = { [weak self] u in
             guard let self else { return }
             var range: ClosedRange<Double>?
@@ -86,4 +116,72 @@ final class CaptionMacModel: ObservableObject {
     func stop() { controller.stop() }
 
     func stopAndWait() async { await controller.stopAndWait() }
+
+    /// As on the iPhone: resuming continues the same conversation on a new line; pausing keeps it on screen.
+    private func handle(_ newState: CaptionState) {
+        state = newState
+        switch newState {
+        case .preparing:
+            session.captioningStarted(at: Date())
+            veil.captioningStarted()
+            stream.breakLine()
+        case .listening:
+            tickTask?.cancel()
+            tickTask = Task { [weak self] in
+                while !Task.isCancelled, self?.state == .listening {
+                    self?.controller.tick()
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                }
+            }
+        case .idle, .failed, .pausedQuiet:
+            tickTask?.cancel()
+            roomLevelDBFS = nil
+        }
+    }
+
+    /// Moves between the pop-up's pages with the iPhone's fade.
+    func go(_ change: (inout ScreenNavigator) -> Void) {
+        withAnimation(Fluid.fade(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)) { change(&nav) }
+    }
+
+    /// [ Save ]: writes the conversation to the saved list (kept 30 days). Saving again updates the same one.
+    func save() {
+        let before = session
+        guard let conversation = session.makeSaved(lines: stream.lines, names: speakerNames, now: Date()) else { return }
+        showingSaveCheck = true
+        Task {
+            do {
+                try await store?.save(conversation)
+                try await store?.purgeExpired(now: Date())
+            } catch {
+                session = before
+            }
+            try? await Task.sleep(nanoseconds: UInt64(FluidTiming.saveCheckHold * 1e9))
+            withAnimation(Fluid.saveMorph(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)) { showingSaveCheck = false }
+        }
+    }
+
+    /// [ New ]: asks first if the conversation isn't saved as it stands.
+    func requestNew() {
+        let unsaved = session.hasUnsavedChanges(lines: stream.lines, names: speakerNames)
+        if NewConversationQuestion.request(hasUnsavedChanges: unsaved, question: &newQuestion) == .startNow { startNew() }
+    }
+
+    /// [ New ], after its question if it asked.
+    func startNew() {
+        stream = CaptionStream()
+        speakerNames = SpeakerNames()
+        session = ConversationSession()
+        veil = PauseVeil()
+        showingSaveCheck = false
+    }
+}
+
+extension ScreenNavigator {
+    /// ⌘, on the Mac: Settings from wherever the pop-up is.
+    mutating func openSettings() {
+        for _ in 0..<4 where current != .settings {
+            if current == .captions { gearTapped() } else { back() }
+        }
+    }
 }

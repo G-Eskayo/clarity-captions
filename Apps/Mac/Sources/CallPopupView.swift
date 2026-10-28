@@ -1,4 +1,5 @@
 import CaptionCore
+import CaptionUI
 import SwiftUI
 
 /// The call-captions pop-up (#172, design A approved in PR #174): a small always-on-top window that captions the call
@@ -29,12 +30,22 @@ struct CallPopupView: View {
     let buttonTitle: String
     var buttonEnabled = true
     var onPrimary: () -> Void = {}
-    var onPickLook: (CaptionPreset) -> Void = { _ in }
-    @Binding var pinned: Bool
-    /// Replaces the top bar's words, e.g. "Captioning the room" while no call is being captioned (#178).
-    var statusWords: String? = nil
-    /// Replaces the empty window's words, e.g. while captioning the room rather than waiting for a call (#178).
-    var emptyWords: String? = nil
+    /// The gear: Settings, as on the iPhone (#172 parity).
+    var onGear: () -> Void = {}
+    /// The list icon opposite the gear: saved conversations, as on the iPhone (#137 option A).
+    var onSaved: () -> Void = {}
+    /// A long click on the captions: brings back the dim with [ Save ] / [ New ], as a hold does on the iPhone.
+    var onHoldEmptySpace: () -> Void = {}
+    /// Right-click / Control-click on the captions: the same two choices as a menu.
+    var canSave = false
+    var onSave: () -> Void = {}
+    var onNew: () -> Void = {}
+    /// Drawn over the captions (the iPhone's dim with [ Save ] / [ New ]).
+    var captionsOverlay: AnyView? = nil
+    /// The room's loudness for the Listening light (#180): red, brighter while people talk.
+    var roomLevelDBFS: Double? = nil
+    /// Replaces the top bar's words: "Captioning your FaceTime call" only while a call app is really in a call (#178).
+    var statusOverride: String? = nil
 
     private var speakerColors: [RGBA] {
         let colors = style.preset?.speakers ?? SpeakerPalette.colors(on: style.background, text: style.text)
@@ -45,7 +56,16 @@ struct CallPopupView: View {
     var body: some View {
         VStack(spacing: 0) {
             topBar
-            if lines.isEmpty { waiting } else { captions }
+            ZStack {
+                if lines.isEmpty { waiting } else { captions }
+                captionsOverlay
+            }
+            .contentShape(Rectangle())
+            .onLongPressGesture(minimumDuration: 0.5, perform: onHoldEmptySpace)
+            .contextMenu {
+                Button(String(localized: "Save conversation"), action: onSave).disabled(!canSave)
+                Button(String(localized: "New conversation"), action: onNew)
+            }
             Button(action: onPrimary) {
                 Text(buttonTitle)
                     .font(.system(size: 19, weight: .semibold))
@@ -62,11 +82,13 @@ struct CallPopupView: View {
         .environment(\.colorScheme, style.background.isDark ? .dark : .light)
     }
 
+    /// Never names a call app unless one is really in a call (owner, 2026-10-28): the Mac hears every sound plus the mic,
+    /// so "FaceTime" or "the room" would often be wrong.
     private var topWords: String {
-        if let statusWords { return statusWords }
+        if let statusOverride { return statusOverride }
         return switch status {
-        case .waiting: String(localized: "Waiting for a FaceTime call")
-        case .captioning: String(localized: "Captioning your FaceTime call")
+        case .waiting: String(localized: "Listening")
+        case .captioning: String(localized: "Captioning")
         case .starting: String(localized: "Getting ready…")
         case .stopped: String(localized: "Captions are off")
         }
@@ -74,30 +96,30 @@ struct CallPopupView: View {
 
     private var topBar: some View {
         HStack {
-            Menu {
-                ForEach(CaptionPreset.all, id: \.id) { preset in
-                    Button(preset.name) { onPickLook(preset) }
-                }
-            } label: {
+            Button(action: onGear) {
                 Image(systemName: "gearshape").font(.system(size: 17, weight: .regular)).foregroundStyle(style.gear.color)
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .help("Look")
+            .buttonStyle(PressableIconStyle(tint: style.gear.color))
+            .help(String(localized: "Settings"))
+            .accessibilityLabel(String(localized: "Settings"))
             Spacer()
             HStack(spacing: 6) {
-                Circle().fill(status == .captioning ? style.saved.color : style.text.color.opacity(0.35)).frame(width: 7, height: 7)
+                if status == .captioning || status == .waiting {
+                    ListeningLightView(background: style.background, roomLevelDBFS: roomLevelDBFS, size: 7)
+                } else {
+                    Circle().fill(style.text.color.opacity(0.35)).frame(width: 7, height: 7)
+                }
                 Text(topWords)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(style.text.color.opacity(0.75))
             }
             Spacer()
-            Button { pinned.toggle() } label: {
-                Image(systemName: pinned ? "pin.fill" : "pin").font(.system(size: 13)).foregroundStyle(style.gear.color.opacity(0.7))
+            Button(action: onSaved) {
+                Image(systemName: "list.bullet").font(.system(size: 17, weight: .regular)).foregroundStyle(style.gear.color)
             }
-            .buttonStyle(.plain)
-            .help(pinned ? "Stays on top of other windows" : "Doesn't stay on top")
+            .buttonStyle(PressableIconStyle(tint: style.gear.color))
+            .help(String(localized: "Saved conversations"))
+            .accessibilityLabel(String(localized: "Saved conversations"))
         }
         .padding(.horizontal, 16)
         .padding(.top, 14)
@@ -151,11 +173,10 @@ struct CallPopupView: View {
     }
 
     private var waitingWords: String {
-        if let emptyWords { return emptyWords }
-        return switch status {
+        switch status {
         case .stopped(let words): words
         case .starting: String(localized: "Getting ready…")
-        case .waiting, .captioning: String(localized: "Captions start when your call does.")
+        case .waiting, .captioning: String(localized: "Captions appear when someone speaks.")
         }
     }
 }

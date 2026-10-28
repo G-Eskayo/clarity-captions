@@ -6,7 +6,7 @@ import SwiftUI
 /// `CallPopupView` and `CallBannerView`; only the data is made up.
 struct CallArrivalMockup: View {
     enum Step: String, CaseIterable {
-        /// Captioning the room when a call rings: the banner under the pop-up.
+        /// Captioning (no call app in a call yet) when a call rings: the banner under the pop-up.
         case ringing
         /// After [ Caption call ]: the call's captions, the room's conversation paused.
         case call
@@ -37,8 +37,7 @@ struct CallArrivalMockup: View {
                 style: style,
                 buttonTitle: PrimaryControl.for(step == .ended ? .idle : .listening).title,
                 buttonEnabled: step != .ended,
-                pinned: .constant(true),
-                statusWords: step == .ringing ? String(localized: "Captioning the room") : step == .ended ? String(localized: "Call ended") : nil
+                statusOverride: step == .call ? CallSignal.captioningWords(app: "FaceTime") : step == .ended ? String(localized: "Call ended") : nil
             )
             .frame(height: 360)
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
