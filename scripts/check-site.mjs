@@ -155,6 +155,29 @@ check(new Set(SAMPLE_STEPS.map((x) => x.theme.id)).size === 6 && new Set(SAMPLE_
   } finally { globalThis.setTimeout = realSet }
 }
 
+// 7. the home page's test results (#182) are the measured ones: each table cell matches its row in docs/perf
+const tested = html.match(/<section[^>]*id="tested"[\s\S]*?<\/section>/)?.[0] || ''
+check(tested, 'index.html has the test results section (#tested)')
+const report = (f) => readFileSync(path.join(SITE, '..', 'docs', 'perf', f), 'utf-8')
+const cell = (text, rowStart, col) => {
+  const row = text.split('\n').find((l) => l.startsWith(rowStart))
+  return row ? row.split('|')[col + 1].match(/\d+\.\d+/)?.[0] : undefined
+}
+const engines = report('engine-accuracy-comparison.md'), langs = report('language-accuracy-comparison.md'), tr = report('translation-comparison.md')
+const LANGS = ['Spanish', 'French', 'German'], PAIRS = ['en-es', 'en-fr', 'en-de']
+const homeTables = [
+  [cell(engines, '| apple-speechanalyzer |', 1), cell(engines, '| parakeet-fluidaudio (ultra-pal6) |', 1)],
+  LANGS.flatMap((l) => [cell(langs, `| ${l} |`, 1), cell(langs, `| ${l} |`, 2)]),
+  PAIRS.flatMap((pr) => [2, 3, 5].map((c) => cell(tr, `| ${pr} | FLORES |`, c)))
+]
+const shown = [...tested.matchAll(/<table class="data[^"]*"[^>]*data-bars[\s\S]*?<\/table>/g)]
+  .map((t) => [...t[0].matchAll(/<td class="n">([^<]*)<\/td>/g)].map((m) => m[1]))
+check(shown.length === homeTables.length, `index.html #tested: ${shown.length} bar tables, expected ${homeTables.length}`)
+homeTables.forEach((want, i) => check(want.every(Boolean) && JSON.stringify(shown[i]) === JSON.stringify(want),
+  `index.html #tested table ${i + 1} shows ${JSON.stringify(shown[i])}, the reports say ${JSON.stringify(want)}`))
+const lat = (row) => engines.split('## Live latency')[1]?.split('\n').find((l) => l.startsWith(row))?.split('|')[3].trim()
+for (const t of [lat('| parakeet-fluidaudio (ultra-pal6) |'), lat('| apple-speechanalyzer')]) check(t && visible(tested).includes(t), `index.html #tested: latency ${t} missing`)
+
 if (failures.length) {
   console.error(`site check: ${failures.length} problem(s)\n- ${failures.join('\n- ')}`)
   process.exit(1)
