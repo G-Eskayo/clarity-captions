@@ -12,6 +12,7 @@
 <meta property="og:title" content="Seal Speak: captions for conversations">
 <meta property="og:description" content="Follow the conversation at the table. Captions made on your iPhone, with no internet needed.">
 <meta property="og:image" content="assets/seal-icon-256.png">
+<link rel="stylesheet" href="motion.css">
 <style>
   @font-face { font-family: 'OpenDyslexic'; src: url('assets/fonts/OpenDyslexic-Regular.woff') format('woff'); font-weight: 400; font-display: swap; }
   @font-face { font-family: 'OpenDyslexic'; src: url('assets/fonts/OpenDyslexic-Bold.woff') format('woff'); font-weight: 700; font-display: swap; }
@@ -41,7 +42,7 @@
   header.top nav { margin-left: auto; display: flex; gap: 1.1rem; font-size: .95rem; }
   header.top nav a { color: var(--muted); text-decoration: none; }
   header.top nav a:hover { color: var(--text); }
-  @media (max-width: 34rem) { header.top nav { display: none; } }
+  @media (max-width: 34rem) { header.top nav a[href^="#"] { display: none; } }
 
   .hero { display: grid; grid-template-columns: 1.1fr .9fr; gap: 3rem; align-items: center; padding: 2rem 0 4rem; }
   @media (max-width: 52rem) { .hero { grid-template-columns: 1fr; gap: 2rem; padding-top: 1rem; } }
@@ -181,6 +182,30 @@
   .faq h3:first-child { margin-top: 0; }
   .faq p { margin: 0; }
   .grid3 + .grid3 { margin-top: 1.25rem; }
+  /* ── tested (#182): the test results, plain first, the method for the curious ── */
+  .prose { max-width: 42rem; }
+  .prose p { margin: 0 0 1rem; }
+  .results { display: grid; gap: 1.25rem; max-width: 50rem; margin-top: 1.5rem; }
+  .results > .card, details.data { min-width: 0; }
+  .results .card h3 { margin-bottom: .2rem; }
+  .results .card .src { margin: .6rem 0 0; }
+  /* Phones: each row's name goes on its own line, its bars side by side under it, so nothing is cut off. */
+  @media (max-width: 34rem) {
+    table.results-t tr { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); column-gap: .75rem; }
+    table.results-t th.rowhead, table.results-t th[scope="row"] { grid-column: 1 / -1; padding-bottom: 0; border-bottom: 0; }
+    table.results-t th.rowhead { color: var(--muted); font-weight: 600; }
+    table.results-t td[data-bar], table.results-t th.n { min-width: 0; padding-left: 0; padding-right: 0; }
+    table.results-t th.n { white-space: normal; align-self: end; }
+  }
+  details.data { margin-top: 1.5rem; max-width: 50rem; }
+  details.data summary { cursor: pointer; font-weight: 700; color: var(--accent); }
+  details.data h3 { font-size: 1.05rem; margin: 1.5rem 0 .3rem; }
+  details.data ul { margin: .5rem 0 0; padding-left: 1.2rem; }
+  .tablewrap { overflow-x: auto; margin-top: .5rem; }
+  table.data { border-collapse: collapse; width: 100%; font-size: .95rem; }
+  table.data th, table.data td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  table.data td.n, table.data th.n { text-align: right; }
+  .src { font-size: .9rem; color: var(--muted); }
   footer { border-top: 1px solid var(--rule); padding: 2rem 0 3rem; color: var(--muted); font-size: .95rem; }
   footer nav { display: flex; flex-wrap: wrap; gap: 1.25rem; margin-bottom: .75rem; }
   .mascot { width: 96px; height: auto; display: block; margin-bottom: .5rem; }
@@ -214,6 +239,7 @@
       <a href="#private">Privacy</a>
       <a href="#faq">Questions</a>
       <a href="#next">Coming next</a>
+      <a href="versions.html">Versions</a>
       <a href="support.html">Support</a>
     </nav>
   </header>
@@ -386,7 +412,7 @@
     <div class="wrap">
       <h2 id="how-h">What it does</h2>
       <p class="intro">One screen and one button to start. Nothing to set up each time.</p>
-      <div class="grid3">
+      <div class="grid3 steps">
         <div class="card"><span class="step-n" aria-hidden="true">1</span><h3>Put your phone on the table</h3><p>Open Seal Speak and tap Start captions. Words show up as people talk.</p></div>
         <div class="card"><span class="step-n" aria-hidden="true">2</span><h3>Read along</h3><p>When the voice changes, Seal starts a new line and labels it Speaker 1 or Speaker 2. Sounds like laughter or a doorbell show up as short labels.</p></div>
         <div class="card"><span class="step-n" aria-hidden="true">3</span><h3>Pause when you need to</h3><p>Tap ✕ and the words dim, with [&nbsp;Save&nbsp;] and [&nbsp;New&nbsp;] on top. Tap the dim to scroll back and reread. Hold an empty spot to bring the buttons back.</p></div>
@@ -416,6 +442,13 @@
     <div class="wrap">
       <h2 id="easy-h">Made to be easy to read</h2>
       <p class="intro">Everything on screen fades in and out. Nothing slides around while you read.</p>
+      <div class="sample-wrap">
+        <figure class="sample" data-sample aria-label="A caption shown in each of Seal's color themes and letterings">
+          <span class="sample-spk">Speaker 1</span>
+          <p class="sample-text">Is it on? Say something so we can see.</p>
+        </figure>
+        <div class="sample-bar"><span data-sample-name>Paper · OpenDyslexic</span><button type="button" data-sample-play hidden>Play</button></div>
+      </div>
       <div class="grid3">
         <div class="card"><h3>Large text</h3><p>Follows your phone's text size, with A− and A+ to go bigger or smaller.</p></div>
         <div class="card"><h3>Six color themes</h3><p>Three light and three dark. Every one keeps strong contrast between the words and the background.</p></div>
@@ -454,6 +487,101 @@
           <p>Speech-to-text uses Apple's on-device speech recognition. Telling voices apart uses the open-source <a href="https://github.com/FluidInference/FluidAudio">FluidAudio</a> library and NVIDIA's <a href="https://huggingface.co/nvidia/diar_streaming_sortformer_4spk-v2.1">Sortformer</a> model, bundled in the app so nothing goes over the network.</p>
         </div>
       </div>
+    </div>
+  </section>
+
+  <section class="band" id="tested" aria-labelledby="tested-h">
+    <div class="wrap">
+      <h2 id="tested-h">How we test Seal Speak</h2>
+      <p class="intro">We don't guess which parts work best. We try each option on the same real recordings and count the mistakes.</p>
+      <div class="stats">
+        <p class="stat"><span class="stat-n" data-count="31">31</span><span class="stat-l">hours of real conversations, from 122 people with accents from all over the world</span></p>
+        <p class="stat"><span class="stat-n" data-count="20%">20%</span><span class="stat-l">fewer mistakes in English with the caption engine coming in 1.1</span></p>
+        <p class="stat"><span class="stat-n" data-count="0.25 s">0.25 s</span><span class="stat-l">for a word to show, against 0.67 s today (median, on a Mac)</span></p>
+      </div>
+      <div class="results">
+        <div class="card">
+          <h3>Fewer mistakes in conversation</h3>
+          <p>Seal Speak 1.0 uses Apple's speech recognition. We tested it against three other engines, and Parakeet Ultra made the fewest mistakes. It comes in 1.1.</p>
+          <div class="tablewrap">
+            <table class="data results-t" style="--cols:2" data-bars data-better="lower">
+              <caption class="sr-only">Mistakes in every 100 words, English conversations</caption>
+              <thead><tr><th scope="col" class="rowhead">Mistakes in every 100 words</th><th class="n" scope="col" data-bar-col>Today: Apple</th><th class="n" scope="col" data-bar-col>In 1.1: Parakeet</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">English conversation</th><td class="n">17.2</td><td class="n">13.8</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="src">Lower is better. 17,528 clips of people talking, the same clips for both.</p>
+        </div>
+        <div class="card">
+          <h3>Other languages too</h3>
+          <p>Captions are English only today. Before offering more languages, we measured them. In Spanish, French and German, Parakeet made 30 to 40% fewer mistakes than Apple.</p>
+          <div class="tablewrap">
+            <table class="data results-t" style="--cols:2" data-bars data-better="lower">
+              <caption class="sr-only">Mistakes in every 100 words, by language</caption>
+              <thead><tr><th scope="col" class="rowhead">Mistakes in every 100 words</th><th class="n" scope="col" data-bar-col>Apple</th><th class="n" scope="col" data-bar-col>Parakeet</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Spanish</th><td class="n">4.0</td><td class="n">2.8</td></tr>
+                <tr><th scope="row">French</th><td class="n">7.5</td><td class="n">4.5</td></tr>
+                <tr><th scope="row">German</th><td class="n">7.2</td><td class="n">4.4</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="src">These are people reading sentences aloud in a quiet room, so every engine does better here than in a real conversation.</p>
+        </div>
+        <div class="card">
+          <h3>Translation, tested in 19 languages</h3>
+          <p>Live translation is planned for 1.1. We compared three ways to translate, and Apple's came closest to a person's translation in Spanish, French and German. Then we tried it in all 19 languages it offers: 18 did as well as those three, and each line took 70 ms or less (on a Mac).</p>
+          <div class="tablewrap">
+            <table class="data results-t" style="--cols:3" data-bars="100" data-better="higher">
+              <caption class="sr-only">How close each translator came to a person's translation, 0 to 100</caption>
+              <thead><tr><th scope="col" class="rowhead">Closeness to a person, 0 to 100</th><th class="n" scope="col" data-bar-col>Apple</th><th class="n" scope="col" data-bar-col>OPUS-MT</th><th class="n" scope="col" data-bar-col>Google ML Kit</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Spanish</th><td class="n">56.8</td><td class="n">55.0</td><td class="n">53.2</td></tr>
+                <tr><th scope="row">French</th><td class="n">73.2</td><td class="n">69.8</td><td class="n">65.4</td></tr>
+                <tr><th scope="row">German</th><td class="n">68.2</td><td class="n">63.6</td><td class="n">59.0</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="src">Higher is better. 1,012 sentences in each language.</p>
+        </div>
+      </div>
+      <details class="data">
+        <summary>For the curious: how we tested</summary>
+        <h3>Captions in English</h3>
+        <ul>
+          <li>Recordings: the EdAcc corpus, 31.4 hours of conversation in many English accents, checked by people (CC BY-SA). 17,528 clips from 122 speakers.</li>
+          <li>Every engine ran on exactly the same clips. A mistake is the standard <dfn>word error rate</dfn>: words that were wrong, missing or added, out of all the words said.</li>
+          <li>Each score has a 95% confidence interval from a speaker-level bootstrap. When two ranges overlap, we don't call a winner.</li>
+          <li>Timing: 526 clips (45 minutes) fed in as if live. "Correct word" is when a word first shows correctly, measured from when it was said.</li>
+        </ul>
+        <div class="tablewrap">
+          <table class="data">
+            <caption class="sr-only">Word error rate and timing by engine</caption>
+            <thead><tr><th scope="col">Engine</th><th class="n" scope="col">WER</th><th class="n" scope="col">95% CI</th><th class="n" scope="col">Correct word, median</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Parakeet Ultra 6-bit (1.1)</th><td class="n">13.8%</td><td class="n">12.8% to 14.8%</td><td class="n">0.25 s</td></tr>
+              <tr><th scope="row">Parakeet v2</th><td class="n">15.5%</td><td class="n">14.5% to 16.6%</td><td class="n">0.24 s</td></tr>
+              <tr><th scope="row">sherpa-onnx</th><td class="n">16.1%</td><td class="n">14.9% to 17.2%</td><td class="n">0.39 s</td></tr>
+              <tr><th scope="row">Apple SpeechAnalyzer (1.0)</th><td class="n">17.2%</td><td class="n">16.0% to 18.4%</td><td class="n">0.67 s</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Other languages</h3>
+        <ul>
+          <li>FLEURS test sets (CC BY 4.0): read speech, 908 Spanish, 676 French and German clips. Accent marks count: <i>esta</i> for <i>está</i> is a mistake.</li>
+          <li>Spanish 4.0% (3.4 to 4.5) against 2.8% (2.4 to 3.3); French 7.5% (6.7 to 8.3) against 4.5% (3.9 to 5.1); German 7.2% (6.5 to 7.9) against 4.4% (3.8 to 5.0). The ranges don't overlap.</li>
+        </ul>
+        <h3>Translation</h3>
+        <ul>
+          <li>FLORES-200 devtest, 1,012 sentences, scored with chrF (0 to 100) and COMET (0 to 1), with 95% intervals.</li>
+          <li>Apple led in every language, also on caption-style text with no capitals or punctuation, where it lost the least.</li>
+          <li>Across 19 languages, 18 scored a COMET of 0.86 or more. Hindi scored 0.807 and needs a closer look.</li>
+        </ul>
+        <p class="src">Measured on a Mac, not yet on an iPhone. Reports: <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/engine-accuracy-comparison.md">captions in English</a>, <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/language-accuracy-comparison.md">other languages</a>, <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/translation-comparison.md">translation</a>.</p>
+      </details>
+      <p style="margin-top:1.5rem"><a href="versions.html#engine">Every chart and the full story are on the Versions page &rarr;</a></p>
     </div>
   </section>
 
@@ -512,5 +640,6 @@
 </footer>
 
 <script type="module" src="demo.js"></script>
+<script type="module" src="motion.js"></script>
 </body>
 </html>

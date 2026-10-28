@@ -16,3 +16,4 @@ scripts/engine-eval/**/.pytest_cache/
 Packages/EngineEval/.build/
 *.parquet
 edacc/
+Apps/Mac/Resources/Models/

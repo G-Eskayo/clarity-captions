@@ -10,7 +10,8 @@ import { readFileSync, existsSync, readdirSync } from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { THEMES, SCRIPT, LETTERING, SAVED_EXAMPLE } from '../site/seal-data.js'
-import { chunksOf, blocksFor, lip, transcriptOf, previewOf, savedTitle } from '../site/demo.js'
+import { chunksOf, blocksFor, lip, transcriptOf, previewOf, savedTitle, autoplay } from '../site/demo.js'
+import { barFractions, winners, countFrame, SAMPLE_STEPS } from '../site/motion.js'
 
 const SITE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'site')
 const failures = []
@@ -111,6 +112,71 @@ const at = new Date(2026, 9, 20, 15, 5)
 check(savedTitle(new Date(2026, 9, 20, 8, 56), at) === 'Today, 8:56 AM' && savedTitle(new Date(2026, 9, 19, 19, 12), at) === 'Yesterday, 7:12 PM' && savedTitle(new Date(2026, 9, 14, 9, 0), at) === 'Oct 14, 9:00 AM', `savedTitle: Today / Yesterday / date (got ${savedTitle(new Date(2026, 9, 14, 9, 0), at)})`)
 check(lip('#141419') === '#565659', `lip: dark fill lightens 28% (got ${lip('#141419')})`)
 check(lip('#E9E3D5') === '#a8a399', `lip: light fill darkens 28% (got ${lip('#E9E3D5')})`)
+
+// 6. scroll motion (#169)
+check(JSON.stringify(barFractions([56.8, 55, 53.2], 100)) === JSON.stringify([0.568, 0.55, 0.532]), 'barFractions: against a fixed scale')
+check(JSON.stringify(barFractions([4, 2.8, 8])) === JSON.stringify([0.5, 0.35, 1]), 'barFractions: against the biggest score when no scale')
+check(barFractions([120], 100)[0] === 1 && barFractions([0, 0])[0] === 0, 'barFractions: never past full, never divides by zero')
+check(JSON.stringify(winners([4.0, 2.8], 'lower')) === '[false,true]', 'winners: lowest error rate wins')
+check(JSON.stringify(winners([56.8, 55, 53.2], 'higher')) === '[true,false,false]', 'winners: highest translation score wins')
+check(JSON.stringify(winners([13.8, 13.8, 17.2], 'lower')) === '[true,true,false]', 'winners: a tie gives two winners')
+check(JSON.stringify(winners([60.9], 'higher')) === '[false]', 'winners: one score alone is not a contest')
+check(countFrame('40%', 0) === '0%' && countFrame('0.25 s', 0) === '0.00 s' && countFrame('18 of 19', 0) === '0 of 19', `countFrame: starts at zero, keeps unit and decimals (got ${countFrame('0.25 s', 0)})`)
+check(countFrame('40%', 1) === '40%' && countFrame('0.25 s', 1) === '0.25 s' && countFrame('70 ms', 2) === '70 ms', 'countFrame: lands exactly on the real text')
+check(+countFrame('40%', 0.5).replace('%', '') > 20, 'countFrame: eases out (past halfway at half time)')
+const steps = [0, 0.3, 0.6, 0.9, 1].map((t) => +countFrame('70 ms', t).split(' ')[0])
+check(steps.every((v, i) => i === 0 || v >= steps[i - 1]), `countFrame: never counts backwards (${steps})`)
+check(new Set(SAMPLE_STEPS.map((x) => x.theme.id)).size === 6 && new Set(SAMPLE_STEPS.map((x) => x.lettering.id)).size === 6, 'theme sample: all six themes and all six letterings')
+// autoplay: a fake observer and timers, so it runs in Node.
+{
+  let fire = null
+  const IO = class { constructor(cb) { fire = cb } observe() {} disconnect() { fire = null } }
+  const listeners = {}
+  const root = { addEventListener: (ev, fn) => { listeners[ev] = fn } }
+  const calls = []
+  const demo = { state: 'idle', step: 0, startCaptions() { calls.push('start'); this.state = 'running' }, pause(o) { calls.push('pause:' + JSON.stringify(o)); this.state = 'paused' } }
+  const realSet = globalThis.setTimeout
+  const queued = []
+  globalThis.setTimeout = (fn) => { queued.push(fn); return queued.length }
+  try {
+    autoplay(root, demo, { IO })
+    fire([{ isIntersecting: true }]); queued.shift()?.()
+    check(calls.join() === 'start', `autoplay: starts once in view (${calls})`)
+    fire([{ isIntersecting: false }])
+    check(calls[1] === 'pause:{"focus":false}', `autoplay: pauses out of view without taking focus (${calls})`)
+    fire([{ isIntersecting: true }]); queued.shift()?.()
+    check(calls[2] === 'start', 'autoplay: carries on back in view')
+    demo.step = SCRIPT.length; demo.state = 'paused'
+    fire([{ isIntersecting: true }]); queued.shift()?.()
+    check(calls.length === 3, 'autoplay: never replays a finished conversation by itself')
+    demo.step = 0
+    listeners.pointerdown()
+    check(fire === null, 'autoplay: a touch hands the demo to the person for good')
+  } finally { globalThis.setTimeout = realSet }
+}
+
+// 7. the home page's test results (#182) are the measured ones: each table cell matches its row in docs/perf
+const tested = html.match(/<section[^>]*id="tested"[\s\S]*?<\/section>/)?.[0] || ''
+check(tested, 'index.html has the test results section (#tested)')
+const report = (f) => readFileSync(path.join(SITE, '..', 'docs', 'perf', f), 'utf-8')
+const cell = (text, rowStart, col) => {
+  const row = text.split('\n').find((l) => l.startsWith(rowStart))
+  return row ? row.split('|')[col + 1].match(/\d+\.\d+/)?.[0] : undefined
+}
+const engines = report('engine-accuracy-comparison.md'), langs = report('language-accuracy-comparison.md'), tr = report('translation-comparison.md')
+const LANGS = ['Spanish', 'French', 'German'], PAIRS = ['en-es', 'en-fr', 'en-de']
+const homeTables = [
+  [cell(engines, '| apple-speechanalyzer |', 1), cell(engines, '| parakeet-fluidaudio (ultra-pal6) |', 1)],
+  LANGS.flatMap((l) => [cell(langs, `| ${l} |`, 1), cell(langs, `| ${l} |`, 2)]),
+  PAIRS.flatMap((pr) => [2, 3, 5].map((c) => cell(tr, `| ${pr} | FLORES |`, c)))
+]
+const shown = [...tested.matchAll(/<table class="data[^"]*"[^>]*data-bars[\s\S]*?<\/table>/g)]
+  .map((t) => [...t[0].matchAll(/<td class="n">([^<]*)<\/td>/g)].map((m) => m[1]))
+check(shown.length === homeTables.length, `index.html #tested: ${shown.length} bar tables, expected ${homeTables.length}`)
+homeTables.forEach((want, i) => check(want.every(Boolean) && JSON.stringify(shown[i]) === JSON.stringify(want),
+  `index.html #tested table ${i + 1} shows ${JSON.stringify(shown[i])}, the reports say ${JSON.stringify(want)}`))
+const lat = (row) => engines.split('## Live latency')[1]?.split('\n').find((l) => l.startsWith(row))?.split('|')[3].trim()
+for (const t of [lat('| parakeet-fluidaudio (ultra-pal6) |'), lat('| apple-speechanalyzer')]) check(t && visible(tested).includes(t), `index.html #tested: latency ${t} missing`)
 
 if (failures.length) {
   console.error(`site check: ${failures.length} problem(s)\n- ${failures.join('\n- ')}`)

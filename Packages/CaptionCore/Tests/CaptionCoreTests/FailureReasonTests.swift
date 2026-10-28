@@ -47,3 +47,20 @@ final class FailureReasonTests: XCTestCase {
         }
     }
 }
+
+#if os(macOS)
+final class CallAudioFailureReasonTests: XCTestCase {
+    func testNothingToListenToSaysSoPlainly() {
+        let words = FailureReason.plainLanguage(for: CallAudioError.appNotPlayingSound)
+        XCTAssertFalse(words.contains("Something went wrong"), words)
+        XCTAssertTrue(words.lowercased().contains("call"), words)
+    }
+
+    func testACoreAudioRefusalNeverShowsItsStatusCode() {
+        let words = FailureReason.plainLanguage(for: CallAudioError.coreAudio(step: "create tap", status: 560_947_818))
+        XCTAssertFalse(words.contains("560947818"), words)
+        XCTAssertFalse(words.contains("create tap"), words)
+        XCTAssertTrue(words.contains("System Audio Recording"), "should name the permission to check: \(words)")
+    }
+}
+#endif
