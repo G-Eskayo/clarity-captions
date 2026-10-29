@@ -49,6 +49,15 @@ public enum FaceToFace {
         translationOn && min(width, height) >= minimumShortSide
     }
 
+    /// #208: the stacked list a half picks its language from. One row per downloaded translation language (regions of
+    /// one language are one row, the first kept), in the order of `name`, without the language the other half chose.
+    public static func choices(downloaded: [Locale], takenByOtherHalf taken: Locale?, name: (Locale) -> String) -> [Locale] {
+        func code(_ l: Locale) -> String { l.language.languageCode?.identifier ?? l.identifier }
+        var seen: Set<String> = taken.map { [code($0)] } ?? []
+        let unique = downloaded.filter { seen.insert(code($0)).inserted }
+        return unique.sorted { name($0).localizedStandardCompare(name($1)) == .orderedAscending }
+    }
+
     /// What a half shows, in the stream's order. Its own speaker's words as said; the other person's finished words
     /// translated into this half's language when the translation has arrived; anything still being spoken, not yet
     /// translated, or from a speaker with no half yet, as said. `translation(line, into)` gives a line's words in

@@ -146,3 +146,34 @@ final class FaceToFaceTests: XCTestCase {
         XCTAssertEqual(entries.map(\.id), lines.map(\.id))
     }
 }
+
+/// #208 mock-up: the stacked list each half picks its language from. The downloaded translation languages, one row
+/// per language, in the order of the names people read, without the language the other half already chose.
+final class FaceToFaceChoicesTests: XCTestCase {
+    private let downloaded = ["es-ES", "en-US", "fr-FR"].map(Locale.init(identifier:))
+    private func name(_ l: Locale) -> String {
+        ["en": "English", "es": "Español", "fr": "Français", "de": "Deutsch"][l.language.languageCode?.identifier ?? ""] ?? l.identifier
+    }
+    private func ids(_ ls: [Locale]) -> [String] { ls.map(\.identifier) }
+
+    func testEveryDownloadedLanguageInNameOrderWhenNobodyHasChosen() {
+        XCTAssertEqual(ids(FaceToFace.choices(downloaded: downloaded, takenByOtherHalf: nil, name: name)),
+                       ["en-US", "es-ES", "fr-FR"])
+    }
+
+    func testTheOtherHalfsLanguageIsNotOffered() {
+        // Even when the other half's locale is written differently (a region): it's the same language.
+        let taken = Locale(identifier: "en-GB")
+        XCTAssertEqual(ids(FaceToFace.choices(downloaded: downloaded, takenByOtherHalf: taken, name: name)), ["es-ES", "fr-FR"])
+    }
+
+    func testTwoRegionsOfOneLanguageAreOneRow() {
+        let more = downloaded + [Locale(identifier: "es-MX")]
+        XCTAssertEqual(ids(FaceToFace.choices(downloaded: more, takenByOtherHalf: nil, name: name)), ["en-US", "es-ES", "fr-FR"])
+    }
+
+    func testNothingDownloadedOffersNothing() {
+        XCTAssertTrue(FaceToFace.choices(downloaded: [], takenByOtherHalf: nil, name: name).isEmpty)
+        XCTAssertTrue(FaceToFace.choices(downloaded: [downloaded[1]], takenByOtherHalf: downloaded[1], name: name).isEmpty)
+    }
+}
