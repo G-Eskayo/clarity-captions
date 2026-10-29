@@ -9,8 +9,8 @@ public enum FaceToFaceHalf: Equatable, Hashable, Sendable {
     public var other: FaceToFaceHalf { self == .owner ? .partner : .owner }
 }
 
-/// Which half each speaker belongs to. How a speaker gets a half (a tap, the speaker diarizer, or whichever
-/// language engine recognised them) is the owner's open decision on #60; this only keeps the answer.
+/// Which half each speaker belongs to. Live, `SpeakerLanguages` gives a voice its half from the language it speaks
+/// (the owner's "voice first", #60); the debug demo places its two speakers by hand.
 public struct FaceToFaceSides: Equatable, Sendable {
     private var bySpeaker: [Int: FaceToFaceHalf] = [:]
 
@@ -55,10 +55,16 @@ public enum FaceToFace {
     /// the language of the half `into`, or nil.
     public static func entries(for half: FaceToFaceHalf, lines: [CaptionLine], sides: FaceToFaceSides,
                                translation: (CaptionLine, FaceToFaceHalf) -> String?) -> [FaceToFaceEntry] {
+        entries(for: half, lines: lines, half: { sides.half(ofSpeaker: $0.speaker) }, translation: translation)
+    }
+
+    /// The same, with each line's half given by `half(line)` (live: `SpeakerLanguages.half(of:)`).
+    public static func entries(for half: FaceToFaceHalf, lines: [CaptionLine], half lineHalf: (CaptionLine) -> FaceToFaceHalf?,
+                               translation: (CaptionLine, FaceToFaceHalf) -> String?) -> [FaceToFaceEntry] {
         lines.compactMap { line in
             let text = line.text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !text.isEmpty else { return nil }
-            let from = line.isSoundLabel ? nil : sides.half(ofSpeaker: line.speaker)
+            let from = line.isSoundLabel ? nil : lineHalf(line)
             if let from, from != half, line.isFinal, let translated = translation(line, half) {
                 return FaceToFaceEntry(id: line.id, text: translated, said: line.text, from: from,
                                        isFinal: true, isSoundLabel: false)
@@ -66,5 +72,55 @@ public enum FaceToFace {
             return FaceToFaceEntry(id: line.id, text: line.text, said: nil, from: from,
                                    isFinal: line.isFinal, isSoundLabel: line.isSoundLabel)
         }
+    }
+
+    /// The lines the split shows, from captions both engines wrote into (#60): for each voice, only the engine of the
+    /// language it was matched to (or, before that, the one its words lean toward). Lines with no engine lane (from
+    /// before the split, sound labels) always show. Leaving the split keeps exactly these.
+    public static func shown(_ lines: [CaptionLine], languages: SpeakerLanguages) -> [CaptionLine] {
+        lines.filter { isShown($0, languages: languages) }
+    }
+
+    public static func isShown(_ line: CaptionLine, languages: SpeakerLanguages) -> Bool {
+        guard let lane = line.lane else { return true }
+        return lane == languages.shownLane(for: line.speaker, at: line.startTime)
+    }
+
+    /// The lines said on `half`: the ones its translator turns into the other half's language. Lines with no half yet
+    /// are translated by neither (they show as said on both halves).
+    public static func lines(saidOn half: FaceToFaceHalf, in lines: [CaptionLine],
+                             half lineHalf: (CaptionLine) -> FaceToFaceHalf?) -> [CaptionLine] {
+        lines.filter { !$0.isSoundLabel && lineHalf($0) == half }
+    }
+
+    /// One engine's result with the words of voices that belong to the other half's engine taken out (#60): a result
+    /// can run past a turn change, because Apple's engine only ends one at a long pause and an engine keeps hearing the
+    /// next voice for the moment before the diarizer names it. Words the diarizer hasn't placed yet, and voices not
+    /// matched yet, stay. Nil when nothing is left; the same result when nothing was taken out.
+    public static func keep(_ piece: RecognizedPiece, lane: FaceToFaceHalf, segments: [SpeakerSegment], number: (Int) -> Int?,
+                            languages: SpeakerLanguages) -> RecognizedPiece? {
+        let kept = piece.words.filter { word in
+            guard let range = word.range,
+                  let slot = SpeakerAligner.speaker(start: range.lowerBound, end: range.upperBound, segments: segments),
+                  let voice = number(slot), languages.isMatched(voice) else { return true }
+            return languages.shownLane(for: voice, at: range.lowerBound) == lane
+        }
+        if kept.count == piece.words.count { return piece }
+        if kept.isEmpty { return nil }
+        return RecognizedPiece(text: kept.map(\.text).joined(separator: " "), isFinal: piece.isFinal, words: kept)
+    }
+
+    /// Word times moved to where the engine's audio resumed, for words that start before a skip and end after it (#60):
+    /// Apple's open result reports its words from the last audio it heard, which is before the other voice's turn, and
+    /// would glue the new turn onto the old line. The same result when nothing straddles a skip.
+    public static func clamp(_ piece: RecognizedPiece, skips: [Double]) -> RecognizedPiece {
+        var changed = false
+        let words = piece.words.map { word -> RecognizedWord in
+            guard let r = word.range, let skip = skips.last(where: { $0 > r.lowerBound && $0 <= r.upperBound }) else { return word }
+            changed = true
+            return RecognizedWord(text: word.text, range: skip...r.upperBound)
+        }
+        guard changed else { return piece }
+        return RecognizedPiece(text: piece.text, isFinal: piece.isFinal, words: words)
     }
 }

@@ -44,4 +44,4 @@ no per-user training ([[0008]]), and free forever ([[0007]]) apply to every plat
   once written.
 - Platform-agnostic core means tests for it run without a device or simulator.
 - App Store presence: one app record with multiple platforms (universal purchase) is preferred,
-  decided with the naming work in [[0011]].
+  decided with the naming work in [[0011]]. (The Mac is now sold separately: [[0028]].)
