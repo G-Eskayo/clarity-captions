@@ -64,6 +64,19 @@ struct SampleWindow: Sendable {
         if excess > 0 { drop(excess) }
     }
 
+    /// Face to face (#60): this engine didn't hear the audio up to `time` (another voice's turn). The gap is silence,
+    /// so word times stay on the session clock; a gap longer than the window just starts it afresh. Never backwards.
+    mutating func skip(to time: Double) {
+        let gap = time - endTime
+        guard gap > 0 else { return }
+        if gap >= maxSeconds {
+            samples = []
+            startTime = time
+        } else {
+            append([Float](repeating: 0, count: Int((gap * Self.rate).rounded())), level: -.infinity)
+        }
+    }
+
     /// Drops audio before `time` (session seconds).
     mutating func trim(before time: Double) {
         let n = Int(((time - startTime) * Self.rate).rounded(.down))
