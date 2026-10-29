@@ -2,7 +2,8 @@
 
 ## Status
 
-Proposed (2026-10-29, #200). Draft: the owner answers the `ui-language` and `ui-text` Decisions on the
+Proposed (2026-10-29, #200; right-to-left added the same day after the owner's comment on #200). Draft: the owner
+answers the `ui-language`, `ui-text` and `rtl-*` Decisions on the
 design PR before this is accepted. Design: `docs/design/smallest-install-and-language-packs.md` §2.
 
 ## Context
@@ -34,7 +35,18 @@ every device that has the feature and later on Android ([[0026]], #43).
    next language in the phone's list ([[0031]]).
 5. **Region never picks a language.** It's used only for formats (dates, numbers) and to order a language's variants
    (es-MX before es-ES on a Mexican phone).
-6. Android follows the same rules through its per-app language support (Android 13+, and AppCompat for older
+7. **A right-to-left UI language gets the mirrored app** (owner, #200, 2026-10-29): the layout flips (SwiftUI's
+   `layoutDirection` from the system, no flag of ours) and every word is written for that language by a native
+   speaker, not translated word for word. The mirrored app only appears once Seal has that localization.
+8. **Caption direction follows the caption language, never the UI's.** Each caption line, live or saved, takes its
+   direction from its own language; a translation line from the Into language. In face to face (#60, #208) each half
+   follows its own language, line by line. Text whose language isn't known (a typed name) follows its own first
+   strong character.
+9. **Pictures don't mirror by default** (the seal, the Listening light); controls and their chevrons do. The owner
+   decides the exceptions (Decision `rtl-seal` on #205).
+10. **Numbers, dates and times use the locale's formats**, including plural rules and digits; no counted string is
+    built with `String(format:)`.
+11. Android follows the same rules through its per-app language support (Android 13+, and AppCompat for older
    versions) when there's an Android app (#43).
 
 ## Consequences
@@ -42,7 +54,13 @@ every device that has the feature and later on Android ([[0026]], #43).
 - The App Store listing (#39) and the app's languages should go together; a localized listing for an
   untranslated app misleads.
 - Every localization needs a native-speaker review (#38's rule) before it ships; machine-only strings don't ship.
-- Right-to-left (Hebrew, Arabic) needs the #35 RTL checks for real on every screen, not just the pseudo run.
+- Right-to-left (Hebrew, Arabic) needs the #35 RTL checks for real on every screen, not just the pseudo run. The
+  audit in the design doc (§2, right-to-left) lists what doesn't mirror today, by file and line. The measured state
+  (2026-10-29, evidence E31): a Hebrew phone gets the English app unmirrored, because Seal has no Hebrew localization;
+  the pseudolanguage shows SwiftUI mirrors most screens by itself, except the bracket buttons, the caption area's
+  direction, right-to-left selection and the text chevrons.
+- The caption area sets its own layout direction from the caption language, so it reads correctly inside either app
+  direction. A saved conversation has to keep its caption language for this.
 - Unverified: whether Apple's own sheets inside Seal (Translation's download sheet, the microphone prompt) follow
   Seal's per-app language or the phone's. If the phone's, a user with Hebrew set for Seal on an English phone may
   see an English Apple sheet. To check on a phone.

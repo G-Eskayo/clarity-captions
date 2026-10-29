@@ -33,6 +33,10 @@ Builds on ADRs 0001, 0014, 0025, 0026, and on #35 (strings in catalogs), #37 (ca
    user goes from 765 MB to 267 MB.
 4. **UI text never downloads.** Every localization ships in the app, and the system picks the language: the
    per-app language if the user set one, otherwise the phone's language list. **Region never picks a language.**
+   On a Hebrew or Arabic phone the whole app is mirrored and written in that language, while **each caption line
+   runs in its own language's direction** (§2, right-to-left). Today a Hebrew phone gets the English app unmirrored,
+   because there's no Hebrew localization yet; the pseudolanguage run shows SwiftUI mirrors most of it by itself, with
+   a short list of fixes (bracket buttons, the caption area, selection, plurals).
 5. **Translation languages:** Apple's are system-managed and shared. An app can check a pair but can't list or
    delete Apple's languages. Seal keeps its own list of the languages the user chose, enforces "at least one", and
    says plainly where iOS keeps the files. Seal's own packs (Hebrew captions, later Serbian) are deleted for real.
@@ -119,6 +123,120 @@ Release build, iPhone, 2026-10-29 (details and method in `docs/perf/install-size
 - `CaptionLanguageCenter` and `TranslationCenter` read `Locale.preferredLanguages`. They move to
   `Locale.preferredLocales` with `Bundle.main.preferredLocalizations.first` put first, so a per-app choice wins.
 - `CaptionLanguage.resolve` stays pure and gains a "UI language first" test.
+
+### Right-to-left: the mirrored app (owner, #200, 2026-10-29 18:56)
+
+**The owner's rule.** A phone in Hebrew, Arabic or another right-to-left language gets the mirrored app: the layout
+flips and every word is in that language, written to make sense in it, not word for word. **Caption direction follows
+the caption language, not the phone's.** Hebrew captions run right to left in an English app, and English captions
+run left to right in a Hebrew app. In face to face (#60, #208), each half follows its own language.
+
+**What happens today** (iPhone 17 simulator, iOS 26, Debug build of `c04a131`, screenshots on PR #205, evidence E31):
+
+- **With `-AppleLanguages (he)`, nothing flips.** Seal has one localization, English, so iOS runs it in English, left
+  to right. Only the region formats change: with `-AppleLocale he_IL` the saved list shows "Today, 8:56" and
+  "Yesterday, 19:12" in 24-hour time. **The mirrored app needs the Hebrew localization itself** (strings, and `he` in
+  the project's known regions). There's no switch to turn on.
+- **With Xcode's right-to-left pseudolanguage** (`-AppleTextDirection YES -NSForceRightToLeftWritingDirection YES`),
+  SwiftUI mirrors almost everything by itself: the gear and the saved-list icon swap sides, `list.bullet` mirrors,
+  Settings rows and the color swatches reverse, page headers move "‹ Settings" to the right, Stop moves to the bottom
+  left, "Skip tour" moves left, and the tour's spotlights follow the moved controls. That matches the owner's check:
+  no hard-coded `.left`/`.right` anywhere in `Apps/Spike/Sources`.
+- **What's wrong in the pseudolanguage run** (each with file:line in the audit below):
+  - The bracket buttons break: `[ Delete all ]` shows as `]Delete all [`, and the same for `[ Save ]`, `[ New ]`,
+    `[ Next › ]` and `[ Done ]`.
+  - English captions are right-aligned, because the caption area follows the app's direction. Under the owner's
+    rule they stay left to right.
+  - The text chevrons ("‹ Settings", "Full license texts ›", "Next ›", "‹ Back") keep pointing the English way.
+    With real Hebrew strings the Unicode bidi algorithm should mirror ‹ and › by itself (both are Bidi_Mirrored).
+    To check once Hebrew strings exist.
+  - The launch seal and its speed lines are drawn on a `Canvas` and don't mirror. That may be right (it's a picture,
+    not a direction), so it's a Decision.
+
+**Proposed rule (ADR 0030, points 7–10):**
+
+| What | Direction comes from |
+|---|---|
+| Screens, walkthrough, Settings, page headers, buttons | the UI language (SwiftUI's `layoutDirection`, set by iOS) |
+| A caption line, live or saved, and its speaker label | **the caption language**: `Locale.Language.characterDirection` of the engine's locale |
+| A translation line | **the Into language** |
+| Each half in face to face | its own language. A half that shows a translation on top and what was said underneath has one line in each language's direction |
+| Text nobody can predict (a name someone typed, a mixed-language line) | the text's own first strong character (Unicode bidi) |
+| Numbers, dates, times | the locale's formats: region decides 12/24 hours, the UI language decides the words |
+| Pictures (the seal, the Listening light) | not mirrored, unless the owner chooses otherwise (Decision `rtl-seal`) |
+
+- **Mechanism, later:** the caption area sets `.environment(\.layoutDirection, …)` from the caption language on its
+  `LazyVStack`, so `.leading` means "where this language starts" there, and each translation line sets its own. One
+  pure function in CaptionCore decides the direction from a language, with tests for he, ar, fa, ur, en, es and a
+  mixed line.
+- **Translated by meaning, not by word** (#38's native-speaker rule): each RTL localization is reviewed by a native
+  speaker on the running app, with screenshots, before it ships. The bracket buttons, "Speaker 1", "Today, %@" and the
+  tour's "3 of 4" each need their own wording in Hebrew and Arabic, not a copied pattern.
+- **Plurals.** Hebrew has a dual and Arabic has six plural categories. Today every counted string goes through
+  `String(format:)` and the catalog has no plural variants, so "%lld conversations" has one form for every number.
+  Counted strings move to `String(localized:)` with interpolation and plural variants in `Localizable.xcstrings`.
+- **Digits.** Formatted numbers follow the locale (Arabic-Indic digits where the user's locale uses them).
+  `String(format:)` always writes Western digits, a second reason to move off it.
+- **Proof, per the PR rules:** every RTL ticket carries screenshots of every screen in the real language and in the
+  pseudolanguage. Face to face only appears on iPad and the unfolded Duo, so its RTL proof is an iPad screenshot.
+
+### Audit: what doesn't mirror by itself today
+
+Grepped on `c04a131` (main at `4b6c5ad` plus this design; no app code differs from main). "Flips" means SwiftUI
+already handles it.
+
+**Directional icons and animations**
+
+| Where | What | In the RTL run |
+|---|---|---|
+| `Apps/Spike/Sources/OneScreenPieces.swift:98`, `:105` | `RetroWords`: `Text("[ ")`, the word, `Text(" ]")` in an `HStack` | **Broken**: the HStack swaps the brackets, so `[ Save ]` shows `]Save [` (every bracket button) |
+| `Apps/Spike/Sources/OneScreenPieces.swift:150` | page header `"‹ \(backTitle)"` | moves right, but the chevron still points left; Hebrew text should mirror it by bidi (unverified) |
+| `Apps/Spike/Sources/AboutCreditsView.swift:35` | `"Full license texts" + " ›"` | chevron still points right; same bidi caveat |
+| `Apps/Spike/Sources/SettingsPage.swift:182`, `:272` | a lone `Text(verbatim: "›")` on the caption-language and translation rows | a lone neutral glyph takes the row's direction; to check on a Hebrew screen |
+| `Apps/Spike/Sources/SettingsPage.swift:424` | `"%lld conversations" + " ›"` (TestFlight builds only) | as above |
+| `Apps/Spike/Sources/SettingsPage.swift:336`–`:337` | `A−` then `A+` in an HStack | flips: A+ ends up on the left. Decision `rtl-size` |
+| `Apps/Spike/Sources/ContentView.swift:740`, `:811` | `gearshape`, `list.bullet` | flips correctly (`list.bullet` mirrors; the gear is symmetric) |
+| `Apps/Spike/Sources/ContentView.swift:905`, `FaceToFaceView.swift:68` | `translate` mark before a translation | moves with the app; should follow the translation's language |
+| `Apps/Spike/Sources/MorphingControl.swift:61` | ✕ rotates in from −90° | symmetric, fine |
+| `Apps/Spike/Sources/ContentView.swift:802` | compact Stop at `.trailing` | flips to the bottom left, as a mirrored app should |
+| `Apps/Spike/Sources/LaunchOverlay.swift:180`, `:209`–`:216`, `:246`–`:330` | the seal, its flippers and the speed lines behind it, drawn on a `Canvas` at fixed x | **not mirrored** (a Canvas never is). Decision `rtl-seal` |
+
+**Walkthrough arrows and coach marks**
+
+| Where | What | In the RTL run |
+|---|---|---|
+| `Apps/Spike/Sources/TourOverlay.swift:191` | `[ Next › ]` | brackets broken (above); the chevron points the English way |
+| `Apps/Spike/Sources/TourOverlay.swift:207`–`:214` | "3 of 4 · ‹ Back" | the row reverses to "‹ Back · 4 of 4"; the chevron should point right |
+| `Packages/CaptionCore/Sources/CaptionCore/HowToUseTour.swift:87`–`:90` | "\(number) of \(total)" | needs Hebrew and Arabic wording |
+| `Apps/Spike/Sources/TourOverlay.swift:56`–`:133` | spotlights and the touch hole, from anchors | **follow the mirrored controls** (tour step 1 and 4 screenshots). The tour draws no arrows |
+| `Apps/Spike/Sources/TourOverlay.swift:73`–`:75` | Skip tour at `.trailing` | flips to the left, fine |
+
+**The caption area**
+
+| Where | What | In the RTL run |
+|---|---|---|
+| `Apps/Spike/Sources/ContentView.swift:882`, `:886`, `:924` | live caption list, `.leading` | follows the **app's** direction: English captions right-aligned in a Hebrew app, and Hebrew captions would be left-aligned in an English app |
+| `Apps/Spike/Sources/ContentView.swift:900`–`:910` | translation on top, what was said underneath | two languages in one block; each line needs its own direction |
+| `Apps/Spike/Sources/FaceToFaceView.swift:44`, `:65`, `:80` | each face-to-face half, `.leading` | as the live list, per half and per line |
+| `Apps/Spike/Sources/SavedTranscriptText.swift:31`, `:41` | a saved conversation's words | as the live list; a saved conversation needs its caption language stored with it |
+| `Apps/Spike/Sources/SavedConversationsView.swift:82`–`:91` | saved-list snippets, `.multilineTextAlignment(.leading)` | follow the app; a Hebrew snippet in an English app would be left-aligned |
+| `Apps/Spike/Sources/CaptionTextSelection.swift:27`–`:40` | selection: glyphs sorted by `minX`; "leading" = `minX`, "trailing" = `maxX` | **assumes left-to-right text**: in Hebrew captions the handles and hit-testing go to the wrong end |
+| `Apps/Spike/Sources/ContentView.swift:1429`–`:1446`, `SavedTranscriptText.swift:111`–`:128` | caret and handle positions | same assumption |
+| `Packages/CaptionCore/Sources/CaptionCore/TranscriptExport.swift:16`, `:41` | shared transcript: `"Speaker \(n): "` | hard-coded English; a Hebrew line after an English label needs a direction mark (U+200F) or it reorders |
+
+**Numbers and times**
+
+| Where | What | In the RTL run |
+|---|---|---|
+| `Apps/Spike/Sources/SavedConversationsView.swift:260`–`:265` | `date.formatted(...)` inside "Today, %@" | **works**: he_IL gave 24-hour times; only the words need translating |
+| `Apps/Spike/Sources/SavedConversationsView.swift:100`, `SettingsPage.swift:424`, `BetaFeedbackViews.swift:219` | `String(format: "%lld conversations…")` | no plural variants; always Western digits |
+| `Packages/CaptionCore/Sources/CaptionCore/MainScreen.swift:68` | "No one talked for \(minutes) minutes" | no plural variants in the catalog |
+| `Apps/Spike/Sources/CaptionLanguagePage.swift:238` | "Downloading %@ · %lld%%" | Western digits and a fixed `%` (Arabic uses ٪, placed per locale) |
+| `Apps/Spike/Sources/ContentView.swift:1508` | "Speaker \(sp + 1)" | localizable; needs its own wording |
+| `Apps/Spike/Sources/SavedConversationsView.swift:29` | "Kept for 30 days, then deleted." | number inside the string; fine once translated |
+
+**Not checked:** the selection screen and the first-run microphone screens in RTL (their demo flags run the real
+launch, which this build couldn't finish without the models; see the PR), and face to face (iPad only).
 
 ## 3. What's in the base install
 
@@ -382,6 +500,12 @@ measured 1% fewer installs per 6 MB under 100 MB, but that's an old, secondary s
 7. **Hebrew via DictationTranscriber**, behind the existing `SpeechRecognizerBackend` seam, after the Hebrew
    measurement (Hebrew research T1).
 8. **Size report script** (§8).
+9. **Right-to-left** (§2, ADR 0030 points 7–10), after the owner's `rtl-*` answers: the bracket buttons, the
+   caption area's direction from the caption language (live, saved, translation lines, face-to-face halves), selection
+   for right-to-left text, the shared transcript's direction marks, counted strings with plural variants. Each with
+   pseudolanguage screenshots of every screen.
+10. **Hebrew localization** of the UI, then Arabic: native-speaker wording and review (#38's rule), screenshots of
+    every screen on a Hebrew phone. Only this makes a Hebrew phone show the mirrored app.
 
 ## 10. Risks and unknowns
 
@@ -403,6 +527,12 @@ measured 1% fewer installs per 6 MB under 100 MB, but that's an old, secondary s
 - **iOS 27 deprecations:** `assetPack(withID:)`, `allAssetPacks` and `ensureLocalAvailability(of:)` are deprecated
   in 27.0 ([AssetPackManager](https://developer.apple.com/documentation/backgroundassets/assetpackmanager)). Seal
   builds with the 26.6 SDK today, so the seam wraps both forms.
+
+- **Right-to-left checks without a native speaker.** The pseudolanguage catches layout, not wording. A mirrored
+  screen with machine-made Hebrew could look done and read wrong; #38's review rule is the guard.
+- **Bidi in mixed lines.** A Hebrew caption with an English name or a number in it is laid out by the Unicode bidi
+  algorithm. Usually right, sometimes surprising (punctuation at the wrong end). To test with real Hebrew captions
+  once the Hebrew engine runs (#201).
 
 ## 11. Space and time
 
