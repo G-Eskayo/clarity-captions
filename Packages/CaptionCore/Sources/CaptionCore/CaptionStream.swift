@@ -15,11 +15,26 @@ public struct CaptionLine: Identifiable, Equatable, Sendable {
     public var speaker: Int?
     /// Sound label for non-speech lines (laughter, applause, etc.); nil for ordinary speech lines.
     public var soundLabel: SoundLabelKind?
+    /// Face to face (#60): which half's language engine wrote this line. Nil for one-way captions.
+    public var lane: FaceToFaceHalf?
     var committed: [CaptionWord]
     var tail: String?
     var tailRange: ClosedRange<Double>?
     var startTime: Double?
     var endTime: Double?
+
+    init(id: Int, speaker: Int? = nil, soundLabel: SoundLabelKind? = nil, lane: FaceToFaceHalf? = nil, committed: [CaptionWord],
+         tail: String? = nil, tailRange: ClosedRange<Double>? = nil, startTime: Double? = nil, endTime: Double? = nil) {
+        self.id = id
+        self.speaker = speaker
+        self.soundLabel = soundLabel
+        self.lane = lane
+        self.committed = committed
+        self.tail = tail
+        self.tailRange = tailRange
+        self.startTime = startTime
+        self.endTime = endTime
+    }
 
     public var text: String {
         let committedText = committed.map(\.text).joined(separator: " ")
@@ -57,21 +72,33 @@ public struct CaptionStream: Sendable {
         }
     }
 
-    public mutating func apply(text: String, isFinal: Bool, speaker: Int? = nil, range: ClosedRange<Double>? = nil, wordEmphasis: [EmphasisLevel] = []) {
+    public mutating func apply(text: String, isFinal: Bool, speaker: Int? = nil, range: ClosedRange<Double>? = nil, wordEmphasis: [EmphasisLevel] = [],
+                               lane: FaceToFaceHalf? = nil) {
         let piece = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !piece.isEmpty else { return }
+        guard !piece.isEmpty else {
+            // Face to face (#60): an engine's revision that now has none of its own words takes back its open words.
+            if let lane, let i = lines.lastIndex(where: { $0.lane == lane }), lines[i].tail != nil {
+                if lines[i].committed.isEmpty { lines.remove(at: i) } else { lines[i].tail = nil; lines[i].tailRange = nil }
+            }
+            return
+        }
 
         let words = Self.captionWords(from: piece, emphasis: wordEmphasis)
-        if var last = lines.last {
+        // Face to face (#60): each engine continues its own lines; another engine's line in between is skipped, and a
+        // sound label still breaks the line. One-way captions (no lane) only ever continue the last line.
+        let index = lane == nil ? lines.indices.last.flatMap { lines[$0].lane == nil ? $0 : nil }
+            : lines.lastIndex { $0.lane == lane || $0.isSoundLabel }
+        if let index {
+            var last = lines[index]
             // Never merge speech into a line marked as a sound label.
             guard !last.isSoundLabel else {
                 // Breaking away: close whatever was still open on the previous line (should already be final for sound labels).
                 if let stale = last.tail {
                     last.committed = Self.joinWords(last.committed, stale); last.tail = nil; last.tailRange = nil
-                    lines[lines.count - 1] = last
+                    lines[index] = last
                 }
                 lines.append(CaptionLine(
-                    id: nextID, speaker: speaker,
+                    id: nextID, speaker: speaker, lane: lane,
                     committed: isFinal ? words : [], tail: isFinal ? nil : piece,
                     tailRange: isFinal ? nil : range, startTime: range?.lowerBound, endTime: range?.upperBound))
                 nextID += 1
@@ -89,9 +116,9 @@ public struct CaptionStream: Sendable {
                     if let speaker, let lineSpeaker = last.speaker, speaker != lineSpeaker, !last.committed.isEmpty {
                         let tailStart = last.tailRange?.lowerBound ?? range?.lowerBound
                         last.tail = nil; last.tailRange = nil
-                        lines[lines.count - 1] = last
+                        lines[index] = last
                         lines.append(CaptionLine(
-                            id: nextID, speaker: speaker,
+                            id: nextID, speaker: speaker, lane: lane,
                             committed: isFinal ? words : [], tail: isFinal ? nil : piece,
                             tailRange: isFinal ? nil : range, startTime: tailStart, endTime: range?.upperBound))
                         nextID += 1
@@ -101,7 +128,7 @@ public struct CaptionStream: Sendable {
                     else { last.tail = piece; last.tailRange = range ?? last.tailRange }
                     if let r = range { last.endTime = r.upperBound }
                     last.speaker = speaker ?? last.speaker
-                    lines[lines.count - 1] = last
+                    lines[index] = last
                     return
                 }
             }
@@ -115,22 +142,27 @@ public struct CaptionStream: Sendable {
                     else { last.tail = piece; last.tailRange = r }
                     last.endTime = r.upperBound
                     last.speaker = speaker ?? last.speaker
-                    lines[lines.count - 1] = last
+                    lines[index] = last
                     return
                 }
             }
             // Breaking away: close whatever was still open on the previous line.
             if let stale = last.tail {
                 last.committed = Self.joinWords(last.committed, stale); last.tail = nil; last.tailRange = nil
-                lines[lines.count - 1] = last
+                lines[index] = last
             }
         }
 
         lines.append(CaptionLine(
-            id: nextID, speaker: speaker,
+            id: nextID, speaker: speaker, lane: lane,
             committed: isFinal ? words : [], tail: isFinal ? nil : piece,
             tailRange: isFinal ? nil : range, startTime: range?.lowerBound, endTime: range?.upperBound))
         nextID += 1
+    }
+
+    /// Leaving the face-to-face split (#60): drops the lines it didn't show. Ids are kept, and never reused.
+    public mutating func removeLines(where shouldRemove: (CaptionLine) -> Bool) {
+        lines.removeAll(where: shouldRemove)
     }
 
     /// Ends the last line, so the next result starts a new one. Called when captioning resumes after a pause (#102):
@@ -146,11 +178,11 @@ public struct CaptionStream: Sendable {
 
     /// Closes any open volatile tail on the last line and appends a new, already-final sound label line.
     public mutating func insertSoundLabel(_ label: SoundLabelKind) {
-        if var last = lines.last {
-            if let stale = last.tail {
-                last.committed = Self.joinWords(last.committed, stale); last.tail = nil; last.tailRange = nil
-                lines[lines.count - 1] = last
-            }
+        // Every open tail, not only the last line's: face to face has one per engine (#60).
+        for i in lines.indices.reversed() where lines[i].tail != nil {
+            var line = lines[i]
+            line.committed = Self.joinWords(line.committed, line.tail!); line.tail = nil; line.tailRange = nil
+            lines[i] = line
         }
 
         let labelText = SoundLabelFormatter.caption(for: label)

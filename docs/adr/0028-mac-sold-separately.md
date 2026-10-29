@@ -10,7 +10,7 @@ Purchase), for the Mac only. Pricing record: #156. Work: #176.
 The Mac app (`Apps/Mac`, #172) captions calls as well as the room. It shared the iPhone/iPad app's bundle ID,
 `com.gileskayo.captions`, and macOS builds 1.1 (1) and 1.1 (2) were uploaded to the iPhone/iPad App Store Connect
 record for TestFlight. Apple joins platforms into one Universal Purchase when they share the record and bundle ID
-(evidence log E28), so released from that record, the Mac app would come free with every iPhone or iPad purchase.
+(evidence log E29), so released from that record, the Mac app would come free with every iPhone or iPad purchase.
 
 ## Decision
 
