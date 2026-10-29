@@ -30,8 +30,9 @@ def lang_of(token, head):
     return "?"
 
 
-def words(text):
-    head = "es" if "[- spa]" in text else "en"
+def words(text, default):
+    # Untagged words are in the file's first @Languages language, or the one an utterance is headed with ([- spa]).
+    head = "es" if "[- spa]" in text else "en" if "[- eng]" in text else default
     text = BRACKETS.sub(" ", text)
     out = []
     for token in text.split():
@@ -49,10 +50,12 @@ def words(text):
 
 
 def utterances(path):
-    lines, current = [], None
+    lines, current, default = [], None, "en"
     with open(path, encoding="utf-8", errors="replace") as f:
         for raw in f:
             raw = raw.rstrip("\n")
+            if raw.startswith("@Languages:"):
+                default = "es" if raw.split(":", 1)[1].strip().startswith("spa") else "en"
             if raw.startswith("*"):
                 current = raw
                 lines.append(current)
@@ -65,7 +68,7 @@ def utterances(path):
         m = TIME.search(text)
         if not m:
             continue
-        ws = words(text[: m.start()])
+        ws = words(text[: m.start()], default)
         if ws:
             yield {"speaker": speaker.strip(), "start": int(m.group(1)) / 1000, "end": int(m.group(2)) / 1000, "words": ws}
 

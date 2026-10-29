@@ -5,13 +5,15 @@ import NaturalLanguage
 /// the split's two languages from the words its first lines are in. Lock as soon as that's sure; stay correctable.
 ///
 /// The numbers (measured in docs/perf/face-to-face-spike.md and, for #208, docs/perf/face-to-face-code-switching.md):
-/// - **Lock:** 4 or more words of that voice, 95% sure of one language. Every real Spanish sentence and every
-///   English line of 4+ words scored 99% or more in the spike; one word ("Hi.") only reached 68%.
+/// - **Lock:** 4 or more words of that voice, 99% sure of one language. Every real Spanish sentence and every
+///   English line of 4+ words scored 99% or more in the spike; one word ("Hi.") only reached 68%. On the recorded
+///   code-switching conversations (#208) 99% beat #199's 95%: fewer wrong moves, no slower to lock.
 /// - **Correct** (#208, the owner's "confidence builder"): once locked, each finished line of 4+ words from the voice's
 ///   own engine is evidence. Sure of its language: confidence +1, up to `cap`. Sure of the *other* language: −1. Mixed
 ///   or unclear ("Spanglish"): neither. The voice moves when confidence falls to −`moveBelow`: two lines right after the
 ///   lock, as in #199, but many more once a few minutes of their language have been heard. Capped, so a voice that
-///   really changes (the diarizer handing one person's slot to the other) is always followed.
+///   really changes (the diarizer handing one person's slot to the other) is always followed. Cap 12 had the fewest
+///   lines on the wrong half of every cap and rule compared (#208).
 /// - **Check:** `doubtfulLines` finished lines in a row that don't confirm the language (plus one more per point of
 ///   confidence) bring the other engine back for that voice. During the check each sure verdict counts like a line;
 ///   the voice moves once confidence falls below zero, and a confirming verdict ends the check.
@@ -25,9 +27,9 @@ public struct LanguageMatchPolicy: Equatable, Sendable {
         case confidence(cap: Int, moveBelow: Int)
     }
 
-    public var lockProbability = 0.95
+    public var lockProbability = 0.99
     public var minWords = 4
-    public var correction = Correction.confidence(cap: 8, moveBelow: 2)
+    public var correction = Correction.confidence(cap: 12, moveBelow: 2)
     public var doubtfulLines = 2
     public var giveUpWords = 30
     public init() {}
