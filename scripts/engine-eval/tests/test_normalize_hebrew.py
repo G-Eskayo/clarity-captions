@@ -204,3 +204,9 @@ def test_bidi_marks_are_removed_not_turned_into_spaces():
     # Apple's DictationTranscriber starts its Hebrew text with U+200F (right-to-left mark).
     assert he("‏שלום") == he("של‏ום") == he("‫שלום‬") == he("⁧שלום⁩") == "שלום"
     assert he("﻿שלום") == "שלום"
+
+
+def test_usa_abbreviation_reads_as_it_is_said():
+    # FLEURS writes ארה"ב; every engine writes what is said, ארצות הברית.
+    assert he('ארה"ב') == he("ארה״ב") == he("ארצות הברית") == "ארצות הברית"
+    assert he('בארה"ב') == he("בארצות הברית") == "בארצות הברית"
