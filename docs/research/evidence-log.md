@@ -455,11 +455,11 @@ caveat), **Internal** (process detail, not for marketing).
 - **Public use:** Careful ("we score Hebrew on characters as well as words, so a single prefix letter doesn't count
   as a whole wrong word").
 
-## E29. Apple's Hebrew engine against the open Hebrew models: every open model is ahead
+## E31. Apple's Hebrew engine against the open Hebrew models: every open model is ahead
 - **Source:** our own measurement, #201, 2026-10-29, M4 Mac mini, macOS 26.5.1:
   [`hebrew-accuracy-comparison.md`](../perf/hebrew-accuracy-comparison.md), method in
   [`hebrew-accuracy-design.md`](../perf/hebrew-accuracy-design.md). FLEURS he test split (CC BY 4.0), 792 clips of read
-  speech, 2.05 h, scored with the #202 Hebrew normaliser (E28). Every engine ran locally.
+  speech, 2.05 h, scored with the #202 Hebrew normaliser (E30). Every engine ran locally.
 - **What we took:** Apple's only on-device Hebrew model on macOS 26 is `DictationTranscriber` (`SpeechTranscriber`
   has no Hebrew locale). It scores **16.5% CER / 35.0% WER**. The open models: Parakeet-He 9.7% / 22.3%, the ivrit.ai
   66M streaming zipformer 10.0% / 22.2%, ivrit.ai Whisper turbo 8.3% / 17.4%. The 95% intervals don't overlap
