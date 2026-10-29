@@ -235,7 +235,7 @@
 </style>
 {{@robots}}{{@alternates}}</head>
 <body>
-<a class="skip" href="#main">{{index.skip-to-content}}</a>
+{{@draft}}<a class="skip" href="#main">{{index.skip-to-content}}</a>
 <div class="wrap">
   <header class="top">
     <img src="assets/favicon.svg" alt="" width="40" height="40">
@@ -518,7 +518,7 @@
       <div class="stats">
         <p class="stat"><span class="stat-n" data-count="31">31</span><span class="stat-l">{{index.hours-of-real-conversations}}</span></p>
         <p class="stat"><span class="stat-n" data-count="20%">20%</span><span class="stat-l">{{index.fewer-mistakes-in-english}}</span></p>
-        <p class="stat"><span class="stat-n" data-count="0.25 s">{{index.0-25-s}}</span><span class="stat-l">{{index.for-a-word-to}}</span></p>
+        <p class="stat"><span class="stat-n" data-count="{{index.0-25-s}}">{{index.0-25-s}}</span><span class="stat-l">{{index.for-a-word-to}}</span></p>
       </div>
       <div class="results">
         <div class="card">
@@ -656,7 +656,7 @@
     <div class="wrap">
       <h2 id="ipad-languages-h">{{index.19-languages-as-fast}}</h2>
       <div class="stats">
-        <p class="stat"><span class="stat-n" data-count="70 ms">{{index.70-ms}}</span><span class="stat-l">{{index.or-less-to-translate}}</span></p>
+        <p class="stat"><span class="stat-n" data-count="{{index.70-ms}}">{{index.70-ms}}</span><span class="stat-l">{{index.or-less-to-translate}}</span></p>
         <p class="stat"><span class="stat-n" data-count="18">18</span><span class="stat-l">{{index.of-19-languages-as}}</span></p>
       </div>
       <figure class="comet" data-grow>
@@ -783,10 +783,10 @@
       <figure class="merge" data-grow aria-label="{{index.the-mac-s-microphone}}">
         <div class="m-src" aria-hidden="true"><span class="m-in room">{{index.in-the-room}}</span><span class="m-in call">{{index.on-the-call}}</span></div>
         <div class="m-join" aria-hidden="true"></div>
-        <div class="m-out" aria-hidden="true">
-          <p class="room">{{index.speaker-1-is-everyone}}</p>
-          <p class="call">{{index.speaker-2-we-re}}</p>
-          <p class="room">{{index.speaker-3-hi-from}}</p>
+        <div class="m-out" aria-hidden="true" data-app>
+          <p class="room"><b>Speaker 1</b>Is everyone there?</p>
+          <p class="call"><b>Speaker 2</b>We're all here!</p>
+          <p class="room"><b>Speaker 3</b>Hi from the kitchen.</p>
         </div>
       </figure>
     </div>
@@ -796,9 +796,9 @@
     <div class="wrap">
       <h2 id="mac-ring-h">{{index.a-call-rings-seal}}</h2>
       <ol class="story3" data-story aria-label="{{index.when-a-call-rings}}">
-        <li class="on"><div class="mini"><b>{{index.you-re-getting-a}}</b><span class="btns"><i>{{index.caption-call}}</i><i>{{index.not-now}}</i></span></div><p>{{index.it-rings}}</p></li>
-        <li><div class="mini"><b>{{index.captioning-your-facetime-call}}</b><span class="ln">{{index.hi-can-you-read}}</span></div><p>{{index.it-captions}}</p></li>
-        <li><div class="mini"><b>{{index.call-ended}}</b><span class="btns"><i>{{index.save-transcript}}</i><i>{{index.don-t-save}}</i></span></div><p>{{index.you-choose}}</p></li>
+        <li class="on"><div class="mini" data-app><b>You're getting a call</b><span class="btns"><i>Caption call</i><i>Not now</i></span></div><p>{{index.it-rings}}</p></li>
+        <li><div class="mini" data-app><b><span class="dot"></span>Captioning your FaceTime call</b><span class="ln">Hi! Can you read me okay?</span></div><p>{{index.it-captions}}</p></li>
+        <li><div class="mini" data-app><b>Call ended</b><span class="btns"><i>Save transcript</i><i>Don't save</i></span></div><p>{{index.you-choose}}</p></li>
       </ol>
       <p class="src">{{index.facetime-and-iphone-calls}}</p>
     </div>
@@ -808,7 +808,7 @@
       <h2 id="mac-tested-h">{{index.how-we-re-testing}}</h2>
       <p class="intro">{{index.the-mac-app-is}}</p>
       <div class="stats">
-        <p class="stat"><span class="stat-n" data-count="1.0 s">{{index.1-0-s}}</span><span class="stat-l">{{index.to-switch-from-the}}</span></p>
+        <p class="stat"><span class="stat-n" data-count="{{index.1-0-s}}">{{index.1-0-s}}</span><span class="stat-l">{{index.to-switch-from-the}}</span></p>
       </div>
       <div class="checks">
         <ul aria-label="{{index.checked}}">

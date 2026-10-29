@@ -10,7 +10,7 @@ const en = { code: 'en', dir: 'ltr', published: true, pages: ['index.html', 'pri
 
 test('relink: a page this language has stays in its folder; everything else is one folder up', () => {
   const html = '<a href="privacy.html#x">p</a><a href="versions.html">v</a><img src="assets/seal.svg"><script src="demo.js"></script>'
-  assert.equal(relink(html, he), '<a href="privacy.html#x">p</a><a href="../versions.html">v</a><img src="../assets/seal.svg"><script src="../demo.js"></script>')
+  assert.equal(relink(html, he), '<a href="privacy.html#x">p</a><a href="../versions.html" hreflang="en">v</a><img src="../assets/seal.svg"><script src="../demo.js"></script>')
 })
 
 test('relink: leaves addresses that are already absolute, anchors, mail and data alone', () => {
@@ -22,6 +22,11 @@ test('relink: leaves addresses that are already absolute, anchors, mail and data
 test('relink: srcset and CSS url() too', () => {
   assert.equal(relink('<img srcset="a.png 1x, b.png 2x">', he), '<img srcset="../a.png 1x, ../b.png 2x">')
   assert.equal(relink("<i style=\"background:url('assets/f.woff2')\">", he), "<i style=\"background:url('../assets/f.woff2')\">")
+})
+
+test('relink: a picture named in a meta tag, and links to English-only pages say they are English', () => {
+  assert.equal(relink('<meta property="og:image" content="assets/seal.png">', he), '<meta property="og:image" content="../assets/seal.png">')
+  assert.equal(relink('<a class="x" href="versions.html#engine">v</a><a href="privacy.html">p</a>', he), '<a class="x" href="../versions.html#engine" hreflang="en">v</a><a href="privacy.html">p</a>')
 })
 
 test('relink: English pages are untouched', () => {

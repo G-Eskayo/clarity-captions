@@ -38,8 +38,12 @@ export const keysOf = (template) => [...template.matchAll(KEYS)].map((m) => m[1]
 export const relink = (html, lang) => {
   if (lang.code === 'en') return html
   const fix = (u) => (/^([a-z]+:|#|\/|\.\.\/)/i.test(u) || lang.pages.includes(u.split('#')[0]) ? u : '../' + u)
+  // A link to a page this language doesn't have goes to the English one, and says so.
+  html = html.replace(/<a(\s[^>]*?)?\shref="([^"]+\.html(?:#[^"]*)?)"/g, (m, pre, u) =>
+    (/^([a-z]+:|\/|\.\.\/)/i.test(u) || lang.pages.includes(u.split('#')[0]) || /\shreflang=/.test(m) ? m : m + ' hreflang="en"'))
   return html
     .replace(/(\s(?:href|src)=")([^"]+)(")/g, (m, a, u, b) => a + fix(u) + b)
+    .replace(/(<meta\s[^>]*?\scontent=")((?:assets|images)\/[^"]+)(")/g, (m, a, u, b) => a + fix(u) + b)
     .replace(/(\ssrcset=")([^"]+)(")/g, (m, a, v, b) => a + v.split(',').map((s) => s.trim().replace(/^\S+/, fix)).join(', ') + b)
     .replace(/url\((['"]?)([^'")]+)\1\)/g, (m, q, u) => `url(${q}${/^data:/.test(u) ? u : fix(u)}${q})`)
 }
@@ -58,7 +62,9 @@ export function buildPage(langs, lang, page, words = strings(lang.code), english
     '@lang': lang.code,
     '@dir': lang.dir,
     '@alternates': hreflangLinks(langs, lang, page),
-    '@robots': lang.published ? '' : '<meta name="robots" content="noindex">\n'
+    '@robots': lang.published ? '' : '<meta name="robots" content="noindex">\n',
+    // Until the owner publishes a language, its pages say they are a draft, aren't indexed, and nothing links to them.
+    '@draft': lang.published ? '' : `<p class="draft-note" style="margin:0;padding:.6rem 1rem;background:#FBE8C1;color:#141419;text-align:center;font-weight:700">${words._draft || 'Draft'}</p>\n`
   }
   let html = template.replace(KEYS, (m, k) => {
     if (k in special) return special[k]
