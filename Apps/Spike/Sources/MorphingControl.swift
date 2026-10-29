@@ -16,6 +16,9 @@ struct MorphingControl: View {
     let label: RGBA
     /// DEBUG demos only: draw the pressed pill without a finger (simctl can't tap).
     var forcePressed: Bool = false
+    /// The pill's height and lettering. The iPhone's by default; the Mac pop-up keeps its own smaller pill (#178).
+    var pillHeight: CGFloat = 72 - GummyButtonStyle.restingLip
+    var titleFont: Font = .title.bold()
     let action: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -23,8 +26,6 @@ struct MorphingControl: View {
     private var compact: Bool { control.presentation == .compact }
     private let stopRed = Color(red: 0.80, green: 0.12, blue: 0.12)
     private var diameter: CGFloat { PrimaryControl.compactDiameter }
-    /// The bar is 72 pt tall; the pill takes all of it but the resting lip.
-    private var pillHeight: CGFloat { 72 - GummyButtonStyle.restingLip }
     /// A capsule as a pill, a circle when compact: the same rounded rectangle, so the sweep stays smooth.
     private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: (compact ? diameter : pillHeight) / 2, style: .continuous) }
 
@@ -41,7 +42,7 @@ struct MorphingControl: View {
                         .id(control.title)
                         .transition(Fluid.wordSwap(reduceMotion))
                 }
-                .font(.title.bold())
+                .font(titleFont)
                 .foregroundStyle(label.color)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)

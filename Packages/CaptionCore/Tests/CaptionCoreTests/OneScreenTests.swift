@@ -82,6 +82,22 @@ final class OneScreenTests: XCTestCase {
         XCTAssertEqual(AppScreen.feedbackPreview.parent, .settings)
         XCTAssertEqual(AppScreen.savedConversation(UUID()).parent, .saved)
         XCTAssertEqual(AppScreen.licenseText.parent, .credits)
+        XCTAssertEqual(AppScreen.captionLanguage.parent, .settings)
+        XCTAssertEqual(AppScreen.translationTarget.parent, .settings)
+    }
+
+    /// #37 / #53: the caption language list opens from Settings (its own row, or translation's From row) and goes
+    /// back there; it can't be opened from the captions.
+    func testTheCaptionLanguageListOpensFromSettingsOnly() {
+        var nav = ScreenNavigator()
+        nav.open(.captionLanguage)
+        XCTAssertEqual(nav.current, .captions)
+        nav.gearTapped()
+        nav.open(.captionLanguage)
+        XCTAssertEqual(nav.current, .captionLanguage)
+        XCTAssertFalse(nav.showsGear)
+        nav.back()
+        XCTAssertEqual(nav.current, .settings)
     }
 
     // MARK: questions asked in place

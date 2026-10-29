@@ -7,9 +7,12 @@ public enum DownloadProblem: Equatable, Sendable {
     case stalled
     case failed
 
-    public var message: String {
+    public var message: String { message(language: String(localized: "English")) }
+
+    /// #37: the offline words name the language being downloaded.
+    public func message(language: String) -> String {
         switch self {
-        case .offline: String(localized: "Seal needs the internet once, for Apple's English speech files. Turn on Wi-Fi and try again.")
+        case .offline: String(format: String(localized: "Seal needs the internet once, for Apple's %@ speech files. Turn on Wi-Fi and try again."), language)
         case .stalled: String(localized: "The download stopped moving. Check that Wi-Fi is on and try again.")
         case .failed: String(localized: "Seal couldn't finish the download. Check that Wi-Fi is on and try again.")
         }
@@ -71,8 +74,11 @@ public final class SpeechDownload: @unchecked Sendable {
     }
 
     /// The real download of Apple's English speech files.
-    public static func english() -> SpeechDownload {
-        SpeechDownload(install: { progress in try await SpeechModelInstaller.install(onProgress: progress) })
+    public static func english() -> SpeechDownload { language(Locale(identifier: "en-US")) }
+
+    /// The real download of Apple's speech files for one caption language (#37).
+    public static func language(_ locale: Locale) -> SpeechDownload {
+        SpeechDownload(install: { progress in try await SpeechModelInstaller.install(locale: locale, onProgress: progress) })
     }
 
     public func run(onProgress: @escaping @Sendable (Double) -> Void) async -> DownloadOutcome {

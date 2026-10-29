@@ -16,6 +16,8 @@ struct FirstRunSystem {
     /// Warms the speaker model and remembers it for this build.
     var warmUpSpeakerModel: () async throws -> Void
     var speechDownload: SpeechDownload
+    /// The real caption language (#37). Off for the launch demo, whose pretend download is always English.
+    var readsCaptionLanguage = true
 
     static var live: FirstRunSystem {
         let store = FirstRunStore()
@@ -30,8 +32,8 @@ struct FirstRunSystem {
                 }
             },
             requestMicrophone: { _ = await AVAudioApplication.requestRecordPermission() },
-            speechModelInstalled: { await SpeechModelInstaller.isInstalled() },
-            speechSupport: { await SpeechSupport.check() },
+            speechModelInstalled: { await SpeechModelInstaller.isInstalled(locale: CaptionLanguageCenter.engineLocale) },
+            speechSupport: { await SpeechSupport.check(locale: CaptionLanguageCenter.engineLocale) },
             hasSeenWelcome: { store.hasSeenWelcome },
             markWelcomeSeen: { store.markWelcomeSeen() },
             speakerModelWarm: { store.isSpeakerModelWarm(forBuild: buildKey) },
@@ -43,7 +45,10 @@ struct FirstRunSystem {
                 try await CaptionEngineFactory.warmUpSpeechModel()   // Parakeet's first compile (ADR 0025)
                 store.markSpeakerModelWarm(forBuild: buildKey)
             },
-            speechDownload: SpeechDownload.english())
+            // The caption language is read when the download runs, after first run may have asked for it (#37).
+            speechDownload: SpeechDownload(install: { progress in
+                try await SpeechModelInstaller.install(locale: CaptionLanguageCenter.engineLocale, onProgress: progress)
+            }))
     }
 }
 
@@ -66,12 +71,14 @@ final class FirstRunModel: ObservableObject {
 
     /// Re-reads the facts and shows the right screen. Called on launch and whenever the app comes back to the front.
     func refresh() async {
-        let facts = FirstRunFacts(
+        if system.readsCaptionLanguage { await CaptionLanguageCenter.shared.refresh() }
+        var facts = FirstRunFacts(
             hasSeenWelcome: system.hasSeenWelcome(),
             microphone: system.microphone(),
             speechModelInstalled: await system.speechModelInstalled(),
             speakerModelWarm: system.speakerModelWarm(),
             speechSupport: await system.speechSupport())
+        facts.captionLanguageChosen = !system.readsCaptionLanguage || !CaptionLanguageCenter.shared.needsChoice
         let next = FirstRun.step(for: facts)
         let previous = step
         step = next
@@ -92,7 +99,7 @@ final class FirstRunModel: ObservableObject {
             // Always ends: installed, or plain words and Try again -- never a spinner that runs forever (#81).
             switch await system.speechDownload.run(onProgress: { p in Task { @MainActor in self.progress = p } }) {
             case .installed: break
-            case .failed(let why): problem = why.message; downloadProblem = why
+            case .failed(let why): problem = why.message(language: LanguageSettingsState.name(CaptionLanguageCenter.engineLocale)); downloadProblem = why
             case .alreadyRunning: working = false; return
             }
             if problem == nil {
@@ -134,6 +141,12 @@ final class FirstRunModel: ObservableObject {
         }
     }
 
+    /// #37: she picked the language people around her speak; first run downloads it next.
+    func chooseLanguage(_ locale: Locale) {
+        CaptionLanguageCenter.shared.pick(locale)
+        Task { await refresh() }
+    }
+
     func retry() { problem = nil; downloadProblem = nil; Task { await refresh() } }
 }
 
@@ -144,10 +157,15 @@ struct FirstRunView: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let style = CaptionStyleStore().load()
+    @State private var firstRunRows: [CaptionLanguageList.Row] = []
 
     /// What this screen says: a stopped download gets its own words, with the reason on the second line.
     private var copy: FirstRunCopy {
-        if model.step == .speechModel, let why = model.downloadProblem { return FirstRunCopy.downloadStopped(why) }
+        let language = LanguageSettingsState.name(CaptionLanguageCenter.engineLocale)
+        if model.step == .speechModel, let why = model.downloadProblem {
+            return FirstRunCopy.downloadStopped(why, language: language)
+        }
+        if model.step == .speechModel { return FirstRunCopy.speechModel(language: language) }
         return FirstRunCopy.for(model.step)
     }
 
@@ -198,6 +216,11 @@ struct FirstRunView: View {
                         .padding(.horizontal, 40)
                         .padding(.top, 12)
                     Text("\(Int(model.progress * 100))%").font(.headline).monospacedDigit().foregroundStyle(mutedColor(style))
+                } else if model.step == .chooseLanguage {
+                    // #37: the same list as Settings' Caption language, the device's own regions first.
+                    CaptionLanguageRows(style: style, rows: firstRunRows, translatingInto: nil) { model.chooseLanguage($0) }
+                        .padding(.top, 12)
+                        .task { firstRunRows = await CaptionLanguagePage.loadRows(current: CaptionLanguageCenter.engineLocale, into: nil) }
                 } else if model.problem == nil, model.step == .speakerModel {
                     ProgressView().tint(style.gear.color).padding(.top, 12)
                 } else if let problem = model.problem, model.downloadProblem == nil {

@@ -345,6 +345,26 @@ caveat), **Internal** (process detail, not for marketing).
 - **Public use:** Internal. Fine to say "the Mac app captions the sound of your call, on the Mac" once a real call is
   checked.
 
+
+## E24. How the Mac app knows a call has started and ended: Core Audio, not CallKit
+- **Source:** Apple's macOS 27 SDK header `CallKit.framework/Headers/CXCallObserver.h`
+  (`API_UNAVAILABLE(macos, tvos)`); Core Audio's process objects ([kAudioHardwarePropertyProcessObjectList](https://developer.apple.com/documentation/coreaudio/kaudiohardwarepropertyprocessobjectlist),
+  `kAudioProcessPropertyIsRunningInput/Output`, macOS 14.2+); our own probe and app runs on the owner's MacBook Pro
+  (macOS 27.0.1), #178 / PR #179.
+- **What we took:** CallKit's call observer can't be used on macOS: the compiler refuses it. Core Audio lists every
+  process using sound and whether it is recording or playing, with change notifications and no permission. #178's rule:
+  a call is live while FaceTime or its call services (`com.apple.FaceTime`, `avconferenced`, `callservicesd`) use the
+  microphone; an end must hold 2 s. In the app, switching from the room to the call takes 1.0 s; speech after that
+  was captioned word for word (pretend call, `say` speech through the tap).
+- **Real FaceTime call (2026-10-28, 20:43–20:46 UTC, owner's MacBook Pro):** ringing showed only
+  `com.apple.FaceTime[out]` (not counted, correct); on answer `com.apple.avconferenced` opened the mic
+  (`[inout]`) and held it until hang-up, with one sub-second drop at 20:44:16 that the 2 s grace covers. The #178
+  build, launched idle during a second call, saw it by itself, switched to the call format, said "Captioning your
+  FaceTime call" and captioned both people live. Replayed as `RealFaceTimeCallReplayTests`.
+- **Confidence:** High for FaceTime video calls on this Mac. Continuity phone calls, Zoom/Teams/WhatsApp names: not
+  yet seen live.
+- **Drives:** #178's `CallSignal` / `CallWatcher`.
+
 ## E25. Non-text contrast: the Listening light must stay at 3:1 even in a quiet room
 - **Source:** W3C, [WCAG 2.2 Success Criterion 1.4.11 Non-text Contrast](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html):
   visual information needed to identify a UI component or its state needs a contrast ratio of at least 3:1 against
@@ -377,7 +397,23 @@ caveat), **Internal** (process detail, not for marketing).
   an absolute margin when Apple's figure is near zero.
 - **Public use:** Internal.
 
-## E27. Universal Purchase comes from one record and one bundle ID
+## E27. Which languages Apple can caption, and which of those it can translate
+- **Source:** our own reading of Apple's APIs on the M4 Mac mini, macOS 26.5, 2026-10-28 (#171):
+  [`SpeechTranscriber.supportedLocales`](https://developer.apple.com/documentation/speech/speechtranscriber) and
+  `installedLocales`, and [`LanguageAvailability`](https://developer.apple.com/documentation/translation/languageavailability)
+  `supportedLanguages` and `status(from:to:)`.
+- **What we took:** the speech engine supports **30 locales in 10 languages** (German, English, Spanish, French,
+  Italian, Japanese, Korean, Portuguese, Cantonese, Chinese). Translation supports 38 languages, which covers every
+  caption language **except Cantonese** (`yue-CN` → English: unsupported). `SpeechTranscriber` is created for one
+  locale and has no language detection, so the language people are speaking has to be chosen before captions start;
+  Translation can identify the language of text, but only after it's been captioned in the right language.
+- **Confidence:** Strong for the lists on this Mac (read from the APIs); an iPhone or iPad may report a different
+  set, so the app reads them on the device. Moderate for "no detection" (no such API in the SDK as of 26.5).
+- **Drives:** the caption language list (#37), translation's From row next to Into (#53, PR #171), and saying
+  plainly that Cantonese can be captioned but not translated.
+- **Public use:** Careful ("Seal captions 10 languages and translates 9 of them on the device").
+
+## E28. Universal Purchase comes from one record and one bundle ID
 - **Source:** Apple Developer, [Offering universal purchase](https://developer.apple.com/support/universal-purchase/)
   (checked 2026-10-28): a macOS app added to an iOS app's record "uses the same Apple ID (an app identifier), SKU, and
   bundle ID as the iOS app".

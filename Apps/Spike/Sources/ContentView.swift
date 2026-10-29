@@ -2,6 +2,7 @@ import AVFoundation
 import CaptionCore
 import CaptionUI
 import SwiftUI
+import Translation
 import UIKit
 
 @MainActor
@@ -328,6 +329,12 @@ struct ContentView: View {
     /// Round 2 (#118): the app is one screen. Which page shows; the page actually drawn (it changes at the midpoint of
     /// the fade, so the current page fades out before the next fades in); and the fade itself.
     @State private var nav = ScreenNavigator()
+    /// #37: the caption language, shared with first run and the engine.
+    @ObservedObject private var languages = CaptionLanguageCenter.shared
+    /// #53: live translation, its purchase, and each line's translated text.
+    @ObservedObject private var translation = TranslationCenter.shared
+    /// #37 / #53: caption language and translation, as Settings and the language list show them.
+    private var language: LanguageSettingsState { .current(languages: languages, translation: translation) }
     /// Height of the soft fade under the status row (#117 topedge); the first caption line starts below it (#137).
     static let captionsTopFade: CGFloat = 56
     @State private var shownScreen: AppScreen = .captions
@@ -360,6 +367,10 @@ struct ContentView: View {
     @Environment(\.launchCovering) private var launchCovering
     /// Debug demos only: a scripted tap on the rating card (simctl can't tap).
     @State private var demoRatingTap: Int?
+    /// #60: the face-to-face split is open (iPad and the unfolded Duo, translation on), and the window's size, which
+    /// decides whether the screen is big enough to offer it.
+    @State private var faceToFace = DemoMode.faceToFace
+    @State private var windowSize: CGSize = .zero
     /// Debug demos only: flips an invisible pixel so screen recordings keep writing frames (see runDemoPause).
     @State private var demoFlushTick = 0
 
@@ -386,7 +397,10 @@ struct ContentView: View {
             style.background.color.ignoresSafeArea()
             // The captions stay alive under the other pages (their scroll position and a held selection survive a trip
             // to Settings); only the drawn page takes touches and is read by VoiceOver.
-            Group { landscape ? AnyView(landscapeLayout) : AnyView(portraitLayout) }
+            Group {
+                if faceToFace && offersFaceToFace { faceToFaceSplit }
+                else { landscape ? AnyView(landscapeLayout) : AnyView(portraitLayout) }
+            }
                 .padding()
                 .opacity(opacity(of: .captions))
                 .allowsHitTesting(shownScreen == .captions)
@@ -430,6 +444,8 @@ struct ContentView: View {
                     .frame(width: 1, height: 1).ignoresSafeArea().allowsHitTesting(false).accessibilityHidden(true)
             }
         }
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { windowSize = $0 }
+        .animation(veilAnimation, value: faceToFace)
         .animation(veilAnimation, value: beta.showingCard)
         .animation(veilAnimation, value: beta.showingNotice)
         .task {
@@ -449,6 +465,12 @@ struct ContentView: View {
             model.appActiveChanged(phase == .active)
             model.scenePhaseChanged(phase)
         }
+        // #37: settle the caption language from the engine's list (first run already did, on a first launch).
+        .task { await languages.refresh() }
+        // #53: what she owns, the price, and Apple's Translation session for the pair while translation is on.
+        .task { await translation.start(); translation.linesChanged(model.stream.lines) }
+        .translationTask(translation.configuration) { session in await translation.run(session) }
+        .onChange(of: model.stream.lines) { _, lines in translation.linesChanged(lines) }
         .task {
             guard DemoMode.isOn else { return }
             model.demoApplyPreset()
@@ -470,6 +492,7 @@ struct ContentView: View {
                         nav.open(.savedConversation(newest.id))
                     }
                 case "credits": nav.open(.credits)
+                case "language": nav.open(.captionLanguage)   // #37 / #53: the caption language list
                 case "license": nav.open(.credits); nav.open(.licenseText)
                 default: break
                 }
@@ -544,7 +567,21 @@ struct ContentView: View {
                              model.tour.did(.closedSettings)
                              go { $0.gearTapped() }
                          },
-                         onOpen: { screen in go { $0.open(screen) } })
+                         onOpen: { screen in go { $0.open(screen) } },
+                         language: language,
+                         onChooseCaptionLanguage: { go { $0.open(.captionLanguage) } },
+                         onTranslation: { translation.setOn($0) },
+                         onChooseTranslationTarget: { go { $0.open(.translationTarget) } },
+                         onBuyTranslation: { Task { await translation.unlock() } },
+                         onRestorePurchases: { Task { await translation.restore() } })
+        case .translationTarget:
+            TranslationTargetPage(style: style, language: language, onBack: { go { $0.back() } },
+                                  onChoose: { locale in translation.setTarget(locale); go { $0.back() } })
+                .padding(.horizontal, 16)
+        case .captionLanguage:
+            CaptionLanguagePage(style: style, language: language, onBack: { go { $0.back() } },
+                                onChoose: { locale in Task { await languages.choose(locale) } })
+                .padding(.horizontal, 16)
         case .saved:
             if let store = model.store {
                 SavedConversationsPage(backTitle: nav.savedOpenedFromCaptions ? String(localized: "Captions") : String(localized: "Settings"),
@@ -617,7 +654,12 @@ struct ContentView: View {
         VStack(spacing: 2) {
             ZStack {
                 statusLine
-                HStack { settingsButton; Spacer(); savedButton }
+                HStack {
+                    settingsButton
+                    Spacer()
+                    if offersFaceToFace { faceToFaceButton }
+                    savedButton
+                }
             }
             if let detail = statusDetail {
                 Text(detail).font(.footnote).opacity(0.7).multilineTextAlignment(.center)
@@ -647,6 +689,53 @@ struct ContentView: View {
         .buttonStyle(PressableIconStyle(tint: gearColor))
         .tourTarget(.gear)
         .accessibilityLabel(String(localized: "Settings"))
+    }
+
+    /// #60 mock-up: the split is offered on a screen big enough for two halves with translation on. Debug builds only
+    /// until the owner approves the look and the second direction of translation is wired.
+    private var offersFaceToFace: Bool {
+        #if DEBUG
+        return FaceToFace.offersSplit(width: windowSize.width, height: windowSize.height, translationOn: translation.isActive)
+        #else
+        return false
+        #endif
+    }
+
+    private var faceToFaceButton: some View {
+        RetroWords(word: String(localized: "Face to face"), color: gearColor, background: style.background.color,
+                   size: .body, label: String(localized: "Face to face")) { faceToFace = true }
+    }
+
+    /// Which half each speaker belongs to. Mock-up: the demo's two speakers are placed by hand; how a real speaker gets
+    /// a half is the owner's open decision on #60.
+    private var faceToFaceSides: FaceToFaceSides {
+        var sides = FaceToFaceSides()
+        if DemoMode.faceToFace { sides.assign(speaker: 0, to: .partner); sides.assign(speaker: 1, to: .owner) }
+        return sides
+    }
+
+    /// A line's words in the language of the half that reads them. Mock-up: the demo's stand-ins on the simulator; on a
+    /// device only the existing direction (the other person's words into hers) is wired.
+    private func faceToFaceTranslation(_ line: CaptionLine, into half: FaceToFaceHalf) -> String? {
+        if DemoMode.faceToFace { return DemoMode.faceToFaceTranslation(of: line.text) }
+        return half == .owner ? translation.translations.translation(for: line) : nil
+    }
+
+    private var faceToFaceSplit: some View {
+        let lines = model.stream.lines
+        let sides = faceToFaceSides
+        return FaceToFaceView(
+            style: style, device: deviceClass,
+            owner: FaceToFace.entries(for: .owner, lines: lines, sides: sides, translation: faceToFaceTranslation),
+            partner: FaceToFace.entries(for: .partner, lines: lines, sides: sides, translation: faceToFaceTranslation),
+            ownerLanguage: (translation.target ?? Locale.current).nameInItself,
+            partnerLanguage: CaptionLanguageCenter.engineLocale.nameInItself,
+            onLeave: { faceToFace = false },
+            control: {
+                MorphingControl(control: control, fullWidth: min(windowSize.width * 0.47, 440),
+                                fill: style.text, label: style.background) { model.perform(control.action) }
+                    .frame(maxWidth: .infinity, alignment: control.presentation == .compact ? .trailing : .center)
+            })
     }
 
     /// Option A (#137, approved 2026-10-15): Saved conversations one tap away, opposite the gear, same color and size.
@@ -743,6 +832,20 @@ struct ContentView: View {
                                     .textRenderer(renderer)
                                     .accessibilityLabel(line.soundLabel.map { soundLabelA11yLabel(for: $0) } ?? "")
                                     .trackWords(in: textFrames, key: "text-\(line.id)")
+                            } else if translation.isActive, let translated = translation.translations.translation(for: line) {
+                                // #53 (owner, PR #171): the translation is the line that's read, on top at caption size
+                                // behind a translate mark; what was said stays, smaller, underneath. Selection and Copy
+                                // work on what was said.
+                                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                    Image(systemName: "translate").font(.subheadline.bold()).foregroundStyle(mutedColor(style))
+                                    Text(translated).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass))
+                                }
+                                .accessibilityElement(children: .combine)
+                                .accessibilityLabel(String(localized: "Translated: ") + translated)
+                                Text(line.text).font(.body).foregroundStyle(mutedColor(style))
+                                    .textRenderer(renderer)
+                                    .trackWords(in: textFrames, key: "text-\(line.id)")
+                                    .accessibilityLabel(String(localized: "Said: ") + line.text)
                             } else {
                                 Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass)).opacity(line.isFinal ? 1 : style.volatileOpacity)
                                     .textRenderer(renderer)

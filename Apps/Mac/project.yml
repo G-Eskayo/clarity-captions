@@ -30,6 +30,8 @@ targets:
       - path: ../Spike/Sources/SavedConversationsView.swift
       - path: ../Spike/Sources/SystemTextSizeCategory+DynamicTypeSize.swift
       - path: ../Spike/Sources/AboutCreditsView.swift
+      # #178: Stop becomes the iPhone's small X with the iPhone's shrink animation, the same control.
+      - path: ../Spike/Sources/MorphingControl.swift
       - path: ../Spike/Resources/Fonts
         type: folder
         buildPhase: resources

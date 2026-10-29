@@ -80,4 +80,37 @@ final class FirstRunTests: XCTestCase {
         XCTAssertFalse(store.isSpeakerModelWarm(forBuild: "iOS 27.1 / 1"), "OS update may drop the Neural Engine cache")
         XCTAssertFalse(store.isSpeakerModelWarm(forBuild: "iOS 27.0 / 2"), "app update may too")
     }
+
+    // MARK: caption language (#37): asked only when the device's language doesn't settle it
+
+    private func facts(languageChosen: Bool, speech: Bool = false, mic: MicrophoneAccess = .granted) -> FirstRunFacts {
+        var f = FirstRunFacts(hasSeenWelcome: true, microphone: mic, speechModelInstalled: speech, speakerModelWarm: false)
+        f.captionLanguageChosen = languageChosen
+        return f
+    }
+
+    func testAnUnsettledLanguageIsAskedBeforeItsDownload() {
+        XCTAssertEqual(FirstRun.step(for: facts(languageChosen: false)), .chooseLanguage)
+        XCTAssertEqual(FirstRun.step(for: facts(languageChosen: true)), .speechModel)
+    }
+
+    func testTheLanguageIsAskedOnlyAfterTheMicrophone() {
+        XCTAssertEqual(FirstRun.step(for: facts(languageChosen: false, mic: .undetermined)), .microphone)
+        XCTAssertEqual(FirstRun.step(for: facts(languageChosen: false, mic: .denied)), .microphoneDenied)
+    }
+
+    func testByDefaultTheLanguageIsSettledSoNothingIsAsked() {
+        XCTAssertTrue(FirstRunFacts(hasSeenWelcome: true, microphone: .granted, speechModelInstalled: false, speakerModelWarm: false).captionLanguageChosen)
+    }
+
+    func testTheDownloadScreenNamesTheLanguageItDownloads() {
+        XCTAssertEqual(FirstRunCopy.speechModel(language: "Spanish (Spain)").title, "Learning Spanish (Spain)")
+        XCTAssertEqual(FirstRunCopy.for(.speechModel), FirstRunCopy.speechModel(language: "English"))
+    }
+
+    func testTheLanguageQuestionSpeaksPlainly() {
+        let copy = FirstRunCopy.for(.chooseLanguage)
+        XCTAssertFalse(copy.title.isEmpty)
+        for word in ["locale", "model", "asset"] { XCTAssertFalse((copy.title + copy.message).lowercased().contains(word)) }
+    }
 }

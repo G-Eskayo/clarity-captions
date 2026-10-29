@@ -35,6 +35,9 @@ import Foundation
 ///   -ClarityDemoShow <id>  one state for the UI audit (2026-10-10; simctl can't tap): savedfromcaptions (#137), banner, preparing, confirmnew,
 ///                         namespeaker, jump, canthear, listening, failed, quiet, tour4save, savebeta
 ///   -ClarityDemoSettingsPush saved|credits|deleteall   Settings opened on a sub-screen (with -ClarityDemoSettings)
+///   -ClarityDemoLanguage <id>  -ClarityDemoTranslate <id>  -ClarityDemoTranslateProgress <0-1>   caption language and translation (#37, #53)
+///   -ClarityDemoTranslationOwned   translation bought, but off (#171); -ClarityDemoTranslate implies bought
+///   -ClarityDemoFaceToFace  opens the face-to-face split (#60) on a two-person conversation, English and Spanish
 ///   -ClarityDemoDeveloperPanel  opens the developer panel (mic mode, Engine picker, #150): simctl can't do the 1.5 s hold
 /// It feeds the same CaptionStream the real engine feeds, so what you see is the real caption view: speaker colours,
 /// names, line breaks and sound labels. No microphone, speech model or network is involved.
@@ -85,6 +88,23 @@ enum DemoMode {
     static var tour: String? { value(after: "-ClarityDemoTour") }
     static var show: String? { value(after: "-ClarityDemoShow") }
     static var settingsPush: String? { value(after: "-ClarityDemoSettingsPush") }
+    /// `-ClarityDemoLanguage es-ES`: captions in this language (#37). `-ClarityDemoTranslate en-US`: translation on,
+    /// into this language (#53). `-ClarityDemoTranslateProgress 0.42`: its language pack mid-download.
+    static var language: String? { value(after: "-ClarityDemoLanguage") }
+    static var translate: String? { value(after: "-ClarityDemoTranslate") }
+    static var translateProgress: Double? { value(after: "-ClarityDemoTranslateProgress").flatMap(Double.init) }
+    static var translationOwned: Bool { flag("-ClarityDemoTranslationOwned") }
+    /// `-ClarityDemoFaceToFace`: opens the face-to-face split (#60) on `faceToFaceScript`.
+    static var faceToFace: Bool { flag("-ClarityDemoFaceToFace") }
+    /// `-ClarityDemoFakeStore`: the translation purchase without the App Store (#53), for recordings of the flow on a
+    /// simulator run from the command line, where StoreKit's test file doesn't apply. Bought state is remembered.
+    static var fakeStore: Bool { flag("-ClarityDemoFakeStore") }
+    static var fakeStoreOwned: Bool {
+        get { UserDefaults.standard.bool(forKey: "demoFakeStoreOwned") }
+        set { UserDefaults.standard.set(newValue, forKey: "demoFakeStoreOwned") }
+    }
+    /// `-ClarityDemoLaunch language`: first run asks for the caption language (#37).
+    static var asksLanguage: Bool { launch == "language" }
     /// Round 2 (#118): three saved conversations to show the saved list (mock-up round2/02), written once on launch.
     static var seedsSaved: Bool {
         flag("-ClarityDemoSavedSeed") || settingsPush == "saved" || settingsPush == "deleteall" || settingsPush == "conversation" || flow == "saved" || flow == "delete"
@@ -136,7 +156,9 @@ enum DemoMode {
                     }
                 }
                 state.installed = true
-            }))
+            }),
+            // "language": first run asks for the caption language, as on a device whose language doesn't settle it (#37).
+            readsCaptionLanguage: kind == "language")
         #else
         return nil
         #endif
@@ -179,6 +201,48 @@ enum DemoMode {
         .line(speaker: 0, text: "When the voice changes, yes. It can mix up voices that sound alike."),
         .line(speaker: 1, text: "Good to know. So what should we try first"),
     ]
+
+    /// The same conversation in Spanish, for `-ClarityDemoLanguage es-*` (#37, #53): what a translation demo translates.
+    static let spanishScript: [Step] = [
+        .line(speaker: 0, text: "¿Está encendido? Di algo para que lo veamos."),
+        .line(speaker: 1, text: "Hola. Mis palabras aparecen en la pantalla."),
+        .line(speaker: 0, text: "También funciona en modo avión. Nada sale del teléfono."),
+        .sound(.laughter),
+        .line(speaker: 1, text: "¿Y empieza una línea nueva cuando habla otra persona?"),
+        .line(speaker: 0, text: "Cuando cambia la voz, sí. Puede confundir voces que se parecen."),
+        .line(speaker: 1, text: "Bueno saberlo. Entonces, qué probamos primero"),
+    ]
+
+    /// The English line a Spanish demo line was translated from: the simulator's stand-in for Translation (#53).
+    static func englishLine(for spanish: String) -> String? {
+        let pairs = zip(spanishScript, script).compactMap { pair -> (String, String)? in
+            if case .line(_, let es) = pair.0, case .line(_, let en) = pair.1 { return (es, en) }
+            return nil
+        }
+        return pairs.first { $0.0.hasPrefix(spanish) || spanish.hasPrefix($0.0) }?.1
+    }
+
+    /// #60: two people at a ticket counter. Speaker 0 speaks Spanish (the other person's half), speaker 1 English (the
+    /// owner's half). Each line carries its stand-in translation, since the simulator has no Translation languages.
+    static let faceToFaceScript: [(speaker: Int, said: String, translated: String)] = [
+        (0, "Hola, buenas tardes. ¿En qué le puedo ayudar?", "Hi, good afternoon. How can I help you?"),
+        (1, "I need the train to the airport.", "Necesito el tren al aeropuerto."),
+        (0, "Sale del andén cuatro, cada veinte minutos.", "It leaves from platform four, every twenty minutes."),
+        (1, "Do I buy the ticket here or on the train?", "¿Compro el billete aquí o en el tren?"),
+        (0, "Aquí, en la máquina. Acepta tarjeta.", "Here, at the machine. It takes cards."),
+        (1, "Great, thank you so much", "Genial, muchas gracias"),
+    ]
+
+    /// The face-to-face demo's stand-in translation of a line, or nil.
+    static func faceToFaceTranslation(of said: String) -> String? {
+        faceToFaceScript.first { $0.said.hasPrefix(said) || said.hasPrefix($0.said) }?.translated
+    }
+
+    /// The script in the demo's caption language.
+    static var activeScript: [Step] {
+        if faceToFace { return faceToFaceScript.map { .line(speaker: $0.speaker, text: $0.said) } }
+        return language?.hasPrefix("es") == true ? spanishScript : script
+    }
 }
 
 extension CaptionModel {
@@ -187,7 +251,7 @@ extension CaptionModel {
     func runDemo() {
         state = .listening
         for (speaker, name) in DemoMode.speakers { speakerNames.apply(name, to: speaker) }
-        let steps = DemoMode.script
+        let steps = DemoMode.activeScript
         if DemoMode.isStatic {
             for (i, step) in steps.enumerated() { play(step, isFinal: i < steps.count - 1) }
             return

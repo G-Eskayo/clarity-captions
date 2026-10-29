@@ -61,7 +61,30 @@ public final class RoomMicSource: AudioSource {
     /// Every choice made this session, in order (the first is the starting one): lets a check see a live switch.
     public private(set) var history: [RoomMicChoice] = []
 
-    public init() {}
+    /// Where the devices come from and which mic gets opened: the Mac's own, except in tests.
+    private let route: () -> (RoomMicChoice, UInt32?)
+    private let transportOf: (UInt32) -> AudioDeviceInfo.Transport?
+    private let makeMic: (UInt32?) -> AudioSource
+    private let silenceCheckDelay: TimeInterval
+
+    public convenience init() {
+        self.init(route: Self.currentChoice, transportOf: { Self.info($0, scope: kAudioObjectPropertyScopeInput).transport },
+                  makeMic: { id in DeviceMicAudioSource(deviceUID: id.flatMap { Self.string($0, kAudioDevicePropertyDeviceUID) }) },
+                  silenceCheckDelay: 2.5)
+    }
+
+    init(route: @escaping () -> (RoomMicChoice, UInt32?), transportOf: @escaping (UInt32) -> AudioDeviceInfo.Transport?,
+         makeMic: @escaping (UInt32?) -> AudioSource, silenceCheckDelay: TimeInterval) {
+        self.route = route
+        self.transportOf = transportOf
+        self.makeMic = makeMic
+        self.silenceCheckDelay = silenceCheckDelay
+    }
+
+    /// Whether a mic giving only silence is closed and opened again. Never a Bluetooth one (owner, 2026-10-28): each
+    /// reopen switches the headset in and out of call mode, and around an iPhone call can hand it to the phone, so the
+    /// person stops hearing the call. Open it once and keep it.
+    static func restartsOnSilence(_ transport: AudioDeviceInfo.Transport?) -> Bool { transport != .bluetooth }
 
     public var choice: RoomMicChoice { lock.withLock { currentChoice } }
 
@@ -69,12 +92,12 @@ public final class RoomMicSource: AudioSource {
 
     public func start(onBuffer: @escaping (AVAudioPCMBuffer) -> Void) throws {
         self.onBuffer = onBuffer
-        try queue.sync { try apply(Self.currentChoice()) }
+        try queue.sync { try apply(route()) }
         let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
             guard let self else { return }
             // A connect or disconnect fires output and input changes back to back and the hardware keeps switching for a
             // moment: let it settle, then decide once.
-            self.queue.asyncAfter(deadline: .now() + 1) { try? self.apply(Self.currentChoice()) }
+            self.queue.asyncAfter(deadline: .now() + 1) { try? self.apply(self.route()) }
         }
         listener = block
         for selector in [kAudioHardwarePropertyDefaultOutputDevice, kAudioHardwarePropertyDefaultInputDevice] {
@@ -116,7 +139,7 @@ public final class RoomMicSource: AudioSource {
         guard choice != .none else { return }
         // The device's own mic through an AudioQueue, room or headset alike. No echo canceller: Apple's came back silent or
         // garbled after headphones came and went. The call's echo can't double words anyway: mic and call are one stream.
-        let mic: AudioSource = DeviceMicAudioSource(deviceUID: inputID.flatMap { Self.string($0, kAudioDevicePropertyDeviceUID) })
+        let mic = makeMic(inputID)
         do {
             let inFormat = try mic.open()
             // Only the first channel is used, then the rate converted (a 7-channel echo-cancelled input once gave silence).
@@ -135,12 +158,19 @@ public final class RoomMicSource: AudioSource {
             inner = mic
             // A real mic never gives exact digital silence. One that does (measured: the Mac's mic right after AirPods
             // disconnect) gets restarted; AirPods busy on an iPhone call stay silent, so it gives up after a few tries.
-            queue.asyncAfter(deadline: .now() + 2.5) { [weak self] in
-                guard let self, !alive.isSet, self.inner === mic, attempt < 6 else { return }
+            // A Bluetooth mic is never restarted: it stays open, silent or not, until the route changes.
+            let restarts = Self.restartsOnSilence(inputID.flatMap(transportOf))
+            queue.asyncAfter(deadline: .now() + silenceCheckDelay) { [weak self] in
+                guard let self, !alive.isSet, self.inner === mic else { return }
+                guard restarts else {
+                    Self.log.notice("room mic: \(String(describing: choice), privacy: .public) gives only silence; Bluetooth, so kept open")
+                    return
+                }
+                guard attempt < 6 else { return }
                 Self.log.notice("room mic: \(String(describing: choice), privacy: .public) gave only silence, restarting (attempt \(attempt + 1))")
                 mic.stop()
                 self.inner = nil
-                try? self.apply(Self.currentChoice(), attempt: attempt + 1)
+                try? self.apply(self.route(), attempt: attempt + 1)
             }
         } catch {
             mic.stop()
@@ -149,7 +179,7 @@ public final class RoomMicSource: AudioSource {
             guard attempt < 6 else { return }
             queue.asyncAfter(deadline: .now() + 1) { [weak self] in
                 guard let self, self.lock.withLock({ self.currentChoice }) == choice, self.inner == nil else { return }
-                try? self.apply(Self.currentChoice(), attempt: attempt + 1)
+                try? self.apply(self.route(), attempt: attempt + 1)
             }
         }
     }

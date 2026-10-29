@@ -7,8 +7,8 @@ import os
 enum CaptionEngineFactory {
     static var speakerModelURL: URL? { Bundle.main.url(forResource: "Sortformer_v2.1", withExtension: "mlmodelc") }
     static var parakeetModelURL: URL? { Bundle.main.url(forResource: "ParakeetUltra", withExtension: nil) }
-    /// Captions are English (en-US) whatever the phone's language; see TranscriptionEngine's default.
-    static let captionLocale = Locale(identifier: "en-US")
+    /// The caption language she chose (#37). Parakeet is English only, so another language runs Apple's engine in it.
+    static var captionLocale: Locale { CaptionLanguageCenter.engineLocale }
     /// Only an Xcode (debug) build has the developer panel, so only it honours the panel's engine pick (owner, PR #155).
     #if DEBUG
     static let developerBuild = true
@@ -16,21 +16,23 @@ enum CaptionEngineFactory {
     static let developerBuild = false
     #endif
 
-    static func selection(now: Date = Date()) -> EngineSelection {
-        EngineFallbackPolicy.engine(for: CaptionEngineChoice.stored(developerBuild: developerBuild), now: now,
-                                    recentFallbacks: EngineFallbackHistory().recent(now: now),
-                                    availableMemory: UInt64(os_proc_available_memory()),
-                                    locale: captionLocale, modelPresent: parakeetModelURL != nil)
+    static func plan(now: Date = Date()) -> CaptionEnginePlan {
+        CaptionEnginePlan.make(captionLanguage: captionLocale, choice: CaptionEngineChoice.stored(developerBuild: developerBuild),
+                               now: now, recentFallbacks: EngineFallbackHistory().recent(now: now),
+                               availableMemory: UInt64(os_proc_available_memory()), modelPresent: parakeetModelURL != nil)
     }
+
+    static func selection(now: Date = Date()) -> EngineSelection { plan(now: now).selection }
 
     static func make(micMode: MicMode) throws -> TranscriptionEngine {
         guard let speakerModel = speakerModelURL else {
             throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc"))
         }
-        let selection = selection()
+        let plan = plan()
+        let selection = plan.selection
         let recognizer: SpeechRecognizerSetup = selection.engine == .parakeet
             ? parakeetModelURL.map { .parakeet(modelURL: $0) } ?? .apple : .apple
-        let engine = TranscriptionEngine(locale: captionLocale, micMode: micMode, diarizerModelURL: speakerModel,
+        let engine = TranscriptionEngine(locale: plan.locale, micMode: micMode, diarizerModelURL: speakerModel,
                                          recognizer: recognizer, startReason: selection.reason)
         engine.onFallback = { _ in
             var history = EngineFallbackHistory()

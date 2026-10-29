@@ -52,6 +52,10 @@ final class BetaFeedbackCenter: ObservableObject {
         let env: BetaEnvironment
         if DemoMode.forcesBeta {
             env = .xcode
+        } else if DemoMode.isOn {
+            // A demo launch that isn't about the beta is the App Store look. Asking StoreKit on a simulator can raise
+            // an Apple Account sign-in over the screenshot.
+            env = .production
         } else {
             switch try? await AppTransaction.shared {
             case .verified(let transaction):

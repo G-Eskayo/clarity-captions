@@ -128,3 +128,19 @@ public struct SilentEngineWatchdog: Sendable {
         return false
     }
 }
+
+/// Which recognizer a session runs on, and in which language (#37 with ADR 0025). The engine is always made for the
+/// caption language she chose: Parakeet is English only, so another language runs Apple's engine in that language,
+/// and Apple's fallback from Parakeet keeps her English variety.
+public struct CaptionEnginePlan: Sendable, Equatable {
+    public let selection: EngineSelection
+    public let locale: Locale
+
+    public static func make(captionLanguage: Locale, choice: CaptionEngineChoice, now: Date, recentFallbacks: [Date],
+                            availableMemory: UInt64, modelPresent: Bool) -> CaptionEnginePlan {
+        let selection = EngineFallbackPolicy.engine(for: choice, now: now, recentFallbacks: recentFallbacks,
+                                                    availableMemory: availableMemory, locale: captionLanguage,
+                                                    modelPresent: modelPresent)
+        return CaptionEnginePlan(selection: selection, locale: captionLanguage)
+    }
+}
