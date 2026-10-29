@@ -25,8 +25,9 @@ EXPECTED = {
     "whisper-large-v3-turbo-ivrit": "ivrit.ai Whisper large-v3 turbo (transformers), reference only",
     "nemotron-3.5-asr-streaming-0.6b-1120ms-int8": "Nemotron 3.5 streaming 0.6B, zero-shot (sherpa-onnx, int8, 1.12 s)",
 }
-SET_NAMES = {"he_il": "FLEURS he (read speech)", "eval-d1": "ivrit.ai eval-d1 (conversation)",
-             "eval-whatsapp": "ivrit.ai eval-whatsapp (voice notes)", "common-voice-he": "Common Voice he (read)"}
+# Report order: conversation first, since that is what live captions face.
+SET_NAMES = {"eval-d1": "ivrit.ai eval-d1 (conversation)", "eval-whatsapp": "ivrit.ai eval-whatsapp (voice notes)",
+             "he_il": "FLEURS he (read speech)", "common-voice-he": "Common Voice he (read)"}
 
 
 @dataclass(frozen=True)
@@ -145,18 +146,24 @@ def build_hebrew_report(scores: dict[str, SetScore], meta: dict) -> str:
         "WER = (S + D + I) / N over words, CER the same over characters (single spaces included), pooled over clips, "
         "after the #202 Hebrew normalizer on both sides (niqqud, maqaf, geresh, numbers as digits, fillers). "
         "**Lenient** also folds full and defective spelling (שולחן = שלחן); it sits beside the strict score, never "
-        "instead of it. 95% confidence intervals: bootstrap over sentences (1,000 resamples). Only clips every engine "
+        "instead of it. 95% confidence intervals: bootstrap over each set's groups (1,000 resamples), named under each "
+        "set. Only clips every engine "
         "finished are compared within a set. CER is the in-house decision metric: one wrong prefix letter "
         "(ו, ה, ב, ל, מ, ש, כ) costs a whole word in WER.",
         "",
     ]
-    for test_set, s in scores.items():
+    order = list(SET_NAMES)
+    for test_set in sorted(scores, key=lambda k: (order.index(k) if k in order else len(order), k)):
+        s = scores[test_set]
         info = (meta.get("sets") or {}).get(test_set, {})
         out += [f"## {SET_NAMES.get(test_set, test_set)}", ""]
         hours = info.get("audio_hours")
+        source = (f" Dataset `{info['repo']}` @ `{info['revision'][:7]}`." if info.get("repo") and info.get("revision")
+                  else "")
+        unit = "sentences" if info.get("sentences") else "recordings"
         out += [f"{s.clips_total} clips" + (f", {info.get('sentences')} distinct sentences" if info.get("sentences")
                                             else "") + (f", {hours:.2f} h" if hours else "")
-                + f". Compared on every engine below: {s.clips_compared} clips.", ""]
+                + f". Compared on every engine below: {s.clips_compared} clips; bootstrap over {unit}." + source, ""]
         if not s.cells:
             out += ["No results yet.", ""]
             continue

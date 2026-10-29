@@ -22,6 +22,11 @@ def main(argv: list[str] | None = None) -> int:
     fl.add_argument("--languages", default="es,fr,de")
     fl.add_argument("--target-hours", type=float, default=1.0)
 
+    iv = sub.add_parser("ivrit-shards", help="cut one ivrit.ai eval set (eval-d1, eval-whatsapp) into a shard (#201)")
+    iv.add_argument("--parquet", type=Path, required=True)
+    iv.add_argument("--out", type=Path, required=True)
+    iv.add_argument("--set", required=True, dest="set_name")
+
     s = sub.add_parser("sherpa", help="run sherpa-onnx over one shard, appending result lines")
     s.add_argument("--shard-dir", type=Path, required=True)
     s.add_argument("--results", type=Path, required=True)
@@ -93,6 +98,9 @@ def main(argv: list[str] | None = None) -> int:
     elif a.cmd == "fleurs-shards":
         from .fleurs import build_fleurs_shards
         print(json.dumps(build_fleurs_shards(a.corpus, a.out, a.languages.split(","), a.target_hours), indent=2))
+    elif a.cmd == "ivrit-shards":
+        from .ivrit import build_ivrit_shards
+        print(json.dumps(build_ivrit_shards(a.parquet, a.out, a.set_name), indent=2))
     elif a.cmd == "report-languages":
         from .report import write_language_report
         for lang, res in write_language_report(a.shards, a.results, a.out, a.json_out).items():

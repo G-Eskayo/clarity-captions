@@ -33,7 +33,21 @@ def char_counts(reference: str, hypothesis: str) -> Counts:
     return _align(list(" ".join(reference.split())), list(" ".join(hypothesis.split())))
 
 
+# Above this many cells (R*H) the alignment runs in C through rapidfuzz, when installed: eval-d1 transcripts run to
+# 3,000+ characters, 10M cells a clip, minutes each in Python. Same minimum edit distance, so WER and CER are
+# identical; on a tie the split between S, D and I may differ. FLEURS clips stay on the Python path.
+FAST_CELLS = 250_000
+
+
 def _align(ref: list[str], hyp: list[str]) -> Counts:
+    if len(ref) * len(hyp) > FAST_CELLS:
+        try:
+            from rapidfuzz.distance import Levenshtein
+        except ImportError:
+            pass
+        else:
+            ops = [op for op, _, _ in Levenshtein.editops(ref, hyp)]
+            return Counts(sub=ops.count("replace"), dele=ops.count("delete"), ins=ops.count("insert"), n=len(ref))
     # Each cell: (cost, sub, del, ins)
     prev = [(j, 0, 0, j) for j in range(len(hyp) + 1)]
     for i in range(1, len(ref) + 1):
