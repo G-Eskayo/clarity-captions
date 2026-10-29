@@ -367,6 +367,10 @@ struct ContentView: View {
     @Environment(\.launchCovering) private var launchCovering
     /// Debug demos only: a scripted tap on the rating card (simctl can't tap).
     @State private var demoRatingTap: Int?
+    /// #60: the face-to-face split is open (iPad and the unfolded Duo, translation on), and the window's size, which
+    /// decides whether the screen is big enough to offer it.
+    @State private var faceToFace = DemoMode.faceToFace
+    @State private var windowSize: CGSize = .zero
     /// Debug demos only: flips an invisible pixel so screen recordings keep writing frames (see runDemoPause).
     @State private var demoFlushTick = 0
 
@@ -393,7 +397,10 @@ struct ContentView: View {
             style.background.color.ignoresSafeArea()
             // The captions stay alive under the other pages (their scroll position and a held selection survive a trip
             // to Settings); only the drawn page takes touches and is read by VoiceOver.
-            Group { landscape ? AnyView(landscapeLayout) : AnyView(portraitLayout) }
+            Group {
+                if faceToFace && offersFaceToFace { faceToFaceSplit }
+                else { landscape ? AnyView(landscapeLayout) : AnyView(portraitLayout) }
+            }
                 .padding()
                 .opacity(opacity(of: .captions))
                 .allowsHitTesting(shownScreen == .captions)
@@ -437,6 +444,8 @@ struct ContentView: View {
                     .frame(width: 1, height: 1).ignoresSafeArea().allowsHitTesting(false).accessibilityHidden(true)
             }
         }
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { windowSize = $0 }
+        .animation(veilAnimation, value: faceToFace)
         .animation(veilAnimation, value: beta.showingCard)
         .animation(veilAnimation, value: beta.showingNotice)
         .task {
@@ -645,7 +654,12 @@ struct ContentView: View {
         VStack(spacing: 2) {
             ZStack {
                 statusLine
-                HStack { settingsButton; Spacer(); savedButton }
+                HStack {
+                    settingsButton
+                    Spacer()
+                    if offersFaceToFace { faceToFaceButton }
+                    savedButton
+                }
             }
             if let detail = statusDetail {
                 Text(detail).font(.footnote).opacity(0.7).multilineTextAlignment(.center)
@@ -675,6 +689,53 @@ struct ContentView: View {
         .buttonStyle(PressableIconStyle(tint: gearColor))
         .tourTarget(.gear)
         .accessibilityLabel(String(localized: "Settings"))
+    }
+
+    /// #60 mock-up: the split is offered on a screen big enough for two halves with translation on. Debug builds only
+    /// until the owner approves the look and the second direction of translation is wired.
+    private var offersFaceToFace: Bool {
+        #if DEBUG
+        return FaceToFace.offersSplit(width: windowSize.width, height: windowSize.height, translationOn: translation.isActive)
+        #else
+        return false
+        #endif
+    }
+
+    private var faceToFaceButton: some View {
+        RetroWords(word: String(localized: "Face to face"), color: gearColor, background: style.background.color,
+                   size: .body, label: String(localized: "Face to face")) { faceToFace = true }
+    }
+
+    /// Which half each speaker belongs to. Mock-up: the demo's two speakers are placed by hand; how a real speaker gets
+    /// a half is the owner's open decision on #60.
+    private var faceToFaceSides: FaceToFaceSides {
+        var sides = FaceToFaceSides()
+        if DemoMode.faceToFace { sides.assign(speaker: 0, to: .partner); sides.assign(speaker: 1, to: .owner) }
+        return sides
+    }
+
+    /// A line's words in the language of the half that reads them. Mock-up: the demo's stand-ins on the simulator; on a
+    /// device only the existing direction (the other person's words into hers) is wired.
+    private func faceToFaceTranslation(_ line: CaptionLine, into half: FaceToFaceHalf) -> String? {
+        if DemoMode.faceToFace { return DemoMode.faceToFaceTranslation(of: line.text) }
+        return half == .owner ? translation.translations.translation(for: line) : nil
+    }
+
+    private var faceToFaceSplit: some View {
+        let lines = model.stream.lines
+        let sides = faceToFaceSides
+        return FaceToFaceView(
+            style: style, device: deviceClass,
+            owner: FaceToFace.entries(for: .owner, lines: lines, sides: sides, translation: faceToFaceTranslation),
+            partner: FaceToFace.entries(for: .partner, lines: lines, sides: sides, translation: faceToFaceTranslation),
+            ownerLanguage: (translation.target ?? Locale.current).nameInItself,
+            partnerLanguage: CaptionLanguageCenter.engineLocale.nameInItself,
+            onLeave: { faceToFace = false },
+            control: {
+                MorphingControl(control: control, fullWidth: min(windowSize.width * 0.47, 440),
+                                fill: style.text, label: style.background) { model.perform(control.action) }
+                    .frame(maxWidth: .infinity, alignment: control.presentation == .compact ? .trailing : .center)
+            })
     }
 
     /// Option A (#137, approved 2026-10-15): Saved conversations one tap away, opposite the gear, same color and size.
