@@ -18,6 +18,6 @@
   conversation, so real-use WER will be higher for every engine (#145); Mac, not iPhone; the Ultra ONNX result is
   one unofficial export.
 - **Drives:** #158's recommendation, **Parakeet** for Spanish, French and German in 1.2; retires the "Ultra is
-  English-tuned" risk row in the engine-switch design; under ADR 0026 the same weights are the Android candidate.
+  English-tuned" risk row in the engine-switch design; under ADR 0026 the same weights are the Android candidate; ADR 0029's best engine per language, Parakeet for Spanish, French and German (#200).
 - **Public use:** Careful ("on a public set of read sentences, in our test, Parakeet made about a third fewer word
   errors than Apple's built-in engine in Spanish, French and German").

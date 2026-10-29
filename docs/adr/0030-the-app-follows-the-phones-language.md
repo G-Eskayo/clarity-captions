@@ -2,9 +2,9 @@
 
 ## Status
 
-Proposed (2026-10-29, #200; right-to-left added the same day after the owner's comment on #200). Draft: the owner
-answers the `ui-language`, `ui-text` and `rtl-*` Decisions on the
-design PR before this is accepted. Design: `docs/design/smallest-install-and-language-packs.md` §2.
+Proposed (2026-10-29, #200; right-to-left added the same day after the owner's comment on #200). The owner answered
+`ui-language` and `ui-text` (kept after the revised answers on PR #205, 2026-10-29); the `rtl-*` Decisions on the
+design PR are still open. Design: `docs/design/smallest-install-and-language-packs.md` §2.
 
 ## Context
 
@@ -23,13 +23,17 @@ every device that has the feature and later on Android ([[0026]], #43).
 
 ## Decision (proposed)
 
-1. **Every UI localization ships inside the app.** UI text is never a downloadable pack.
+1. **Every UI localization ships inside the app.** UI text is never a downloadable pack. The owner asked whether only
+   the downloaded language's UI could ship: the App Store thins an app per device, never per language, and about
+   50 UI languages are about 0.6 MB against about 765 MB of models. Shipping them all also keeps iOS's per-app
+   language switch working offline.
 2. **The UI language is the system's choice for this app**: the per-app language if the user set one, otherwise the
    first language in the phone's list that Seal has a translation for, otherwise English. Seal has no language
    setting of its own for the UI; it links to the system's per-app setting instead ([[0013]]: no technical choices
    in the app).
 3. **The caption language defaults to the UI language**, then down the phone's language list, to the first one a
-   caption engine on this device supports, already installed or not. Only when none match does first run ask (as
+   caption engine on this device supports, already installed or not. The best engine for that language
+   ([[0029]] 2) downloads at first run with no question asked. Only when none match does first run ask (as
    #37 does today). The user can still change it in Settings.
 4. **Translation's "Into" defaults to the UI language** when it differs from the caption language, otherwise to the
    next language in the phone's list ([[0031]]).

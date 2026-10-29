@@ -2,8 +2,8 @@
 
 ## Status
 
-Proposed (2026-10-29, #200). Draft: the owner answers the `translation-delete` and `translation-keep` Decisions on
-the design PR first. Extends #53/#171 (one Into language) and #60 (face to face). Design:
+Proposed (2026-10-29, #200). The owner answered `translation-delete` (take it off Seal's list and say where iOS keeps
+it) and `translation-keep` (any number, at least one) on the design PR, as proposed here. Extends #53/#171 (one Into language) and #60 (face to face). Design:
 `docs/design/smallest-install-and-language-packs.md` §5.
 
 ## Context

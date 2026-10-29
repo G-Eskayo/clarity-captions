@@ -18,6 +18,22 @@ Builds on ADRs 0001, 0014, 0025, 0026, and on #35 (strings in catalogs), #37 (ca
   languages they translate between, and keep more than one. **At least one stays while translation is owned.**
 - **As many languages as possible.** Hebrew first, Serbian a goal.
 
+### The owner's revised answers (PR #205, 2026-10-29)
+
+These replace the first answers to `base`, `english-pack` and `ui-text` where they differ:
+
+- **Small install, then the best engine for the phone's language downloads by itself at first run.** No "better
+  English" option anywhere: the best engine is the standard for every language and region. What gets skimmed is
+  engines for languages the user doesn't use, so a Hebrew phone never downloads the English engine. Speaker labels
+  download for everyone right after install.
+- **Parakeet for every language it supports, not just English** (#158 measured it beating Apple in Spanish, French
+  and German). Engines come in three groups: **Parakeet** for the ~25 European languages it covers, each measured
+  before it switches; **Apple's built-in engines** (0 MB) where Parakeet doesn't reach; **Seal's own packs** where
+  neither is good enough (Hebrew if it beats Apple, #201; Serbian, #204).
+- **Every UI language still ships inside the app.** The App Store thins an app per device, never per language, and
+  about 50 UI languages are about 0.6 MB against about 765 MB of models. Shipping them all also keeps iOS's per-app
+  language switch working offline.
+
 ## Summary
 
 1. **96.5% of today's app is two models.** The Release build is 765 MB: Parakeet Ultra 498 MB, Sortformer 241 MB,
@@ -27,10 +43,13 @@ Builds on ADRs 0001, 0014, 0025, 0026, and on #35 (strings in catalogs), #37 (ca
    Assets) download at install (`essential`), start at install and finish in the background (`prefetch`), or only
    when the app asks (`onDemand`). The app can track them and remove them. Apple hosts them for free (200 GB per app).
    Each pack updates on its own schedule, without an app update.
-3. **Proposed base:** the app plus Apple's speech engine, about 26 MB on disk (about 12 MB compressed). It captions
-   from the first launch. The speaker-labels pack and the English accuracy pack (Parakeet) download after that,
-   and Seal already falls back to Apple's engine while Parakeet is missing (ADR 0025). Example: a German-speaking
-   user goes from 765 MB to 267 MB.
+3. **The base:** the app plus Apple's speech engine, about 26 MB on disk (about 12 MB compressed). It captions
+   from the first launch. Speaker labels (241 MB) then download for everyone, and **the best engine for the caption
+   language downloads by itself at first run**: Parakeet (one 498 MB pack shared by all its languages) for English,
+   Spanish, French and German today and for each further European language once it's measured; nothing for a
+   language Apple's engine does best; a Seal pack where neither is good enough. Seal already captions on Apple's
+   engine while a pack is missing (ADR 0025). Examples: English, Spanish, French or German phone 765 MB, Japanese
+   phone 267 MB, Hebrew phone 267 MB on Apple's dictation engine (§3).
 4. **UI text never downloads.** Every localization ships in the app, and the system picks the language: the
    per-app language if the user set one, otherwise the phone's language list. **Region never picks a language.**
    On a Hebrew or Arabic phone the whole app is mirrored and written in that language, while **each caption line
@@ -54,7 +73,7 @@ Release build, iPhone, 2026-10-29 (details and method in `docs/perf/install-size
 | Part | On disk | Compressed (zip, ≈ download) |
 |---|---|---|
 | Whole app (1.1 build 7) | **765.0 MB** | **716.9 MB** |
-| Parakeet Ultra 6-bit (English captions, ADR 0025) | 498.0 MB | 484.1 MB |
+| Parakeet Ultra 6-bit (English captions today, ADR 0025) | 498.0 MB | 484.1 MB |
 | Sortformer v2.1 fp16 (speaker labels, ADR 0014) | 240.6 MB | 220.4 MB |
 | Everything else | 26.4 MB | 12.4 MB |
 | English UI strings | 0.012 MB | |
@@ -109,8 +128,13 @@ Release build, iPhone, 2026-10-29 (details and method in `docs/perf/install-size
   Hebrew screens by region and Russian screens by language. The phone's language is the one the person picked.
 - **Seal adds no UI-language setting of its own** ([[0013]]). A "Language" row in Settings opens the system's per-app
   page. That row only shows once Seal ships a second localization (#38, Spanish).
-- **All UI localizations ship in the app.** About 12 KB per language means 40 languages cost about 0.5 MB, against a
-  26 MB base. A language pack for text would add a download, a failure mode and a blank-screen risk to save nothing.
+- **All UI localizations ship in the app** (owner, kept 2026-10-29). About 12 KB per language means about 50
+  languages cost about 0.6 MB, against a 26 MB base and about 765 MB of models. The App Store thins an app per
+  device, and Apple's size docs describe only device variants, with nothing on slicing by language, so there's no
+  store setting that ships only one language's text ([Reducing your app's size](https://developer.apple.com/documentation/xcode/reducing-your-app-s-size);
+  evidence `2026-10-29-app-thinning-is-per-device-not-per-language`). A
+  language pack for text would add a download, a failure mode and a blank-screen risk to save nothing, and iOS's
+  per-app language switch would stop working offline.
 - **Apple's own features in that language:** captions and translation take explicit locales
   ([SpeechTranscriber](https://developer.apple.com/documentation/speech/speechtranscriber),
   [TranslationSession](https://developer.apple.com/documentation/translation/translationsession)), so Seal passes them
@@ -245,44 +269,63 @@ launch, which this build couldn't finish without the models; see the PR), and fa
 | Piece | Who needs it | Size | Today | Proposed |
 |---|---|---|---|---|
 | App (code, all UI languages, fonts) | everyone | 26.4 MB | in the app | in the app |
-| Apple's caption engine (SpeechTranscriber) + its locale asset | everyone (fallback); non-English captions | 0 MB to Seal | system download at first run | same |
-| **Speaker labels** (Sortformer) | everyone who wants Speaker 1 / Speaker 2 | 240.6 MB | in the app | **pack** |
-| **English accuracy** (Parakeet Ultra) | English captions | 498.0 MB | in the app | **pack** |
-| Caption packs for languages Apple lacks or does badly (Hebrew, later Serbian, …) | that language only | ~200–500 MB each (est.) | none | **pack, on demand** |
+| Apple's caption engines (SpeechTranscriber, DictationTranscriber) + the locale's asset | everyone (fallback); languages where Apple is the best engine | 0 MB to Seal | system download at first run | same |
+| **Speaker labels** (Sortformer) | everyone | 240.6 MB | in the app | **pack, `prefetch`: right after install** |
+| **Parakeet** (Parakeet Ultra, one pack for all its languages) | anyone whose caption language Parakeet wins (§6: en, es, fr, de today) | 498.0 MB | in the app | **pack, requested at first run for that language** |
+| Seal's own caption packs (Hebrew if it beats Apple, #201; Serbian, #204) | that language only | ~200–500 MB each (est.) | none | **pack, requested at first run for that language** |
 | Apple's translation languages | translation owners | 0 MB to Seal (155–291 MB to the system, Mac) | system | same |
 | Seal's own translation packs (languages Apple lacks) | translation owners, that pair | unknown | none | **pack, on demand, only if owned** |
 
 ### Size per person, today vs proposed
 
-| Person | Today | Proposed (on disk) |
-|---|---|---|
-| Install, before anything downloads | 765 MB | **26 MB** |
-| German speaker, speaker labels on | 765 MB | 267 MB (26 + 241) |
-| English speaker, speaker labels on (Mom's case) | 765 MB | 765 MB (26 + 241 + 498) |
-| English speaker who turns speaker labels off | 765 MB | 524 MB |
-| Hebrew captions via Apple's DictationTranscriber (§6) | n/a | 267 MB |
-| Hebrew captions via a Seal Hebrew pack, 2-bit (Hebrew research, speculative) | n/a | ≈ 470–510 MB |
-| + translation into Spanish (Apple) | system +286 MB (Mac figure) | same; not Seal's |
+Base 26 MB + speaker labels 241 MB for everyone + the one engine the caption language needs (§6):
 
-The English case doesn't shrink. The packs only stop everyone else paying for it. Two levers would shrink it too.
-Both are owner choices on accuracy, and neither is part of this design:
+| Person (caption language from the phone, ADR 0030) | Engine | Today | Proposed (on disk) |
+|---|---|---|---|
+| Install, before anything downloads | Apple's | 765 MB | **26 MB** |
+| After speaker labels land, before first run | Apple's | 765 MB | 267 MB |
+| English phone (Mom's case) | Parakeet | 765 MB | 765 MB (26 + 241 + 498) |
+| Spanish, French or German phone | Parakeet (#158) | 765 MB (Parakeet unused) | 765 MB, Parakeet now used |
+| English and German both (face to face, or switching) | Parakeet, one pack | 765 MB | 765 MB: the second language costs nothing |
+| Italian, Polish or another Parakeet language not yet measured | Apple's until measured, if Apple has it | 765 MB | 267 MB, then 765 MB once Parakeet wins (§6) |
+| Japanese, Korean, Chinese phone (Parakeet doesn't cover them) | Apple's | 765 MB | **267 MB** |
+| Hebrew phone, Apple's DictationTranscriber (Decision `hebrew-first`) | Apple's | n/a | **267 MB** |
+| Hebrew phone, if a Seal Hebrew pack beats Apple (#201; 2-bit, speculative) | Seal's | n/a | ≈ 470–510 MB |
+| Serbian phone (#204) | Seal's | n/a | 267 MB + the Serbian pack (unknown) |
+| + translation into Spanish (Apple) | | system +286 MB (Mac figure) | same; not Seal's |
 
-- the 4-bit Parakeet build: 350 MB, 14.8% vs 13.8% WER (ADR 0025)
+The English, Spanish, French and German cases don't shrink, because their best engine is the big one, and the owner
+wants the best engine as the standard. What the packs remove is engines nobody uses: a Japanese or Hebrew phone stops
+carrying 498 MB of European Parakeet. Two levers would shrink the Parakeet cases too. Both are owner choices on
+accuracy (Decision `shrink`), and #203 is measuring smaller still:
+
+- the 4-bit Parakeet build: 350 MB (320 MB zipped), 14.8% vs 13.8% English WER (ADR 0025, E12), still well ahead of
+  Apple's 17.2%
 - palettized Sortformer: about 97 MB, about 0.9 points worse diarization error (ADR 0014)
 
 ### First run with a 26 MB base
 
-1. Install: about 12 MB from the App Store, plus the `prefetch` packs if the owner picks that (Decisions `base`,
-   `english-pack`).
-2. First launch: the existing first-run step installs Apple's speech asset for the caption language (system, shared).
+1. Install: about 12 MB from the App Store. Speaker labels are a `prefetch` pack: they start downloading with the
+   install and finish in the background (Decision `speaker-pack`).
+2. First launch: Seal settles the caption language from the phone's language (ADR 0030 point 3) and picks the best
+   engine for it (§6). The existing first-run step installs Apple's speech asset for that language (system, shared).
    **Captions work from here**, on Apple's engine.
-3. In the background, Seal's packs for this person download: speaker labels, then English accuracy if captions are
-   English. A plain line in Settings shows the progress. No new first-run screen ([[0013]]).
+3. In the same first launch, Seal requests the engine pack that language needs, if any (Parakeet, or a Seal
+   language pack) as `onDemand`, with no question asked: it's the standard engine, not an option. A plain line shows
+   the progress ("Getting the best captions for German · 41%"). No new first-run screen ([[0013]]). Big downloads
+   follow the `cellular` rule.
 4. When a pack lands, it's checked (§4), and the next Start uses it. A running session is never swapped mid-way.
    - Parakeet already compiles for the phone on first load (35 s on a Mac, ADR 0025), so that step moves from
      first run to the first Start after the pack arrives, with the same status line.
    - Until the pack is there, Apple's engine captions, exactly like today's fallback.
-5. Nothing after step 3 needs the network again.
+5. Nothing after step 3 needs the network again, unless the user picks a caption language whose engine isn't on the
+   phone. Then that engine downloads the same way, and Apple's engine captions meanwhile.
+
+**Why not at install?** On iOS 26 the App Store can't pick a pack by language: `essential` and `prefetch` packs go to
+every device, and *localized* packs (picked by the app's language) need iOS 27 (§4). A Parakeet `prefetch` would put
+498 MB on every Japanese and Hebrew phone. So Seal asks for the engine at first launch. On iOS 27 a localized
+`prefetch` pack could start it during install for phones whose UI language is one Parakeet wins; that's an
+optimisation for later, since the caption language can differ from the UI language.
 
 ### Squaring this with ADR 0001 "on-device only"
 
@@ -329,9 +372,9 @@ The facts it rests on, each from Apple's current docs:
 Design choices that follow from those facts:
 
 - **Seal picks its own packs, not the system.** Localized packs need iOS 27. Seal supports 26, and its packs follow
-  the *caption* language, which can differ from the phone's. Packs are `onDemand` (or `prefetch`, Decision `base`),
-  and Seal requests them.
-- **Pack IDs carry a format version** (`speech-en-parakeet-ultra-pal6-v1`, `diarizer-sortformer-v2_1-fp16-v1`). A
+  the *caption* language, which can differ from the phone's. Speaker labels are `prefetch` (everyone gets them).
+  Engine packs are `onDemand`, and Seal requests the one the caption language needs at first launch (§3).
+- **Pack IDs carry a format version** (`speech-parakeet-ultra-pal6-v1`, `diarizer-sortformer-v2_1-fp16-v1`). A
   live pack replaces the old one for every installed app version, so a model the old app can't load must get a new
   ID, never a new version of the same ID.
 - **Seal still checks every file itself** (ADR 0025's sha256 pattern, §4.3), because Apple documents no integrity
@@ -343,8 +386,10 @@ Design choices that follow from those facts:
   App Store and TestFlight builds drop the bundled copies. The mock server (`ba-serve`) is for the pack-download
   tests themselves.
 - **Updating from 1.1:** the update that drops the bundled models must not leave English users on the weaker
-  engine for long. Packs that every 1.1 user had (speaker labels; English accuracy for English captions) are
-  `prefetch` on `subsequentUpdate`, and the fallback covers the gap.
+  engine for long. Speaker labels are `prefetch` on first install and on `subsequentUpdate`. Parakeet can't be
+  `prefetch` on update without going to every 1.1 user, so Seal requests it at the first launch after the update
+  when the caption language uses it, and Apple's engine covers the gap. (Every 1.1 user has Parakeet in the app
+  today, so a `prefetch` on update only would keep their size as it is and avoid the gap. Decision `update-path`.)
 
 ### Android: Play Asset Delivery (when there's an Android app, #43)
 
@@ -390,8 +435,12 @@ Each pack carries `pack.json` at its root, read by both platforms:
 
 One Settings page, **Downloads**, plain words, no engine names ([[0013]]):
 
-- **Seal's packs:** "Speaker labels: 241 MB. Delete". "Better English captions: 498 MB. Delete". "Hebrew
-  captions: 212 MB. Delete". Each row shows real size from the manifest, plus progress while it downloads.
+- **Seal's packs:** "Speaker labels: 241 MB. Delete". "Captions for English, Spanish, French, German: 498 MB".
+  "Hebrew captions: 212 MB". Each row shows real size from the manifest, plus progress while it downloads. There's
+  no "better captions" pack to opt into: an engine row names the languages it captions.
+  - **The engine for the caption language has no Delete** (the owner: the best engine is the standard, not an
+    option). It gets one once no language the user keeps needs it, e.g. after switching captions from German to
+    Japanese (Decision `unused-engine`).
   - Deleting says what changes ("Captions keep working; Speaker 1 / Speaker 2 stop until you download it again").
   - A pack in use by a running session can't be deleted until Stop.
 - **Kept by iOS:** the caption language's speech asset and the translation languages are listed as "Kept by iOS,
@@ -451,17 +500,62 @@ Once translation is bought, Settings > Translation shows **Your languages**, Sea
 - **Serbian has no on-device engine anywhere in this table.** It needs a Seal caption pack. Parakeet v3 has
   Croatian, a close relative, but that's a *guess*, not a measurement. It also needs a Seal translation pack, and
   licence and model are unresearched (ADR 0026 rule 4: no CC BY-NC).
-- Parakeet covers 24 more European languages than Seal uses it for (English only today). Per ADR 0026, each one
-  gets an accuracy test against Apple before the English pack is offered for it.
+- Parakeet covers 24 more European languages than Seal uses it for (English only today). Spanish, French and German
+  are measured (#158: Parakeet wins all three). The other 21 each get the same test before they switch.
+
+### The best engine for each language: three groups (owner, 2026-10-29)
+
+Seal picks one engine per caption language. Nobody chooses it in Settings ([[0013]]), and there's no "better" tier:
+
+| Group | Languages | Size to Seal | When it's the engine |
+|---|---|---|---|
+| **Parakeet** (Parakeet Ultra) | the 25 European languages it covers | 498 MB, once, for all of them | the language passed #158's test: Parakeet's 95% interval reaches Apple's WER or below, and the better engine is at 15% WER or under (ADR 0026 §3). Today: **en, es, fr, de** |
+| **Apple's built-in engines** (SpeechTranscriber, else DictationTranscriber) | every language Apple has where Parakeet doesn't reach or doesn't win | 0 MB (system, shared) | Parakeet doesn't cover it (ja, ko, zh, he, ar, …), or covers it but lost or isn't measured yet |
+| **Seal's own packs** | languages where neither is good enough | ~200–500 MB per language (est.) | Apple has nothing, or the best of Apple and Parakeet is above 15% WER, and a Seal model measured better: Hebrew if it beats Apple (#201), Serbian (#204) |
+
+- **A Parakeet language not measured yet** stays on Apple's engine if Apple has it. The owner's rule is "each
+  measured before it switches". If Apple has no engine at all for it, the language isn't offered until Parakeet is
+  measured on it (Decision `parakeet-unmeasured`).
+- **Measuring one language** is #158's harness (`scripts/engine-eval`, FLEURS test split, the same rule). FLEURS has
+  all 25 Parakeet languages (the model card reports all 25 on it, E14), so measuring the other 21 is a run, not a project.
+- **Where the table lives:** in the app, as a CaptionCore value (language → engine), shipped with app updates and
+  under unit tests. Not in `pack.json`: changing a live pack sends every installed copy a new version, and Apple's
+  docs don't say a metadata change avoids re-downloading 498 MB.
+- **"Configured to the language on download"** (the owner's question on the first answers): Parakeet v3 and Ultra
+  have no language setting. They detect the language from the audio, and FluidAudio's Parakeet v3 path takes no
+  language argument (checked in the FluidAudio checkout, 2026-10-29). Seal still knows the caption language: it picks
+  the engine, the text direction (§2) and the fallback. A German speaker who drops into English gets English words,
+  which is what face to face (#60) already relies on.
+
+### Parakeet: one shared pack, not one per language
+
+**One pack.** Parakeet Ultra is one model for all 25 languages: one encoder (about 461 of its 498 MB), one decoder
+and joint network, and one shared vocabulary (E14; evidence `2026-10-29-parakeet-is-one-pack-for-all-its-languages`). There's no per-language part to split off, so a "German Parakeet
+pack" would be the same 498 MB as the English one.
+
+| Pack | Covers | On disk | Download (zip -9 estimate) | Source |
+|---|---|---|---|---|
+| Parakeet Ultra 6-bit (today's, ADR 0025) | all 25, used for en, es, fr, de | 498.0 MB | 484.1 MB | `docs/perf/install-size-2026-10-29.md` |
+| Parakeet Ultra 4-bit (Decision `shrink`) | the same | 350 MB | 320 MB | E12 |
+| A per-language pack (e.g. Seal Hebrew, #201) | one language | est. 200–500 MB | | Hebrew research, speculative |
+
+- **Per-language packs only exist where the model is per-language:** Seal's own fine-tunes (Hebrew, Serbian), or
+  single-language models like FluidAudio's Japanese Parakeet. Each is a full model, so two such languages cost two
+  packs.
+- **Shared wins for bilingual people.** English plus German is one 498 MB pack. Per-language copies of the same model
+  would be 996 MB.
+- **What it costs:** someone who uses only German still gets weights that also know 24 other languages. That's not
+  size anyone can remove: it's the same file.
+- A smaller shared pack (2-bit, #203) would shrink every Parakeet language at once.
 
 ## 7. Seal's pack list (first cut)
 
 | Pack | Kind | Languages | Size (on disk) | Policy | Who gets it |
 |---|---|---|---|---|---|
-| Speaker labels | diarizer | all | 240.6 MB | Decision `speaker-pack` | everyone (or on first Start) |
-| Better English captions | speech | en-* | 498.0 MB | Decision `english-pack` | English captions |
-| Hebrew captions | speech | he-IL | est. 200–500 MB | onDemand | picks Hebrew, if it beats Apple (§6) |
-| Serbian captions | speech | sr | unknown | onDemand | later |
+| Speaker labels | diarizer | all | 240.6 MB | `prefetch` (first install and update) | everyone, right after install |
+| Parakeet | speech | the 25 it covers; used for en, es, fr, de today (§6) | 498.0 MB | `onDemand`, requested at first run | caption language is one Parakeet wins |
+| Hebrew captions | speech | he-IL | est. 200–500 MB | `onDemand`, requested at first run | Hebrew captions, only if it beats Apple (#201) |
+| Serbian captions | speech | sr | unknown | `onDemand`, requested at first run | Serbian captions (#204), later |
 | Serbian translation | translation | sr↔en | unknown | onDemand, owned only | later |
 
 The pack count is far under Apple's 200, and the sizes far under 200 GB.
@@ -506,6 +600,12 @@ measured 1% fewer installs per 6 MB under 100 MB, but that's an old, secondary s
    pseudolanguage screenshots of every screen.
 10. **Hebrew localization** of the UI, then Arabic: native-speaker wording and review (#38's rule), screenshots of
     every screen on a Hebrew phone. Only this makes a Hebrew phone show the mirrored app.
+11. **Best engine per language** (§6): the language → engine table in CaptionCore (Parakeet for en, es, fr, de;
+    Apple's elsewhere), `CaptionEngineFactory` and `EngineFallbackPolicy` reading it instead of "Parakeet is English
+    only", and the first-run request for that engine's pack. Unit tests per group, and screenshots of the first-run
+    progress line on a German phone.
+12. **Measure the other 21 Parakeet languages** with #158's harness, one table row each; every win is a one-line
+    change to the table in ticket 11.
 
 ## 10. Risks and unknowns
 
