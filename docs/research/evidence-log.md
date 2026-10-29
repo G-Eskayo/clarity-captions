@@ -412,3 +412,30 @@ caveat), **Internal** (process detail, not for marketing).
 - **Drives:** the caption language list (#37), translation's From row next to Into (#53, PR #171), and saying
   plainly that Cantonese can be captioned but not translated.
 - **Public use:** Careful ("Seal captions 10 languages and translates 9 of them on the device").
+
+## E28. Two models are 96.5% of the app
+- **Source:** our own Release build of 1.1 build 7, Mac mini M4, 2026-10-29 (#200):
+  [`docs/perf/install-size-2026-10-29.md`](../perf/install-size-2026-10-29.md).
+- **What we took:** the app is 765 MB on disk (717 MB zipped). Parakeet Ultra is 498 MB and Sortformer 241 MB;
+  code, every string and the fonts are 26 MB. English UI text is 12 KB. The models barely compress (3–8%).
+- **Confidence:** Ours. An unsigned build; the App Store's per-device numbers will differ somewhat.
+- **Drives:** splitting the models into packs and shipping every UI language in the app (ADRs 0029, 0030, design
+  `docs/design/smallest-install-and-language-packs.md`).
+- **Public use:** Careful ("the app itself is about 26 MB; the speech models download for the languages you use", once built).
+
+## E29. Apple-hosted asset packs, and what apps can't manage
+- **Source:** Apple's docs, read 2026-10-29: [Creating managed asset packs](https://developer.apple.com/documentation/backgroundassets/creating-managed-asset-packs),
+  [AssetPackManager](https://developer.apple.com/documentation/backgroundassets/assetpackmanager),
+  [Apple-hosted asset pack size limits](https://developer.apple.com/help/app-store-connect/reference/apple-hosted-asset-pack-size-limits),
+  [WWDC25 325](https://developer.apple.com/videos/play/wwdc2025/325/),
+  [Translating text within your app](https://developer.apple.com/documentation/translation/translating-text-within-your-app),
+  [AssetInventory](https://developer.apple.com/documentation/speech/assetinventory). Google's counterpart:
+  [Play Asset Delivery](https://developer.android.com/guide/playcore/asset-delivery),
+  [ML Kit translation](https://developers.google.com/ml-kit/language/translation/android).
+- **What we took:** from iOS 26.0, an app can ship models as Apple-hosted packs that download at install, after
+  install or on request. The app can track and remove them, and they update without an app update (200 GB free per
+  app). Apple's translation and speech assets are system-managed and shared: an app can ask about a language but
+  can't list or delete translation languages. ML Kit's are per app and deletable.
+- **Confidence:** Strong (official documentation). Unconfirmed: cellular behaviour and integrity checks of packs.
+- **Drives:** ADRs 0029 (packs) and 0031 (the user's translation list, deleting Apple languages honestly).
+- **Public use:** Internal.
