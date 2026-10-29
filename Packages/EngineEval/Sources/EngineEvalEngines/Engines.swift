@@ -25,6 +25,8 @@ public enum EngineID: String, CaseIterable, Sendable {
     /// ternary re-training of v3).
     case parakeetV3Int4 = "parakeet-v3-int4"
     case parakeetRedux = "parakeet-redux"
+    /// Apple's DictationTranscriber, for languages SpeechTranscriber doesn't have (Hebrew, #201). Uses --locale.
+    case appleDictation = "apple-dictation"
 
     /// WhisperKit was dropped after shard 1 (owner, 2026-10-21); it stays selectable with --engines.
     public static var defaults: [EngineID] { [.apple, .parakeetV2, .parakeetUltra] }
@@ -46,6 +48,7 @@ public func makeTranscriber(_ id: EngineID, modelsDir: URL, versions: EngineVers
                             locale: String = AppleLocale.defaultLocale) -> FileTranscriber {
     switch id {
     case .apple: return AppleSpeechFileTranscriber(osVersion: versions.os, locale: locale)
+    case .appleDictation: return AppleDictationFileTranscriber(osVersion: versions.os, locale: locale)
     case .parakeetV2: return ParakeetFileTranscriber(version: .v2, name: "parakeet-tdt-0.6b-v2-coreml",
                                                      modelsDir: modelsDir, fluidAudio: versions.fluidAudio)
     case .parakeetUltra: return ParakeetFileTranscriber(version: .ultra, name: "parakeet-ultra-coreml",
@@ -123,6 +126,75 @@ public final class AppleSpeechFileTranscriber: FileTranscriber {
     public func transcribe(_ url: URL) async throws -> String {
         let transcriber = SpeechTranscriber(locale: locale, transcriptionOptions: [], reportingOptions: [.fastResults],
                                             attributeOptions: [])
+        let analyzer = SpeechAnalyzer(modules: [transcriber])
+        let collect = Task { () throws -> String in
+            var parts: [String] = []
+            for try await result in transcriber.results where result.isFinal {
+                parts.append(String(result.text.characters))
+            }
+            return parts.joined(separator: " ")
+        }
+        do {
+            let file = try AVAudioFile(forReading: url)
+            if let last = try await analyzer.analyzeSequence(from: file) {
+                try await analyzer.finalizeAndFinish(through: last)
+            } else {
+                await analyzer.cancelAndFinishNow()
+            }
+        } catch {
+            collect.cancel()
+            await analyzer.cancelAndFinishNow()
+            throw error
+        }
+        return try await collect.value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+// MARK: - Apple DictationTranscriber (#201)
+
+/// The engine Apple offers for Hebrew: SpeechTranscriber has no he-IL on macOS 26, DictationTranscriber does. Same
+/// file path as the SpeechTranscriber engine, final results only, punctuation on (the scorer drops it). The asset is
+/// installed here through AssetInventory, not through CaptionCore, which only knows SpeechTranscriber.
+public final class AppleDictationFileTranscriber: FileTranscriber {
+    public let engine = "apple-dictation"
+    public let model: String
+    public let version: String
+    private let locale: Locale
+
+    public init(osVersion: String, locale: String) {
+        version = "macOS \(osVersion)"
+        model = AppleLocale.dictationModelName(locale)
+        self.locale = Locale(identifier: locale)
+    }
+
+    private func makeTranscriber() -> DictationTranscriber {
+        DictationTranscriber(locale: locale, contentHints: [], transcriptionOptions: [.punctuation],
+                             reportingOptions: [], attributeOptions: [])
+    }
+
+    private func installed() async -> Bool {
+        await DictationTranscriber.installedLocales.contains { $0.identifier(.bcp47) == locale.identifier(.bcp47) }
+    }
+
+    public func load() async throws {
+        guard await DictationTranscriber.supportedLocales.contains(where: {
+            $0.identifier(.bcp47) == locale.identifier(.bcp47)
+        }) else {
+            throw NSError(domain: "EngineEval", code: 4,
+                          userInfo: [NSLocalizedDescriptionKey: "DictationTranscriber has no \(locale.identifier)"])
+        }
+        if !(await installed()),
+           let request = try await AssetInventory.assetInstallationRequest(supporting: [makeTranscriber()]) {
+            try await request.downloadAndInstall()
+        }
+        guard await installed() else {
+            throw NSError(domain: "EngineEval", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: "\(locale.identifier) dictation asset not installed"])
+        }
+    }
+
+    public func transcribe(_ url: URL) async throws -> String {
+        let transcriber = makeTranscriber()
         let analyzer = SpeechAnalyzer(modules: [transcriber])
         let collect = Task { () throws -> String in
             var parts: [String] = []

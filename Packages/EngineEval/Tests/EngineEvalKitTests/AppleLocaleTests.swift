@@ -20,4 +20,11 @@ final class AppleLocaleTests: XCTestCase {
             XCTAssertNil(AppleLocale.parse(bad), bad)
         }
     }
+
+    /// Hebrew (#201): SpeechTranscriber has no he-IL, so Apple's engine there is DictationTranscriber, and its result
+    /// lines must say so (the Hebrew report keys on this name).
+    func testDictationModelNameForHebrew() {
+        XCTAssertEqual(AppleLocale.parse("he-IL"), "he-IL")
+        XCTAssertEqual(AppleLocale.dictationModelName("he-IL"), "DictationTranscriber he-IL")
+    }
 }

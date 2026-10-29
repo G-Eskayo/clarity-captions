@@ -102,3 +102,8 @@ def test_rerun_is_idempotent(tmp_path):
     b = build_fleurs_shards(tmp_path / "corpus", tmp_path / "shards", ["de"])
     assert a == b
     assert not list((tmp_path / "shards").rglob("*.tmp"))
+
+
+def test_hebrew_is_a_fleurs_language_for_201():
+    from edacc_eval.fleurs import LANGUAGES
+    assert LANGUAGES["he"].config == "he_il" and LANGUAGES["he"].locales == ("he-IL",)

@@ -6,7 +6,7 @@ import SwiftUI
 /// `CallArrival`'s effects on the model one after another (each waits for the engine to stop before the next starts).
 ///
 /// The room is captioned from the microphone; [ Caption call ] switches to the call format (#172: call and room
-/// together). Off when `listenTo` has been set by hand (`defaults write com.gileskayo.captions listenTo both`), which
+/// together). Off when `listenTo` has been set by hand (`defaults write com.gileskayo.captions.mac listenTo both`), which
 /// keeps #172's behavior exactly.
 @MainActor
 final class CallFlow: ObservableObject {

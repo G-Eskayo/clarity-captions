@@ -1,4 +1,4 @@
-"""Text normalizer for the reference and every engine: English (#145) and Spanish, French, German (#158).
+"""Text normalizer for the reference and every engine: English (#145), Spanish, French, German (#158), Hebrew (#202).
 
 Choices are documented in docs/perf/engine-accuracy-design.md and docs/perf/language-accuracy-design.md ("Scoring").
 The same function runs on both sides, so any residual quirk costs every engine equally.
@@ -8,6 +8,8 @@ from __future__ import annotations
 import re
 import unicodedata
 from dataclasses import dataclass, field
+
+from .hebrew import lenient_hebrew, normalize_he  # noqa: F401  (lenient_hebrew re-exported for the scorer)
 
 _ONES = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
          "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"]
@@ -168,7 +170,7 @@ _LANGS = {
     "de": _Lang("komma", "prozent", {"€": "euro", "$": "dollar", "£": "pfund"},
                 frozenset("äh ähm öh öhm hm hmm mm mmm".split())),
 }
-LANGUAGES = ("en",) + tuple(_LANGS)
+LANGUAGES = ("en",) + tuple(_LANGS) + ("he",)
 
 _ES_ORDINAL = re.compile(r"\b(\d+)\.?\s?([º°ª])")
 _FR_ORDINAL = re.compile(r"\b(\d+)(ère|ere|er|re|ème|eme|e)\b", re.IGNORECASE)
@@ -286,9 +288,12 @@ _LETTER_DIGIT_ANY = re.compile(r"(?<=[^\W\d_])(?=\d)|(?<=\d)(?=[^\W\d_])")
 
 
 def normalize(text: str | None, language: str | None = None) -> str:
-    """English (language None or "en") is #145's normalizer, unchanged; "es", "fr", "de" use the #158 rules."""
+    """English (language None or "en") is #145's normalizer, unchanged; "es", "fr", "de" use the #158 rules;
+    "he" is #202's (edacc_eval/hebrew.py)."""
     if language in (None, "en"):
         return _normalize_en(text)
+    if language == "he":
+        return normalize_he(text)
     if language not in _LANGS:
         raise ValueError(f"no normalizer for language {language!r}; have {', '.join(LANGUAGES)}")
     return _normalize_lang(text, language)
