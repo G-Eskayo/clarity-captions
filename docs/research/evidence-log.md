@@ -413,7 +413,19 @@ caveat), **Internal** (process detail, not for marketing).
   plainly that Cantonese can be captioned but not translated.
 - **Public use:** Careful ("Seal captions 10 languages and translates 9 of them on the device").
 
-## E28. Two models are 96.5% of the app
+## E28. Face to face: routing each voice to one language engine (#60 spike)
+- **Source:** our own measurement, [docs/perf/face-to-face-spike.md](../perf/face-to-face-spike.md) (Mac mini M4,
+  2026-10-29). Synthetic two-voice conversation (Spanish and English macOS voices) and 20 real FLEURS Spanish clips.
+- **What we took:** the diarizer names a new speaker about 0.7 s into their turn (max 0.76 s), so voice-first routing
+  works; routed English captions are no slower than one-way (median 0.55 s vs 0.65 s) and Spanish about 0.37 s slower
+  (0.54 s vs 0.17 s). Engine confidence does **not** tell the languages apart (Parakeet Ultra writes Spanish almost
+  perfectly); the language of the words they write does (4+ words: 37 of 38 lines right at P ≥ 0.99).
+- **Confidence:** Ours, Moderate: synthetic voices in a quiet room, Mac not iPad.
+- **Drives:** #60's speaker-to-language match by the words' language (lock at P ≥ 0.95 over 4+ words), with a
+  correction when later lines say otherwise.
+- **Public use:** Careful ("measured on a Mac with synthetic voices").
+
+## E29. Two models are 96.5% of the app
 - **Source:** our own Release build of 1.1 build 7, Mac mini M4, 2026-10-29 (#200):
   [`docs/perf/install-size-2026-10-29.md`](../perf/install-size-2026-10-29.md).
 - **What we took:** the app is 765 MB on disk (717 MB zipped). Parakeet Ultra is 498 MB and Sortformer 241 MB;
@@ -423,7 +435,7 @@ caveat), **Internal** (process detail, not for marketing).
   `docs/design/smallest-install-and-language-packs.md`).
 - **Public use:** Careful ("the app itself is about 26 MB; the speech models download for the languages you use", once built).
 
-## E29. Apple-hosted asset packs, and what apps can't manage
+## E30. Apple-hosted asset packs, and what apps can't manage
 - **Source:** Apple's docs, read 2026-10-29: [Creating managed asset packs](https://developer.apple.com/documentation/backgroundassets/creating-managed-asset-packs),
   [AssetPackManager](https://developer.apple.com/documentation/backgroundassets/assetpackmanager),
   [Apple-hosted asset pack size limits](https://developer.apple.com/help/app-store-connect/reference/apple-hosted-asset-pack-size-limits),
