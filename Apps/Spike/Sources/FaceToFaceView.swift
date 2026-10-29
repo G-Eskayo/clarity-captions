@@ -1,7 +1,7 @@
 import CaptionCore
 import SwiftUI
 
-/// #60 mock-up: the face-to-face split on iPad and the unfolded iPhone Duo. The owner's half is at the bottom, facing
+/// #60: the face-to-face split on iPad and the unfolded iPhone Duo. The owner's half is at the bottom, facing
 /// her; the other person's half is at the top, turned 180° to face them. A short line across the middle, well short
 /// of both edges, divides them (owner, 2026-10-29). Each half shows its own speaker's words as said and the other
 /// person's words translated, translation on top behind the translate mark, what was said smaller underneath (#171).
@@ -13,8 +13,7 @@ struct FaceToFaceView<Control: View>: View {
     /// Each half's language, named in that language (the owner's Into, the other person's From).
     let ownerLanguage: String
     let partnerLanguage: String
-    let onLeave: () -> Void
-    /// Start / Stop, in the owner's half only.
+    /// Start / Stop, in the owner's half only. Stop is the only way out of the split (owner, 2026-10-29).
     @ViewBuilder let control: () -> Control
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -39,18 +38,8 @@ struct FaceToFaceView<Control: View>: View {
     private func half(_ entries: [FaceToFaceEntry], language: String, isOwner: Bool) -> some View {
         VStack(spacing: 4) {
             // From each reader's own side, the top of their half is the middle of the screen.
-            ZStack {
-                Text(language).font(.subheadline.weight(.semibold)).foregroundStyle(mutedColor(style))
-                if isOwner {
-                    HStack {
-                        RetroWords(word: String(localized: "Leave face to face"), color: style.text.color,
-                                   background: style.background.color, size: .body,
-                                   label: String(localized: "Leave face to face"), action: onLeave)
-                        Spacer()
-                    }
-                }
-            }
-            .frame(minHeight: 44)
+            Text(language).font(.subheadline.weight(.semibold)).foregroundStyle(mutedColor(style))
+                .frame(minHeight: 44)
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 14) {
                     ForEach(entries) { entry in line(entry) }

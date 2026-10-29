@@ -64,6 +64,19 @@ struct SampleWindow: Sendable {
         if excess > 0 { drop(excess) }
     }
 
+    /// Face to face (#60): this engine didn't hear the audio up to `time` (another voice's turn). The gap is silence,
+    /// so word times stay on the session clock; a gap longer than the window just starts it afresh. Never backwards.
+    mutating func skip(to time: Double) {
+        let gap = time - endTime
+        guard gap > 0 else { return }
+        if gap >= maxSeconds {
+            samples = []
+            startTime = time
+        } else {
+            append([Float](repeating: 0, count: Int((gap * Self.rate).rounded())), level: -.infinity)
+        }
+    }
+
     /// Drops audio before `time` (session seconds).
     mutating func trim(before time: Double) {
         let n = Int(((time - startTime) * Self.rate).rounded(.down))
@@ -148,6 +161,12 @@ final class ParakeetBackend: SpeechRecognizerBackend, @unchecked Sendable {
         lock.withLock { window.append(samples16k, level: level) }
     }
 
+    func skip(to seconds: Double) { lock.withLock { window.skip(to: seconds) } }
+
+    /// Asked to settle: the next hop commits every open word, as `finish` does, and decoding carries on.
+    private var settleRequested = false
+    func settle() { lock.withLock { settleRequested = true } }
+
     /// Quieter than this, with nothing open, skips the decode (the beta report's quiet line).
     static let silenceGateDBFS = -50.0
     /// Louder than this counts as someone talking for the watchdog: well above a quiet room.
@@ -161,6 +180,13 @@ final class ParakeetBackend: SpeechRecognizerBackend, @unchecked Sendable {
             if Task.isCancelled { break }
             let audioEnd = lock.withLock { window.endTime }
             let shot = lock.withLock { window.take(from: committer.windowStart(audioEnd: audioEnd)) }
+            if lock.withLock({ () -> Bool in defer { settleRequested = false }; return settleRequested }), !committer.isSettled {
+                let words = await decode(shot.samples, start: shot.start, manager: manager) ?? []
+                let final = committer.finish(decode: words.map { TimedWord(text: $0.text, start: $0.start - shot.start, end: $0.end - shot.start) },
+                                             windowStart: shot.start)
+                for piece in emitter.pieces(final: final, volatile: []) { yield(piece) }
+                continue
+            }
             var heard = 0
             var failed = false
             if shot.loudest < Self.silenceGateDBFS && committer.isSettled {

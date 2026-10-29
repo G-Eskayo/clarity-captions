@@ -413,7 +413,29 @@ caveat), **Internal** (process detail, not for marketing).
   plainly that Cantonese can be captioned but not translated.
 - **Public use:** Careful ("Seal captions 10 languages and translates 9 of them on the device").
 
-## E28. Scoring Hebrew fairly: one normaliser for both sides, CER beside WER
+## E28. Face to face: routing each voice to one language engine (#60 spike)
+- **Source:** our own measurement, [docs/perf/face-to-face-spike.md](../perf/face-to-face-spike.md) (Mac mini M4,
+  2026-10-29). Synthetic two-voice conversation (Spanish and English macOS voices) and 20 real FLEURS Spanish clips.
+- **What we took:** the diarizer names a new speaker about 0.7 s into their turn (max 0.76 s), so voice-first routing
+  works; routed English captions are no slower than one-way (median 0.55 s vs 0.65 s) and Spanish about 0.37 s slower
+  (0.54 s vs 0.17 s). Engine confidence does **not** tell the languages apart (Parakeet Ultra writes Spanish almost
+  perfectly); the language of the words they write does (4+ words: 37 of 38 lines right at P ≥ 0.99).
+- **Confidence:** Ours, Moderate: synthetic voices in a quiet room, Mac not iPad.
+- **Drives:** #60's speaker-to-language match by the words' language (lock at P ≥ 0.95 over 4+ words), with a
+  correction when later lines say otherwise.
+- **Public use:** Careful ("measured on a Mac with synthetic voices").
+
+## E29. Universal Purchase comes from one record and one bundle ID
+- **Source:** Apple Developer, [Offering universal purchase](https://developer.apple.com/support/universal-purchase/)
+  (checked 2026-10-28): a macOS app added to an iOS app's record "uses the same Apple ID (an app identifier), SKU, and
+  bundle ID as the iOS app".
+- **What we took:** sharing the bundle ID and record is what makes one purchase cover every platform; a different
+  bundle ID and record keep them separate.
+- **Confidence:** Strong (official documentation).
+- **Drives:** ADR 0028 (the Mac sold separately), #176.
+- **Public use:** Internal.
+
+## E30. Scoring Hebrew fairly: one normaliser for both sides, CER beside WER
 - **Source:** Marmor et al. (2025), ivrit.ai, Interspeech, [PDF](https://www.isca-archive.org/interspeech_2025/marmor25_interspeech.pdf)
   §4.1 (their leaderboard normalises with Whisper's `BasicTextNormalizer`, which has no Hebrew rules, and they name
   three ways that misleads: full vs defective spelling, digits vs words, verbatim vs clean references); and

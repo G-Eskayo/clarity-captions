@@ -26,6 +26,12 @@ final class TranslationCenter: ObservableObject {
     @Published private(set) var translations = CaptionTranslations()
     /// Handed to `.translationTask`; a new value starts a new session, nil stops it.
     @Published private(set) var configuration: TranslationSession.Configuration?
+    /// #60 face to face, the second direction: her words (the language she reads) into the other person's language.
+    @Published private(set) var reverseTranslations = CaptionTranslations()
+    @Published private(set) var reverseConfiguration: TranslationSession.Configuration?
+    private var faceToFace = false
+    private var reverseWake: AsyncStream<Void>.Continuation?
+    private var latestReverse: [CaptionLine] = []
 
     private let store: CaptionLanguageStore
     private var product: Product?
@@ -163,7 +169,15 @@ final class TranslationCenter: ObservableObject {
     }
 
     /// A new session for the current pair, or none. Also reads whether the pair needs its language pack.
+    /// The split opened or closed (#60): the second direction runs only while it's open.
+    func faceToFaceChanged(_ on: Bool) {
+        faceToFace = on
+        if !on { reverseTranslations.reset(); latestReverse = [] }
+        refreshConfiguration()
+    }
+
     func refreshConfiguration() {
+        defer { refreshReverseConfiguration() }
         #if DEBUG && targetEnvironment(simulator)
         // Lines that landed before translation was bought or turned on get their stand-in now.
         defer { if usesDemoTranslator { demoFill(latest) } }
@@ -185,16 +199,28 @@ final class TranslationCenter: ObservableObject {
         }
     }
 
+    private func refreshReverseConfiguration() {
+        #if DEBUG && targetEnvironment(simulator)
+        if usesDemoTranslator { reverseConfiguration = nil; return }
+        #endif
+        guard faceToFace, purchase.isOwned, isOn, let target, !unsupportedPair else { reverseConfiguration = nil; return }
+        let wanted = TranslationSession.Configuration(source: target.language, target: CaptionLanguageCenter.engineLocale.language)
+        if reverseConfiguration?.source != wanted.source || reverseConfiguration?.target != wanted.target { reverseConfiguration = wanted }
+    }
+
     // MARK: the captions
 
-    /// The caption lines changed: wake the session's loop. A new conversation starts clean.
-    func linesChanged(_ lines: [CaptionLine]) {
-        if lines.isEmpty { translations.reset() }
+    /// The caption lines changed: wake the session's loop. A new conversation starts clean. Face to face (#60), `lines`
+    /// are the other person's (into her language) and `reverse` hers (into theirs).
+    func linesChanged(_ lines: [CaptionLine], reverse: [CaptionLine] = []) {
+        if lines.isEmpty && reverse.isEmpty { translations.reset(); reverseTranslations.reset() }
         latest = lines
+        latestReverse = reverse
         #if DEBUG && targetEnvironment(simulator)
-        if usesDemoTranslator { demoFill(lines); return }
+        if usesDemoTranslator { demoFill(lines); demoFillReverse(reverse); return }
         #endif
         wake?.yield()
+        reverseWake?.yield()
     }
 
     #if DEBUG && targetEnvironment(simulator)
@@ -206,7 +232,16 @@ final class TranslationCenter: ObservableObject {
     private func demoFill(_ lines: [CaptionLine]) {
         guard isOn, purchase.isOwned else { return }
         for work in translations.take(from: lines) {
-            translations.finished(lineID: work.lineID, source: work.text, translation: DemoMode.englishLine(for: work.text) ?? work.text)
+            translations.finished(lineID: work.lineID, source: work.text,
+                                  translation: DemoMode.englishLine(for: work.text) ?? DemoMode.faceToFaceTranslation(of: work.text) ?? work.text)
+        }
+    }
+
+    private func demoFillReverse(_ lines: [CaptionLine]) {
+        guard isOn, purchase.isOwned, faceToFace else { return }
+        for work in reverseTranslations.take(from: lines) {
+            reverseTranslations.finished(lineID: work.lineID, source: work.text,
+                                         translation: DemoMode.faceToFaceTranslation(of: work.text) ?? work.text)
         }
     }
     #endif
@@ -233,6 +268,30 @@ final class TranslationCenter: ObservableObject {
                     translations.finished(lineID: work.lineID, source: work.text, translation: response.targetText)
                 } catch {
                     translations.failed(lineID: work.lineID, source: work.text)
+                    if Task.isCancelled { return }
+                }
+            }
+        }
+    }
+
+    /// The second direction (#60), inside its own `.translationTask`: her finished lines into the other person's
+    /// language, while the split is open. Its language pack comes the same way, through Apple's own sheet.
+    func runReverse(_ session: TranslationSession) async {
+        let (stream, continuation) = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
+        reverseWake = continuation
+        defer { continuation.finish() }
+        if let target, await LanguageAvailability().status(from: target.language, to: CaptionLanguageCenter.engineLocale.language) != .installed {
+            do { try await session.prepareTranslation() } catch { return }
+        }
+        continuation.yield()
+        for await _ in stream {
+            if Task.isCancelled { return }
+            for work in reverseTranslations.take(from: latestReverse) {
+                do {
+                    let response = try await session.translate(work.text)
+                    reverseTranslations.finished(lineID: work.lineID, source: work.text, translation: response.targetText)
+                } catch {
+                    reverseTranslations.failed(lineID: work.lineID, source: work.text)
                     if Task.isCancelled { return }
                 }
             }

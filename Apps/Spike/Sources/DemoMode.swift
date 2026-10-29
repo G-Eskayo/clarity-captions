@@ -96,6 +96,10 @@ enum DemoMode {
     static var translationOwned: Bool { flag("-ClarityDemoTranslationOwned") }
     /// `-ClarityDemoFaceToFace`: opens the face-to-face split (#60) on `faceToFaceScript`.
     static var faceToFace: Bool { flag("-ClarityDemoFaceToFace") }
+    /// `-ClarityDemoFaceToFaceLive` (#60 wiring): opens the split and plays `faceToFaceScript` the way the two language
+    /// engines would report it, through the real engine lanes, voice matching and NaturalLanguage, so the screen shows
+    /// what each half shows before and after a voice is matched. Only the audio and the translations are stand-ins.
+    static var faceToFaceLive: Bool { flag("-ClarityDemoFaceToFaceLive") }
     /// `-ClarityDemoFakeStore`: the translation purchase without the App Store (#53), for recordings of the flow on a
     /// simulator run from the command line, where StoreKit's test file doesn't apply. Bought state is remembered.
     static var fakeStore: Bool { flag("-ClarityDemoFakeStore") }
@@ -240,6 +244,7 @@ enum DemoMode {
 
     /// The script in the demo's caption language.
     static var activeScript: [Step] {
+        if faceToFaceLive { return [] }
         if faceToFace { return faceToFaceScript.map { .line(speaker: $0.speaker, text: $0.said) } }
         return language?.hasPrefix("es") == true ? spanishScript : script
     }
@@ -268,6 +273,32 @@ extension CaptionModel {
                 }
                 play(step, isFinal: i < steps.count - 1)
                 try? await Task.sleep(nanoseconds: 900_000_000)
+            }
+        }
+    }
+
+    /// `-ClarityDemoFaceToFaceLive`: each script line as both engines report it, a few words at a time, until the voice
+    /// is matched; after that only its own language's engine hears it (the router's rule). Speaker 0 speaks the caption
+    /// language (the other person's half), speaker 1 the language she reads.
+    func runFaceToFaceDemo() {
+        state = .listening
+        let pair = LanguagePair(owner: TranslationCenter.shared.target ?? Locale(identifier: "en"),
+                                partner: CaptionLanguageCenter.engineLocale)
+        Task { @MainActor in
+            var t = 0.5
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            for (i, line) in DemoMode.faceToFaceScript.enumerated() {
+                let words = line.said.split(separator: " ").map(String.init)
+                let last = i == DemoMode.faceToFaceScript.count - 1
+                for n in Array(stride(from: 3, through: words.count, by: 3)) + (words.count % 3 == 0 ? [] : [words.count]) {
+                    let isFinal = n == words.count && !last
+                    for lane in speakerLanguages.lanes(for: line.speaker).sorted(by: { $0 == .partner && $1 == .owner }) {
+                        demoFaceToFaceHeard(Array(words.prefix(n)), speaker: line.speaker, lane: lane, at: t, isFinal: isFinal, pair: pair)
+                    }
+                    try? await Task.sleep(nanoseconds: 700_000_000)
+                }
+                t += Double(words.count) * 0.4 + 1.5
+                try? await Task.sleep(nanoseconds: 1_200_000_000)
             }
         }
     }
