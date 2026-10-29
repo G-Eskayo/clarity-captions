@@ -366,4 +366,7 @@ public enum AppleLocale {
     }
 
     public static func modelName(_ locale: String) -> String { "SpeechTranscriber \(locale)" }
+
+    /// Apple's dictation model, for locales SpeechTranscriber lacks (Hebrew, #201).
+    public static func dictationModelName(_ locale: String) -> String { "DictationTranscriber \(locale)" }
 }

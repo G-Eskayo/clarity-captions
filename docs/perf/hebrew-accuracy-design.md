@@ -4,6 +4,127 @@ Design for #201 "[E] Hebrew: measure Apple's dictation engine against the open H
 "[E] Hebrew text normaliser for fair scoring". Method and harness come from the #158 language test
 ([`language-accuracy-design.md`](language-accuracy-design.md)); this page records what changes for Hebrew.
 
+## Question
+
+Before any Hebrew engine work (a fine-tune, a language pack, an iPhone spike): how well does Apple's own Hebrew
+engine caption, and how far ahead are the open Hebrew models? Apple's Hebrew accuracy had never been measured (the
+2026-10-29 Hebrew research, ticket T1 there). Measured as WER and CER per engine per test set, with 95% confidence
+intervals, plus speed. There is no verdict rule: this is a baseline for the decisions after it (which base model to
+fine-tune, whether a pack beats Apple), not a ship decision.
+
+## What we found (2026-10-29)
+
+Full table: [`hebrew-accuracy-comparison.md`](hebrew-accuracy-comparison.md). FLEURS he, 792 clips, all five engines
+on every clip. CER (strict) with 95% CI, then WER:
+
+| Engine | CER | WER |
+|---|---|---|
+| ivrit.ai Whisper turbo (reference only) | 8.3% (6.7–10.0) | 17.4% (15.3–19.5) |
+| Parakeet-He | 9.7% (8.1–11.4) | 22.3% (20.2–24.5) |
+| ivrit.ai zipformer2 66M, int8, streaming | 10.0% (8.4–11.7) | 22.2% (20.1–24.3) |
+| **Apple DictationTranscriber he-IL** | **16.5% (14.8–18.4)** | **35.0% (32.8–37.2)** |
+| Nemotron 3.5 streaming, zero-shot | 32.4% (29.7–35.0) | 50.8% (47.8–53.5) |
+
+- **Every open Hebrew model beats Apple, and the intervals don't overlap.** Parakeet-He and the zipformer make about
+  40% fewer character errors than Apple's DictationTranscriber (9.7–10.0% vs 16.5% CER). The research guessed this
+  ("open models very likely beat it, Speculative until measured"); it is now measured on read speech.
+- **The 66M zipformer, streaming at int8, ties the 600M Parakeet-He** (10.0% vs 9.7% CER, intervals overlapping) at
+  about a tenth of the size. This supports the research's reframe: a small native streaming model may be the better
+  phone candidate.
+- **Nemotron 3.5 zero-shot is not usable for Hebrew** (32% CER, mostly deletions: 2,669 of its 6,982 word errors),
+  even when told the language. That matches NVIDIA's "adaptation-ready" label: it needs a fine-tune first.
+- Whisper turbo leads, as expected of the model that labelled the others' training data. It is the accuracy ceiling,
+  not a phone candidate.
+- **Apple's engine is also the least complete:** 1,024 deleted words, twice the open models', and one clip failed
+  outright on the first try (`RecogFailed`; it passed on a retry).
+- **Cross-check with the published number:** Parakeet-He's card puts it at "FLEURS: 76.8 vs ~82 for the best models",
+  apparently 100 − WER. Here it scores 22.3% WER (77.7) and Whisper 17.4% (82.6), so this harness agrees with the
+  card within a point.
+- **Speed** (indicative, different hardware per engine): Parakeet-He 50x real time on the GPU, Apple 41x, the zipformer
+  31x on the CPU, Whisper and Nemotron about 9x.
+- **Read speech only.** FLEURS is the set the published models are weakest on (rare names, Latin terms). The
+  conversation sets (eval-d1, eval-whatsapp) are the ones that decide anything about live captions, and they still
+  need the owner's sign-in (below).
+
+## Licence check
+
+Done before any download, 2026-10-29. The app is paid, so a non-commercial licence rules a model out.
+
+| Item | Licence | Role |
+|---|---|---|
+| FLEURS he ([`google/fleurs`](https://huggingface.co/datasets/google/fleurs) `he_il` test split, commit `70bb2e8`) | CC BY 4.0 | test data, never trained on, never committed |
+| Apple `DictationTranscriber` he-IL (Speech framework, asset through `AssetInventory`) | system framework | engine |
+| Parakeet-He, [`thewh1teagle/parakeet-tdt-0.6b-v3-he`](https://huggingface.co/thewh1teagle/parakeet-tdt-0.6b-v3-he) @ `0037204` | CC BY 4.0 (base NVIDIA Parakeet v3 CC BY 4.0; trained on ivrit.ai audio under its licence) | engine |
+| ivrit.ai zipformer2 66M streaming, [`ivrit-ai/zipformer2-66m-streaming-he`](https://huggingface.co/ivrit-ai/zipformer2-66m-streaming-he) @ `ee769a2`, `sherpa-onnx/` int8 | CC BY 4.0 (Yakov Kolani's model, mirrored by ivrit.ai) | engine |
+| ivrit.ai Whisper large-v3 turbo, [`ivrit-ai/whisper-large-v3-turbo`](https://huggingface.co/ivrit-ai/whisper-large-v3-turbo) @ `f33172a` | Apache-2.0 | reference only (809M parameters, about 1.6 GB: not a phone candidate) |
+| NVIDIA Nemotron 3.5 ASR streaming 0.6B, [`nvidia/nemotron-3.5-asr-streaming-0.6b`](https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b); sherpa-onnx int8 export [`csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-1120ms-int8-2026-06-11`](https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-1120ms-int8-2026-06-11) @ `cba1c96` | OpenMDW-1.1, "ready for commercial use" (NVIDIA's card; the export has no licence file of its own, so it inherits NVIDIA's) | engine, zero-shot |
+| ivrit.ai eval-d1 and eval-whatsapp ([`ivrit-ai/eval-d1`](https://huggingface.co/datasets/ivrit-ai/eval-d1), [`ivrit-ai/eval-whatsapp`](https://huggingface.co/datasets/ivrit-ai/eval-whatsapp)) | "other": the ivrit.ai licence (CC BY 4.0 base, use limited to AI training or academic research), gated | **not run**, see below |
+| Common Voice he | CC0 | **not run**, see below |
+| sherpa-onnx 2.0.1, transformers 5.22.0, torch 2.15.0, librosa | Apache-2.0 / Apache-2.0 / BSD-3 / ISC | runtimes on the Mac (test tools, never shipped) |
+
+## What could not run
+
+- **ivrit.ai eval-d1 and eval-whatsapp** are gated on Hugging Face: a signed-in account has to accept ivrit.ai's terms
+  before the files download (the API answers `gated: auto`). The Mac mini has no Hugging Face token, and this run was
+  unattended, so nobody could accept them. They matter most: they are conversation and voice notes, closer to live
+  captions than read speech, and they are where every published Hebrew number comes from. Once the owner accepts the
+  terms and saves a token on the Mini, the driver needs only a shard maker for their parquet files (a follow-up).
+  Their licence restricts use to "training AI models, or academic research". Testing a model we plan to train fits
+  that purpose, but it is worth the same one-line confirmation with ivrit.ai as the training data (research §2).
+- **Common Voice he** has been distributed through Mozilla Data Collective behind a sign-in since 2025 (the same
+  reason #158 left it out), and the old Hugging Face copies are gated or withdrawn. Not fetched.
+- So this report has **one test set, FLEURS he: read Wikipedia sentences**. It is the set where the published models
+  are weakest (Parakeet-He's card: "weaker on read encyclopedic text: rare names, numbers, Latin terms"), so it
+  understates them against their conversation scores. It is not a stand-in for eval-d1.
+
+## Dataset
+
+FLEURS `he_il` test split at dataset commit `70bb2e8` (the commit #158 pinned): **792 clips, 347 distinct sentences,
+2.05 h**, read by up to three native speakers each, 16 kHz WAV, every clip under 30 s. The #158 shard maker
+(`fleurs.py`, now with `he`) cuts three gender-stratified shards with the same manifest format; the reference is
+FLEURS's **raw** transcription through the #202 normaliser. The audio lives in `~/hebrew-eval/` on the M4 Mac mini,
+outside the repo, and is never committed or shown on a public page; only aggregate scores are published.
+
+## Machines and engines
+
+Everything ran on the **M4 Mac mini** (10 cores, 16 GB, macOS 26.5), at nice +15 next to other work.
+
+| Engine (result `model`) | Runtime | Settings |
+|---|---|---|
+| Apple DictationTranscriber he-IL (`DictationTranscriber he-IL`) | Speech framework through the Swift harness (`engine-eval run --engines apple-dictation --locale he-IL`) | no content hints, punctuation on, final results only. **SpeechTranscriber**, the app's engine, has no Hebrew locale on macOS 26 (it lists 30 locales, none Hebrew), so DictationTranscriber is Apple's only on-device Hebrew model. |
+| Parakeet-He (`parakeet-tdt-0.6b-v3-he`) | transformers `AutoModelForTDT`, torch MPS (Apple GPU), fp32 | greedy, as the model card shows |
+| ivrit.ai zipformer2 66M (`zipformer2-66m-streaming-he-int8`) | sherpa-onnx 2.0.1 `OnlineRecognizer`, CPU, 8 threads | streaming, 1.28 s chunks, greedy; the whole clip is fed, then 3 s of silence to flush |
+| ivrit.ai Whisper turbo (`whisper-large-v3-turbo-ivrit`) | transformers Whisper, torch MPS, fp16 | `language="he"`, transcribe, greedy, no timestamps (every clip is under 30 s) |
+| Nemotron 3.5 streaming 0.6B (`nemotron-3.5-asr-streaming-0.6b-1120ms-int8`) | sherpa-onnx 2.0.1 `OnlineRecognizer`, CPU, 8 threads | streaming, 1.12 s chunks (its most accurate setting), **language prompt `he`**, greedy. Zero-shot: Hebrew is in NVIDIA's "adaptation-ready" tier (the tokenizer knows it; it needs a fine-tune). On a two-clip probe `he` read better than `auto`. |
+
+Speed is indicative only: the engines run on different hardware (Apple's Neural Engine path, the GPU through MPS, the
+CPU through ONNX Runtime) and the transformers path is not how a phone would run them.
+
+The 2012 mini isn't used: the corpus is 2 hours and every engine needs Apple silicon or a recent ONNX Runtime.
+
+## Running it
+
+```bash
+cd scripts/engine-eval && python3 -m pytest     # normaliser, scorer, runners (Hebrew venv or #158's)
+swift test --package-path Packages/EngineEval --filter EngineEvalKitTests
+# M4 Mac mini, once: the Hebrew venv (kept apart from #158's, which pins sherpa-onnx 1.13.8)
+uv venv --python 3.12 ~/hebrew-eval/venv
+VIRTUAL_ENV=~/hebrew-eval/venv uv pip install "sherpa-onnx==2.0.1" soundfile numpy scipy "transformers>=5.18" torch librosa pytest num2words
+# The whole test, one command: fetches the pinned data and models if missing, shards, runs all five engines
+# (resumable), rewrites the report. HE_DELETE_MODELS=1 deletes each model once it has done every shard.
+EVAL_REPO=$PWD HE_DELETE_MODELS=1 scripts/engine-eval/hebrew-driver.sh
+cp ~/hebrew-eval/report/hebrew-accuracy-comparison.md docs/perf/
+```
+
+## Not in this ticket
+
+eval-d1, eval-whatsapp and Common Voice (above); the iPhone (#201 is the Mac baseline; the phone spikes are research
+tickets T4 and T5); live latency; noisy audio; and the two community Hebrew fine-tunes of Nemotron 3.5 that turned up
+while looking for exports ([`notmax123/nemotron-3.5-asr-hebrew-streaming-0.6b`](https://huggingface.co/notmax123/nemotron-3.5-asr-hebrew-streaming-0.6b),
+[`mralexivy/nemotron-3.5-asr-streaming-0.6b-hebrew`](https://huggingface.co/mralexivy/nemotron-3.5-asr-streaming-0.6b-hebrew)).
+Neither is named in #201 and their licences weren't checked, so they weren't fetched. They bear directly on the
+"Nemotron needs our fine-tune" assumption and deserve their own ticket.
+
 ## Scoring
 
 ### The normaliser (#202)
@@ -70,6 +191,13 @@ writes in Latin letters and an engine in Hebrew letters (or the reverse), and He
   metric."
 - Strict and lenient, WER and CER: four numbers per engine per set, each with a 95% CI.
 
+**How much the normaliser moves the scores** (FLEURS he, every engine, against a punctuation-and-case-only baseline
+in the spirit of Whisper's `BasicTextNormalizer`): WER falls by 0.8–1.4 points and CER by 0.4–1.1 points for every
+engine (Apple 35.9 → 35.0% WER, Parakeet-He 23.1 → 22.3%, Whisper 18.4 → 17.4%), and **the ranking doesn't change**.
+The effect is small here because FLEURS's references carry no niqqud and few numbers. Lenient spelling takes off about
+another 2 WER points but barely moves CER, because a dropped ו or י is one character. The research had found no
+study measuring this; this is a first, read-speech-only number.
+
 Tests: `scripts/engine-eval/tests/test_normalize_hebrew.py` (every rule with real Hebrew pairs, including the
 ticket's שולחן/שלחן, צה״ל/צה"ל and 5/חמש).
 
@@ -78,3 +206,7 @@ ticket's שולחן/שלחן, צה״ל/צה"ל and 5/חמש).
 - Normaliser: O(characters) per text; the number reader is one left-to-right pass over the tokens with constant
   lookahead, O(tokens).
 - CER: O(R × H) in characters per clip (FLEURS clips are under 30 s, a few hundred characters).
+- Scorer: O(result lines + words² + characters² per clip), plus O(1,000 × sentences) per bootstrap, four per cell;
+  seconds at this size.
+- Runs: O(clips × engines), one model in memory at a time. Disk: models 6.4 GB in total (Whisper's fp32 checkpoint
+  is 3.2 GB), 0.4 GB of FLEURS tarball and 0.23 GB of shards; the driver can delete each model once it's done.
