@@ -75,7 +75,13 @@ public struct CaptionStream: Sendable {
     public mutating func apply(text: String, isFinal: Bool, speaker: Int? = nil, range: ClosedRange<Double>? = nil, wordEmphasis: [EmphasisLevel] = [],
                                lane: FaceToFaceHalf? = nil) {
         let piece = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !piece.isEmpty else { return }
+        guard !piece.isEmpty else {
+            // Face to face (#60): an engine's revision that now has none of its own words takes back its open words.
+            if let lane, let i = lines.lastIndex(where: { $0.lane == lane }), lines[i].tail != nil {
+                if lines[i].committed.isEmpty { lines.remove(at: i) } else { lines[i].tail = nil; lines[i].tailRange = nil }
+            }
+            return
+        }
 
         let words = Self.captionWords(from: piece, emphasis: wordEmphasis)
         // Face to face (#60): each engine continues its own lines; another engine's line in between is skipped, and a

@@ -95,6 +95,9 @@ public struct SpeakerLanguages: Equatable, Sendable {
         return sides.half(ofSpeaker: line.speaker)
     }
 
+    /// Whether the voice has ever been given a language (it has a half, now or before a correction).
+    public func isMatched(_ speaker: Int) -> Bool { !(voices[speaker]?.history.isEmpty ?? true) }
+
     /// Which engines hear this voice. Unknown or unmatched voices, and voices being checked: both.
     public func lanes(for speaker: Int?) -> Set<FaceToFaceHalf> {
         guard let speaker, let voice = voices[speaker], case .locked(let h) = voice.state else { return [.owner, .partner] }
@@ -251,7 +254,7 @@ public struct LanguagePair: Sendable {
 /// - Silence, and scraps of another slot shorter than `minSegmentSeconds`, change nothing.
 public struct VoiceRouter: Sendable {
     public var holdSeconds = 1.5
-    public var leadSeconds = 0.3
+    public var leadSeconds = 0.6
     public var minSegmentSeconds = 0.3
     public private(set) var active: Set<FaceToFaceHalf> = [.owner, .partner]
 

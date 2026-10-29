@@ -92,4 +92,35 @@ public enum FaceToFace {
                              half lineHalf: (CaptionLine) -> FaceToFaceHalf?) -> [CaptionLine] {
         lines.filter { !$0.isSoundLabel && lineHalf($0) == half }
     }
+
+    /// One engine's result with the words of voices that belong to the other half's engine taken out (#60): a result
+    /// can run past a turn change, because Apple's engine only ends one at a long pause and an engine keeps hearing the
+    /// next voice for the moment before the diarizer names it. Words the diarizer hasn't placed yet, and voices not
+    /// matched yet, stay. Nil when nothing is left; the same result when nothing was taken out.
+    public static func keep(_ piece: RecognizedPiece, lane: FaceToFaceHalf, segments: [SpeakerSegment], number: (Int) -> Int?,
+                            languages: SpeakerLanguages) -> RecognizedPiece? {
+        let kept = piece.words.filter { word in
+            guard let range = word.range,
+                  let slot = SpeakerAligner.speaker(start: range.lowerBound, end: range.upperBound, segments: segments),
+                  let voice = number(slot), languages.isMatched(voice) else { return true }
+            return languages.shownLane(for: voice, at: range.lowerBound) == lane
+        }
+        if kept.count == piece.words.count { return piece }
+        if kept.isEmpty { return nil }
+        return RecognizedPiece(text: kept.map(\.text).joined(separator: " "), isFinal: piece.isFinal, words: kept)
+    }
+
+    /// Word times moved to where the engine's audio resumed, for words that start before a skip and end after it (#60):
+    /// Apple's open result reports its words from the last audio it heard, which is before the other voice's turn, and
+    /// would glue the new turn onto the old line. The same result when nothing straddles a skip.
+    public static func clamp(_ piece: RecognizedPiece, skips: [Double]) -> RecognizedPiece {
+        var changed = false
+        let words = piece.words.map { word -> RecognizedWord in
+            guard let r = word.range, let skip = skips.last(where: { $0 > r.lowerBound && $0 <= r.upperBound }) else { return word }
+            changed = true
+            return RecognizedWord(text: word.text, range: skip...r.upperBound)
+        }
+        guard changed else { return piece }
+        return RecognizedPiece(text: piece.text, isFinal: piece.isFinal, words: words)
+    }
 }

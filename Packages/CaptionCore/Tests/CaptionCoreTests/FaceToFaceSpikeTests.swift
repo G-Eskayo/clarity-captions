@@ -431,4 +431,109 @@ final class FaceToFaceSpikeTests: XCTestCase {
         report(.routed, r.es, lang: "es")
         print("F2F-SPIKE routed: \(r.switches) engine switches, turn start → engine re-fed after median \(Self.f(Self.pct(r.catchUp, 0.5))) max \(Self.f(r.catchUp.max() ?? .nan)) s")
     }
+
+    // MARK: 4. the real engine, face to face
+
+    /// At 48 kHz, so replay's 4096-frame reads are 85 ms, like the iPhone microphone's buffers (at 16 kHz they would be
+    /// 256 ms, fed ahead of the wall clock, and every lag would read about 0.2 s short).
+    static func writeWav(_ samples: [Float]) throws -> URL {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("f2f-\(UUID()).wav")
+        let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 48_000, channels: 1, interleaved: false)!
+        let src = buffer(samples[...])
+        let conv = AVAudioConverter(from: src.format, to: format)!
+        let out = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(samples.count * 3 + 4096))!
+        var given = false
+        var err: NSError?
+        conv.convert(to: out, error: &err) { _, status in
+            if given { status.pointee = .endOfStream; return nil }
+            given = true; status.pointee = .haveData; return src
+        }
+        let file = try AVAudioFile(forWriting: url, settings: format.settings, commonFormat: .pcmFormatFloat32, interleaved: false)
+        try file.write(from: out)
+        return url
+    }
+
+    /// Caption lag through the real engine: one-way (one engine hears everything, as today) against face to face, per
+    /// language, on the same replayed conversation. Lag counts the words of each language's own turns.
+    func testCaptionLagFaceToFaceAgainstOneWay() async throws {
+        try XCTSkipUnless(enabled, "opt-in")
+        let (audio, turns) = try Self.conversation()
+        let url = try Self.writeWav(audio)
+        defer { try? FileManager.default.removeItem(at: url) }
+        func language(_ end: Double?) -> String? {
+            end.flatMap { e in turns.first { e > $0.start - 0.2 && e < $0.end + 0.6 }?.language }
+        }
+        func lags(_ engine: TranscriptionEngine, lane: FaceToFaceHalf?) async throws -> [String: [Double]] {
+            var out: [String: [Double]] = [:]
+            for try await u in try await engine.startReplaying(fileURL: url) {
+                guard let lag = u.lagSeconds, let lang = language(u.endSeconds) else { continue }
+                if let lane, u.lane != lane { continue }
+                out[lang, default: []].append(lag)
+            }
+            return out
+        }
+        func line(_ name: String, _ l: [Double]) {
+            print("F2F-LAG \(name) median \(Self.f(Self.pct(l, 0.5))) p95 \(Self.f(Self.pct(l, 0.95))) n=\(l.count)")
+        }
+        let parakeet = try await lags(TranscriptionEngine(diarizerModelURL: diarizerURL, recognizer: .parakeet(modelURL: parakeetURL)), lane: nil)
+        line("one-way parakeet, English turns", parakeet["en"] ?? [])
+        let apple = try await lags(TranscriptionEngine(locale: Self.spanish, diarizerModelURL: diarizerURL, recognizer: .apple), lane: nil)
+        line("one-way apple es, Spanish turns", apple["es"] ?? [])
+        let setup = FaceToFaceSetup(ownerLocale: Locale(identifier: "en-US"), ownerRecognizer: .parakeet(modelURL: parakeetURL),
+                                    partnerLocale: Self.spanish, partnerRecognizer: .apple)
+        var f2fOwner: [Double] = [], f2fPartner: [Double] = []
+        let engine = TranscriptionEngine(diarizerModelURL: diarizerURL, faceToFace: setup)
+        for try await u in try await engine.startReplaying(fileURL: url) {
+            guard let lag = u.lagSeconds, let lang = language(u.endSeconds) else { continue }
+            if u.lane == .owner, lang == "en" { f2fOwner.append(lag) }
+            if u.lane == .partner, lang == "es" { f2fPartner.append(lag) }
+        }
+        line("face to face parakeet, English turns", f2fOwner)
+        line("face to face apple es, Spanish turns", f2fPartner)
+    }
+
+    /// The whole engine in face-to-face mode on the spike's conversation: each voice ends up on its language's half,
+    /// each half shows its own engine's words, and the lag per half.
+    func testTheEngineRoutesARealConversationByVoice() async throws {
+        try XCTSkipUnless(enabled, "opt-in")
+        let (audio, turns) = try Self.conversation()
+        let url = try Self.writeWav(audio)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let engine = TranscriptionEngine(
+            diarizerModelURL: diarizerURL,
+            faceToFace: FaceToFaceSetup(ownerLocale: Locale(identifier: "en-US"), ownerRecognizer: .parakeet(modelURL: parakeetURL),
+                                        partnerLocale: Self.spanish, partnerRecognizer: .apple))
+        var stream = CaptionStream()
+        var languages = SpeakerLanguages()
+        var lags: [FaceToFaceHalf: [Double]] = [:]
+        for try await u in try await engine.startReplaying(fileURL: url) {
+            stream.apply(text: u.text, isFinal: u.isFinal, speaker: u.speaker,
+                         range: u.startSeconds.flatMap { s in u.endSeconds.map { s...$0 } }, lane: u.lane)
+            if let l = u.languages { languages = l }
+            if let lag = u.lagSeconds, let lane = u.lane { lags[lane, default: []].append(lag) }
+            if u.isFinal || ProcessInfo.processInfo.environment["F2F_DEBUG"] == "2", ProcessInfo.processInfo.environment["F2F_DEBUG"] != nil {
+                print("F2F-PIECE \(u.lane.map { "\($0)" } ?? "-") \(u.startSeconds.map(Self.f) ?? "?")-\(u.endSeconds.map(Self.f) ?? "?") spk \(u.speaker.map(String.init) ?? "-") lag \(u.lagSeconds.map(Self.f) ?? "-") :: \(u.text)")
+            }
+        }
+        print("F2F-ENGINE turns: " + turns.map { "\($0.language) \(Self.f($0.start))-\(Self.f($0.end))" }.joined(separator: ", "))
+        print("F2F-ENGINE \(engine.engineName) events: \(engine.faceToFaceEvents.joined(separator: " | "))")
+        let shown = FaceToFace.shown(stream.lines, languages: languages)
+        for half in [FaceToFaceHalf.owner, .partner] {
+            let said = FaceToFace.lines(saidOn: half, in: shown, half: { languages.half(of: $0) }).map(\.text)
+            print("F2F-ENGINE said on \(half): \(said.joined(separator: " | "))")
+            let l = lags[half] ?? []
+            print("F2F-ENGINE lag \(half) median \(Self.f(Self.pct(l, 0.5))) p95 \(Self.f(Self.pct(l, 0.95))) n=\(l.count)")
+        }
+        let unplaced = shown.filter { languages.half(of: $0) == nil }.map(\.text)
+        print("F2F-ENGINE no half: \(unplaced.joined(separator: " | "))")
+        let ownerWords = FaceToFace.lines(saidOn: .owner, in: shown, half: { languages.half(of: $0) }).map(\.text).joined(separator: " ").lowercased()
+        let partnerWords = FaceToFace.lines(saidOn: .partner, in: shown, half: { languages.half(of: $0) }).map(\.text).joined(separator: " ").lowercased()
+        XCTAssertTrue(ownerWords.contains("ticket"), ownerWords)
+        XCTAssertTrue(ownerWords.contains("countryside"), ownerWords)
+        XCTAssertTrue(partnerWords.contains("billete"), partnerWords)
+        XCTAssertTrue(partnerWords.contains("ventanilla"), partnerWords)
+        XCTAssertFalse(ownerWords.contains("billete"), "no Spanish on the owner's side as said")
+        XCTAssertFalse(partnerWords.contains("countryside"), "no English on the partner's side as said")
+        XCTAssertEqual(turns.count, 8)
+    }
 }

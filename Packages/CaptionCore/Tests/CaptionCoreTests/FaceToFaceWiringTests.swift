@@ -518,3 +518,87 @@ final class FaceToFaceWiringTests: XCTestCase {
         XCTAssertEqual(numbering, [0: 0, 2: 1])
     }
 }
+
+/// #60: an engine's result can run past a turn change (Apple only ends a result at a long pause, and an engine hears
+/// the next voice for the ~0.5 s before the diarizer names it). Those words belong to the other half's engine.
+final class FaceToFaceEdgeTests: XCTestCase {
+    private let locked: SpeakerLanguages = {
+        var l = SpeakerLanguages()
+        let es = [FaceToFaceHalf.partner: 0.99, .owner: 0.01], en = [FaceToFaceHalf.owner: 0.99, .partner: 0.01]
+        l.heard(speaker: 0, lane: .partner, words: (0..<4).map { TimedWord(text: "es", start: Double($0), end: Double($0) + 0.5) },
+                isFinal: true, classify: { _ in es })
+        l.heard(speaker: 1, lane: .owner, words: (0..<4).map { TimedWord(text: "en", start: 10 + Double($0), end: 10.5 + Double($0)) },
+                isFinal: true, classify: { _ in en })
+        return l
+    }()
+    private let segments = [SpeakerSegment(speaker: 5, start: 0, end: 20), SpeakerSegment(speaker: 7, start: 20, end: 30)]
+    private let number: (Int) -> Int? = { [5: 0, 7: 1][$0] }
+
+    private func piece(_ words: [(String, Double)], final: Bool = false) -> RecognizedPiece {
+        RecognizedPiece(text: words.map(\.0).joined(separator: " "), isFinal: final,
+                        words: words.map { RecognizedWord(text: $0.0, range: $0.1...($0.1 + 0.3)) })
+    }
+
+    func testTheNextVoicesFirstWordsAreCutFromThisEnginesLine() {
+        let p = piece([("Prefiere", 18), ("ventanilla", 18.5), ("o", 19), ("pasillo?", 19.4), ("A", 20.2), ("windows.", 20.6)])
+        let kept = FaceToFace.keep(p, lane: .partner, segments: segments, number: number, languages: locked)
+        XCTAssertEqual(kept?.text, "Prefiere ventanilla o pasillo?")
+        XCTAssertEqual(kept!.end!, 19.7, accuracy: 1e-9)
+        XCTAssertEqual(kept?.isFinal, false)
+    }
+
+    func testAResultThatIsAllTheOtherVoiceLeavesNothing() {
+        let p = piece([("quarenta", 21), ("e", 21.5)], final: true)
+        XCTAssertNil(FaceToFace.keep(p, lane: .owner, segments: [SpeakerSegment(speaker: 5, start: 20, end: 30)],
+                                      number: number, languages: locked))
+    }
+
+    func testWordsTheDiarizerHasntPlacedYetAndUnmatchedVoicesStay() {
+        let fresh = piece([("pasillo?", 19.4), ("A", 31), ("window", 31.4)])   // past the diarizer's last segment
+        XCTAssertEqual(FaceToFace.keep(fresh, lane: .partner, segments: segments, number: number, languages: locked)?.text,
+                       "pasillo? A window")
+        let newcomer = piece([("hola", 25)])
+        XCTAssertEqual(FaceToFace.keep(newcomer, lane: .owner, segments: segments, number: { $0 == 7 ? 2 : 0 },
+                                       languages: locked)?.text, "hola", "voice 2 isn't matched: both engines show")
+    }
+
+    func testANothingChangedResultIsTheSameResult() {
+        let p = piece([("Buenos", 1), ("días", 1.5)], final: true)
+        XCTAssertEqual(FaceToFace.keep(p, lane: .partner, segments: segments, number: number, languages: locked), p)
+    }
+
+    func testAnEmptiedRevisionTakesBackThatEnginesOpenWords() {
+        var s = CaptionStream()
+        s.apply(text: "Muy bien.", isFinal: true, speaker: 0, range: 0...1, lane: .partner)
+        s.apply(text: "A window", isFinal: false, speaker: 0, range: 1.2...1.8, lane: .partner)
+        s.apply(text: "Good", isFinal: false, speaker: 1, range: 1.2...1.5, lane: .owner)
+        s.apply(text: "", isFinal: false, speaker: 0, range: 1.2...1.8, lane: .partner)
+        XCTAssertEqual(s.lines.map(\.text), ["Muy bien.", "Good"], "the partner engine's open words are gone")
+        s.apply(text: "", isFinal: false, speaker: 0, range: 1.2...1.8, lane: .partner)
+        XCTAssertEqual(s.lines.map(\.text), ["Muy bien.", "Good"], "nothing open: nothing else changes")
+        s.apply(text: "", isFinal: false)
+        XCTAssertEqual(s.lines.map(\.text), ["Muy bien.", "Good"], "one-way captions ignore empty results, as before")
+    }
+}
+
+/// #60: after an engine skips the other voice's turn, Apple's still-open result reports its words from where it last
+/// heard audio (before the skip), which would glue the new turn onto the old line.
+final class FaceToFaceSkipTests: XCTestCase {
+    func testWordsThatStraddleASkipStartWhereTheAudioResumed() {
+        let p = RecognizedPiece(text: "Son 42 euros", isFinal: false,
+                                words: [RecognizedWord(text: "Son", range: 13.57...18.09), RecognizedWord(text: "42", range: 13.57...18.09),
+                                        RecognizedWord(text: "euros", range: 18.1...18.5)])
+        let c = FaceToFace.clamp(p, skips: [5.0, 16.04])
+        XCTAssertEqual(c.start!, 16.04, accuracy: 1e-9)
+        XCTAssertEqual(c.words.map { $0.range!.lowerBound }, [16.04, 16.04, 18.1])
+        XCTAssertEqual(c.text, "Son 42 euros")
+    }
+
+    func testWordsAfterTheSkipAndBeforeAnySkipAreUntouched() {
+        let p = RecognizedPiece(text: "Claro que", isFinal: true,
+                                words: [RecognizedWord(text: "Claro", range: 7.0...7.3), RecognizedWord(text: "que", range: 7.4...7.6)])
+        XCTAssertEqual(FaceToFace.clamp(p, skips: [6.5]), p)
+        XCTAssertEqual(FaceToFace.clamp(p, skips: []), p)
+        XCTAssertEqual(FaceToFace.clamp(p, skips: [20]), p, "a later skip says nothing about earlier words")
+    }
+}
