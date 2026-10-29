@@ -424,3 +424,14 @@ caveat), **Internal** (process detail, not for marketing).
 - **Drives:** #60's speaker-to-language match by the words' language (lock at P ≥ 0.95 over 4+ words), with a
   correction when later lines say otherwise.
 - **Public use:** Careful ("measured on a Mac with synthetic voices").
+
+## E29. Universal Purchase comes from one record and one bundle ID
+- **Source:** Apple Developer, [Offering universal purchase](https://developer.apple.com/support/universal-purchase/)
+  (checked 2026-10-28): a macOS app added to an iOS app's record "uses the same Apple ID (an app identifier), SKU, and
+  bundle ID as the iOS app".
+- **What we took:** sharing the bundle ID and record is what makes one purchase cover every platform; a different
+  bundle ID and record keep them separate.
+- **Confidence:** Strong (official documentation).
+- **Drives:** ADR 0028 (the Mac sold separately), #176.
+- **Public use:** Internal.
+

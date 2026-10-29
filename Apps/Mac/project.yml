@@ -53,12 +53,12 @@ targets:
         NSAudioCaptureUsageDescription: "Seal Speak listens to the call's sound so it can caption what the other person says."
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.gileskayo.captions
+        PRODUCT_BUNDLE_IDENTIFIER: com.gileskayo.captions.mac
         # The name in the Dock, the app menu, Finder and TestFlight; the target keeps its working name.
         PRODUCT_NAME: "Seal Speak"
         CODE_SIGN_ENTITLEMENTS: CaptionMac.entitlements
         ENABLE_HARDENED_RUNTIME: YES
-        # TestFlight for macOS on the iPhone app's App Store Connect record (same bundle ID: universal purchase).
+        # Its own App Store Connect record and price, not a Universal Purchase with iPhone/iPad (ADR 0028, #176).
         MARKETING_VERSION: "1.1"
         CURRENT_PROJECT_VERSION: "3"   # 1.1 (3): headphones decide the mic (AirPods Max tested), switching live
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.utilities
