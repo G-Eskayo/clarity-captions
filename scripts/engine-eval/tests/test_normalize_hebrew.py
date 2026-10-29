@@ -210,3 +210,10 @@ def test_usa_abbreviation_reads_as_it_is_said():
     # FLEURS writes ארה"ב; every engine writes what is said, ארצות הברית.
     assert he('ארה"ב') == he("ארה״ב") == he("ארצות הברית") == "ארצות הברית"
     assert he('בארה"ב') == he("בארצות הברית") == "בארצות הברית"
+
+
+def test_km_abbreviation_reads_as_said_and_both_spellings_of_for_example_match():
+    # Found on Apple's FLEURS shard 1: the reference writes ק"מ, every engine writes what is said.
+    assert he('5 ק"מ') == he("חמישה קילומטר") == "5 קילומטר"
+    assert he("לדוגמא") == he("לדוגמה") == "לדוגמה"
+    assert he("קם") == "קם"  # a real word (final mem) is left alone

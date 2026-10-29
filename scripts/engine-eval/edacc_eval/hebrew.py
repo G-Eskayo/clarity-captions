@@ -27,8 +27,11 @@ _HEBREW_LETTER = re.compile("[א-ת]")
 
 FILLERS = frozenset("אה אהה אההה אמ אממ אמממ אהמ הממ המממ מממ eh uh um umm mm mmm hmm".split())
 _SYMBOLS = {"%": " אחוז ", "₪": " שקלים ", "$": " דולר "}
-# Folded after geresh/gershayim are gone. ארה"ב is always said in full; with each prefix letter it can carry.
-_FOLD = {"אחוזים": "אחוז", "ארהב": "ארצות הברית", **{p + "ארהב": p + "ארצות הברית" for p in "והבלמשכ"}}
+# Folded after geresh/gershayim are gone. Abbreviations always said in full (ארה"ב, ק"מ), with each prefix letter
+# they can carry; and the two accepted spellings of לדוגמה.
+_SAID_IN_FULL = {"ארהב": "ארצות הברית", "קמ": "קילומטר"}
+_FOLD = {"אחוזים": "אחוז", "קילומטרים": "קילומטר", "לדוגמא": "לדוגמה", **_SAID_IN_FULL,
+         **{p + k: p + v for k, v in _SAID_IN_FULL.items() for p in "והבלמשכ"}}
 
 # --- Numbers: words to digits (inverse normalization), so "5" and "חמש"/"חמישה" are one form ------------------------
 # Both genders, the construct forms and the common full and defective spellings. "שנים" is left out on purpose:

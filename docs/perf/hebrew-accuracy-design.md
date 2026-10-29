@@ -38,7 +38,10 @@ every engine's text, so whatever quirk is left costs every engine the same. In o
     - A lone plural scale word stays a word: אלפים אנשים is "thousands of people", not a number.
     - Words that are also numbers (שני = Monday, אחד in אף אחד) become digits on both sides; that is symmetric, so it
       costs nothing.
-11. **ארה"ב → ארצות הברית** (with any prefix letter): FLEURS writes the abbreviation, every speaker says it in full.
+11. **Abbreviations always said in full:** ארה"ב → ארצות הברית and ק"מ → קילומטר (with any prefix letter;
+    קילומטרים → קילומטר too), and the two accepted spellings לדוגמא / לדוגמה become one. FLEURS writes the
+    abbreviations, every engine writes what was said. ק"מ and לדוגמא were added after reading the errors on Apple's
+    FLEURS shard 1, before any scoring was final, the way #158 added its rules; each has a test.
 12. **Final letter forms are kept** as written: ם/מ, ן/נ and the rest are spelling, and an engine that writes the
     wrong one has made a spelling error.
 
@@ -53,7 +56,7 @@ inside a Hebrew word, keeping its first and last letter, so שולחן = שלח�
 the strict score, never instead of it: it also merges a few real pairs (a word and its plural spelled only with a
 mater lectionis), which is why strict is the headline.
 
-**Known residual mismatches**, equal for every engine: other abbreviations (ת"א, וכו'), Latin terms the reference
+**Known residual mismatches**, equal for every engine: other abbreviations (ת"א, וכו', ס"מ), Latin terms the reference
 writes in Latin letters and an engine in Hebrew letters (or the reverse), and Hebrew numbers said as ordinals
 (השלישי) against digits.
 
