@@ -56,7 +56,8 @@
   .gummy { display: inline-flex; align-items: center; gap: .6rem; border: 0; border-radius: 999px; padding: 0 1.75rem; height: 56px;
            background: var(--text); color: var(--bg); font-family: inherit; font-weight: 800; font-size: 1.1rem; line-height: 1; letter-spacing: .04em;
            box-shadow: 0 3px 0 var(--lip); text-decoration: none; }
-  .gummy.soon { cursor: default; }
+  a.gummy:hover { transform: translateY(1px); box-shadow: 0 2px 0 var(--lip); }
+  a.gummy:focus-visible { outline: 3px solid var(--teal); outline-offset: 3px; }
   .soon-note { display: block; margin-top: .6rem; font-size: .9rem; color: var(--muted); }
 
   /* ── the demo phone ──────────────────────────────────────────── */
@@ -264,9 +265,7 @@
       <div>
         <h1>Follow the conversation at the table.</h1>
         <p class="lede">Seal Speak shows what the people around you are saying, as they say it, in large clear text. It all happens on your iPhone, so it works with no internet.</p>
-        <span class="gummy soon" role="note" aria-label="Coming soon to the App Store">
-          Coming soon to the App Store
-        </span>
+        <a class="gummy" href="https://apps.apple.com/us/app/seal-speak/id6821561495">Download on the App Store</a>
         <span class="soon-note">For iPhone 12 or newer with iOS 26 or later. English captions for now.</span>
         <ul class="facts" aria-label="At a glance">
           <li>Made on your phone</li>
