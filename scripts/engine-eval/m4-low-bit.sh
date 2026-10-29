@@ -92,6 +92,13 @@ done
 status "4/5 live latency (shard 1) and memory"
 "$BIN" latency --shard-dir "$S/shard-001" --out "$R/latency/latency-shard-001.jsonl" \
   --engines "$ENGINES" --models-dir "$WORK/models" --status "$WORK/status-engine.json"
+# The scorer times words against #145's reference word timings, written once into the #145 latency file; the clips
+# and audio are the same (match-shards above), so reuse them rather than re-running that engine.
+if ! grep -q '"kind":"timing"' "$R/latency/latency-shard-001.jsonl"; then
+  mv "$R/latency/latency-shard-001.jsonl" "$R/latency/streams-shard-001.jsonl"
+  { grep '"kind":"timing"' "$WORK/results/latency/latency-shard-001.jsonl"; cat "$R/latency/streams-shard-001.jsonl"; } \
+    > "$R/latency/latency-shard-001.jsonl"
+fi
 IFS=',' read -ra MEMS <<< "$ENGINES"
 for e in "${MEMS[@]}"; do
   "$BIN" memory --shard-dir "$S/shard-001" --engines "$e" --clips 60 --models-dir "$WORK/models" \
