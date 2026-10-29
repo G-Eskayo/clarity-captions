@@ -4,19 +4,30 @@ import NaturalLanguage
 /// #60, the owner's "voice first" (2026-10-29): the diarizer tells the people apart, and each voice is matched to one of
 /// the split's two languages from the words its first lines are in. Lock as soon as that's sure; stay correctable.
 ///
-/// The numbers (measured in docs/perf/face-to-face-spike.md, put to the owner as a Decision on the PR):
+/// The numbers (measured in docs/perf/face-to-face-spike.md and, for #208, docs/perf/face-to-face-code-switching.md):
 /// - **Lock:** 4 or more words of that voice, 95% sure of one language. Every real Spanish sentence and every
 ///   English line of 4+ words scored 99% or more in the spike; one word ("Hi.") only reached 68%.
-/// - **Correct:** once locked, a finished line of 4+ words that is 95% sure of the *other* language counts against the
-///   lock; two in a row move the voice to the other language. One garbled line never does.
-/// - **Check:** two finished lines in a row that are sure of neither language bring the other engine back for that
-///   voice, and the next sure 4+ words decide (stay, or move).
+/// - **Correct** (#208, the owner's "confidence builder"): once locked, each finished line of 4+ words from the voice's
+///   own engine is evidence. Sure of its language: confidence +1, up to `cap`. Sure of the *other* language: −1. Mixed
+///   or unclear ("Spanglish"): neither. The voice moves when confidence falls to −`moveBelow`: two lines right after the
+///   lock, as in #199, but many more once a few minutes of their language have been heard. Capped, so a voice that
+///   really changes (the diarizer handing one person's slot to the other) is always followed.
+/// - **Check:** `doubtfulLines` finished lines in a row that don't confirm the language (plus one more per point of
+///   confidence) bring the other engine back for that voice. During the check each sure verdict counts like a line;
+///   the voice moves once confidence falls below zero, and a confirming verdict ends the check.
 /// - **Give up waiting:** 30 words without a sure answer: lock to the likelier language (or, when checking, stay), so
 ///   both engines don't run for ever.
 public struct LanguageMatchPolicy: Equatable, Sendable {
+    public enum Correction: Equatable, Sendable {
+        /// #199: this many sure lines of the other language in a row move the voice, however long it has spoken.
+        case streak(Int)
+        /// #208: confidence that grows with each confirming line, up to `cap`; moved at −`moveBelow`.
+        case confidence(cap: Int, moveBelow: Int)
+    }
+
     public var lockProbability = 0.95
     public var minWords = 4
-    public var contraryLines = 2
+    public var correction = Correction.confidence(cap: 8, moveBelow: 2)
     public var doubtfulLines = 2
     public var giveUpWords = 30
     public init() {}
@@ -59,11 +70,13 @@ public struct SpeakerLanguages: Equatable, Sendable {
         var history: [(since: Double, half: FaceToFaceHalf)] = []
         var contrary = 0
         var doubtful = 0
+        /// #208: how well the voice's language is known (`Correction.confidence`); 0 at a lock or a move.
+        var confidence = 0
         var checkingSince = -Double.infinity
 
         static func == (a: Voice, b: Voice) -> Bool {
             a.state == b.state && a.words == b.words && a.leader == b.leader && a.contrary == b.contrary
-                && a.doubtful == b.doubtful && a.checkingSince == b.checkingSince
+                && a.doubtful == b.doubtful && a.confidence == b.confidence && a.checkingSince == b.checkingSince
                 && a.history.map(\.since) == b.history.map(\.since) && a.history.map(\.half) == b.history.map(\.half)
         }
     }
@@ -139,29 +152,25 @@ public struct SpeakerLanguages: Equatable, Sendable {
         case .locked(let half):
             guard isFinal, lane == half, words.count >= policy.minWords else { return nil }
             let scores = classify(Self.text(words))
-            let other = half.other
             let end = words.map(\.end).max() ?? 0
-            if (scores[half] ?? 0) >= policy.lockProbability {
-                voice.contrary = 0
-                voice.doubtful = 0
-                return nil
+            let confirms = (scores[half] ?? 0) >= policy.lockProbability
+            let contrary = (scores[half.other] ?? 0) >= policy.lockProbability
+            switch policy.correction {
+            case .streak(let lines):
+                if confirms { voice.contrary = 0; voice.doubtful = 0; return nil }
+                voice.contrary = contrary ? voice.contrary + 1 : 0
+                // Only this engine heard those lines: they stay shown, and the other engine takes over from here.
+                if voice.contrary >= lines { return move(&voice, speaker: speaker, from: half, since: end) }
+            case .confidence(let cap, let moveBelow):
+                if confirms { voice.confidence = min(cap, voice.confidence + 1); voice.doubtful = 0; return nil }
+                if contrary {
+                    voice.confidence -= 1
+                    if voice.confidence <= -moveBelow { return move(&voice, speaker: speaker, from: half, since: end) }
+                }
             }
             voice.doubtful += 1
-            if (scores[other] ?? 0) >= policy.lockProbability {
-                voice.contrary += 1
-                if voice.contrary >= policy.contraryLines {
-                    // Only this engine heard those lines: they stay shown, and the other engine takes over from here.
-                    return move(&voice, speaker: speaker, from: half, since: end)
-                }
-            } else {
-                voice.contrary = 0
-            }
-            if voice.doubtful >= policy.doubtfulLines {
-                voice.state = .checking(half)
-                voice.checkingSince = end
-                voice.words = [:]
-                voice.doubtful = 0
-                voice.contrary = 0
+            if voice.doubtful >= policy.doubtfulLines + max(0, voice.confidence) {
+                startCheck(&voice, at: end)
                 return .checking(speaker: speaker)
             }
             return nil
@@ -169,16 +178,33 @@ public struct SpeakerLanguages: Equatable, Sendable {
         case .checking(let half):
             collect(words, lane: lane, after: voice.checkingSince, into: &voice)
             let (count, best, p) = judge(voice, classify)
-            if count >= policy.minWords, p >= policy.lockProbability, best != half {
-                return move(&voice, speaker: speaker, from: half, since: voice.checkingSince)
+            let sure = count >= policy.minWords && p >= policy.lockProbability
+            if sure, best != half {
+                guard case .confidence = policy.correction else {
+                    return move(&voice, speaker: speaker, from: half, since: voice.checkingSince)
+                }
+                voice.confidence -= 1
+                if voice.confidence < 0 { return move(&voice, speaker: speaker, from: half, since: voice.checkingSince) }
+                // Well known: one verdict is one line of evidence. Keep checking from here.
+                startCheck(&voice, at: words.map(\.end).max() ?? voice.checkingSince)
+                return nil
             }
-            if (count >= policy.minWords && p >= policy.lockProbability) || count >= policy.giveUpWords {
+            if sure || count >= policy.giveUpWords {
+                if sure, case .confidence(let cap, _) = policy.correction { voice.confidence = min(cap, voice.confidence + 1) }
                 voice.state = .locked(half)
                 voice.words = [:]
                 return .kept(speaker: speaker, half)
             }
             return nil
         }
+    }
+
+    private func startCheck(_ voice: inout Voice, at time: Double) {
+        if case .locked(let h) = voice.state { voice.state = .checking(h) }
+        voice.checkingSince = time
+        voice.words = [:]
+        voice.doubtful = 0
+        voice.contrary = 0
     }
 
     private func collect(_ words: [TimedWord], lane: FaceToFaceHalf, after: Double, into voice: inout Voice) {
@@ -210,6 +236,7 @@ public struct SpeakerLanguages: Equatable, Sendable {
         voice.words = [:]
         voice.contrary = 0
         voice.doubtful = 0
+        voice.confidence = 0
         return .rematched(speaker: speaker, from: half, to: half.other)
     }
 
