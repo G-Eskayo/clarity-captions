@@ -9,6 +9,7 @@ from collections import defaultdict
 from dataclasses import asdict, dataclass
 from math import gcd
 from pathlib import Path
+from typing import Callable, Iterable, Iterator
 
 from .normalize import normalize
 
@@ -62,30 +63,41 @@ def _split_of(parquet: Path) -> str:
     return parquet.name.split("-")[0]
 
 
+def _scan_file(parquet: Path, table) -> tuple[list[Clip], dict[str, int]]:
+    clips: list[Clip] = []
+    excluded = {"ignore_marker": 0, "empty_reference": 0}
+    split = _split_of(parquet)
+    cols = {name: table.column(name).to_pylist() for name in ["speaker", "text", "accent", "l1", "gender"]}
+    audio = table.column("audio")
+    for i in range(table.num_rows):
+        text = cols["text"][i] or ""
+        if text.strip() == IGNORE_MARKER:
+            excluded["ignore_marker"] += 1
+            continue
+        if not normalize(text):
+            excluded["empty_reference"] += 1
+            continue
+        a = audio[i].as_py()
+        seconds = _wav_seconds(a["bytes"])
+        clips.append(Clip(clip_id=clip_id_for(split, a["path"]), split=split, speaker=cols["speaker"][i],
+                          accent=cols["accent"][i], l1=cols["l1"][i], gender=cols["gender"][i],
+                          reference=text, audio_seconds=round(seconds, 3), source_file=parquet.name, row=i))
+    return clips, excluded
+
+
+_COLUMNS = ["speaker", "text", "accent", "l1", "gender", "audio"]
+
+
 def _scan(corpus_dir: Path) -> tuple[list[Clip], dict[str, int]]:
     import pyarrow.parquet as pq
 
     clips: list[Clip] = []
     excluded = {"ignore_marker": 0, "empty_reference": 0}
     for parquet in sorted(Path(corpus_dir).glob("*.parquet")):
-        split = _split_of(parquet)
-        table = pq.read_table(parquet, columns=["speaker", "text", "accent", "l1", "gender", "audio"])
-        cols = {name: table.column(name).to_pylist() for name in ["speaker", "text", "accent", "l1", "gender"]}
-        audio = table.column("audio")
-        for i in range(table.num_rows):
-            text = cols["text"][i] or ""
-            if text.strip() == IGNORE_MARKER:
-                excluded["ignore_marker"] += 1
-                continue
-            if not normalize(text):
-                excluded["empty_reference"] += 1
-                continue
-            a = audio[i].as_py()
-            seconds = _wav_seconds(a["bytes"])
-            clips.append(Clip(clip_id=clip_id_for(split, a["path"]), split=split, speaker=cols["speaker"][i],
-                              accent=cols["accent"][i], l1=cols["l1"][i], gender=cols["gender"][i],
-                              reference=text, audio_seconds=round(seconds, 3), source_file=parquet.name, row=i))
-        del table, audio
+        found, skipped = _scan_file(parquet, pq.read_table(parquet, columns=_COLUMNS))
+        clips += found
+        for k, v in skipped.items():
+            excluded[k] += v
     return clips, excluded
 
 
@@ -137,6 +149,12 @@ def build_shards(corpus_dir: Path, out_dir: Path, target_hours: float = 1.0) -> 
             sf.write(tmp, _to_16k_mono(audio[i].as_py()["bytes"]), TARGET_SR, format="WAV", subtype="PCM_16")
             tmp.replace(wav)
         del audio
+    summary = _write_manifests(out_dir, names, shards, clips, excluded, target_hours)
+    return summary
+
+
+def _write_manifests(out_dir: Path, names: list[str], shards: list[list[Clip]], clips: list[Clip],
+                     excluded: dict[str, int], target_hours: float) -> dict:
     for name, members in zip(names, shards):
         manifest = out_dir / name / "manifest.jsonl"
         tmp = manifest.with_suffix(".jsonl.tmp")
@@ -146,12 +164,108 @@ def build_shards(corpus_dir: Path, out_dir: Path, target_hours: float = 1.0) -> 
                 row["file"] = f"audio/{c.clip_id}.wav"
                 fh.write(json.dumps(row, ensure_ascii=False) + "\n")
         tmp.replace(manifest)
-    summary = {"n_shards": n, "clips": len(clips), "excluded": excluded,
+    summary = {"n_shards": len(names), "clips": len(clips), "excluded": excluded,
                "audio_hours": round(sum(c.audio_seconds for c in clips) / 3600, 3),
                "accents": len({c.accent for c in clips}), "speakers": len({c.speaker for c in clips}),
                "shards": names, "target_hours": target_hours}
     (out_dir / "index.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     return summary
+
+
+def build_shards_staged(parquets: Iterable[Path], out_dir: Path, target_hours: float = 1.0) -> dict:
+    """The same shards as build_shards, from parquet files that arrive one at a time and may be deleted as soon as
+    the next one is asked for (fetch_each), so the corpus (about 7 GB) never sits on disk next to its WAVs (#203,
+    when the 2012 mini that keeps the shards is offline). Each file is read once: its clips are scanned and their
+    WAVs written to out_dir/_staging; once every file is in, clips are dealt into shards exactly as build_shards
+    deals them and the WAVs moved into place."""
+    import pyarrow.parquet as pq
+    import soundfile as sf
+
+    out_dir = Path(out_dir)
+    staging = out_dir / "_staging"
+    staging.mkdir(parents=True, exist_ok=True)
+    clips: list[Clip] = []
+    excluded = {"ignore_marker": 0, "empty_reference": 0}
+    for parquet in parquets:
+        parquet = Path(parquet)
+        table = pq.read_table(parquet, columns=_COLUMNS)
+        found, skipped = _scan_file(parquet, table)
+        audio = table.column("audio")
+        for c in found:
+            wav = staging / f"{c.clip_id}.wav"
+            tmp = wav.with_suffix(".wav.tmp")
+            sf.write(tmp, _to_16k_mono(audio[c.row].as_py()["bytes"]), TARGET_SR, format="WAV", subtype="PCM_16")
+            tmp.replace(wav)
+        clips += found
+        for k, v in skipped.items():
+            excluded[k] += v
+        del table, audio
+    clips.sort(key=lambda c: (c.source_file, c.row))  # build_shards' order, so the summary matches it too
+    n = shard_count(sum(c.audio_seconds for c in clips), target_hours)
+    shards = assign_shards(clips, n)
+    names = [f"shard-{k + 1:03d}" for k in range(n)]
+    for name, members in zip(names, shards):
+        (out_dir / name / "audio").mkdir(parents=True, exist_ok=True)
+        for c in members:
+            (staging / f"{c.clip_id}.wav").replace(out_dir / name / "audio" / f"{c.clip_id}.wav")
+    staging.rmdir()
+    return _write_manifests(out_dir, names, shards, clips, excluded, target_hours)
+
+
+def _download(url: str, dest: Path) -> None:
+    import shutil
+    import urllib.request
+
+    with urllib.request.urlopen(url, timeout=120) as r, dest.open("wb") as fh:
+        shutil.copyfileobj(r, fh, length=1 << 20)
+
+
+def fetch_each(urls: Iterable[str], dl_dir: Path, fetch: Callable[[str, Path], None] = _download,
+               attempts: int = 3) -> Iterator[Path]:
+    """Download one file at a time into dl_dir, yield it, and delete it when the next one is asked for. A failed
+    download leaves nothing behind."""
+    from urllib.parse import urlparse
+
+    dl_dir = Path(dl_dir)
+    dl_dir.mkdir(parents=True, exist_ok=True)
+    for url in urls:
+        dest = dl_dir / Path(urlparse(url).path).name
+        part = dest.with_name(dest.name + ".part")
+        for attempt in range(1, attempts + 1):
+            try:
+                fetch(url, part)
+                break
+            except Exception:
+                part.unlink(missing_ok=True)
+                if attempt == attempts:
+                    raise
+        part.replace(dest)
+        try:
+            yield dest
+        finally:
+            dest.unlink(missing_ok=True)
+
+
+def match_earlier_results(shards_dir: Path, results_dir: Path) -> dict:
+    """Check rebuilt shards against an earlier run's result files: every clip it scored must sit in the same shard
+    now, so new rows are scored on exactly the clips the old rows were. moved: in a different shard; missing: scored
+    before but not in the shards; extra: in the shards but never scored."""
+    earlier: dict[str, set[int]] = {}
+    for f in sorted(Path(results_dir).glob("*.jsonl")):
+        for line in f.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                r = json.loads(line)
+                earlier.setdefault(r["clip_id"], set()).add(int(r["shard"]))
+    now: dict[str, int] = {}
+    dirs = sorted(Path(shards_dir).glob("shard-*"))
+    for d in dirs:
+        k = int(d.name.split("-")[1])
+        for c in read_manifest(d):
+            now[c["clip_id"]] = k
+    return {"shards": len(dirs), "clips": len(now),
+            "moved": sorted(c for c, k in now.items() if c in earlier and earlier[c] != {k}),
+            "missing": sorted(c for c in earlier if c not in now),
+            "extra": sorted(c for c in now if c not in earlier)}
 
 
 def read_manifest(shard_dir: Path, check_audio: bool = False) -> list[dict]:
