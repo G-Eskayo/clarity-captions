@@ -58,6 +58,15 @@ public enum FaceToFace {
         return unique.sorted { name($0).localizedStandardCompare(name($1)) == .orderedAscending }
     }
 
+    /// #208: the languages offered for a half's list on the device, until Seal keeps its own list (#200's "Your
+    /// languages"; Apple can only say whether a pair is downloaded, not list what is). The caption and Into languages,
+    /// then every language whose speech engine is on the device and that Apple can translate (`translatable`: language
+    /// codes). Regions of one language are folded into one row by `choices`.
+    public static func offered(captionLanguage: Locale, into: Locale?, speechInstalled: [Locale], translatable: Set<String>) -> [Locale] {
+        func code(_ l: Locale) -> String { l.language.languageCode?.identifier ?? l.identifier }
+        return [captionLanguage] + (into.map { [$0] } ?? []) + speechInstalled.filter { translatable.contains(code($0)) }
+    }
+
     /// What a half shows, in the stream's order. Its own speaker's words as said; the other person's finished words
     /// translated into this half's language when the translation has arrived; anything still being spoken, not yet
     /// translated, or from a speaker with no half yet, as said. `translation(line, into)` gives a line's words in

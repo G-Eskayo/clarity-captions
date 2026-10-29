@@ -177,6 +177,19 @@ final class PauseSaveNewTests: XCTestCase {
         XCTAssertEqual(s.lines.map(\.text), ["half a sent", "next"], "a new volatile result must not revise the closed line")
     }
 
+    func testBreakLineClosesEveryEnginesLineInTheSplit() {
+        // #208: Start in the paused split. Each engine continues its own lane's last line, which is not always the
+        // last line on screen; the new session's clock starts again at zero, so every lane's line must be closed.
+        var s = CaptionStream()
+        s.apply(text: "Aquí, en la máquina", isFinal: true, speaker: 0, range: 40...42, lane: .partner)
+        s.apply(text: "half a word", isFinal: false, speaker: 1, range: 43...44, lane: .owner)
+        s.apply(text: "Great, thank you", isFinal: true, speaker: 1, range: 43...45, lane: .owner)
+        s.breakLine()
+        s.apply(text: "¿Necesita algo más?", isFinal: true, speaker: 0, range: 0.5...2, lane: .partner)
+        s.apply(text: "No, that's all", isFinal: false, speaker: 1, range: 3...4, lane: .owner)
+        XCTAssertEqual(s.lines.map(\.text), ["Aquí, en la máquina", "Great, thank you", "¿Necesita algo más?", "No, that's all"])
+    }
+
     func testBreakLineWithoutTimingStillStartsANewLine() {
         var s = CaptionStream()
         s.apply(text: "one", isFinal: false, speaker: 0)

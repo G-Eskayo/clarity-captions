@@ -177,6 +177,27 @@ final class FaceToFaceSplitTests: XCTestCase {
         XCTAssertTrue(split.isShown(s.lines[0], languages: later))
     }
 
+    func testAKeptLineStaysShownWhenTheNextSessionNumbersItsVoiceForTheOtherLanguage() {
+        var split = FaceToFaceSplit()
+        split.pick(en, for: .owner)
+        split.pick(es, for: .partner)
+        split.sessionStarted()
+        var s = CaptionStream()
+        say(&s, "Where is the station please", speaker: 0, lane: .owner, at: 0)
+        var languages = SpeakerLanguages()
+        matched(0, to: .owner, in: &languages)
+        split.sessionEnded(s.lines, languages: languages)
+        // Start again: in the new session, voice 0 is the other person, matched to Spanish. Her old line is in the
+        // English engine's lane, which that voice no longer shows; it was settled, so it stays.
+        split.stoppedOnTheirOwn()
+        XCTAssertTrue(split.resume())
+        split.sessionStarted()
+        var next = SpeakerLanguages()
+        matched(0, to: .partner, in: &next)
+        XCTAssertTrue(split.isShown(s.lines[0], languages: next))
+        XCTAssertEqual(split.half(of: s.lines[0], languages: next), .owner)
+    }
+
     // MARK: picking again
 
     func testTappingTheLanguageNameOpensTheListWithoutStoppingAnything() {
@@ -307,5 +328,48 @@ final class FaceToFaceSplitTests: XCTestCase {
         // A second end (the state change after an explicit one) mustn't re-settle under the new pair.
         XCTAssertTrue(split.sessionEnded(s.lines, languages: SpeakerLanguages()).isEmpty)
         XCTAssertEqual(split.half(of: s.lines[0], languages: SpeakerLanguages()), .owner)
+    }
+}
+
+/// #208: what each half's list offers on a real device, until Seal keeps its own list of languages (#200): Apple can't
+/// say which translation languages are downloaded, only whether a pair is.
+final class FaceToFaceOfferedLanguagesTests: XCTestCase {
+    private func ids(_ ls: [Locale]) -> [String] { ls.map(\.identifier) }
+
+    func testTheCaptionAndIntoLanguagesAreAlwaysOffered() {
+        let offered = FaceToFace.offered(captionLanguage: Locale(identifier: "es-ES"), into: Locale(identifier: "en-US"),
+                                         speechInstalled: [], translatable: [])
+        XCTAssertEqual(ids(offered), ["es-ES", "en-US"])
+    }
+
+    func testInstalledSpeechLanguagesAppleCanTranslateAreOffered() {
+        let installed = ["fr-FR", "de-DE", "yue-CN"].map(Locale.init(identifier:))
+        let offered = FaceToFace.offered(captionLanguage: Locale(identifier: "en-US"), into: Locale(identifier: "es-ES"),
+                                         speechInstalled: installed, translatable: ["en", "es", "fr", "de"])
+        XCTAssertEqual(ids(offered), ["en-US", "es-ES", "fr-FR", "de-DE"], "Cantonese can't be translated, so it isn't offered")
+    }
+
+    func testNoIntoLanguageStillOffersTheCaptionLanguage() {
+        let offered = FaceToFace.offered(captionLanguage: Locale(identifier: "en-US"), into: nil,
+                                         speechInstalled: [Locale(identifier: "en-GB")], translatable: ["en"])
+        XCTAssertEqual(ids(offered), ["en-US", "en-GB"], "one language twice is folded into one row by the list itself")
+        XCTAssertEqual(FaceToFace.choices(downloaded: offered, takenByOtherHalf: nil, name: { $0.identifier }).count, 1)
+    }
+}
+
+/// #208: her half's one control in the split, as the screen draws it.
+final class FaceToFaceSplitControlTests: XCTestCase {
+    func testStopIsTheSmallCircleThatLeaves() {
+        let c = PrimaryControl.inSplit(.stop)
+        XCTAssertEqual(c.action, .stop)
+        XCTAssertEqual(c.presentation, .compact)
+        XCTAssertTrue(c.isEnabled, "even while the engines get ready: Stop always leaves")
+    }
+
+    func testThePausedSplitShowsStartCaptions() {
+        let c = PrimaryControl.inSplit(.start)
+        XCTAssertEqual(c.action, .start)
+        XCTAssertEqual(c.title, PrimaryControl.for(.idle).title)
+        XCTAssertEqual(c.presentation, .large)
     }
 }

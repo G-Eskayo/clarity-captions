@@ -37,8 +37,8 @@ import Foundation
 ///   -ClarityDemoSettingsPush saved|credits|deleteall   Settings opened on a sub-screen (with -ClarityDemoSettings)
 ///   -ClarityDemoLanguage <id>  -ClarityDemoTranslate <id>  -ClarityDemoTranslateProgress <0-1>   caption language and translation (#37, #53)
 ///   -ClarityDemoTranslationOwned   translation bought, but off (#171); -ClarityDemoTranslate implies bought
-///   -ClarityDemoFaceToFace  opens the face-to-face split (#60) on a two-person conversation, English and Spanish
-///   -ClarityDemoFaceToFacePick choose|owner|paused   the split at one moment of round 2 (#208 mock-up)
+///   -ClarityDemoFaceToFace  opens the face-to-face split (#60) and plays #208's flow with scripted taps, English and Spanish
+///   -ClarityDemoFaceToFaceUntil choose|one|both|repick|paused|resumed   the same flow, held at that moment
 ///   -ClarityDemoDeveloperPanel  opens the developer panel (mic mode, Engine picker, #150): simctl can't do the 1.5 s hold
 /// It feeds the same CaptionStream the real engine feeds, so what you see is the real caption view: speaker colours,
 /// names, line breaks and sound labels. No microphone, speech model or network is involved.
@@ -77,7 +77,7 @@ enum DemoMode {
         store.save(style)
     }
 
-    static var paused: Bool { flag("-ClarityDemoPaused") || saved || veilCleared || faceToFacePick == "paused" }
+    static var paused: Bool { flag("-ClarityDemoPaused") || saved || veilCleared  }
     static var saved: Bool { flag("-ClarityDemoSaved") }
     static var veilCleared: Bool { flag("-ClarityDemoVeilCleared") }
     static var select: Bool { flag("-ClarityDemoSelect") }
@@ -95,16 +95,14 @@ enum DemoMode {
     static var translate: String? { value(after: "-ClarityDemoTranslate") }
     static var translateProgress: Double? { value(after: "-ClarityDemoTranslateProgress").flatMap(Double.init) }
     static var translationOwned: Bool { flag("-ClarityDemoTranslationOwned") }
-    /// `-ClarityDemoFaceToFace`: opens the face-to-face split (#60) on `faceToFaceScript`.
-    static var faceToFace: Bool { flag("-ClarityDemoFaceToFace") || faceToFacePick != nil }
-    /// `-ClarityDemoFaceToFaceLive` (#60 wiring): opens the split and plays `faceToFaceScript` the way the two language
-    /// engines would report it, through the real engine lanes, voice matching and NaturalLanguage, so the screen shows
-    /// what each half shows before and after a voice is matched. Only the audio and the translations are stand-ins.
-    static var faceToFaceLive: Bool { flag("-ClarityDemoFaceToFaceLive") }
-    /// `-ClarityDemoFaceToFacePick choose|owner|paused` (#208 mock-up): the split on `faceToFaceScript` at one moment
-    /// of round 2. `choose`: it just opened, both halves show their language lists. `owner`: her half chose English and
-    /// is captioning, the other half still shows its list. `paused`: captions stopped on their own, the split stays.
-    static var faceToFacePick: String? { value(after: "-ClarityDemoFaceToFacePick") }
+    /// `-ClarityDemoFaceToFace` (#208): opens the split and taps through it the way two people would, through the real
+    /// split state, voice matching and NaturalLanguage: her half picks English, the other half Español, they talk,
+    /// she opens her list and keeps English, captions stop on their own, and Start carries on. Only the engines'
+    /// words (`faceToFaceScript`) and the translations are stand-ins: the simulator can't caption or translate.
+    static var faceToFace: Bool { flag("-ClarityDemoFaceToFace") || faceToFaceUntil != nil }
+    /// `-ClarityDemoFaceToFaceUntil <step>`: the same flow, held once `step` has played out, for still screenshots.
+    static var faceToFaceUntil: FaceToFaceStep? { value(after: "-ClarityDemoFaceToFaceUntil").flatMap(FaceToFaceStep.init(rawValue:)) }
+    enum FaceToFaceStep: String, CaseIterable { case choose, one, both, repick, paused, resumed }
     /// Stand-ins for the iPad's downloaded translation languages (the simulator has none): the owner's example on #199.
     static let faceToFaceDownloaded = ["en-US", "fr-FR", "es-ES"].map(Locale.init(identifier:))
     /// `-ClarityDemoFakeStore`: the translation purchase without the App Store (#53), for recordings of the flow on a
@@ -244,15 +242,24 @@ enum DemoMode {
         (1, "Great, thank you so much", "Genial, muchas gracias"),
     ]
 
+    /// #208: what she says while only her half has picked (the other person is still finding theirs).
+    static let faceToFaceOpening: (speaker: Int, said: String, translated: String) =
+        (0, "Hi! Could you tap your language up there?", "¡Hola! ¿Puede tocar su idioma ahí arriba?")
+    /// #208: after Start in the paused split, the conversation carries on.
+    static let faceToFaceResumed: [(speaker: Int, said: String, translated: String)] = [
+        (0, "¿Necesita algo más para el viaje?", "Do you need anything else for the trip?"),
+        (1, "No, that's everything. Thanks again!", "No, eso es todo. ¡Gracias de nuevo!"),
+    ]
+
     /// The face-to-face demo's stand-in translation of a line, or nil.
     static func faceToFaceTranslation(of said: String) -> String? {
-        faceToFaceScript.first { $0.said.hasPrefix(said) || said.hasPrefix($0.said) }?.translated
+        ([faceToFaceOpening] + faceToFaceScript + faceToFaceResumed)
+            .first { $0.said.hasPrefix(said) || said.hasPrefix($0.said) }?.translated
     }
 
     /// The script in the demo's caption language.
     static var activeScript: [Step] {
-        if faceToFaceLive { return [] }
-        if faceToFace { return faceToFaceScript.map { .line(speaker: $0.speaker, text: $0.said) } }
+        if faceToFace { return [] }
         return language?.hasPrefix("es") == true ? spanishScript : script
     }
 }
@@ -265,9 +272,7 @@ extension CaptionModel {
         for (speaker, name) in DemoMode.speakers { speakerNames.apply(name, to: speaker) }
         let steps = DemoMode.activeScript
         if DemoMode.isStatic {
-            // #208's paused split: captions stopped, so the last line was finished too.
-            let finishesLast = DemoMode.faceToFacePick == "paused"
-            for (i, step) in steps.enumerated() { play(step, isFinal: finishesLast || i < steps.count - 1) }
+            for (i, step) in steps.enumerated() { play(step, isFinal: i < steps.count - 1) }
             return
         }
         Task { @MainActor in
@@ -286,29 +291,87 @@ extension CaptionModel {
         }
     }
 
-    /// `-ClarityDemoFaceToFaceLive`: each script line as both engines report it, a few words at a time, until the voice
-    /// is matched; after that only its own language's engine hears it (the router's rule). Speaker 0 speaks the caption
-    /// language (the other person's half), speaker 1 the language she reads.
-    func runFaceToFaceDemo() {
-        state = .listening
-        let pair = LanguagePair(owner: TranslationCenter.shared.target ?? Locale(identifier: "en"),
-                                partner: CaptionLanguageCenter.engineLocale)
-        Task { @MainActor in
-            var t = 0.5
-            try? await Task.sleep(nanoseconds: 1_200_000_000)
-            for (i, line) in DemoMode.faceToFaceScript.enumerated() {
-                let words = line.said.split(separator: " ").map(String.init)
-                let last = i == DemoMode.faceToFaceScript.count - 1
-                for n in Array(stride(from: 3, through: words.count, by: 3)) + (words.count % 3 == 0 ? [] : [words.count]) {
-                    let isFinal = n == words.count && !last
-                    for lane in speakerLanguages.lanes(for: line.speaker).sorted(by: { $0 == .partner && $1 == .owner }) {
-                        demoFaceToFaceHeard(Array(words.prefix(n)), speaker: line.speaker, lane: lane, at: t, isFinal: isFinal, pair: pair)
-                    }
-                    try? await Task.sleep(nanoseconds: 700_000_000)
-                }
-                t += Double(words.count) * 0.4 + 1.5
-                try? await Task.sleep(nanoseconds: 1_200_000_000)
+    /// `-ClarityDemoFaceToFace` (#208): the taps two people make, through the same calls the split's buttons make.
+    func runFaceToFaceFlow() async {
+        let until = DemoMode.faceToFaceUntil
+        func pause(_ seconds: Double) async { try? await Task.sleep(for: .seconds(seconds)) }
+        func reached(_ step: DemoMode.FaceToFaceStep) async -> Bool {
+            await splitTask?.value
+            await demoSplitPlayer?.value
+            return step == until
+        }
+        let english = Locale(identifier: "en-US"), spanish = Locale(identifier: "es-ES")
+        await pause(1.5)
+        startFaceToFace()
+        if await reached(.choose) { return }
+        await pause(2.5)
+        pickFaceToFace(english, for: .owner)
+        if await reached(.one) { return }
+        await pause(2)
+        pickFaceToFace(spanish, for: .partner)
+        if await reached(.both) { return }
+        await pause(2)
+        openFaceToFaceList(.owner)
+        if await reached(.repick) { return }
+        await pause(2.5)
+        pickFaceToFace(english, for: .owner)   // the same language: the list closes, nothing restarts
+        await pause(2)
+        demoSetState(.pausedQuiet(minutes: 5))   // the quiet stop, as the controller reports it
+        if await reached(.paused) { return }
+        await pause(3)
+        performInSplit(.start)
+        _ = await reached(.resumed)
+    }
+
+    /// Stand-in for the split's engines (the simulator has none): `captions` as the engines would write them. One half
+    /// picked: one engine writes everything, as said, no lane. Both: each line as both engines report it, a few words
+    /// at a time, until its voice is matched; after that only its own language's engine hears it (the router's rule).
+    func runSplitDemo(_ captions: FaceToFaceSplit.Captions) {
+        demoSetState(.preparing)
+        demoSetState(.listening)
+        let round = demoSplitRound
+        demoSplitRound += 1
+        demoSplitPlayer = Task { @MainActor in
+            await self.playSplitDemo(captions, round: round)
+        }
+    }
+
+    private func playSplitDemo(_ captions: FaceToFaceSplit.Captions, round: Int) async {
+        try? await Task.sleep(nanoseconds: 900_000_000)
+        guard case .both = captions, let pair = split.languagePair else {
+            let line = DemoMode.faceToFaceOpening
+            let words = line.said.split(separator: " ").map(String.init)
+            for n in Array(stride(from: 3, to: words.count, by: 3)) + [words.count] {
+                if Task.isCancelled { return }
+                stream.apply(text: words.prefix(n).joined(separator: " "), isFinal: n == words.count, speaker: line.speaker,
+                             range: 0.5...(0.5 + Double(n) * 0.4))
+                try? await Task.sleep(nanoseconds: 450_000_000)
             }
+            return
+        }
+        let lines = round <= 1 ? DemoMode.faceToFaceScript : DemoMode.faceToFaceResumed
+        var t = 0.5
+        for line in lines {
+            let words = line.said.split(separator: " ").map(String.init)
+            for n in Array(stride(from: 3, through: words.count, by: 3)) + (words.count % 3 == 0 ? [] : [words.count]) {
+                if Task.isCancelled { return }
+                for lane in speakerLanguages.lanes(for: line.speaker).sorted(by: { $0 == .partner && $1 == .owner }) {
+                    demoFaceToFaceHeard(Array(words.prefix(n)), speaker: line.speaker, lane: lane, at: t, isFinal: n == words.count, pair: pair)
+                }
+                try? await Task.sleep(nanoseconds: 550_000_000)
+            }
+            t += Double(words.count) * 0.4 + 1.5
+            try? await Task.sleep(nanoseconds: 900_000_000)
+        }
+    }
+
+    /// Stand-in for Stop reaching the engines: the player ends and the controller's state change follows.
+    func demoStopSplit() {
+        demoSplitPlayer?.cancel()
+        demoSplitPlayer = nil
+        switch state {
+        case .preparing, .listening: handleCaptionStateChange(.idle)
+        default: break
         }
     }
 

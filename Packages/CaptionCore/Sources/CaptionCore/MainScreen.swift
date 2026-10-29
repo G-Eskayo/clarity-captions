@@ -31,6 +31,15 @@ public struct PrimaryControl: Equatable, Sendable {
         case .failed, .pausedQuiet: PrimaryControl(title: String(localized: "Start again"), action: .start, isEnabled: true)
         }
     }
+
+    /// #208: her half's control in the face-to-face split. Stop from the moment it opens (even before a pick, and while
+    /// the engines get ready), and Start in the paused split.
+    public static func inSplit(_ control: FaceToFaceSplit.Control) -> PrimaryControl {
+        switch control {
+        case .stop: PrimaryControl(title: String(localized: "Stop"), action: .stop, isEnabled: true, presentation: .compact)
+        case .start: PrimaryControl.for(.idle)
+        }
+    }
 }
 
 /// Plain-language state. Technical reasons are `detail`, never the headline.

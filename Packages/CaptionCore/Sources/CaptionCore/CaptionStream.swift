@@ -167,13 +167,18 @@ public struct CaptionStream: Sendable {
 
     /// Ends the last line, so the next result starts a new one. Called when captioning resumes after a pause (#102):
     /// the new engine session's audio clock starts again at zero, which would otherwise read as a short pause and
-    /// merge into the line spoken before it.
+    /// merge into the line spoken before it. Face to face, each engine's lane continues its own last line, so each
+    /// lane's last line is ended (#208: Start in the paused split).
     public mutating func breakLine() {
-        guard var last = lines.last else { return }
-        if let stale = last.tail { last.committed = Self.joinWords(last.committed, stale); last.tail = nil }
-        last.tailRange = nil
-        last.endTime = nil
-        lines[lines.count - 1] = last
+        var ended: Set<FaceToFaceHalf?> = []
+        for i in lines.indices.reversed() where !lines[i].isSoundLabel && ended.insert(lines[i].lane).inserted {
+            var line = lines[i]
+            if let stale = line.tail { line.committed = Self.joinWords(line.committed, stale); line.tail = nil }
+            line.tailRange = nil
+            line.endTime = nil
+            lines[i] = line
+            if ended.count == 3 { break }
+        }
     }
 
     /// Closes any open volatile tail on the last line and appends a new, already-final sound label line.

@@ -16,19 +16,22 @@ enum CaptionEngineFactory {
     static let developerBuild = false
     #endif
 
-    static func plan(now: Date = Date()) -> CaptionEnginePlan {
-        CaptionEnginePlan.make(captionLanguage: captionLocale, choice: CaptionEngineChoice.stored(developerBuild: developerBuild),
+    static func plan(now: Date = Date()) -> CaptionEnginePlan { plan(for: captionLocale, now: now) }
+
+    static func plan(for language: Locale, now: Date = Date()) -> CaptionEnginePlan {
+        CaptionEnginePlan.make(captionLanguage: language, choice: CaptionEngineChoice.stored(developerBuild: developerBuild),
                                now: now, recentFallbacks: EngineFallbackHistory().recent(now: now),
                                availableMemory: UInt64(os_proc_available_memory()), modelPresent: parakeetModelURL != nil)
     }
 
     static func selection(now: Date = Date()) -> EngineSelection { plan(now: now).selection }
 
-    static func make(micMode: MicMode) throws -> TranscriptionEngine {
+    /// One-way captions in the caption language, or (#208, one half of the split picked) in `locale`.
+    static func make(micMode: MicMode, locale: Locale? = nil) throws -> TranscriptionEngine {
         guard let speakerModel = speakerModelURL else {
             throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc"))
         }
-        let plan = plan()
+        let plan = Self.plan(for: locale ?? captionLocale)
         let selection = plan.selection
         let recognizer: SpeechRecognizerSetup = selection.engine == .parakeet
             ? parakeetModelURL.map { .parakeet(modelURL: $0) } ?? .apple : .apple
@@ -42,22 +45,18 @@ enum CaptionEngineFactory {
     }
 
     /// #60 face to face: one engine per half, each in its half's language (ADR 0025 picks the recognizer per language:
-    /// Parakeet for English, Apple's engine for the rest). The other person's half is the caption language; hers is the
-    /// language she reads. No engine loaded ahead is used: it was made for one-way captions.
-    static func makeFaceToFace(micMode: MicMode, ownerLocale: Locale) throws -> TranscriptionEngine {
+    /// Parakeet for English, Apple's engine for the rest). Since #208 each half's language is the one its list picked.
+    /// No engine loaded ahead is used: it was made for one-way captions.
+    static func makeFaceToFace(micMode: MicMode, ownerLocale: Locale, partnerLocale: Locale) throws -> TranscriptionEngine {
         guard let speakerModel = speakerModelURL else {
             throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc"))
         }
         func recognizer(_ locale: Locale) -> SpeechRecognizerSetup {
-            let now = Date()
-            let plan = CaptionEnginePlan.make(captionLanguage: locale, choice: CaptionEngineChoice.stored(developerBuild: developerBuild),
-                                              now: now, recentFallbacks: EngineFallbackHistory().recent(now: now),
-                                              availableMemory: UInt64(os_proc_available_memory()), modelPresent: parakeetModelURL != nil)
-            return plan.selection.engine == .parakeet ? parakeetModelURL.map { .parakeet(modelURL: $0) } ?? .apple : .apple
+            plan(for: locale).selection.engine == .parakeet ? parakeetModelURL.map { .parakeet(modelURL: $0) } ?? .apple : .apple
         }
         let setup = FaceToFaceSetup(ownerLocale: ownerLocale, ownerRecognizer: recognizer(ownerLocale),
-                                    partnerLocale: captionLocale, partnerRecognizer: recognizer(captionLocale))
-        return TranscriptionEngine(locale: captionLocale, micMode: micMode, diarizerModelURL: speakerModel, faceToFace: setup)
+                                    partnerLocale: partnerLocale, partnerRecognizer: recognizer(partnerLocale))
+        return TranscriptionEngine(locale: partnerLocale, micMode: micMode, diarizerModelURL: speakerModel, faceToFace: setup)
     }
 
     /// First run: Core ML compiles Parakeet for this phone once (35 s on a Mac), so it happens here and not behind
