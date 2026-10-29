@@ -4,7 +4,8 @@ import Foundation
 
 // engine-eval run --shard-dir DIR --results FILE [--engines apple,parakeet-v2,parakeet-ultra,whisperkit]
 //                 [--repeats N] [--models-dir DIR] [--status FILE] [--whisper-model NAME] [--locale es-MX]
-// --locale sets the Apple engine's SpeechTranscriber locale (default en-US; #158). Parakeet detects the language.
+// --locale sets the Apple engine's SpeechTranscriber locale (default en-US; #158), or DictationTranscriber's with
+// --engines apple-dictation (he-IL, #201). Parakeet detects the language.
 // One shard, every listed engine in turn (one model in memory at a time). Resumable. See
 // docs/perf/engine-accuracy-design.md (#145).
 
