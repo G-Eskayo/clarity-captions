@@ -72,11 +72,9 @@ final class CaptionModel: ObservableObject {
     private var splitEngine: FaceToFaceSplit.Captions?
     /// The split's starts, restarts and Stop, one after another: a quick second tap waits for the first.
     private(set) var splitTask: Task<Void, Never>?
-    #if DEBUG
     /// Debug demos only: the stand-in for the split's engines (`runSplitDemo`), and how many sessions it has played.
     var demoSplitPlayer: Task<Void, Never>?
     var demoSplitRound = 0
-    #endif
     /// Set while the split itself stops captions (a new pick, Stop), so that stop isn't taken for one on their own.
     private var splitStopping = false
     /// Beta testers' ratings and measurements (ADR 0023). Every call is a no-op in an App Store install.
