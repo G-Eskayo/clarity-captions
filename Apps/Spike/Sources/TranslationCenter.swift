@@ -167,6 +167,9 @@ final class TranslationCenter: ObservableObject {
         #if DEBUG && targetEnvironment(simulator)
         // Lines that landed before translation was bought or turned on get their stand-in now.
         defer { if usesDemoTranslator { demoFill(latest) } }
+        // No session for the stand-in: on the simulator Apple's sheet only says translation isn't supported, and it
+        // covered the screenshots (#60).
+        if usesDemoTranslator { configuration = nil; return }
         #endif
         let source = CaptionLanguageCenter.engineLocale.language
         guard purchase.isOwned, isOn, let target else { configuration = nil; preparing = false; unsupportedPair = false; return }
