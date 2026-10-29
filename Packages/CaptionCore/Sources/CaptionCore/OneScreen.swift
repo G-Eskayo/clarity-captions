@@ -11,13 +11,17 @@ public enum AppScreen: Hashable, Sendable {
     case licenseText
     /// Beta installs only (ADR 0023): "What will be sent".
     case feedbackPreview
+    /// #37 / #53: the language people around her speak. Captions are made in it, and translation starts from it.
+    case captionLanguage
+    /// #53: the language captions are translated into.
+    case translationTarget
 
     /// Where going back lands. Settings goes back to the captions; its own pages go back to Settings.
     public var parent: AppScreen? {
         switch self {
         case .captions: nil
         case .settings: .captions
-        case .saved, .credits, .feedbackPreview: .settings
+        case .saved, .credits, .feedbackPreview, .captionLanguage, .translationTarget: .settings
         case .savedConversation: .saved
         case .licenseText: .credits
         }

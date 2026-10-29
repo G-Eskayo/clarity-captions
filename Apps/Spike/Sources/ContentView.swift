@@ -2,6 +2,7 @@ import AVFoundation
 import CaptionCore
 import CaptionUI
 import SwiftUI
+import Translation
 import UIKit
 
 @MainActor
@@ -328,6 +329,12 @@ struct ContentView: View {
     /// Round 2 (#118): the app is one screen. Which page shows; the page actually drawn (it changes at the midpoint of
     /// the fade, so the current page fades out before the next fades in); and the fade itself.
     @State private var nav = ScreenNavigator()
+    /// #37: the caption language, shared with first run and the engine.
+    @ObservedObject private var languages = CaptionLanguageCenter.shared
+    /// #53: live translation, its purchase, and each line's translated text.
+    @ObservedObject private var translation = TranslationCenter.shared
+    /// #37 / #53: caption language and translation, as Settings and the language list show them.
+    private var language: LanguageSettingsState { .current(languages: languages, translation: translation) }
     /// Height of the soft fade under the status row (#117 topedge); the first caption line starts below it (#137).
     static let captionsTopFade: CGFloat = 56
     @State private var shownScreen: AppScreen = .captions
@@ -449,6 +456,12 @@ struct ContentView: View {
             model.appActiveChanged(phase == .active)
             model.scenePhaseChanged(phase)
         }
+        // #37: settle the caption language from the engine's list (first run already did, on a first launch).
+        .task { await languages.refresh() }
+        // #53: what she owns, the price, and Apple's Translation session for the pair while translation is on.
+        .task { await translation.start(); translation.linesChanged(model.stream.lines) }
+        .translationTask(translation.configuration) { session in await translation.run(session) }
+        .onChange(of: model.stream.lines) { _, lines in translation.linesChanged(lines) }
         .task {
             guard DemoMode.isOn else { return }
             model.demoApplyPreset()
@@ -470,6 +483,7 @@ struct ContentView: View {
                         nav.open(.savedConversation(newest.id))
                     }
                 case "credits": nav.open(.credits)
+                case "language": nav.open(.captionLanguage)   // #37 / #53: the caption language list
                 case "license": nav.open(.credits); nav.open(.licenseText)
                 default: break
                 }
@@ -544,7 +558,21 @@ struct ContentView: View {
                              model.tour.did(.closedSettings)
                              go { $0.gearTapped() }
                          },
-                         onOpen: { screen in go { $0.open(screen) } })
+                         onOpen: { screen in go { $0.open(screen) } },
+                         language: language,
+                         onChooseCaptionLanguage: { go { $0.open(.captionLanguage) } },
+                         onTranslation: { translation.setOn($0) },
+                         onChooseTranslationTarget: { go { $0.open(.translationTarget) } },
+                         onBuyTranslation: { Task { await translation.unlock() } },
+                         onRestorePurchases: { Task { await translation.restore() } })
+        case .translationTarget:
+            TranslationTargetPage(style: style, language: language, onBack: { go { $0.back() } },
+                                  onChoose: { locale in translation.setTarget(locale); go { $0.back() } })
+                .padding(.horizontal, 16)
+        case .captionLanguage:
+            CaptionLanguagePage(style: style, language: language, onBack: { go { $0.back() } },
+                                onChoose: { locale in Task { await languages.choose(locale) } })
+                .padding(.horizontal, 16)
         case .saved:
             if let store = model.store {
                 SavedConversationsPage(backTitle: nav.savedOpenedFromCaptions ? String(localized: "Captions") : String(localized: "Settings"),
@@ -743,6 +771,20 @@ struct ContentView: View {
                                     .textRenderer(renderer)
                                     .accessibilityLabel(line.soundLabel.map { soundLabelA11yLabel(for: $0) } ?? "")
                                     .trackWords(in: textFrames, key: "text-\(line.id)")
+                            } else if translation.isActive, let translated = translation.translations.translation(for: line) {
+                                // #53 (owner, PR #171): the translation is the line that's read, on top at caption size
+                                // behind a translate mark; what was said stays, smaller, underneath. Selection and Copy
+                                // work on what was said.
+                                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                    Image(systemName: "translate").font(.subheadline.bold()).foregroundStyle(mutedColor(style))
+                                    Text(translated).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass))
+                                }
+                                .accessibilityElement(children: .combine)
+                                .accessibilityLabel(String(localized: "Translated: ") + translated)
+                                Text(line.text).font(.body).foregroundStyle(mutedColor(style))
+                                    .textRenderer(renderer)
+                                    .trackWords(in: textFrames, key: "text-\(line.id)")
+                                    .accessibilityLabel(String(localized: "Said: ") + line.text)
                             } else {
                                 Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass)).opacity(line.isFinal ? 1 : style.volatileOpacity)
                                     .textRenderer(renderer)
