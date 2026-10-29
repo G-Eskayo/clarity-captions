@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="{{@lang}}" dir="{{@dir}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{privacy.seal-speak-privacy-policy}}</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/favicon-64.png" type="image/png" sizes="64x64">
+<meta name="description" content="{{privacy.seal-shows-live-captions}}">
+<style>
+  :root { --bg: #FBE8D2; --text: #2B1A10; --muted: #6B5545; --accent: #6E2E0A; --rule: #EDCFAF; }  /* Peach, like the home page */
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #173331; --text: #ECE4D3; --muted: #B9B3A6; --accent: #A3E3D9; --rule: #2C4B48; }  /* Harbor */
+  }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 1.0625rem/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  main { max-width: 40rem; margin: 0 auto; padding: 2rem 1rem 3rem; }
+  h1 { font-size: 1.75rem; line-height: 1.25; margin: 0 0 .25rem; }
+  h2 { font-size: 1.2rem; margin: 2rem 0 .5rem; }
+  p, li { margin: 0 0 .75rem; }
+  .muted { color: var(--muted); }
+  .summary { border-inline-start: 4px solid var(--accent); padding-block: .25rem; padding-inline: 1rem 0; margin: 1.5rem 0; }
+  a { color: var(--accent); }
+  nav { border-top: 1px solid var(--rule); margin-top: 2.5rem; padding-top: 1rem; }
+</style>
+{{@robots}}{{@alternates}}</head>
+<body>
+<main>
+  <h1>{{privacy.seal-speak-privacy-policy}}</h1>
+  <p class="muted">{{privacy.effective-9-october-2026}}</p>
+
+  <p class="summary">{{privacy.in-short-seal-runs}}</p>
+
+  <h2>{{privacy.what-seal-does-with}}</h2>
+  <p>{{privacy.seal-listens-through-your}}</p>
+  <p>{{privacy.speech-is-turned-into}}</p>
+
+  <h2>{{privacy.what-stays-on-your}}</h2>
+  <ul>
+    <li>{{privacy.saved-conversations-when-you}}</li>
+    <li>{{privacy.your-settings-such-as}}</li>
+  </ul>
+  <p>{{privacy.deleting-the-app-deletes}}</p>
+
+  <h2>{{privacy.what-leaves-your-device}}</h2>
+  <p>{{privacy.nothing-unless-you-choose}}</p>
+  <p>{{privacy.the-first-time-you}}</p>
+
+  <h2>{{privacy.what-seal-does-not}}</h2>
+  <ul>
+    <li>{{privacy.no-account-or-sign}}</li>
+    <li>{{privacy.no-advertising-analytics-crash}}</li>
+    <li>{{privacy.no-selling-or-sharing}}</li>
+    <li>{{privacy.no-contacts-location-photos}}</li>
+  </ul>
+
+  <h2>{{privacy.children}}</h2>
+  <p>{{privacy.seal-is-not-directed}}</p>
+
+  <h2>{{privacy.changes-to-this-policy}}</h2>
+  <p>{{privacy.if-this-policy-changes}}</p>
+
+  <h2>{{index.contact}}</h2>
+  <p>{{privacy.questions-about-privacy-gil}}</p>
+
+  <nav>{{privacy.seal-support-and-questions}}</nav>
+</main>
+</body>
+</html>

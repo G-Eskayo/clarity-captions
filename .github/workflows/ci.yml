@@ -65,6 +65,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Pages match their sources (site-src, #207)
+        run: node --test scripts/build-site.test.mjs && node scripts/build-site.mjs --check
       - name: Nothing phones home, honest claims, contrast, links, demo logic
         run: node scripts/check-site.mjs
       - name: Evidence log entries (one file each, #210)

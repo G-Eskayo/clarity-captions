@@ -132,7 +132,9 @@ function sample(box, still) {
     text.style.fontFamily = lettering.css
     name.textContent = `${theme.name} · ${lettering.name}`
   }
-  const label = () => { play.textContent = timer ? 'Pause' : 'Play' }
+  // The page holds both labels, in its own language.
+  const labels = { play: play.textContent, pause: play.dataset.pause || 'Pause' }
+  const label = () => { play.textContent = timer ? labels.pause : labels.play }
   const halt = () => { clearInterval(timer); timer = null; label() }
   const run = () => {
     if (timer) return

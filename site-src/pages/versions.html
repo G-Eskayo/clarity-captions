@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="{{@lang}}" dir="{{@dir}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{versions.seal-speak-versions}}</title>
+<meta name="description" content="{{versions.what-changed-in-each}}">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/favicon-64.png" type="image/png" sizes="64x64">
+<link rel="apple-touch-icon" href="assets/seal-icon-256.png">
+<link rel="stylesheet" href="motion.css">
+<style>
+
+  @font-face { font-family: 'OpenDyslexic'; src: url('assets/fonts/OpenDyslexic-Regular.woff') format('woff'); font-weight: 400; font-display: swap; }
+  @font-face { font-family: 'OpenDyslexic'; src: url('assets/fonts/OpenDyslexic-Bold.woff') format('woff'); font-weight: 700; font-display: swap; }
+  @font-face { font-family: 'Atkinson Hyperlegible'; src: url('assets/fonts/AtkinsonHyperlegible-Regular.woff') format('woff'); font-weight: 400; font-display: swap; }
+
+  /* Page colours: the app's Peach theme in light, Harbor in dark (seal-data.js). bg, text and accent are the theme's own;
+     muted, card and rule are derived from it. */
+  :root { --bg: #FBE8D2; --text: #2B1A10; --muted: #6B5545; --accent: #6E2E0A; --teal: #1F998B; --card: #F6DCBF; --rule: #EDCFAF; --lip: #6B5545; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #173331; --text: #ECE4D3; --muted: #B9B3A6; --accent: #A3E3D9; --teal: #4FB3A9; --card: #1E3D3B; --rule: #2C4B48; --lip: #a9a498; }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 1.0625rem/1.6 -apple-system, BlinkMacSystemFont, 'SF Pro Rounded', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+  a { color: var(--accent); }
+  :focus-visible { outline: 3px solid var(--teal); outline-offset: 3px; border-radius: 6px; }
+  .wrap { max-width: 68rem; margin: 0 auto; padding: 0 1rem; }
+  .skip { position: absolute; inset-inline-start: -999px; }
+  .skip:focus { inset-inline-start: 1rem; top: 1rem; background: var(--bg); padding: .5rem 1rem; z-index: 10; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  header.top { display: flex; align-items: center; gap: .6rem; padding: 1.25rem 0; }
+  header.top img { width: 40px; height: 40px; }
+  header.top .name { font-weight: 800; letter-spacing: .02em; }
+  header.top nav { margin-inline-start: auto; display: flex; gap: 1.1rem; font-size: .95rem; }
+  header.top nav a { color: var(--muted); text-decoration: none; }
+  header.top nav a:hover { color: var(--text); }
+  @media (max-width: 34rem) { header.top nav a[href^="#"] { display: none; } }
+
+  /* ── sections ───────────────────────────────────────────────── */
+  section.band { padding: 3.5rem 0; border-top: 1px solid var(--rule); }
+  section.band h2 { font-size: clamp(1.6rem, 3.2vw, 2.1rem); line-height: 1.2; margin: 0 0 .5rem; }
+  section.band .intro { color: var(--muted); margin: 0 0 2rem; max-width: 40rem; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+  @media (max-width: 52rem) { .grid3 { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border-radius: 22px; padding: 1.4rem 1.4rem 1.2rem; }
+  .card h3 { margin: 0 0 .4rem; font-size: 1.15rem; }
+  .card p { margin: 0; }
+  ul.ticks { list-style: none; padding: 0; margin: 0; display: grid; gap: .8rem; max-width: 46rem; }
+  ul.ticks li { padding-inline-start: 1.9rem; position: relative; }
+  ul.ticks li::before { content: ''; position: absolute; inset-inline-start: .2rem; top: .45em; width: .75rem; height: .75rem; border-radius: 50%; background: var(--teal); }
+  footer { border-top: 1px solid var(--rule); padding: 2rem 0 3rem; color: var(--muted); font-size: .95rem; }
+  footer nav { display: flex; flex-wrap: wrap; gap: 1.25rem; margin-bottom: .75rem; }
+  .mascot { width: 96px; height: auto; display: block; margin-bottom: .5rem; }
+
+
+  /* ── versions page ─────────────────────────────────────────── */
+  .page-head { padding: 1rem 0 2.5rem; }
+  .page-head h1 { font-size: clamp(2.2rem, 5vw, 3.2rem); line-height: 1.1; margin: 0 0 1rem; letter-spacing: -.01em; }
+  .page-head .lede { font-size: 1.2rem; color: var(--muted); max-width: 40rem; margin: 0; }
+  .release { max-width: 46rem; margin: 0 0 1.25rem; }
+  .release h3 { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin: 0 0 .5rem; font-size: 1.25rem; }
+  .badge { font-size: .85rem; font-weight: 800; letter-spacing: .02em; border-radius: 999px; padding: .15rem .75rem; border: 2px solid var(--accent); color: var(--accent); background: transparent; }
+  .badge.review { background: var(--accent); color: var(--bg); }
+  .release ul { margin: .5rem 0 0; padding-inline-start: 1.25rem; }
+  .release li { margin: 0 0 .4rem; }
+  .release .note { color: var(--muted); font-size: .95rem; margin: .75rem 0 0; }
+  .prose { max-width: 42rem; }
+  .prose p { margin: 0 0 1rem; }
+  figure.chart { margin: 2rem 0; max-width: 40rem; }
+  figure.chart figcaption { font-size: .95rem; color: var(--muted); margin-top: .5rem; }
+  figure.chart h3 { margin: 0 0 .5rem; font-size: 1.15rem; }
+  figure.chart svg { display: block; width: 100%; height: auto; }
+  .chart text { fill: var(--text); font-family: inherit; }
+  .chart .m { fill: var(--muted); }
+  .chart .axis { stroke: var(--muted); stroke-width: 1; fill: none; }
+  .chart .grid { stroke: var(--rule); stroke-width: 1; }
+  .chart .bar { fill: var(--muted); opacity: .55; }
+  .chart .bar.pick, .chart .dot.pick { fill: var(--teal); opacity: 1; }
+  .chart .whisk { stroke: var(--text); stroke-width: 2; fill: none; }
+  .chart .ref { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 4; }
+  .chart .reflabel { fill: var(--accent); font-weight: 700; }
+  .chart .dot { fill: var(--muted); stroke: var(--bg); stroke-width: 2; }
+  .chart .box { fill: var(--card); stroke: var(--rule); stroke-width: 1.5; }
+  .chart .box.pick { stroke: var(--teal); stroke-width: 2.5; }
+  .chart .arrow { stroke: var(--muted); stroke-width: 2; fill: none; }
+  .chart .arrowhead { fill: var(--muted); }
+  .chart .b { font-weight: 700; }
+  details.data { margin-top: .75rem; }
+  details.data summary { cursor: pointer; font-weight: 700; color: var(--accent); }
+  .tablewrap { overflow-x: auto; margin-top: .5rem; }
+  table.data { border-collapse: collapse; width: 100%; font-size: .95rem; }
+  table.data th, table.data td { text-align: start; padding: .35rem .6rem; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  table.data td.n, table.data th.n { text-align: end; }
+  .pick-card { max-width: 46rem; border-inline-start: 6px solid var(--teal); }
+  .src { font-size: .9rem; color: var(--muted); }
+  /* ── version switcher ──────────────────────────────────────── */
+  .version-nav { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1.75rem; }
+  .version-nav a { font-weight: 800; letter-spacing: .02em; border-radius: 999px; padding: .35rem 1.1rem; border: 2px solid var(--accent); color: var(--accent); text-decoration: none; }
+  .version-nav a[aria-current] { background: var(--accent); color: var(--bg); }
+  .version[hidden] { display: none; }
+  .version .release + .release, #v1-0-1 { margin-top: 1.25rem; }
+</style>
+{{@robots}}{{@alternates}}</head>
+<body>
+<a class="skip" href="#main">{{index.skip-to-content}}</a>
+<div class="wrap">
+  <header class="top">
+    <a href="index.html" style="display:contents;color:inherit;text-decoration:none"><img src="assets/favicon.svg" alt="" width="40" height="40"><span class="name">{{index.seal-speak}}</span></a>
+    <nav aria-label="{{index.on-this-page}}">
+      <a href="#releases">{{versions.releases}}</a>
+      <a href="#engine">{{versions.caption-engine}}</a>
+      <a href="index.html">{{versions.home}}</a>
+      <a href="support.html">{{index.support}}</a>
+    </nav>
+  </header>
+</div>
+
+<main id="main">
+  <div class="wrap page-head">
+    <h1>{{index.versions}}</h1>
+    <p class="lede">{{versions.what-changed-in-each-2}}</p>
+    <nav class="version-nav" id="releases" aria-label="{{versions.choose-a-version}}" data-default="v1-0">
+      <a href="#v1-0">1.0</a>
+      <a href="#v1-1">1.1</a>
+    </nav>
+  </div>
+
+  <div class="version" id="v1-0">
+  <section class="band" aria-labelledby="v10-h">
+    <div class="wrap">
+      <h2 id="v10-h">{{versions.version-1-0}}</h2>
+      <div id="v1-0-0">
+      <div class="card release">
+        <h3>{{versions.1-0-0-on}}</h3>
+        <p>{{versions.the-first-version-released}}</p>
+        <ul>
+          <li>{{versions.live-captions-of-what}}</li>
+          <li>{{versions.one-big-button-to}}</li>
+          <li>{{versions.a-new-line-labelled}}</li>
+          <li>{{versions.text-size-that-follows}}</li>
+          <li>{{versions.six-colour-themes-and}}</li>
+          <li>{{versions.captions-scroll-on-their}}</li>
+          <li>{{versions.short-labels-for-sounds}}</li>
+          <li>{{versions.highlight-words-to-copy}}</li>
+          <li>{{versions.tap-save-to-keep}}</li>
+          <li>{{versions.private-captions-are-made}}</li>
+          <li>{{versions.works-with-no-internet}}</li>
+          <li>{{versions.4-99-once-english}}</li>
+        </ul>
+        <p class="note">{{versions.captions-are-made-by}}</p>
+      </div>
+      </div>
+      <div id="v1-0-1">
+      <div class="card release">
+        <h3>{{versions.1-0-1-coming}}</h3>
+        <p>{{versions.display-fixes}}</p>
+        <ul>
+          <li>{{versions.a-full-screen-ipad}}</li>
+          <li>{{versions.it-also-works-on}}</li>
+        </ul>
+        <p class="note">{{versions.not-on-the-app}}</p>
+      </div>
+      </div>
+    </div>
+  </section>
+  </div>
+
+  <div class="version" id="v1-1">
+  <section class="band" aria-labelledby="v11-h">
+    <div class="wrap">
+      <h2 id="v11-h">{{versions.version-1-1}}</h2>
+      <div class="card release">
+        <h3 id="v1-1-0">{{versions.1-1-0-planned}}</h3>
+        <ul>
+          <li>{{versions.a-new-engine-makes}}</li>
+          <li>{{versions.captions-in-more-languages}}</li>
+          <li>{{versions.live-translation-of-the}}</li>
+          <li>{{versions.it-still-works-with}}</li>
+          <li>{{versions.the-app-gets-bigger}}</li>
+        </ul>
+        <p class="note">{{versions.planned-not-built-yet}}</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="engine" aria-labelledby="eng-h">
+    <div class="wrap">
+      <h2 id="eng-h">{{versions.how-we-chose-the}}</h2>
+      <p class="intro">{{versions.the-engine-is-the}}</p>
+      <div class="stats">
+        <p class="stat"><span class="stat-n" data-count="20%">20%</span><span class="stat-l">{{versions.fewer-mistakes-than-apple}}</span></p>
+        <p class="stat"><span class="stat-n" data-count="0.25 s">{{index.0-25-s}}</span><span class="stat-l">{{versions.median-wait-for-a}}</span></p>
+      </div>
+      <div class="prose">
+        <p>{{versions.seal-speak-1-0}}</p>
+        <p>{{versions.so-we-found-a}}</p>
+      </div>
+
+      <figure class="chart">
+        <h3>{{versions.how-we-tested}}</h3>
+        <svg viewBox="0 0 420 352" role="img" aria-labelledby="m-t m-d">
+<title id="m-t">{{versions.how-the-caption-engines}}</title>
+<desc id="m-d">{{versions.four-steps-from-top}}</desc>
+<rect class="box" x="20" y="8" width="240" height="66" rx="14"/><text x="140.0" y="31" text-anchor="middle" font-size="15.5" class="b">{{versions.edacc-corpus}}</text><text class="m" x="140.0" y="50" text-anchor="middle" font-size="14">{{versions.31-4-hours-17}}</text><text class="m" x="140.0" y="66" text-anchor="middle" font-size="14">{{versions.many-english-accents-cc}}</text><path class="arrow" d="M140 74V94"/><path class="arrowhead" d="M134 92L140 100L146 92Z"/><rect class="box" x="20" y="100" width="240" height="56" rx="14"/><text x="140.0" y="123" text-anchor="middle" font-size="15.5" class="b">{{versions.32-shards}}</text><text class="m" x="140.0" y="142" text-anchor="middle" font-size="14">{{versions.split-so-each-mac}}</text><path class="arrow" d="M140 156V176"/><path class="arrowhead" d="M134 174L140 182L146 174Z"/><rect class="box" x="20" y="182" width="240" height="66" rx="14"/><text x="140.0" y="205" text-anchor="middle" font-size="15.5" class="b">{{versions.engines-on-two-macs}}</text><text class="m" x="140.0" y="224" text-anchor="middle" font-size="14">{{versions.apple-parakeet-builds}}</text><text class="m" x="140.0" y="240" text-anchor="middle" font-size="14">{{versions.sherpa-onnx-same-clips}}</text><path class="arrow" d="M140 248V268"/><path class="arrowhead" d="M134 266L140 274L146 266Z"/><rect class="box pick" x="20" y="274" width="240" height="66" rx="14"/><text x="140.0" y="297" text-anchor="middle" font-size="15.5" class="b">{{versions.word-error-rate}}</text><text class="m" x="140.0" y="316" text-anchor="middle" font-size="14">{{versions.scored-with-a-95}}</text><text class="m" x="140.0" y="332" text-anchor="middle" font-size="14">{{versions.interval-speaker-bootstrap}}</text><rect class="box" x="276" y="196" width="136" height="88" rx="14"/><text x="344" y="220" text-anchor="middle" font-size="15.5" class="b">{{versions.live-latency}}</text><text class="m" x="344" y="240" text-anchor="middle" font-size="14">{{versions.sample-526-clips}}</text><text class="m" x="344" y="256" text-anchor="middle" font-size="14">{{versions.45-min-of-audio}}</text><text class="m" x="344" y="272" text-anchor="middle" font-size="14">{{versions.as-if-live}}</text><path class="arrow" d="M260 215H268" stroke-dasharray="5 4"/><path class="arrowhead" d="M268 209L276 215L268 221Z"/>
+</svg>
+        <figcaption class="src">{{versions.source-engine-accuracy-report}}</figcaption>
+      </figure>
+
+      <div class="prose">
+        <p>{{versions.we-count-a-mistake}}</p>
+      </div>
+
+      <figure class="chart">
+        <h3>{{versions.mistakes-per-100-words}}</h3>
+        <svg viewBox="0 0 420 266" role="img" aria-labelledby="a-t a-d">
+<title id="a-t">{{versions.word-error-rate-by}}</title>
+<desc id="a-d">{{versions.lower-is-better-parakeet}}</desc>
+<line class="grid" x1="128.0" y1="20" x2="128.0" y2="232"/><text class="m" x="128.0" y="252" text-anchor="middle" font-size="14">0%</text><line class="grid" x1="189.0" y1="20" x2="189.0" y2="232"/><text class="m" x="189.0" y="252" text-anchor="middle" font-size="14">5%</text><line class="grid" x1="250.0" y1="20" x2="250.0" y2="232"/><text class="m" x="250.0" y="252" text-anchor="middle" font-size="14">10%</text><line class="grid" x1="311.0" y1="20" x2="311.0" y2="232"/><text class="m" x="311.0" y="252" text-anchor="middle" font-size="14">15%</text><line class="grid" x1="372.0" y1="20" x2="372.0" y2="232"/><text class="m" x="372.0" y="252" text-anchor="middle" font-size="14">20%</text><line class="ref" x1="311.0" y1="20" x2="311.0" y2="232"/><text class="reflabel" x="311.0" y="13" text-anchor="middle" font-size="13">{{versions.15-good}}</text><text x="118" y="49" text-anchor="end" font-size="15" class="b">{{versions.parakeet-ultra}}</text><text class="m" x="118" y="65" text-anchor="end" font-size="14">{{versions.6-bit-chosen}}</text><rect class="bar pick" x="128" y="39" width="168.4" height="26" rx="4"/><path class="whisk" d="M284.2 52H308.6M284.2 45V59M308.6 45V59"/><text x="118" y="108" text-anchor="end" font-size="15" class="b">{{index.parakeet-v2}}</text><rect class="bar" x="128" y="91" width="189.1" height="26" rx="4"/><path class="whisk" d="M304.9 104H330.5M304.9 97V111M330.5 97V111"/><text x="118" y="160" text-anchor="end" font-size="15" class="b">{{index.sherpa-onnx}}</text><rect class="bar" x="128" y="143" width="196.4" height="26" rx="4"/><path class="whisk" d="M309.8 156H337.8M309.8 149V163M337.8 149V163"/><text x="118" y="205" text-anchor="end" font-size="15" class="b">{{index.apple}}</text><text class="m" x="118" y="221" text-anchor="end" font-size="14">{{versions.speechanalyzer}}</text><rect class="bar" x="128" y="195" width="209.8" height="26" rx="4"/><path class="whisk" d="M323.2 208H352.5M323.2 201V215M352.5 201V215"/>
+<text x="314.6" y="56" font-size="15" class="b">13.8%</text><text x="336.5" y="108" font-size="15" class="b">15.5%</text><text x="343.8" y="160" font-size="15" class="b">16.1%</text><text x="358.5" y="212" font-size="15" class="b">17.2%</text>
+</svg>
+        <details class="data"><summary>{{versions.show-the-numbers-as}}</summary><div class="tablewrap"><table class="data"><caption class="sr-only">{{versions.word-error-rate-by-2}}</caption><thead><tr><th scope="col">{{index.engine}}</th><th class="n" scope="col">{{index.wer}}</th><th class="n" scope="col">{{index.95-ci}}</th><th class="n" scope="col">{{index.correct-word-median}}</th><th class="n" scope="col">{{versions.speed}}</th></tr></thead><tbody><tr><th scope="row">{{versions.parakeet-ultra-6-bit}}</th><td class="n">13.8%</td><td class="n">{{index.12-8-to-14}}</td><td class="n">{{index.0-25-s}}</td><td class="n">{{versions.101-6x-real-time}}</td></tr><tr><th scope="row">{{index.parakeet-v2}}</th><td class="n">15.5%</td><td class="n">{{index.14-5-to-16}}</td><td class="n">{{index.0-24-s}}</td><td class="n">{{versions.117-3x}}</td></tr><tr><th scope="row">{{index.sherpa-onnx}}</th><td class="n">16.1%</td><td class="n">{{index.14-9-to-17}}</td><td class="n">{{index.0-39-s}}</td><td class="n">{{versions.31-0x}}</td></tr><tr><th scope="row">{{versions.apple-speechanalyzer}}</th><td class="n">17.2%</td><td class="n">{{index.16-0-to-18}}</td><td class="n">{{index.0-67-s}}</td><td class="n">{{versions.43-6x}}</td></tr></tbody></table></div></details>
+        <figcaption class="src">{{versions.lower-is-better-whiskers}}</figcaption>
+      </figure>
+
+      <div class="prose">
+        <p>{{versions.parakeet-v2-and-parakeet}}</p>
+        <p>{{versions.accuracy-was-not-the}}</p>
+      </div>
+
+      <figure class="chart">
+        <h3>{{versions.size-against-mistakes-parakeet}}</h3>
+        <svg viewBox="0 0 420 346" role="img" aria-labelledby="b-t b-d">
+<title id="b-t">{{versions.model-size-against-word}}</title>
+<desc id="b-d">{{versions.lower-is-better-and}}</desc>
+<line class="grid" x1="52" y1="300.0" x2="404" y2="300.0"/><text class="m" x="46" y="304.0" text-anchor="end" font-size="14">10%</text><line class="grid" x1="52" y1="231.0" x2="404" y2="231.0"/><text class="m" x="46" y="235.0" text-anchor="end" font-size="14">14%</text><line class="grid" x1="52" y1="162.0" x2="404" y2="162.0"/><text class="m" x="46" y="166.0" text-anchor="end" font-size="14">18%</text><line class="grid" x1="52" y1="93.0" x2="404" y2="93.0"/><text class="m" x="46" y="97.0" text-anchor="end" font-size="14">22%</text><line class="grid" x1="52" y1="24.0" x2="404" y2="24.0"/><text class="m" x="46" y="28.0" text-anchor="end" font-size="14">26%</text><text class="m" x="52.0" y="318" text-anchor="middle" font-size="14">0</text><text class="m" x="152.6" y="318" text-anchor="middle" font-size="14">200</text><text class="m" x="253.1" y="318" text-anchor="middle" font-size="14">400</text><text class="m" x="353.7" y="318" text-anchor="middle" font-size="14">600</text><text class="m" x="228" y="336" text-anchor="middle" font-size="14">{{versions.model-size-on-disk}}</text><text class="m" x="4" y="12" font-size="14">{{versions.word-error-rate-lower}}</text><line class="axis" x1="52" y1="300" x2="404" y2="300"/><line class="ref" x1="52" y1="175.8" x2="404" y2="175.8"/><text class="reflabel" x="404" y="169.8" text-anchor="end" font-size="14">{{versions.apple-17-2}}</text><path class="whisk" d="M162.6 205.1V162.0M157.6 205.1H167.6M157.6 162.0H167.6"/><circle class="dot" cx="162.6" cy="184.4" r="7"/><text x="162.6" y="154.0" text-anchor="middle" font-size="14" class="b">{{versions.redux-2-bit}}</text><path class="whisk" d="M221.0 113.7V48.1M216.0 113.7H226.0M216.0 48.1H226.0"/><circle class="dot" cx="221.0" cy="80.9" r="7"/><text x="221.0" y="40.1" text-anchor="middle" font-size="14" class="b">{{versions.v3-4-bit}}</text><path class="whisk" d="M228.0 236.2V199.9M223.0 236.2H233.0M223.0 199.9H233.0"/><circle class="dot" cx="228.0" cy="217.2" r="7"/><text x="222.0" y="252.2" text-anchor="end" font-size="14" class="b">{{versions.ultra-4-bit}}</text><path class="whisk" d="M285.3 222.4V186.1M280.3 222.4H290.3M280.3 186.1H290.3"/><circle class="dot" cx="285.3" cy="205.1" r="7"/><text x="273.3" y="209.1" text-anchor="end" font-size="14" class="b">{{versions.v2}}</text><path class="whisk" d="M302.4 251.7V217.2M297.4 251.7H307.4M297.4 217.2H307.4"/><circle class="dot pick" cx="302.4" cy="234.4" r="7"/><text x="302.4" y="267.7" text-anchor="middle" font-size="14" class="b">{{versions.ultra-6-bit}}</text><path class="whisk" d="M369.8 253.4V218.9M364.8 253.4H374.8M364.8 218.9H374.8"/><circle class="dot" cx="369.8" cy="234.4" r="7"/><text x="373.8" y="210.9" text-anchor="middle" font-size="14" class="b">{{versions.ultra-8-bit}}</text>
+</svg>
+        <details class="data"><summary>{{versions.show-the-numbers-as}}</summary><div class="tablewrap"><table class="data"><caption class="sr-only">{{versions.size-and-word-error}}</caption><thead><tr><th scope="col">{{versions.build}}</th><th class="n" scope="col">{{versions.on-disk}}</th><th class="n" scope="col">{{index.wer}}</th><th class="n" scope="col">{{index.95-ci}}</th><th class="n" scope="col">{{versions.beats-apple}}</th></tr></thead><tbody><tr><th scope="row">{{versions.redux-2-bit-2}}</th><td class="n">{{versions.220-mb}}</td><td class="n">16.7%</td><td class="n">{{versions.15-5-to-18}}</td><td class="n">{{versions.no}}</td></tr><tr><th scope="row">{{versions.v3-4-bit-2}}</th><td class="n">{{versions.336-mb}}</td><td class="n">22.7%</td><td class="n">{{versions.20-8-to-24}}</td><td class="n">{{versions.no}}</td></tr><tr><th scope="row">{{versions.ultra-4-bit}}</th><td class="n">{{versions.350-mb}}</td><td class="n">14.8%</td><td class="n">{{versions.13-7-to-15}}</td><td class="n">{{versions.yes}}</td></tr><tr><th scope="row">{{versions.v2}}</th><td class="n">{{versions.464-mb}}</td><td class="n">15.5%</td><td class="n">{{index.14-5-to-16}}</td><td class="n">{{versions.yes}}</td></tr><tr><th scope="row">{{versions.ultra-6-bit-chosen}}</th><td class="n">{{versions.498-mb}}</td><td class="n">13.8%</td><td class="n">{{index.12-8-to-14}}</td><td class="n">{{versions.yes}}</td></tr><tr><th scope="row">{{versions.ultra-8-bit-as}}</th><td class="n">{{versions.632-mb}}</td><td class="n">13.8%</td><td class="n">{{versions.12-7-to-14}}</td><td class="n">{{versions.yes}}</td></tr></tbody></table></div></details>
+        <figcaption class="src">{{versions.lower-is-better-left}}</figcaption>
+      </figure>
+
+      <div class="prose">
+        <p>{{versions.the-6-bit-version}}</p>
+      </div>
+
+      <div class="card pick-card">
+        <h3>{{versions.what-we-chose-and}}</h3>
+        <p>{{versions.parakeet-ultra-6-bit-2}}</p>
+        <ul>
+          <li>{{versions.it-is-tied-for}}</li>
+          <li>{{versions.it-is-134-mb}}</li>
+          <li>{{versions.it-is-fast-to}}</li>
+        </ul>
+        <p>{{versions.if-it-does-not}}</p>
+        <p class="note">{{versions.what-we-have-not}}</p>
+      </div>
+
+      <p class="intro" style="margin-top:2rem">{{versions.the-full-results-including}}</p>
+    </div>
+  </section>
+
+  <section class="band" id="languages" aria-labelledby="lang-h">
+    <div class="wrap">
+      <h2 id="lang-h">{{versions.how-parakeet-did-in}}</h2>
+      <p class="intro">{{versions.before-promising-a-language}}</p>
+      <div class="stats">
+        <p class="stat"><span class="stat-n" data-count="40%">40%</span><span class="stat-l">{{versions.fewer-mistakes-than-apple-2}}</span></p>
+      </div>
+      <div class="prose">
+        <p>{{versions.we-ran-apple-s}}</p>
+      </div>
+      <div class="tablewrap">
+        <table class="data" data-bars data-better="lower">
+          <caption class="sr-only">{{versions.word-error-rate-by-3}}</caption>
+          <thead><tr><th scope="col">{{versions.language}}</th><th class="n" scope="col" data-bar-col>{{index.apple}}</th><th class="n" scope="col" data-bar-col>{{versions.parakeet-ultra}}</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">{{index.spanish}}</th><td class="n">{{versions.4-0-3-4}}</td><td class="n">{{versions.2-8-2-4}}</td></tr>
+            <tr><th scope="row">{{index.french}}</th><td class="n">{{versions.7-5-6-7}}</td><td class="n">{{versions.4-5-3-9}}</td></tr>
+            <tr><th scope="row">{{index.german}}</th><td class="n">{{versions.7-2-6-5}}</td><td class="n">{{versions.4-4-3-8}}</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="prose" style="margin-top:1.5rem">
+        <p>{{versions.parakeet-made-30-to}}</p>
+      </div>
+      <p class="note src">{{versions.these-recordings-are-people}}</p>
+    </div>
+  </section>
+  <section class="band" id="translation" aria-labelledby="tr-h">
+    <div class="wrap">
+      <h2 id="tr-h">{{versions.how-we-chose-the-2}}</h2>
+      <p class="intro">{{versions.three-engines-can-translate}}</p>
+      <div class="stats">
+        <p class="stat"><span class="stat-n" data-count="19">19</span><span class="stat-l">{{versions.languages-tested-with-apple}}</span></p>
+        <p class="stat"><span class="stat-n" data-count="18 of 19">{{versions.18-of-19}}</span><span class="stat-l">{{versions.scored-as-well-as}}</span></p>
+        <p class="stat"><span class="stat-n" data-count="70 ms">{{index.70-ms}}</span><span class="stat-l">{{versions.or-less-to-translate}}</span></p>
+      </div>
+      <div class="prose">
+        <p>{{versions.we-score-translations-with}}</p>
+      </div>
+      <div class="tablewrap">
+        <table class="data" data-bars="100" data-better="higher">
+          <caption class="sr-only">{{versions.translation-score-chrf-by}}</caption>
+          <thead><tr><th scope="col">{{versions.english-into}}</th><th scope="col">{{versions.text}}</th><th class="n" scope="col" data-bar-col>{{index.apple}}</th><th class="n" scope="col" data-bar-col>{{index.opus-mt}}</th><th class="n" scope="col" data-bar-col>{{index.google-ml-kit}}</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">{{index.spanish}}</th><td>{{versions.written}}</td><td class="n"><strong>56.8</strong></td><td class="n">55.0</td><td class="n">53.2</td></tr>
+            <tr><th scope="row">{{index.spanish}}</th><td>{{versions.caption-style}}</td><td class="n"><strong>54.8</strong></td><td class="n">51.2</td><td class="n">51.8</td></tr>
+            <tr><th scope="row">{{index.french}}</th><td>{{versions.written}}</td><td class="n"><strong>73.2</strong></td><td class="n">69.8</td><td class="n">65.4</td></tr>
+            <tr><th scope="row">{{index.french}}</th><td>{{versions.caption-style}}</td><td class="n"><strong>69.7</strong></td><td class="n">63.0</td><td class="n">62.6</td></tr>
+            <tr><th scope="row">{{index.german}}</th><td>{{versions.written}}</td><td class="n"><strong>68.2</strong></td><td class="n">63.6</td><td class="n">59.0</td></tr>
+            <tr><th scope="row">{{index.german}}</th><td>{{versions.caption-style}}</td><td class="n"><strong>65.9</strong></td><td class="n">58.2</td><td class="n">56.7</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="prose" style="margin-top:1.5rem">
+        <p>{{versions.apple-s-translation-scored}}</p>
+      </div>
+
+      <h3 id="tr-all" style="margin:2.5rem 0 .5rem;font-size:1.25rem">{{versions.every-language-apple-translates}}</h3>
+      <div class="prose">
+        <p>{{versions.then-we-ran-apple}}</p>
+      </div>
+      <div class="tablewrap">
+        <table class="data" data-bars="100" data-better="higher">
+          <caption class="sr-only">{{versions.apple-s-translation-from}}</caption>
+          <thead><tr><th scope="col">{{versions.english-into}}</th><th class="n" scope="col" data-bar-col>{{versions.chrf}}</th><th class="n" scope="col">{{versions.comet}}</th><th class="n" scope="col">{{versions.time-per-line}}</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">{{index.indonesian}}</th><td class="n">73.8</td><td class="n">0.920</td><td class="n">{{versions.53-ms}}</td></tr>
+            <tr><th scope="row">{{versions.portuguese-brazil}}</th><td class="n">73.6</td><td class="n">0.899</td><td class="n">{{versions.51-ms}}</td></tr>
+            <tr><th scope="row">{{index.french}}</th><td class="n">73.2</td><td class="n">0.879</td><td class="n">{{versions.58-ms}}</td></tr>
+            <tr><th scope="row">{{index.german}}</th><td class="n">68.2</td><td class="n">0.883</td><td class="n">{{index.70-ms}}</td></tr>
+            <tr><th scope="row">{{index.turkish}}</th><td class="n">65.7</td><td class="n">0.903</td><td class="n">{{versions.52-ms}}</td></tr>
+            <tr><th scope="row">{{index.arabic}}</th><td class="n">63.1</td><td class="n">0.870</td><td class="n">{{versions.53-ms}}</td></tr>
+            <tr><th scope="row">{{index.vietnamese}}</th><td class="n">62.5</td><td class="n">0.892</td><td class="n">{{versions.52-ms}}</td></tr>
+            <tr><th scope="row">{{index.ukrainian}}</th><td class="n">61.8</td><td class="n">0.898</td><td class="n">{{versions.51-ms}}</td></tr>
+            <tr><th scope="row">{{index.hindi}}</th><td class="n">60.9</td><td class="n">0.807</td><td class="n">{{versions.52-ms}}</td></tr>
+            <tr><th scope="row">{{index.italian}}</th><td class="n">60.4</td><td class="n">0.879</td><td class="n">{{versions.52-ms}}</td></tr>
+            <tr><th scope="row">{{index.russian}}</th><td class="n">60.0</td><td class="n">0.886</td><td class="n">{{versions.52-ms}}</td></tr>
+            <tr><th scope="row">{{index.dutch}}</th><td class="n">59.6</td><td class="n">0.879</td><td class="n">{{versions.51-ms}}</td></tr>
+            <tr><th scope="row">{{index.thai}}</th><td class="n">57.9</td><td class="n">0.879</td><td class="n">{{versions.51-ms}}</td></tr>
+            <tr><th scope="row">{{index.spanish}}</th><td class="n">56.8</td><td class="n">0.863</td><td class="n">{{versions.59-ms}}</td></tr>
+            <tr><th scope="row">{{index.polish}}</th><td class="n">53.8</td><td class="n">0.889</td><td class="n">{{versions.52-ms}}</td></tr>
+            <tr><th scope="row">{{index.japanese}}</th><td class="n">43.5</td><td class="n">0.912</td><td class="n">{{versions.59-ms}}</td></tr>
+            <tr><th scope="row">{{versions.chinese-simplified}}</th><td class="n">40.3</td><td class="n">0.871</td><td class="n">{{versions.56-ms}}</td></tr>
+            <tr><th scope="row">{{index.korean}}</th><td class="n">38.0</td><td class="n">0.899</td><td class="n">{{versions.56-ms}}</td></tr>
+            <tr><th scope="row">{{versions.chinese-traditional}}</th><td class="n">32.6</td><td class="n">0.875</td><td class="n">{{versions.55-ms}}</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="prose" style="margin-top:1.5rem">
+        <ul>
+          <li>{{versions.18-of-the-19}}</li>
+          <li>{{versions.hindi-scored-lowest-0}}</li>
+          <li>{{versions.simplified-chinese-sometimes-came}}</li>
+          <li>{{versions.each-language-is-a}}</li>
+        </ul>
+        <p>{{versions.which-of-these-languages}}</p>
+      </div>
+      <p class="note src">{{versions.sentences-from-flores-200}}</p>
+    </div>
+  </section>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <img class="mascot" src="assets/favicon.svg" alt="" width="96" height="96">
+    <nav aria-label="{{index.footer}}">
+      <a href="support.html">{{index.support}}</a>
+      <a href="privacy.html">{{index.privacy-policy}}</a>
+      <a href="versions.html">{{index.versions}}</a>
+      <a href="https://github.com/G-Eskayo/clarity-captions">{{index.github}}</a>
+      <a href="mailto:gil.eskayo@icloud.com">{{index.contact}}</a>
+    </nav>
+    <p>{{versions.seal-speak-is-made}}</p>
+  </div>
+</footer>
+<script>
+// Version switcher: show one version at a time. Without JavaScript every version shows, one after another.
+// A link to anything inside a version (#engine, #languages) opens that version and scrolls to it.
+(() => {
+  const nav = document.querySelector('.version-nav')
+  if (!nav) return
+  const versions = [...document.querySelectorAll('.version')]
+  const links = [...nav.querySelectorAll('a')]
+  const show = (scroll, instant) => {
+    const id = decodeURIComponent(location.hash.slice(1))
+    const target = id ? document.getElementById(id) : null
+    const version = (target && target.closest('.version')) || document.getElementById(nav.dataset.default)
+    for (const v of versions) v.hidden = v !== version
+    for (const a of links) {
+      if (a.getAttribute('href') === '#' + version.id) a.setAttribute('aria-current', 'page')
+      else a.removeAttribute('aria-current')
+    }
+    // On first load the browser's own jump happened while the version was still hidden, so jump at once.
+    if (scroll && target && !target.classList.contains('version')) target.scrollIntoView(instant ? { behavior: 'instant' } : undefined)
+  }
+  for (const a of links) a.addEventListener('click', (e) => {
+    e.preventDefault()
+    history.pushState(null, '', a.getAttribute('href'))
+    show(false)
+  })
+  addEventListener('popstate', () => show(false))
+  addEventListener('hashchange', () => show(true))
+  show(true, true)
+})()
+</script>
+<script type="module" src="motion.js"></script>
+</body>
+</html>

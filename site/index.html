@@ -1,5 +1,6 @@
 <!doctype html>
-<html lang="en">
+<!-- Built by scripts/build-site.mjs from site-src/pages/index.html and site-src/lang/en.json: edit those, not this. -->
+<html lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -278,7 +279,7 @@
 
       <div class="demo-wrap">
         <div class="phone" data-demo data-state="idle" role="region" aria-label="A working demo of Seal Speak">
-          <div class="screen">
+          <div class="screen" data-app>
             <div class="d-top">
               <button class="d-gear" data-gear aria-label="Settings" aria-expanded="false">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -465,10 +466,10 @@
       <p class="intro">Everything on screen fades in and out. Nothing slides around while you read.</p>
       <div class="sample-wrap">
         <figure class="sample" data-sample aria-label="A caption shown in each of Seal's color themes and letterings">
-          <span class="sample-spk">Speaker 1</span>
-          <p class="sample-text">Is it on? Say something so we can see.</p>
+          <span class="sample-spk" data-app>Speaker 1</span>
+          <p class="sample-text" data-app>Is it on? Say something so we can see.</p>
         </figure>
-        <div class="sample-bar"><span data-sample-name>Paper · OpenDyslexic</span><button type="button" data-sample-play hidden>Play</button></div>
+        <div class="sample-bar"><span data-sample-name data-app>Paper · OpenDyslexic</span><button type="button" data-sample-play data-pause="Pause" hidden>Play</button></div>
       </div>
       <div class="grid3">
         <div class="card"><h3>Large text</h3><p>Follows your phone's text size, with A− and A+ to go bigger or smaller.</p></div>
@@ -619,7 +620,7 @@
       </div>
       <div class="tablet-wrap" data-tablet>
         <div class="tablet" role="img" aria-label="An iPad lying flat, split in two. The bottom half, facing you, shows the conversation in English. The top half is upside down, facing the other person, and shows it in Spanish. Lines from the other person are marked as translated.">
-          <div class="t-screen" aria-hidden="true">
+          <div class="t-screen" aria-hidden="true" data-app>
             <div class="t-half them" data-half="them">
               <div class="t-head">Español</div>
               <p class="t-line tr" data-mark="Traducido del inglés">Largo, pero los niños durmieron todo el camino.</p>
@@ -632,7 +633,7 @@
             </div>
           </div>
         </div>
-        <button class="flip" data-flip aria-pressed="false" hidden>↻ See their side</button>
+        <button class="flip" data-flip data-other="↻ See your side" aria-pressed="false" hidden>↻ See their side</button>
         <p class="tablet-hint">A made-up conversation. The top half is upside down because it faces them.</p>
       </div>
     </div>
@@ -645,8 +646,8 @@
         <p class="intro">Same words, same number of lines, letters about two and a half times taller. Readable from across a table.</p>
       </div>
       <figure class="to-scale" data-grow aria-label="An iPhone 12 screen and an 11-inch iPad screen drawn to the same scale, each showing the same caption. The iPad's is about four times the area, with letters about two and a half times taller.">
-        <div class="ts-phone" aria-hidden="true"><p>Dinner is almost ready.</p></div>
-        <div class="ts-pad" aria-hidden="true"><p>Dinner is almost ready.</p></div>
+        <div class="ts-phone" aria-hidden="true" data-app><p>Dinner is almost ready.</p></div>
+        <div class="ts-pad" aria-hidden="true" data-app><p>Dinner is almost ready.</p></div>
         <figcaption><span>iPhone 12</span><span>11-inch iPad</span></figcaption>
       </figure>
     </div>
@@ -746,7 +747,7 @@
       <div class="tablet-wrap">
         <div class="mac" data-mac role="img" aria-label="A video call window on a Mac, with the small Seal Speak window on top of it, captioning the call line by line with Speaker 1 and Speaker 2 labels.">
           <div class="mac-call" aria-hidden="true"><div class="mac-tile"></div><div class="mac-self"></div></div>
-          <div class="pop" aria-hidden="true">
+          <div class="pop" aria-hidden="true" data-app>
             <div class="pop-top"><span class="dot"></span>Captioning your call</div>
             <div class="pop-lines" data-pop-lines>
               <p class="pop-line s1"><b>Speaker 1</b>Grandpa wants to say hi to everyone.</p>

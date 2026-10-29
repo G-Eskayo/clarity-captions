@@ -106,9 +106,11 @@ function tablet(wrap) {
       el.append(p)
     }
   }
+  // The page holds both labels, in its own language.
+  const labels = { theirs: btn.textContent, yours: btn.dataset.other || '↻ See your side' }
   const turn = (on) => {
     pad.toggleAttribute('data-turned', on)
-    btn.textContent = on ? '↻ See your side' : '↻ See their side'
+    btn.textContent = on ? labels.yours : labels.theirs
     btn.setAttribute('aria-pressed', String(on))
   }
   btn.hidden = false
