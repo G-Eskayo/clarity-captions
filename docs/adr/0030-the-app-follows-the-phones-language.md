@@ -56,7 +56,7 @@ every device that has the feature and later on Android ([[0026]], #43).
 - Every localization needs a native-speaker review (#38's rule) before it ships; machine-only strings don't ship.
 - Right-to-left (Hebrew, Arabic) needs the #35 RTL checks for real on every screen, not just the pseudo run. The
   audit in the design doc (§2, right-to-left) lists what doesn't mirror today, by file and line. The measured state
-  (2026-10-29, evidence E31): a Hebrew phone gets the English app unmirrored, because Seal has no Hebrew localization;
+  (2026-10-29, evidence `2026-10-29-seal-on-a-right-to-left-phone`): a Hebrew phone gets the English app unmirrored, because Seal has no Hebrew localization;
   the pseudolanguage shows SwiftUI mirrors most screens by itself, except the bracket buttons, the caption area's
   direction, right-to-left selection and the text chevrons.
 - The caption area sets its own layout direction from the caption language, so it reads correctly inside either app

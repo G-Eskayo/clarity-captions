@@ -131,7 +131,7 @@ flips and every word is in that language, written to make sense in it, not word 
 the caption language, not the phone's.** Hebrew captions run right to left in an English app, and English captions
 run left to right in a Hebrew app. In face to face (#60, #208), each half follows its own language.
 
-**What happens today** (iPhone 17 simulator, iOS 26, Debug build of `c04a131`, screenshots on PR #205, evidence E31):
+**What happens today** (iPhone 17 simulator, iOS 26, Debug build of `c04a131`, screenshots on PR #205, evidence `2026-10-29-seal-on-a-right-to-left-phone`):
 
 - **With `-AppleLanguages (he)`, nothing flips.** Seal has one localization, English, so iOS runs it in English, left
   to right. Only the region formats change: with `-AppleLocale he_IL` the saved list shows "Today, 8:56" and
