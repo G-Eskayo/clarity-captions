@@ -1,6 +1,7 @@
 import AVFoundation
 import CaptionCore
 import CaptionUI
+import Speech
 import SwiftUI
 import Translation
 import UIKit
@@ -58,6 +59,13 @@ final class CaptionModel: ObservableObject {
         didSet { IdleStopStore().save(idleStop) }
     }
     private let screenAwake = ScreenAwakeKeeper(apply: { UIApplication.shared.isIdleTimerDisabled = $0 })
+    /// #60: captions for the face-to-face split, two language engines routed by voice. On from the Face to face button
+    /// until captioning stops (only Stop leaves the split, owner 2026-10-29).
+    @Published private(set) var faceToFace = false
+    /// Each voice's language, and so its half, as the engine last reported it.
+    @Published private(set) var speakerLanguages = SpeakerLanguages()
+    /// The language she reads (the translation's Into), as the engine for her half was made.
+    private var faceToFaceOwnerLocale = Locale(identifier: "en-US")
     /// Beta testers' ratings and measurements (ADR 0023). Every call is a no-op in an App Store install.
     let beta = BetaFeedbackCenter.shared
     /// A cold launch brought back a conversation; the beta card may be due once StoreKit has answered.
@@ -66,6 +74,7 @@ final class CaptionModel: ObservableObject {
     init() {
         controller = CaptionSessionController(makeEngine: { [weak self] in
             guard let self else { throw CancellationError() }
+            if self.faceToFace { return try CaptionEngineFactory.makeFaceToFace(micMode: self.micMode, ownerLocale: self.faceToFaceOwnerLocale) }
             // Loaded during the launch (or after the last pause), so Start is instant (#119).
             if let warm = EngineWarmupHost.shared.take(micMode: self.micMode) { return warm }
             return try CaptionEngineFactory.make(micMode: self.micMode)
@@ -97,7 +106,8 @@ final class CaptionModel: ObservableObject {
             guard let self else { return }
             var range: ClosedRange<Double>?
             if let a = u.startSeconds, let b = u.endSeconds, a <= b { range = a...b }
-            self.stream.apply(text: u.text, isFinal: u.isFinal, speaker: u.speaker, range: range)
+            self.stream.apply(text: u.text, isFinal: u.isFinal, speaker: u.speaker, range: range, lane: u.lane)
+            if let languages = u.languages { self.speakerLanguages = languages }
             if let l = u.lagSeconds { self.lag = l }
             self.diag = u.diagnostics
             if !u.text.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -130,6 +140,8 @@ final class CaptionModel: ObservableObject {
             startActivityLoop()
             beta.captioningStarted(session)
         case .idle, .failed, .pausedQuiet:
+            // Stop (or anything else that ends captioning) leaves the face-to-face split (#60).
+            if faceToFace { endFaceToFace() }
             // Pausing keeps the conversation on screen; nothing is saved until she taps [ Save ].
             stopActivityLoop()
             beta.captioningStopped(session, state: newState)
@@ -270,6 +282,41 @@ final class CaptionModel: ObservableObject {
         }
     }
 
+    /// The Face to face button (#60): captions start (or restart) in the split, with an engine for each half's language.
+    /// The split is only ever open while captioning runs, so Stop is always there to leave it.
+    func startFaceToFace(ownerLanguage: Locale) {
+        guard !faceToFace else { return }
+        Task {
+            await controller.stopAndWait()
+            await EngineWarmupHost.shared.release()   // made for one-way captions; two engines need the memory
+            faceToFaceOwnerLocale = await SpeechTranscriber.supportedLocale(equivalentTo: ownerLanguage) ?? ownerLanguage
+            speakerLanguages = SpeakerLanguages()
+            faceToFace = true
+            tour.did(.tappedStart)
+            beta.startPressed(session)
+            controller.start()
+        }
+    }
+
+    /// Leaving the split keeps exactly the lines it showed: each voice in its own language's engine's words, never the
+    /// other engine's try at the same speech.
+    private func endFaceToFace() {
+        stream.removeLines { !FaceToFace.isShown($0, languages: speakerLanguages) }
+        faceToFace = false
+    }
+
+    /// The lines the split shows.
+    var faceToFaceLines: [CaptionLine] { FaceToFace.shown(stream.lines, languages: speakerLanguages) }
+
+    /// Debug only (`-ClarityDemoFaceToFaceLive`): one engine's words for a voice, applied the way the engine's updates
+    /// are: into that engine's caption lane, and as evidence of the voice's language.
+    func demoFaceToFaceHeard(_ words: [String], speaker: Int, lane: FaceToFaceHalf, at start: Double, isFinal: Bool, pair: LanguagePair) {
+        let timed = words.enumerated().map { TimedWord(text: $0.element, start: start + Double($0.offset) * 0.4, end: start + Double($0.offset) * 0.4 + 0.3) }
+        stream.apply(text: words.joined(separator: " "), isFinal: isFinal, speaker: speaker,
+                     range: start...(timed.last?.end ?? start), lane: lane)
+        speakerLanguages.heard(speaker: speaker, lane: lane, words: timed, isFinal: isFinal, classify: pair.probabilities)
+    }
+
     func measureLatency() {
         guard let modelURL = Bundle.main.url(forResource: "Sortformer_v2.1", withExtension: "mlmodelc"),
               let fixtureURL = Bundle.main.url(forResource: "latency-fixture", withExtension: "wav") else {
@@ -367,9 +414,14 @@ struct ContentView: View {
     @Environment(\.launchCovering) private var launchCovering
     /// Debug demos only: a scripted tap on the rating card (simctl can't tap).
     @State private var demoRatingTap: Int?
-    /// #60: the face-to-face split is open (iPad and the unfolded Duo, translation on), and the window's size, which
-    /// decides whether the screen is big enough to offer it.
-    @State private var faceToFace = DemoMode.faceToFace
+    /// #60: the window's size, which decides whether the screen is big enough to offer the face-to-face split. Debug
+    /// demos open the split without an engine (the simulator has none).
+    @State private var demoFaceToFace = DemoMode.faceToFace || DemoMode.faceToFaceLive
+    private var faceToFace: Bool {
+        if model.faceToFace { return true }
+        if case .listening = model.state { return demoFaceToFace }
+        return false
+    }
     @State private var windowSize: CGSize = .zero
     /// Debug demos only: flips an invisible pixel so screen recordings keep writing frames (see runDemoPause).
     @State private var demoFlushTick = 0
@@ -470,7 +522,11 @@ struct ContentView: View {
         // #53: what she owns, the price, and Apple's Translation session for the pair while translation is on.
         .task { await translation.start(); translation.linesChanged(model.stream.lines) }
         .translationTask(translation.configuration) { session in await translation.run(session) }
-        .onChange(of: model.stream.lines) { _, lines in translation.linesChanged(lines) }
+        // #60: the second direction, her words into the other person's language, while the split is open.
+        .translationTask(translation.reverseConfiguration) { session in await translation.runReverse(session) }
+        .onChange(of: model.stream.lines) { _, _ in translationLinesChanged() }
+        .onChange(of: model.speakerLanguages) { _, _ in translationLinesChanged() }
+        .onChange(of: faceToFace) { _, on in translation.faceToFaceChanged(on); translationLinesChanged() }
         .task {
             guard DemoMode.isOn else { return }
             model.demoApplyPreset()
@@ -480,6 +536,7 @@ struct ContentView: View {
             }
             if DemoMode.seedsSaved { await seedDemoSaved() }
             model.runDemo()
+            if DemoMode.faceToFaceLive { model.runFaceToFaceDemo() }
             if DemoMode.opensDeveloperPanel { developerTools = true }
             if DemoMode.opensSettings || DemoMode.settingsPush != nil {
                 // Debug only: open straight on Settings (or one of its pages) for screenshots, no fade.
@@ -691,46 +748,54 @@ struct ContentView: View {
         .accessibilityLabel(String(localized: "Settings"))
     }
 
-    /// #60 mock-up: the split is offered on a screen big enough for two halves with translation on. Debug builds only
-    /// until the owner approves the look and the second direction of translation is wired.
+    /// #60: the split is offered on a screen big enough for two halves (iPad, the unfolded Duo) with translation on, in
+    /// the top row (owner, 2026-10-29).
     private var offersFaceToFace: Bool {
-        #if DEBUG
-        return FaceToFace.offersSplit(width: windowSize.width, height: windowSize.height, translationOn: translation.isActive)
-        #else
-        return false
-        #endif
+        FaceToFace.offersSplit(width: windowSize.width, height: windowSize.height, translationOn: translation.isActive)
     }
 
     private var faceToFaceButton: some View {
         RetroWords(word: String(localized: "Face to face"), color: gearColor, background: style.background.color,
-                   size: .body, label: String(localized: "Face to face")) { faceToFace = true }
+                   size: .body, label: String(localized: "Face to face")) {
+            #if DEBUG
+            if DemoMode.isOn { demoFaceToFace = true; if DemoMode.faceToFaceLive { model.runFaceToFaceDemo() }; return }
+            #endif
+            model.startFaceToFace(ownerLanguage: translation.target ?? Locale.current)
+        }
     }
 
-    /// Which half each speaker belongs to. Mock-up: the demo's two speakers are placed by hand; how a real speaker gets
-    /// a half is the owner's open decision on #60.
-    private var faceToFaceSides: FaceToFaceSides {
-        var sides = FaceToFaceSides()
-        if DemoMode.faceToFace { sides.assign(speaker: 0, to: .partner); sides.assign(speaker: 1, to: .owner) }
-        return sides
+    /// The half a line belongs to: from the voice's language live; placed by hand in the `-ClarityDemoFaceToFace` mock-up.
+    private func faceToFaceHalf(_ line: CaptionLine) -> FaceToFaceHalf? {
+        if DemoMode.faceToFace {
+            return line.isSoundLabel ? nil : (line.speaker == 0 ? .partner : line.speaker == 1 ? .owner : nil)
+        }
+        return model.speakerLanguages.half(of: line)
     }
 
-    /// A line's words in the language of the half that reads them. Mock-up: the demo's stand-ins on the simulator; on a
-    /// device only the existing direction (the other person's words into hers) is wired.
+    /// A line's words in the language of the half that reads them: the other person's into hers, hers into theirs (the
+    /// second direction, #60). The simulator has no Translation languages, so demos use their own stand-ins.
     private func faceToFaceTranslation(_ line: CaptionLine, into half: FaceToFaceHalf) -> String? {
         if DemoMode.faceToFace { return DemoMode.faceToFaceTranslation(of: line.text) }
-        return half == .owner ? translation.translations.translation(for: line) : nil
+        return half == .owner ? translation.translations.translation(for: line) : translation.reverseTranslations.translation(for: line)
+    }
+
+    /// Live translation follows the conversation: one-way, every line into her language; in the split, each half's
+    /// lines into the other half's language.
+    private func translationLinesChanged() {
+        guard faceToFace, !DemoMode.faceToFace else { translation.linesChanged(model.stream.lines); return }
+        let shown = model.faceToFaceLines
+        translation.linesChanged(FaceToFace.lines(saidOn: .partner, in: shown, half: faceToFaceHalf),
+                                 reverse: FaceToFace.lines(saidOn: .owner, in: shown, half: faceToFaceHalf))
     }
 
     private var faceToFaceSplit: some View {
-        let lines = model.stream.lines
-        let sides = faceToFaceSides
+        let lines = DemoMode.faceToFace ? model.stream.lines : model.faceToFaceLines
         return FaceToFaceView(
             style: style, device: deviceClass,
-            owner: FaceToFace.entries(for: .owner, lines: lines, sides: sides, translation: faceToFaceTranslation),
-            partner: FaceToFace.entries(for: .partner, lines: lines, sides: sides, translation: faceToFaceTranslation),
+            owner: FaceToFace.entries(for: .owner, lines: lines, half: faceToFaceHalf, translation: faceToFaceTranslation),
+            partner: FaceToFace.entries(for: .partner, lines: lines, half: faceToFaceHalf, translation: faceToFaceTranslation),
             ownerLanguage: (translation.target ?? Locale.current).nameInItself,
             partnerLanguage: CaptionLanguageCenter.engineLocale.nameInItself,
-            onLeave: { faceToFace = false },
             control: {
                 MorphingControl(control: control, fullWidth: min(windowSize.width * 0.47, 440),
                                 fill: style.text, label: style.background) { model.perform(control.action) }

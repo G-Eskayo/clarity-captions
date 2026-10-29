@@ -21,6 +21,9 @@ public struct CaptionUpdate: Sendable {
     /// The recognizer behind this caption, and why it left Parakeet if it did (beta report, ADR 0025).
     public var engine = ""
     public var engineFallback: FallbackReason?
+    /// Face to face (#60): which half's language engine wrote this, and every voice's language after it. Nil one-way.
+    public var lane: FaceToFaceHalf?
+    public var languages: SpeakerLanguages?
 }
 
 /// Audio seconds fed to the analyzer so far; written on the audio thread, read on the results task.
@@ -92,7 +95,10 @@ public final class TranscriptionEngine {
     private var loudnessTimeSeries: [(audioTime: Double, level: Double)] = []
     private let loudnessLock = NSLock()
     private let prepareLock = NSLock()
-    private var prepareTask: Task<SpeechRecognizerBackend, Error>?
+    private var prepareTask: Task<SpeechRecognizerBackend?, Error>?
+    /// Face to face (#60): two language engines routed by voice instead of the one recognizer. Nil one-way.
+    private let faceToFace: FaceToFaceRouting?
+    private var faceToFaceStarted = false
     private var preparedLaps: [String] = []
     /// Set by `stop()`: a load still running then frees what it made instead of keeping it.
     private var stopped = false
@@ -123,7 +129,9 @@ public final class TranscriptionEngine {
 
     /// The recognizer captions are on now ("parakeet-ultra-pal6" / "apple-speechanalyzer"): beta report, diagnostics.
     /// Stays set after Stop, so the report written at the end of a session still names it.
-    public var engineName: String { routeLock.withLock { lastEngineName } }
+    public var engineName: String { faceToFace?.engineName ?? routeLock.withLock { lastEngineName } }
+    /// Face to face: each voice's lock, check and correction so far (developer panel, integration test).
+    public var faceToFaceEvents: [String] { faceToFace?.events ?? [] }
     private var lastEngineName = ""
     /// The error behind a load fallback, for the developer panel.
     public private(set) var fallbackDetail: String?
@@ -136,13 +144,20 @@ public final class TranscriptionEngine {
     /// `diarizerModelURL` has no default on purpose: the app must say where its bundled speaker model
     /// lives, so there is no accidental network path (ADR 0014). The same goes for Parakeet's folder.
     public init(locale: Locale = Locale(identifier: "en-US"), micMode: MicMode = .standard, diarizerModelURL: URL,
-                recognizer: SpeechRecognizerSetup = .apple, startReason: FallbackReason? = nil, audioSource: AudioSource? = nil) {
+                recognizer: SpeechRecognizerSetup = .apple, startReason: FallbackReason? = nil, audioSource: AudioSource? = nil,
+                faceToFace: FaceToFaceSetup? = nil) {
         self.fallbackReason = startReason
         self.locale = locale
         self.micMode = micMode
         self.source = audioSource ?? MicAudioSource(micMode: micMode)
         self.setup = recognizer
         self.diarizer = LiveDiarizer(modelURL: diarizerModelURL)
+        self.faceToFace = faceToFace.map { FaceToFaceRouting(setup: $0) { setup, locale in
+            switch setup {
+            case .apple: return AppleSpeechBackend(locale: locale)
+            case .parakeet(let url): return ParakeetBackend(modelURL: url)
+            }
+        } }
     }
 
     /// Starts live captioning. If anything fails part-way, everything already opened is released before the
@@ -161,8 +176,8 @@ public final class TranscriptionEngine {
         _ = try await loadPrepared(onStep: onStep)
     }
 
-    private func loadPrepared(onStep: @escaping @Sendable (Int) -> Void = { _ in }) async throws -> SpeechRecognizerBackend {
-        let task: Task<SpeechRecognizerBackend, Error> = prepareLock.withLock {
+    private func loadPrepared(onStep: @escaping @Sendable (Int) -> Void = { _ in }) async throws -> SpeechRecognizerBackend? {
+        let task: Task<SpeechRecognizerBackend?, Error> = prepareLock.withLock {
             if let prepareTask { return prepareTask }
             let task = Task { try await self.load(onStep: onStep) }
             prepareTask = task
@@ -184,7 +199,7 @@ public final class TranscriptionEngine {
         }
     }
 
-    private func load(onStep: @escaping @Sendable (Int) -> Void) async throws -> SpeechRecognizerBackend {
+    private func load(onStep: @escaping @Sendable (Int) -> Void) async throws -> SpeechRecognizerBackend? {
         let clock = ContinuousClock()
         var mark = clock.now
         var laps: [String] = []
@@ -194,18 +209,25 @@ public final class TranscriptionEngine {
             laps.append("\(name) \(String(format: "%.1f", Double(d.components.seconds) + Double(d.components.attoseconds) / 1e18))s")
             mark = now
         }
-        var backend = makeBackend()
-        do {
-            try await backend.prepare()
-        } catch where backend.choice == .parakeet {
-            // Design §5: the model is missing or won't load. Apple's engine for this launch, captions keep flowing.
-            await backend.cancel()
-            fallbackDetail = String(describing: error)
-            recordFallback(.loadFailed)
-            backend = AppleSpeechBackend(locale: locale)
-            try await backend.prepare()
+        var backend: SpeechRecognizerBackend?
+        if let faceToFace {
+            do { try await faceToFace.prepare() } catch { await faceToFace.cancel(); throw error }
+            lap(faceToFace.engineName); onStep(1)
+        } else {
+            var made = makeBackend()
+            do {
+                try await made.prepare()
+            } catch where made.choice == .parakeet {
+                // Design §5: the model is missing or won't load. Apple's engine for this launch, captions keep flowing.
+                await made.cancel()
+                fallbackDetail = String(describing: error)
+                recordFallback(.loadFailed)
+                made = AppleSpeechBackend(locale: locale)
+                try await made.prepare()
+            }
+            backend = made
+            lap(made.name); onStep(1)
         }
-        lap(backend.name); onStep(1)
         // Ready before the first audio, so both clocks start at the same first sample.
         do {
             try await diarizer.prepare()
@@ -213,16 +235,18 @@ public final class TranscriptionEngine {
             try await soundLabelerAsync { try self.soundLabeler.prepare() }
             lap("sound classifier")
         } catch {
-            await backend.cancel()
+            await backend?.cancel()
+            await faceToFace?.cancel()
             throw error
         }
         soundLabelerStream = soundLabeler.stream()
         if prepareLock.withLock({ stopped }) {
             // Stopped while loading (released in the background, or a failed start): never keep a recognizer.
-            await backend.cancel()
+            await backend?.cancel()
+            await faceToFace?.cancel()
             throw CancellationError()
         }
-        routeLock.withLock { route.backend = backend; lastEngineName = backend.name }
+        if let backend { routeLock.withLock { route.backend = backend; lastEngineName = backend.name } }
         preparedLaps = laps
         onStep(3)
         return backend
@@ -257,8 +281,21 @@ public final class TranscriptionEngine {
         self.fed = fed
 
         let inFormat = try source.open()
-        let pieces = try await open(backend, inFormat: inFormat)
         let wallTime = FedWallTime()
+        if let faceToFace {
+            self.inFormat = inFormat
+            let lanes = try await faceToFace.start()
+            routeLock.withLock { faceToFaceStarted = true }
+            try source.start { buffer in
+                self.processBuffer(buffer, inFormat: inFormat, fed: fed)
+            }
+            wallTime.set(Date())
+            lap("audio start")
+            startupReport = laps.joined(separator: " · ")
+            return makeFaceToFaceStream(lanes: lanes, routing: faceToFace, wallTime: wallTime)
+        }
+        guard let backend else { throw TranscriptionError.converterUnavailable }
+        let pieces = try await open(backend, inFormat: inFormat)
         try source.start { buffer in
             self.processBuffer(buffer, inFormat: inFormat, fed: fed)
         }
@@ -361,15 +398,24 @@ public final class TranscriptionEngine {
         self.fed = fed
         let audioFile = try AVAudioFile(forReading: fileURL)
         let inFormat = audioFile.processingFormat
-        let pieces = try await open(backend, inFormat: inFormat)
+        let wallTime = FedWallTime()
+        let results: AsyncThrowingStream<CaptionUpdate, Error>
+        if let faceToFace {
+            self.inFormat = inFormat
+            let lanes = try await faceToFace.start()
+            routeLock.withLock { faceToFaceStarted = true }
+            results = makeFaceToFaceStream(lanes: lanes, routing: faceToFace, wallTime: wallTime)
+        } else {
+            guard let backend else { throw TranscriptionError.converterUnavailable }
+            results = makeResultStream(pieces: try await open(backend, inFormat: inFormat), wallTime: wallTime)
+        }
 
         return AsyncThrowingStream { (continuation: AsyncThrowingStream<CaptionUpdate, Error>.Continuation) in
             let task = Task {
                 do {
-                    let wallTime = FedWallTime()
                     wallTime.set(Date())
                     let resultTask = Task {
-                        for try await update in self.makeResultStream(pieces: pieces, wallTime: wallTime) { continuation.yield(update) }
+                        for try await update in results { continuation.yield(update) }
                     }
                     // Read the file in 4096-frame chunks and feed it at real-time pace.
                     let bufferSize = AVAudioFrameCount(4096)
@@ -403,7 +449,11 @@ public final class TranscriptionEngine {
             diarizer.feed(samples)
             soundLabeler.feed(samples, atAudioTime: fed.seconds)
             let level = recordLoudness(samples: samples, atAudioTime: fed.seconds)
-            if format == nil { backend?.feed(samples16k: samples, level: level) }
+            if let faceToFace {
+                faceToFace.feed(samples, at: fed.seconds, level: level, segments: diarizer.segments)
+            } else if format == nil {
+                backend?.feed(samples16k: samples, level: level)
+            }
         }
         if let backend, let converter, let format, let out = convert(buffer, with: converter, to: format) {
             backend.feed(buffer: out)
@@ -462,8 +512,48 @@ public final class TranscriptionEngine {
         }
     }
 
+    /// Face to face (#60): both engines' pieces, in arrival order, each tagged with its half and every voice's language.
+    private func makeFaceToFaceStream(lanes: [(FaceToFaceHalf, AsyncThrowingStream<RecognizedPiece, Error>)],
+                                      routing: FaceToFaceRouting, wallTime: FedWallTime) -> AsyncThrowingStream<CaptionUpdate, Error> {
+        let (merged, input) = AsyncThrowingStream.makeStream(of: (FaceToFaceHalf, RecognizedPiece).self)
+        let readers = lanes.map { half, stream in
+            Task {
+                for try await piece in stream { input.yield((half, piece)) }
+            }
+        }
+        let all = Task {
+            do {
+                for reader in readers { try await reader.value }
+                input.finish()
+            } catch { input.finish(throwing: error) }
+        }
+        return AsyncThrowingStream { [weak self] continuation in
+            let task = Task {
+                do {
+                    for try await (half, piece) in merged {
+                        guard let self else { break }
+                        let segments = self.diarizer.segments
+                        let r = routing.receive(piece, from: half, segments: segments, elapsed: wallTime.elapsedSinceStart())
+                        var update = CaptionUpdate(text: r.piece.text, isFinal: r.piece.isFinal, lagSeconds: r.lag, speaker: r.speaker,
+                                                   startSeconds: r.piece.start, endSeconds: r.piece.end,
+                                                   diagnostics: self.diagnostics, wordEmphasis: self.wordEmphasis(r.piece.words))
+                        update.engine = self.engineName
+                        update.lane = half
+                        update.languages = r.languages
+                        continuation.yield(update)
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel(); all.cancel(); readers.forEach { $0.cancel() } }
+        }
+    }
+
     private var diagnostics: String {
         var parts = [engineName]
+        if let faceToFace { parts.append(faceToFace.diagnostics) }
         if let fallbackReason { parts.append("fallback: \(fallbackReason.rawValue)" + (fallbackDetail.map { " (\($0))" } ?? "")) }
         if let last = decodeLock.withLock({ lastDecodeSeconds }) { parts.append(String(format: "decode %.2fs", last)) }
         parts.append(diarizer.diagnostics)
@@ -502,6 +592,10 @@ public final class TranscriptionEngine {
             return route.started ? route.backend : nil
         }
         await backend?.finish()
+        if let faceToFace {
+            let started = routeLock.withLock { () -> Bool in defer { faceToFaceStarted = false }; return faceToFaceStarted }
+            if started { await faceToFace.finish() } else { await faceToFace.cancel() }
+        }
         pieceStreams?.finish()
         pieceStreams = nil
     }

@@ -48,6 +48,12 @@ protocol SpeechRecognizerBackend: AnyObject, Sendable {
     func feed(buffer: AVAudioPCMBuffer)
     /// Called on the audio thread with the diarizer's 16 kHz mono samples and their level (dBFS); must not block.
     func feed(samples16k: [Float], level: Double)
+    /// Face to face (#60): the engine didn't hear the audio before session time `seconds` (another voice's turn); the
+    /// next audio fed starts there. Keeps its word times on the session clock.
+    func skip(to seconds: Double)
+    /// Face to face (#60): the engine stops hearing audio for now (the other voice's turn). Its open words become
+    /// final without feeding it silence, which could cover the start of the next turn it has to hear.
+    func settle()
     /// Flushes: the remaining words come out as final, then the stream ends.
     func finish() async
     /// Frees the model. Safe more than once, and after a failed prepare.
@@ -120,11 +126,23 @@ final class AppleSpeechBackend: SpeechRecognizerBackend, @unchecked Sendable {
     }
 
     func feed(buffer: AVAudioPCMBuffer) {
-        let builder = lock.withLock { self.builder }
-        builder?.yield(AnalyzerInput(buffer: buffer))
+        let (builder, start) = lock.withLock { () -> (AsyncStream<AnalyzerInput>.Continuation?, CMTime?) in
+            defer { skippedTo = nil }
+            return (self.builder, skippedTo)
+        }
+        // After a skip the analyzer is told where this buffer sits, so the gap isn't read as contiguous audio.
+        builder?.yield(start.map { AnalyzerInput(buffer: buffer, bufferStartTime: $0) } ?? AnalyzerInput(buffer: buffer))
     }
 
     func feed(samples16k: [Float], level: Double) {}
+
+    private var skippedTo: CMTime?
+    func skip(to seconds: Double) { lock.withLock { skippedTo = CMTime(seconds: seconds, preferredTimescale: 16_000) } }
+
+    func settle() {
+        guard let analyzer = lock.withLock({ started ? self.analyzer : nil }) else { return }
+        Task { try? await analyzer.finalize(through: nil) }
+    }
 
     func finish() async {
         let (analyzer, started) = takeAnalyzer()

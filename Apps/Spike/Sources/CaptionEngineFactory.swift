@@ -41,6 +41,25 @@ enum CaptionEngineFactory {
         return engine
     }
 
+    /// #60 face to face: one engine per half, each in its half's language (ADR 0025 picks the recognizer per language:
+    /// Parakeet for English, Apple's engine for the rest). The other person's half is the caption language; hers is the
+    /// language she reads. No engine loaded ahead is used: it was made for one-way captions.
+    static func makeFaceToFace(micMode: MicMode, ownerLocale: Locale) throws -> TranscriptionEngine {
+        guard let speakerModel = speakerModelURL else {
+            throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc"))
+        }
+        func recognizer(_ locale: Locale) -> SpeechRecognizerSetup {
+            let now = Date()
+            let plan = CaptionEnginePlan.make(captionLanguage: locale, choice: CaptionEngineChoice.stored(developerBuild: developerBuild),
+                                              now: now, recentFallbacks: EngineFallbackHistory().recent(now: now),
+                                              availableMemory: UInt64(os_proc_available_memory()), modelPresent: parakeetModelURL != nil)
+            return plan.selection.engine == .parakeet ? parakeetModelURL.map { .parakeet(modelURL: $0) } ?? .apple : .apple
+        }
+        let setup = FaceToFaceSetup(ownerLocale: ownerLocale, ownerRecognizer: recognizer(ownerLocale),
+                                    partnerLocale: captionLocale, partnerRecognizer: recognizer(captionLocale))
+        return TranscriptionEngine(locale: captionLocale, micMode: micMode, diarizerModelURL: speakerModel, faceToFace: setup)
+    }
+
     /// First run: Core ML compiles Parakeet for this phone once (35 s on a Mac), so it happens here and not behind
     /// the first Start. Skipped when this launch would not use Parakeet anyway.
     static func warmUpSpeechModel() async throws {

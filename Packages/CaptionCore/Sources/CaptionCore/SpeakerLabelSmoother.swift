@@ -30,16 +30,26 @@ public struct SpeakerLabelSmoother: Sendable {
     /// The display label (0-based, in order of appearance) for the caption covering `start...end`, given every
     /// segment the diarizer has produced so far. Nil until the diarizer has anything for that stretch.
     public mutating func label(start: Double, end: Double, segments: [SpeakerSegment], isFinal: Bool) -> Int? {
-        guard let slot = chooseSlot(start: start, end: end, segments: segments, isFinal: isFinal) else { return nil }
+        var numbering = displayBySlot
+        defer { displayBySlot = numbering }
+        return label(start: start, end: end, segments: segments, isFinal: isFinal, numbering: &numbering)
+    }
+
+    /// The same, numbering slots in `numbering` instead of this smoother's own: face to face (#60) has one smoother per
+    /// language engine, and the same voice must get the same number from both.
+    public mutating func label(start: Double, end: Double, segments: [SpeakerSegment], isFinal: Bool,
+                               numbering: inout [Int: Int]) -> Int? {
+        guard let slot = chooseSlot(start: start, end: end, segments: segments, isFinal: isFinal, numbering: numbering) else { return nil }
         current = slot
         currentStart = start
-        if let shown = displayBySlot[slot] { return shown }
-        let shown = displayBySlot.count
-        displayBySlot[slot] = shown
+        if let shown = numbering[slot] { return shown }
+        let shown = numbering.count
+        numbering[slot] = shown
         return shown
     }
 
-    private func chooseSlot(start: Double, end: Double, segments: [SpeakerSegment], isFinal: Bool) -> Int? {
+    private func chooseSlot(start: Double, end: Double, segments: [SpeakerSegment], isFinal: Bool,
+                            numbering displayBySlot: [Int: Int]) -> Int? {
         let covering = segments.filter { min(end, $0.end) - max(start, $0.start) > 0 }
         if covering.isEmpty {
             // A zero-length caption range has no overlap; fall back to the segment containing it.
