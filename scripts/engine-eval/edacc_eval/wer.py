@@ -24,8 +24,16 @@ class Counts:
 
 def align_counts(reference: str, hypothesis: str) -> Counts:
     """Minimum-edit word alignment; ties prefer substitution, then deletion, then insertion. O(R*H) time, O(H) rows."""
-    ref = reference.split()
-    hyp = hypothesis.split()
+    return _align(reference.split(), hypothesis.split())
+
+
+def char_counts(reference: str, hypothesis: str) -> Counts:
+    """Character error counts for CER (#202): the same alignment over characters, single spaces between words
+    included, so a joined or split Hebrew prefix costs one character, not a whole word. O(R*H) in characters."""
+    return _align(list(" ".join(reference.split())), list(" ".join(hypothesis.split())))
+
+
+def _align(ref: list[str], hyp: list[str]) -> Counts:
     # Each cell: (cost, sub, del, ins)
     prev = [(j, 0, 0, j) for j in range(len(hyp) + 1)]
     for i in range(1, len(ref) + 1):
