@@ -6,6 +6,8 @@
 //    muted text and links reach 4.5:1 on their backgrounds, in light and dark.
 // 4. Links and anchors: local files exist; every #anchor has a target.
 // 5. The demo's logic: chunks, blocks and the gummy lip colour behave like the app.
+// Every language (#207): each check runs on every built page in site/ and site/<code>/; each page says its lang and
+// dir, lists its other languages with hreflang (never a draft language from English), and a draft says it's a draft.
 import { readFileSync, existsSync, readdirSync } from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -13,13 +15,20 @@ import { THEMES, SCRIPT, LETTERING, SAVED_EXAMPLE } from '../site/seal-data.js'
 import { chunksOf, blocksFor, lip, transcriptOf, previewOf, savedTitle, autoplay } from '../site/demo.js'
 import { barFractions, winners, countFrame, SAMPLE_STEPS } from '../site/motion.js'
 import { DEVICES, deviceFor, lineFor, TABLE_TALK } from '../site/devices.js'
+import { languages, outPath, urlOf, alternatesFor } from './build-site.mjs'
 
-const SITE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'site')
+const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
+// SITE_DIR checks a copy of site/ (used to prove the checks catch seeded faults).
+const SITE = process.env.SITE_DIR || path.join(ROOT, 'site')
 const failures = []
 const check = (ok, msg) => { if (!ok) failures.push(msg) }
 
-const pages = readdirSync(SITE).filter((f) => f.endsWith('.html'))
+const LANGS = languages()
+const built = LANGS.flatMap((lang) => lang.pages.map((page) => ({ lang, page, file: outPath(lang.code, page) })))
+// Built pages in every language, plus any page made by hand (the gift page).
+const pages = [...new Set([...built.map((b) => b.file), ...readdirSync(SITE).filter((f) => f.endsWith('.html'))])]
 const read = (f) => readFileSync(path.join(SITE, f), 'utf-8')
+const langOf = (f) => (f.includes('/') ? f.split('/')[0] : 'en')
 
 // 1. local only
 const isLocal = (u) => !/^(https?:)?\/\//i.test(u) || /^data:/i.test(u)
@@ -33,7 +42,7 @@ for (const f of pages) {
   for (const m of html.matchAll(/url\(\s*['"]?([^'")]+)/gi)) check(isLocal(m[1]), `${f}: CSS url() loads from off-site: ${m[1]}`)
   check(!/<script(?![^>]*\bsrc=)[^>]*>[^<]*(gtag|analytics|plausible|fbq)\b/i.test(html), `${f}: looks like analytics`)
 }
-for (const js of ['demo.js', 'seal-data.js', 'motion.js', 'devices.js']) {
+for (const js of ['demo.js', 'seal-data.js', 'motion.js', 'devices.js', 'lang.js']) {
   const src = read(js)
   check(!/\b(fetch|XMLHttpRequest|sendBeacon|WebSocket|import\s*\(\s*['"]https?:)/.test(src), `${js}: makes network requests`)
   for (const m of src.matchAll(/from\s+['"]([^'"]+)['"]/g)) check(m[1].startsWith('./'), `${js}: imports from off-site: ${m[1]}`)
@@ -48,13 +57,50 @@ const BANNED = [
   [/improves? (your )?reading|helps? (you )?(read|hear)|hearing loss|treat|cure|better hearing/i, 'makes a reading or hearing claim'],
   [/\bfree\b|\$\s?(?!4\.99\b)\d|\d+(\.\d+)? ?(usd|dollars)/i, 'mentions "free" or a price other than $4.99']
 ]
-const pageText = visible(read('index.html')) + ' ' + SCRIPT.map((s) => s.text || s.sound).join(' ')
-for (const [re, why] of BANNED) {
-  const m = pageText.match(re)
-  check(!m, `index.html ${why}: "${m?.[0]}"`)
+// The same rules in each language the site is written in. A language with no rules here fails, so a new translation
+// can't skip them. MUST_SAY: captions can be wrong; and, while the app has no captions or screens in that language,
+// that the app and its captions are in English (the site may only claim what the app ships in that language today).
+export const BANNED_BY_LANG = {
+  en: BANNED,
+  he: [
+    [/(?<!(לא|אינה|אינו) .{0,12})(יודע(ת)?|מזה(ה|ה)|מראה|מציג(ה)?) מי (מדבר|מדברת|מדברים)/, 'claims to know who is speaking'],
+    [/(נותנת|נותן|לתת) שם (ל|לכל )?(דובר|קול)|שמות לדוברים/, 'mentions naming speakers (removed in v1)'],
+    [/תוך שנייה|מייד(י|ית)|באופן מיידי|דיוק של 100|100 ?%|כל מילה ומילה/, 'promises speed or accuracy'],
+    [/משפר(ת)? את (ה)?(קריאה|שמיעה)|עוזר(ת)? (לכם )?(לשמוע|לקרוא)|ירידה בשמיעה|אובדן שמיעה|מרפא|ריפוי|שמיעה טובה יותר/, 'makes a reading or hearing claim'],
+    [/חינם|בחינם|ללא תשלום|\$\s?(?!4\.99\b)\d|\d+(\.\d+)? ?(דולר|ש"ח|ש״ח|₪)/, 'mentions "free" or a price other than $4.99']
+  ]
 }
-// The home page no longer says "not a medical device" (owner, 2026-10-28: nobody reads it as one); it still makes no hearing claim.
-check(/can (contain|get|make) mistakes|can mix (people|up)/i.test(pageText), 'index.html must say captions can be wrong')
+export const MUST_SAY = {
+  en: [[/can (contain|get|make) mistakes|can mix (people|up)/i, 'must say captions can be wrong']],
+  he: [[/עלול(ות|ה)? (להכיל |ל)?(טעויות|לטעות)|יכול(ות|ה)? לטעות|לבלבל בין אנשים/, 'must say captions can be wrong'],
+       [/האפליקציה והכתוביות באנגלית/, 'must say the app and its captions are in English (no Hebrew captions or screens yet)']]
+}
+// Hebrew captions or a Hebrew app may only be mentioned as not there yet.
+export const NOT_YET = { he: /(?<!(אין|עדיין אין|עוד אין|לא|בלי) .{0,8})(כתוביות בעברית|אפליקציה בעברית|ממשק בעברית|תומכת בעברית)/ }
+const homes = LANGS.filter((l) => l.pages.includes('index.html'))
+for (const lang of homes) {
+  const f = outPath(lang.code, 'index.html')
+  // The demo plays the app's English script on every page, so only English pages are checked against it.
+  const pageText = visible(read(f)) + (lang.code === 'en' ? ' ' + SCRIPT.map((s) => s.text || s.sound).join(' ') : '')
+  check(BANNED_BY_LANG[lang.code] && MUST_SAY[lang.code], `${lang.code}: no honest-claims rules for this language in check-site.mjs`)
+  for (const [re, why] of BANNED_BY_LANG[lang.code] || []) {
+    const m = pageText.match(re)
+    check(!m, `${f} ${why}: "${m?.[0]}"`)
+  }
+  // The home page no longer says "not a medical device" (owner, 2026-10-28: nobody reads it as one); it still makes no hearing claim.
+  for (const [re, why] of MUST_SAY[lang.code] || []) check(re.test(pageText), `${f} ${why}`)
+  if (NOT_YET[lang.code]) {
+    for (const g of pages.filter((p) => langOf(p) === lang.code)) {
+      const m = visible(read(g)).match(NOT_YET[lang.code])
+      check(!m, `${g} claims the app works in ${lang.code} today: "${m?.[0]}"`)
+    }
+  }
+}
+// The Hebrew rules catch real claims and spare honest sentences.
+check(BANNED_BY_LANG.he[0][0].test('האפליקציה מראה מי מדבר') && !BANNED_BY_LANG.he[0][0].test('היא לא יודעת מי האנשים'), 'BANNED he[0] self-test')
+check(BANNED_BY_LANG.he[4][0].test('הורדה בחינם') && BANNED_BY_LANG.he[4][0].test('רק $2.99') && !BANNED_BY_LANG.he[4][0].test('$4.99 פעם אחת'), 'BANNED he[4] self-test')
+check(BANNED_BY_LANG.he[3][0].test('משפרת את השמיעה') && !BANNED_BY_LANG.he[3][0].test('לאמא שלי, שכבדת שמיעה'), 'BANNED he[3] self-test')
+check(NOT_YET.he.test('Seal מציגה כתוביות בעברית') && !NOT_YET.he.test('עדיין אין כתוביות בעברית'), 'NOT_YET he self-test')
 // The banned patterns must catch real claims and spare honest disclaimers.
 check(BANNED[0][0].test('Seal shows who is speaking') && !BANNED[0][0].test("It doesn't know who anyone is"), 'BANNED[0] self-test')
 check(BANNED[4][0].test('Free for everyone') && !BANNED[4][0].test('freedom'), 'BANNED[4] self-test')
@@ -82,20 +128,47 @@ for (const [mode, c] of [['light', light], ['dark', dark]]) {
   }
 }
 
-// 4. links and anchors
+// The language offer's button: page background on the accent.
+for (const [mode, c] of [['light', light], ['dark', dark]]) check(ratio(c.bg, c.accent) >= 4.5, `lang.css ${mode}: offer button --bg on --accent ${ratio(c.bg, c.accent).toFixed(2)}:1 < 4.5`)
+
+// 4. links and anchors, from each page's own folder
 for (const f of pages) {
   const h = read(f)
+  const dir = path.dirname(f)
   const ids = new Set([...h.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]))
   for (const m of h.matchAll(/\shref="([^"]+)"/g)) {
     const u = m[1]
     if (/^(https?:|mailto:|data:)/.test(u)) continue
     if (u.startsWith('#')) { check(ids.has(u.slice(1)), `${f}: anchor ${u} has no target`); continue }
-    check(existsSync(path.join(SITE, u.split('#')[0])), `${f}: link to missing file ${u}`)
+    check(existsSync(path.join(SITE, dir, u.split('#')[0])), `${f}: link to missing file ${u}`)
   }
   for (const m of h.matchAll(/\s(?:src|srcset)="([^"]+)"/g)) {
-    for (const u of m[1].split(',').map((x) => x.trim().split(' ')[0])) if (isLocal(u) && !u.startsWith('data:')) check(existsSync(path.join(SITE, u)), `${f}: missing asset ${u}`)
+    for (const u of m[1].split(',').map((x) => x.trim().split(' ')[0])) if (isLocal(u) && !u.startsWith('data:')) check(existsSync(path.join(SITE, dir, u)), `${f}: missing asset ${u}`)
   }
-  for (const m of h.matchAll(/url\('?([^')]+)'?\)/g)) if (!m[1].startsWith('data:')) check(existsSync(path.join(SITE, m[1])), `${f}: missing CSS asset ${m[1]}`)
+  for (const m of h.matchAll(/url\('?([^')]+)'?\)/g)) if (!m[1].startsWith('data:')) check(existsSync(path.join(SITE, dir, m[1])), `${f}: missing CSS asset ${m[1]}`)
+}
+
+// 4b. Every language (#207): lang and dir on every page; hreflang to each language the page has (and only to
+// published ones from English); a draft is marked and not indexed; pictures of the app stay English.
+for (const f of pages) {
+  const m = read(f).match(/<html lang="([a-z-]+)" dir="(ltr|rtl)">/)
+  const lang = LANGS.find((l) => l.code === langOf(f))
+  check(m, `${f}: <html> needs lang and dir`)
+  if (m && lang) check(m[1] === lang.code && m[2] === lang.dir, `${f}: lang/dir ${m[1]}/${m[2]}, expected ${lang.code}/${lang.dir}`)
+}
+for (const { lang, page, file } of built) {
+  const h = read(file)
+  const links = Object.fromEntries([...h.matchAll(/<link rel="alternate" hreflang="([^"]+)" href="([^"]+)">/g)].map((x) => [x[1], x[2]]))
+  const want = alternatesFor(LANGS, lang, page)
+  if (want.length > 1) {
+    for (const l of want) check(links[l.code] === urlOf(l.code, page), `${file}: hreflang ${l.code} should be ${urlOf(l.code, page)} (is ${links[l.code]})`)
+    check(links['x-default'] === urlOf('en', page), `${file}: hreflang x-default should be the English page`)
+    check(/<nav class="lang-switch"/.test(h), `${file}: has other languages but no switcher`)
+  } else check(!Object.keys(links).length && !/data-lang-choice/.test(h), `${file}: offers languages it shouldn't`)
+  for (const code of Object.keys(links)) if (code !== 'x-default') check(LANGS.find((l) => l.code === code)?.pages.includes(page), `${file}: hreflang ${code} points at a page that isn't built`)
+  if (lang.code === 'en') for (const l of LANGS.filter((x) => !x.published)) check(!h.includes(`hreflang="${l.code}"`), `${file}: links to the unpublished ${l.code} draft`)
+  if (!lang.published) check(/<meta name="robots" content="noindex">/.test(h) && /class="draft-note"/.test(h), `${file}: a draft must say so and not be indexed`)
+  if (lang.code !== 'en') check(!/\sdata-app(?! lang="en" dir="ltr")[\s>]/.test(h), `${file}: a picture of the app without lang="en" dir="ltr"`)
 }
 
 // 5. demo logic
@@ -156,10 +229,15 @@ check(new Set(SAMPLE_STEPS.map((x) => x.theme.id)).size === 6 && new Set(SAMPLE_
   } finally { globalThis.setTimeout = realSet }
 }
 
+// 7 and 8, on the home page in every language (#207): the numbers are the same whatever the words around them.
+const STATUS = { en: /(Planned|In testing)/, he: /(מתוכנן|בבדיקות)/ }
+for (const home of homes) {
+const f = outPath(home.code, 'index.html'), html = read(f)
+check(STATUS[home.code], `${home.code}: no word for "Planned" / "In testing" in check-site.mjs`)
 // 7. the home page's test results (#182) are the measured ones: each table cell matches its row in docs/perf
 const tested = html.match(/<section[^>]*id="tested"[\s\S]*?<\/section>/)?.[0] || ''
-check(tested, 'index.html has the test results section (#tested)')
-const report = (f) => readFileSync(path.join(SITE, '..', 'docs', 'perf', f), 'utf-8')
+check(tested, `${f} has the test results section (#tested)`)
+const report = (f) => readFileSync(path.join(ROOT, 'docs', 'perf', f), 'utf-8')
 const cell = (text, rowStart, col) => {
   const row = text.split('\n').find((l) => l.startsWith(rowStart))
   return row ? row.split('|')[col + 1].match(/\d+\.\d+/)?.[0] : undefined
@@ -172,18 +250,18 @@ const homeTables = [
 ]
 const shown = [...tested.matchAll(/<table class="data[^"]*"[^>]*data-bars[\s\S]*?<\/table>/g)]
   .map((t) => [...t[0].matchAll(/<td class="n">([^<]*)<\/td>/g)].map((m) => m[1]))
-check(shown.length === homeTables.length, `index.html #tested: ${shown.length} bar tables, expected ${homeTables.length}`)
+check(shown.length === homeTables.length, `${f} #tested: ${shown.length} bar tables, expected ${homeTables.length}`)
 homeTables.forEach((want, i) => check(want.every(Boolean) && JSON.stringify(shown[i]) === JSON.stringify(want),
-  `index.html #tested table ${i + 1} shows ${JSON.stringify(shown[i])}, the reports say ${JSON.stringify(want)}`))
+  `${f} #tested table ${i + 1} shows ${JSON.stringify(shown[i])}, the reports say ${JSON.stringify(want)}`))
 const lat = (row) => engines.split('## Live latency')[1]?.split('\n').find((l) => l.startsWith(row))?.split('|')[3].trim()
-for (const t of [lat('| parakeet-fluidaudio (ultra-pal6) |'), lat('| apple-speechanalyzer')]) check(t && visible(tested).includes(t), `index.html #tested: latency ${t} missing`)
+for (const t of [lat('| parakeet-fluidaudio (ultra-pal6) |'), lat('| apple-speechanalyzer')]) check(t && visible(tested).includes(home.code === 'en' ? t : t.split(' ')[0]), `${f} #tested: latency ${t} missing`)
 
 // 8. device tabs (#184)
 const owner = (id) => ({ how: 'iphone', 'ipad-how': 'ipad', 'mac-how': 'mac' })[id] || null
 check(deviceFor('', owner) === 'iphone' && deviceFor('#mac', owner) === 'mac' && deviceFor('#ipad', owner) === 'ipad', 'deviceFor: no hash is iPhone; a device name opens it')
 check(deviceFor('#mac-how', owner) === 'mac' && deviceFor('#how', owner) === 'iphone', 'deviceFor: a link inside a device opens that device')
 check(deviceFor('#faq', owner) === null, 'deviceFor: a shared part keeps the device you are on')
-for (const d of DEVICES) check(new RegExp(`data-device="${d}"`).test(html) && new RegExp(`data-tab="${d}"`).test(html), `index.html has a tab and a part for ${d}`)
+for (const d of DEVICES) check(new RegExp(`data-device="${d}"`).test(html) && new RegExp(`data-tab="${d}"`).test(html), `${f} has a tab and a part for ${d}`)
 for (const l of TABLE_TALK) {
   const you = lineFor('you', l), them = lineFor('them', l)
   check(you.text === l.en && them.text === l.es, `lineFor: each half reads its own language ("${l.en}")`)
@@ -192,15 +270,15 @@ for (const l of TABLE_TALK) {
 // The iPad and Mac parts say where they are (Today, 1.0.1, Planned, In testing) before anything else.
 for (const d of ['ipad', 'mac']) {
   const part = html.match(new RegExp(`<div data-device="${d}"[\\s\\S]*?<ol class="when"[\\s\\S]*?<\\/ol>`))?.[0] || ''
-  check(/<li class="done">/.test(part) && /(Planned|In testing)/.test(part), `index.html ${d}: the hero says where ${d} is`)
+  check(/<li class="done">/.test(part) && STATUS[home.code]?.test(part), `${f} ${d}: the hero says where ${d} is`)
 }
 // The iPad's 19 translation scores are the measured ones, and each bar is as long as its score.
-const langRows = readFileSync(path.join(SITE, '..', 'docs', 'perf', 'translation-languages-results.md'), 'utf-8').split('\n').filter((l) => /^\| [A-Z]/.test(l) && !l.startsWith('| Language'))
+const langRows = readFileSync(path.join(ROOT, 'docs', 'perf', 'translation-languages-results.md'), 'utf-8').split('\n').filter((l) => /^\| [A-Z]/.test(l) && !l.startsWith('| Language'))
 const measuredComet = langRows.map((l) => l.split('|')[5].trim()).sort()
 const shownComet = [...html.matchAll(/<li(?: class="low")? style="--v:([\d.]+)">[\s\S]*?<span class="val">([\d.]+)<\/span><\/li>/g)]
-check(JSON.stringify(shownComet.map((m) => m[2]).sort()) === JSON.stringify(measuredComet), `index.html iPad: translation scores ${shownComet.map((m) => m[2])} are not the report's ${measuredComet}`)
-for (const [, v, c] of shownComet) check(Math.abs(+v - (+c - 0.75) / 0.2) < 0.001, `index.html iPad: the bar for ${c} is ${v} long`)
-check(shownComet.filter(([, , c]) => +c >= 0.86).length === 18, 'index.html iPad: "18 of 19" matches the scores')
+check(JSON.stringify(shownComet.map((m) => m[2]).sort()) === JSON.stringify(measuredComet), `${f} iPad: translation scores ${shownComet.map((m) => m[2])} are not the report's ${measuredComet}`)
+for (const [, v, c] of shownComet) check(Math.abs(+v - (+c - 0.75) / 0.2) < 0.001, `${f} iPad: the bar for ${c} is ${v} long`)
+check(shownComet.filter(([, , c]) => +c >= 0.86).length === 18, `${f} iPad: "18 of 19" matches the scores`)
 
 // The iPad's translation table: written rows from the comparison report, caption-style rows from its full results.
 const trSum = report('translation-comparison.md'), trAll = report('translation-comparison-results.md')
@@ -210,12 +288,13 @@ const ipadWant = ['en-es', 'en-fr', 'en-de'].flatMap((pr) => [
   ...['apple', 'opus-mt', 'mlkit'].map((e) => captionStyle(pr, e))])
 const ipadPart = html.match(/<section class="band" id="ipad-tested"[\s\S]*?<\/section>/)?.[0] || ''
 const ipadShown = [...ipadPart.matchAll(/<td class="n">([^<]*)<\/td>/g)].map((m) => m[1])
-check(ipadWant.every(Boolean) && JSON.stringify(ipadShown) === JSON.stringify(ipadWant), `index.html iPad translation table shows ${JSON.stringify(ipadShown)}, the reports say ${JSON.stringify(ipadWant)}`)
+check(ipadWant.every(Boolean) && JSON.stringify(ipadShown) === JSON.stringify(ipadWant), `${f} iPad translation table shows ${JSON.stringify(ipadShown)}, the reports say ${JSON.stringify(ipadWant)}`)
 // Each device has its own questions, and only the iPhone part has the general sections.
 for (const d of ['iphone', 'ipad', 'mac']) {
   const part = html.match(new RegExp(`<div data-device="${d}"[\\s\\S]*?(?=<div data-device=|<\\/main>)`))?.[0] || ''
-  check((part.match(/data-faq/g) || []).length === 1, `index.html ${d}: has its own questions, once`)
-  for (const id of ['story', 'private', 'easy', 'why', 'tested']) check((d === 'iphone') === part.includes(`id="${id}"`), `index.html: #${id} belongs to the iPhone part only (${d})`)
+  check((part.match(/data-faq/g) || []).length === 1, `${f} ${d}: has its own questions, once`)
+  for (const id of ['story', 'private', 'easy', 'why', 'tested']) check((d === 'iphone') === part.includes(`id="${id}"`), `${f}: #${id} belongs to the iPhone part only (${d})`)
+}
 }
 
 // 9. The CSS mirrors itself (#207): logical properties, so dir="rtl" flips a page. Physical left/right stays only where
@@ -239,4 +318,4 @@ if (failures.length) {
   console.error(`site check: ${failures.length} problem(s)\n- ${failures.join('\n- ')}`)
   process.exit(1)
 }
-console.log(`site check: ok (${pages.length} pages, ${THEMES.length} themes)`)
+console.log(`site check: ok (${pages.length} pages in ${LANGS.length} languages, ${THEMES.length} themes)`)
