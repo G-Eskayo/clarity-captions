@@ -12,6 +12,40 @@ engine caption, and how far ahead are the open Hebrew models? Apple's Hebrew acc
 intervals, plus speed. There is no verdict rule: this is a baseline for the decisions after it (which base model to
 fine-tune, whether a pack beats Apple), not a ship decision.
 
+## What we found (2026-10-29)
+
+Full table: [`hebrew-accuracy-comparison.md`](hebrew-accuracy-comparison.md). FLEURS he, 792 clips, all five engines
+on every clip. CER (strict) with 95% CI, then WER:
+
+| Engine | CER | WER |
+|---|---|---|
+| ivrit.ai Whisper turbo (reference only) | 8.3% (6.7–10.0) | 17.4% (15.3–19.5) |
+| Parakeet-He | 9.7% (8.1–11.4) | 22.3% (20.2–24.5) |
+| ivrit.ai zipformer2 66M, int8, streaming | 10.0% (8.4–11.7) | 22.2% (20.1–24.3) |
+| **Apple DictationTranscriber he-IL** | **16.5% (14.8–18.4)** | **35.0% (32.8–37.2)** |
+| Nemotron 3.5 streaming, zero-shot | 32.4% (29.7–35.0) | 50.8% (47.8–53.5) |
+
+- **Every open Hebrew model beats Apple, and the intervals don't overlap.** Parakeet-He and the zipformer make about
+  40% fewer character errors than Apple's DictationTranscriber (9.7–10.0% vs 16.5% CER). The research guessed this
+  ("open models very likely beat it, Speculative until measured"); it is now measured on read speech.
+- **The 66M zipformer, streaming at int8, ties the 600M Parakeet-He** (10.0% vs 9.7% CER, intervals overlapping) at
+  about a tenth of the size. This supports the research's reframe: a small native streaming model may be the better
+  phone candidate.
+- **Nemotron 3.5 zero-shot is not usable for Hebrew** (32% CER, mostly deletions: 2,669 of its 6,982 word errors),
+  even when told the language. That matches NVIDIA's "adaptation-ready" label: it needs a fine-tune first.
+- Whisper turbo leads, as expected of the model that labelled the others' training data. It is the accuracy ceiling,
+  not a phone candidate.
+- **Apple's engine is also the least complete:** 1,024 deleted words, twice the open models', and one clip failed
+  outright on the first try (`RecogFailed`; it passed on a retry).
+- **Cross-check with the published number:** Parakeet-He's card puts it at "FLEURS: 76.8 vs ~82 for the best models",
+  apparently 100 − WER. Here it scores 22.3% WER (77.7) and Whisper 17.4% (82.6), so this harness agrees with the
+  card within a point.
+- **Speed** (indicative, different hardware per engine): Parakeet-He 50x real time on the GPU, Apple 41x, the zipformer
+  31x on the CPU, Whisper and Nemotron about 9x.
+- **Read speech only.** FLEURS is the set the published models are weakest on (rare names, Latin terms). The
+  conversation sets (eval-d1, eval-whatsapp) are the ones that decide anything about live captions, and they still
+  need the owner's sign-in (below).
+
 ## Licence check
 
 Done before any download, 2026-10-29. The app is paid, so a non-commercial licence rules a model out.
@@ -156,6 +190,13 @@ writes in Latin letters and an engine in Hebrew letters (or the reverse), and He
   numbers. Research summary for #201: "Use WER to compare with the leaderboard and CER as the in-house decision
   metric."
 - Strict and lenient, WER and CER: four numbers per engine per set, each with a 95% CI.
+
+**How much the normaliser moves the scores** (FLEURS he, every engine, against a punctuation-and-case-only baseline
+in the spirit of Whisper's `BasicTextNormalizer`): WER falls by 0.8–1.4 points and CER by 0.4–1.1 points for every
+engine (Apple 35.9 → 35.0% WER, Parakeet-He 23.1 → 22.3%, Whisper 18.4 → 17.4%), and **the ranking doesn't change**.
+The effect is small here because FLEURS's references carry no niqqud and few numbers. Lenient spelling takes off about
+another 2 WER points but barely moves CER, because a dropped ו or י is one character. The research had found no
+study measuring this; this is a first, read-speech-only number.
 
 Tests: `scripts/engine-eval/tests/test_normalize_hebrew.py` (every rule with real Hebrew pairs, including the
 ticket's שולחן/שלחן, צה״ל/צה"ל and 5/חמש).
