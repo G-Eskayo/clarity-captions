@@ -67,3 +67,5 @@ jobs:
           node-version: 22
       - name: Nothing phones home, honest claims, contrast, links, demo logic
         run: node scripts/check-site.mjs
+      - name: Evidence log entries (one file each, #210)
+        run: node --test scripts/check-evidence.test.mjs && node scripts/check-evidence.mjs
