@@ -95,7 +95,7 @@ function steps(grid) {
     across = Math.abs(z.x - a.x) > Math.abs(z.y - a.y)
     grid.dataset.dir = across ? 'across' : 'down'
     Object.assign(line.style, across
-      ? { left: a.x + 'px', top: a.y - 2 + 'px', width: z.x - a.x + 'px', height: '4px' }
+      ? { left: Math.min(a.x, z.x) + 'px', top: a.y - 2 + 'px', width: Math.abs(z.x - a.x) + 'px', height: '4px' }
       : { left: a.x - 2 + 'px', top: a.y + 'px', width: '4px', height: z.y - a.y + 'px' })
     at = c.map((p) => (across ? (p.x - a.x) / (z.x - a.x) : (p.y - a.y) / (z.y - a.y)))
   }

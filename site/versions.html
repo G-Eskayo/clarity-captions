@@ -30,14 +30,14 @@
   a { color: var(--accent); }
   :focus-visible { outline: 3px solid var(--teal); outline-offset: 3px; border-radius: 6px; }
   .wrap { max-width: 68rem; margin: 0 auto; padding: 0 1rem; }
-  .skip { position: absolute; left: -999px; }
-  .skip:focus { left: 1rem; top: 1rem; background: var(--bg); padding: .5rem 1rem; z-index: 10; }
+  .skip { position: absolute; inset-inline-start: -999px; }
+  .skip:focus { inset-inline-start: 1rem; top: 1rem; background: var(--bg); padding: .5rem 1rem; z-index: 10; }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   header.top { display: flex; align-items: center; gap: .6rem; padding: 1.25rem 0; }
   header.top img { width: 40px; height: 40px; }
   header.top .name { font-weight: 800; letter-spacing: .02em; }
-  header.top nav { margin-left: auto; display: flex; gap: 1.1rem; font-size: .95rem; }
+  header.top nav { margin-inline-start: auto; display: flex; gap: 1.1rem; font-size: .95rem; }
   header.top nav a { color: var(--muted); text-decoration: none; }
   header.top nav a:hover { color: var(--text); }
   @media (max-width: 34rem) { header.top nav a[href^="#"] { display: none; } }
@@ -52,8 +52,8 @@
   .card h3 { margin: 0 0 .4rem; font-size: 1.15rem; }
   .card p { margin: 0; }
   ul.ticks { list-style: none; padding: 0; margin: 0; display: grid; gap: .8rem; max-width: 46rem; }
-  ul.ticks li { padding-left: 1.9rem; position: relative; }
-  ul.ticks li::before { content: ''; position: absolute; left: .2rem; top: .45em; width: .75rem; height: .75rem; border-radius: 50%; background: var(--teal); }
+  ul.ticks li { padding-inline-start: 1.9rem; position: relative; }
+  ul.ticks li::before { content: ''; position: absolute; inset-inline-start: .2rem; top: .45em; width: .75rem; height: .75rem; border-radius: 50%; background: var(--teal); }
   footer { border-top: 1px solid var(--rule); padding: 2rem 0 3rem; color: var(--muted); font-size: .95rem; }
   footer nav { display: flex; flex-wrap: wrap; gap: 1.25rem; margin-bottom: .75rem; }
   .mascot { width: 96px; height: auto; display: block; margin-bottom: .5rem; }
@@ -67,7 +67,7 @@
   .release h3 { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin: 0 0 .5rem; font-size: 1.25rem; }
   .badge { font-size: .85rem; font-weight: 800; letter-spacing: .02em; border-radius: 999px; padding: .15rem .75rem; border: 2px solid var(--accent); color: var(--accent); background: transparent; }
   .badge.review { background: var(--accent); color: var(--bg); }
-  .release ul { margin: .5rem 0 0; padding-left: 1.25rem; }
+  .release ul { margin: .5rem 0 0; padding-inline-start: 1.25rem; }
   .release li { margin: 0 0 .4rem; }
   .release .note { color: var(--muted); font-size: .95rem; margin: .75rem 0 0; }
   .prose { max-width: 42rem; }
@@ -95,9 +95,9 @@
   details.data summary { cursor: pointer; font-weight: 700; color: var(--accent); }
   .tablewrap { overflow-x: auto; margin-top: .5rem; }
   table.data { border-collapse: collapse; width: 100%; font-size: .95rem; }
-  table.data th, table.data td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--rule); white-space: nowrap; }
-  table.data td.n, table.data th.n { text-align: right; }
-  .pick-card { max-width: 46rem; border-left: 6px solid var(--teal); }
+  table.data th, table.data td { text-align: start; padding: .35rem .6rem; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  table.data td.n, table.data th.n { text-align: end; }
+  .pick-card { max-width: 46rem; border-inline-start: 6px solid var(--teal); }
   .src { font-size: .9rem; color: var(--muted); }
   /* ── version switcher ──────────────────────────────────────── */
   .version-nav { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1.75rem; }

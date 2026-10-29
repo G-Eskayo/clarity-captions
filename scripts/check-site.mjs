@@ -218,6 +218,23 @@ for (const d of ['iphone', 'ipad', 'mac']) {
   for (const id of ['story', 'private', 'easy', 'why', 'tested']) check((d === 'iphone') === part.includes(`id="${id}"`), `index.html: #${id} belongs to the iPhone part only (${d})`)
 }
 
+// 9. The CSS mirrors itself (#207): logical properties, so dir="rtl" flips a page. Physical left/right stays only where
+// it is direction-neutral (centring with left: 50% and translateX(-50%)), inside a [dir="rtl"] override, or where a
+// script places the element by physical coordinates; that last kind has a "physical:" comment on the line above.
+const PHYSICAL = /(?:^|[\s;{])(?:(?:margin|padding|border)-(?:left|right)(?:-[a-z]+)?|left|right)\s*:|text-align:\s*(?:left|right)|float:\s*(?:left|right)/
+export const physicalRules = (css) => css.split('\n').flatMap((line, i, all) => {
+  const code = line.replace(/\/\*[\s\S]*?\*\//g, '')
+  if (!PHYSICAL.test(code) || /\[dir=/.test(code) || /left:\s*50%[^}]*translateX\(-50%\)/.test(code) || /physical:/.test(all[i - 1] || '')) return []
+  return [`${i + 1}: ${line.trim().slice(0, 90)}`]
+})
+check(physicalRules('a { margin-left: 1px }').length === 1 && physicalRules('a { margin-inline-start: 1px; text-align: start }').length === 0, 'physicalRules self-test')
+check(physicalRules('a { left: 50%; transform: translateX(-50%) }').length === 0 && physicalRules('.x { text-align: right }').length === 1, 'physicalRules self-test: centring allowed, text-align caught')
+check(physicalRules('/* physical: placed by offsetLeft */\n.p { left: 0 }').length === 0 && physicalRules('.p { inset-inline-start: 0; border-right: 0 }').length === 1, 'physicalRules self-test: a marked line is allowed')
+const styleOf = (f) => f.endsWith('.css') ? read(f) : [...read(f).matchAll(/<style>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n')
+for (const f of [...pages, ...readdirSync(SITE).filter((p) => p.endsWith('.css'))]) {
+  for (const r of physicalRules(styleOf(f))) check(false, `${f}: physical left/right, use a logical property: ${r}`)
+}
+
 if (failures.length) {
   console.error(`site check: ${failures.length} problem(s)\n- ${failures.join('\n- ')}`)
   process.exit(1)
