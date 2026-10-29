@@ -1,4 +1,4 @@
-"""Command line for the engine accuracy test (#145) and the language test (#158). Run as `python -m edacc_eval.cli <command>`."""
+"""Command line for the engine accuracy test (#145), the language test (#158) and the Hebrew test (#201). Run as `python -m edacc_eval.cli <command>`."""
 from __future__ import annotations
 
 import argparse
@@ -42,6 +42,20 @@ def main(argv: list[str] | None = None) -> int:
     rl.add_argument("--out", type=Path, required=True)
     rl.add_argument("--json-out", type=Path)
 
+    hr = sub.add_parser("hebrew-run", help="one open Hebrew engine over one shard (#201)")
+    hr.add_argument("--engine", required=True, help="zipformer, nemotron, parakeet-he or whisper-ivrit")
+    hr.add_argument("--shard-dir", type=Path, required=True)
+    hr.add_argument("--results", type=Path, required=True)
+    hr.add_argument("--models-dir", type=Path, required=True)
+    hr.add_argument("--threads", type=int, default=8)
+    hr.add_argument("--status", type=Path)
+
+    rh = sub.add_parser("report-hebrew", help="score every Hebrew result and write the #201 report")
+    rh.add_argument("--shards", type=Path, required=True, help="directory of shard sets (<name>/index.json)")
+    rh.add_argument("--results", type=Path, required=True)
+    rh.add_argument("--out", type=Path, required=True)
+    rh.add_argument("--json-out", type=Path)
+
     c = sub.add_parser("claim", help="atomically claim the next sherpa-onnx shard; prints its number or nothing")
     c.add_argument("--root", type=Path, required=True)
     c.add_argument("--total", type=int, required=True)
@@ -83,6 +97,15 @@ def main(argv: list[str] | None = None) -> int:
         from .report import write_language_report
         for lang, res in write_language_report(a.shards, a.results, a.out, a.json_out).items():
             print(f"{lang}: {res.verdict.verdict} ({res.score.clips_compared} clips compared)")
+    elif a.cmd == "hebrew-run":
+        from .hebrew_run import run_engine
+        r = run_engine(a.engine, a.shard_dir, a.results, a.models_dir, a.threads, a.status)
+        print(f"HEBREW-RUN {a.engine} {a.shard_dir.name} done {r['done']}/{r['total']} errors {r['errors']}")
+        return 1 if r["errors"] else 0
+    elif a.cmd == "report-hebrew":
+        from .report_hebrew import write_hebrew_report
+        for name, s in write_hebrew_report(a.shards, a.results, a.out, a.json_out).items():
+            print(f"{name}: {s.clips_compared}/{s.clips_total} clips compared, {len(s.cells)} engines")
     elif a.cmd == "sherpa":
         from .sherpa_run import run_shard
         run_shard(a.shard_dir, a.results, a.model_dir, a.repeats, a.threads, a.status)

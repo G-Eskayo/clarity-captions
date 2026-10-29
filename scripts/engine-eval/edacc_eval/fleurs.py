@@ -1,4 +1,4 @@
-"""Cut the FLEURS test splits into gender-stratified shards of 16 kHz mono WAV + manifest (#158).
+"""Cut the FLEURS test splits into gender-stratified shards of 16 kHz mono WAV + manifest (#158; Hebrew #201).
 
 Same shard format as EdAcc's (shards.py), one shard set per language under <out>/<lang>/. Reads the pinned
 `data/<config>/test.tsv` and `data/<config>/audio/test.tar.gz` of google/fleurs. Method:
@@ -26,6 +26,7 @@ LANGUAGES = {
     "es": Language("es_419", ("es-MX", "es-US", "es-ES")),  # FLEURS Spanish is Latin American; Apple has no es-419
     "fr": Language("fr_fr", ("fr-FR",)),
     "de": Language("de_de", ("de-DE",)),
+    "he": Language("he_il", ("he-IL",)),  # #201; Apple's Hebrew is DictationTranscriber, SpeechTranscriber has none
 }
 
 
