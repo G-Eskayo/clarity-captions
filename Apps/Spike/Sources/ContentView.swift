@@ -420,6 +420,8 @@ struct ContentView: View {
     private var faceToFace: Bool {
         if model.faceToFace { return true }
         if case .listening = model.state { return demoFaceToFace }
+        // #208 mock-up: captions that stopped on their own keep the split, paused, with Start in her half.
+        if DemoMode.faceToFacePick == "paused" { return demoFaceToFace }
         return false
     }
     @State private var windowSize: CGSize = .zero
@@ -789,13 +791,32 @@ struct ContentView: View {
     }
 
     private var faceToFaceSplit: some View {
-        let lines = DemoMode.faceToFace ? model.stream.lines : model.faceToFaceLines
+        var lines = DemoMode.faceToFace ? model.stream.lines : model.faceToFaceLines
+        // #208 mock-up: which halves still show their language list, and what has been said so far.
+        var ownerChoices: [String]?, partnerChoices: [String]?
+        let ownerChose = translation.target ?? Locale(identifier: "en-US")
+        func names(taken: Locale?) -> [String] {
+            FaceToFace.choices(downloaded: DemoMode.faceToFaceDownloaded, takenByOtherHalf: taken, name: \.nameInItself).map(\.nameInItself)
+        }
+        switch DemoMode.faceToFacePick {
+        case "choose":
+            lines = []
+            ownerChoices = names(taken: nil)
+            partnerChoices = names(taken: nil)
+        case "owner":
+            // Her half started on her tap: her first line, as said (nobody to translate it for yet).
+            lines = Array(lines.filter { $0.speaker == 1 }.prefix(1))
+            partnerChoices = names(taken: ownerChose)
+        default: break
+        }
         return FaceToFaceView(
             style: style, device: deviceClass,
-            owner: FaceToFace.entries(for: .owner, lines: lines, half: faceToFaceHalf, translation: faceToFaceTranslation),
+            owner: FaceToFace.entries(for: .owner, lines: lines, half: faceToFaceHalf,
+                                      translation: DemoMode.faceToFacePick == "owner" ? { _, _ in nil } : faceToFaceTranslation),
             partner: FaceToFace.entries(for: .partner, lines: lines, half: faceToFaceHalf, translation: faceToFaceTranslation),
             ownerLanguage: (translation.target ?? Locale.current).nameInItself,
             partnerLanguage: CaptionLanguageCenter.engineLocale.nameInItself,
+            ownerChoices: ownerChoices, partnerChoices: partnerChoices,
             control: {
                 MorphingControl(control: control, fullWidth: min(windowSize.width * 0.47, 440),
                                 fill: style.text, label: style.background) { model.perform(control.action) }

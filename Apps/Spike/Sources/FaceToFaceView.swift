@@ -13,6 +13,11 @@ struct FaceToFaceView<Control: View>: View {
     /// Each half's language, named in that language (the owner's Into, the other person's From).
     let ownerLanguage: String
     let partnerLanguage: String
+    /// #208 mock-up: a half that hasn't chosen its language yet shows the stacked list of downloaded languages instead
+    /// of its lines (nil once it has chosen). Tapping one starts that half (wired after the look is approved).
+    var ownerChoices: [String]? = nil
+    var partnerChoices: [String]? = nil
+    var choose: (FaceToFaceHalf, Int) -> Void = { _, _ in }
     /// Start / Stop, in the owner's half only. Stop is the only way out of the split (owner, 2026-10-29).
     @ViewBuilder let control: () -> Control
 
@@ -21,7 +26,7 @@ struct FaceToFaceView<Control: View>: View {
     var body: some View {
         GeometryReader { geo in
             VStack(spacing: 0) {
-                half(partner, language: partnerLanguage, isOwner: false)
+                half(partner, language: partnerLanguage, choices: partnerChoices, isOwner: false)
                     .rotationEffect(.degrees(180))
                     .accessibilityLabel(String(localized: "The other person's half"))
                 Capsule()
@@ -29,13 +34,32 @@ struct FaceToFaceView<Control: View>: View {
                     .frame(width: geo.size.width * 0.4, height: 3)
                     .padding(.vertical, 10)
                     .accessibilityHidden(true)
-                half(owner, language: ownerLanguage, isOwner: true)
+                half(owner, language: ownerLanguage, choices: ownerChoices, isOwner: true)
                     .overlay(alignment: .bottom) { control().frame(height: 72) }
             }
         }
     }
 
-    private func half(_ entries: [FaceToFaceEntry], language: String, isOwner: Bool) -> some View {
+    @ViewBuilder
+    private func half(_ entries: [FaceToFaceEntry], language: String, choices: [String]?, isOwner: Bool) -> some View {
+        if let choices { picker(choices, isOwner: isOwner) } else { lines(entries, language: language, isOwner: isOwner) }
+    }
+
+    /// #208: the half's languages stacked in the middle of the half, dimmed until one is tapped. Above Stop in her half.
+    private func picker(_ choices: [String], isOwner: Bool) -> some View {
+        VStack(spacing: 18) {
+            ForEach(Array(choices.enumerated()), id: \.offset) { i, name in
+                RetroWords(word: name, color: mutedColor(style), background: style.background.color, size: .title,
+                           label: name) { choose(isOwner ? .owner : .partner, i) }
+            }
+        }
+        .padding(.bottom, isOwner ? 72 : 0)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(String(localized: "Choose your language"))
+    }
+
+    private func lines(_ entries: [FaceToFaceEntry], language: String, isOwner: Bool) -> some View {
         VStack(spacing: 4) {
             // From each reader's own side, the top of their half is the middle of the screen.
             Text(language).font(.subheadline.weight(.semibold)).foregroundStyle(mutedColor(style))

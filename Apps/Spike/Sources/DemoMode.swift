@@ -38,6 +38,7 @@ import Foundation
 ///   -ClarityDemoLanguage <id>  -ClarityDemoTranslate <id>  -ClarityDemoTranslateProgress <0-1>   caption language and translation (#37, #53)
 ///   -ClarityDemoTranslationOwned   translation bought, but off (#171); -ClarityDemoTranslate implies bought
 ///   -ClarityDemoFaceToFace  opens the face-to-face split (#60) on a two-person conversation, English and Spanish
+///   -ClarityDemoFaceToFacePick choose|owner|paused   the split at one moment of round 2 (#208 mock-up)
 ///   -ClarityDemoDeveloperPanel  opens the developer panel (mic mode, Engine picker, #150): simctl can't do the 1.5 s hold
 /// It feeds the same CaptionStream the real engine feeds, so what you see is the real caption view: speaker colours,
 /// names, line breaks and sound labels. No microphone, speech model or network is involved.
@@ -76,7 +77,7 @@ enum DemoMode {
         store.save(style)
     }
 
-    static var paused: Bool { flag("-ClarityDemoPaused") || saved || veilCleared }
+    static var paused: Bool { flag("-ClarityDemoPaused") || saved || veilCleared || faceToFacePick == "paused" }
     static var saved: Bool { flag("-ClarityDemoSaved") }
     static var veilCleared: Bool { flag("-ClarityDemoVeilCleared") }
     static var select: Bool { flag("-ClarityDemoSelect") }
@@ -95,11 +96,17 @@ enum DemoMode {
     static var translateProgress: Double? { value(after: "-ClarityDemoTranslateProgress").flatMap(Double.init) }
     static var translationOwned: Bool { flag("-ClarityDemoTranslationOwned") }
     /// `-ClarityDemoFaceToFace`: opens the face-to-face split (#60) on `faceToFaceScript`.
-    static var faceToFace: Bool { flag("-ClarityDemoFaceToFace") }
+    static var faceToFace: Bool { flag("-ClarityDemoFaceToFace") || faceToFacePick != nil }
     /// `-ClarityDemoFaceToFaceLive` (#60 wiring): opens the split and plays `faceToFaceScript` the way the two language
     /// engines would report it, through the real engine lanes, voice matching and NaturalLanguage, so the screen shows
     /// what each half shows before and after a voice is matched. Only the audio and the translations are stand-ins.
     static var faceToFaceLive: Bool { flag("-ClarityDemoFaceToFaceLive") }
+    /// `-ClarityDemoFaceToFacePick choose|owner|paused` (#208 mock-up): the split on `faceToFaceScript` at one moment
+    /// of round 2. `choose`: it just opened, both halves show their language lists. `owner`: her half chose English and
+    /// is captioning, the other half still shows its list. `paused`: captions stopped on their own, the split stays.
+    static var faceToFacePick: String? { value(after: "-ClarityDemoFaceToFacePick") }
+    /// Stand-ins for the iPad's downloaded translation languages (the simulator has none): the owner's example on #199.
+    static let faceToFaceDownloaded = ["en-US", "fr-FR", "es-ES"].map(Locale.init(identifier:))
     /// `-ClarityDemoFakeStore`: the translation purchase without the App Store (#53), for recordings of the flow on a
     /// simulator run from the command line, where StoreKit's test file doesn't apply. Bought state is remembered.
     static var fakeStore: Bool { flag("-ClarityDemoFakeStore") }
@@ -258,7 +265,9 @@ extension CaptionModel {
         for (speaker, name) in DemoMode.speakers { speakerNames.apply(name, to: speaker) }
         let steps = DemoMode.activeScript
         if DemoMode.isStatic {
-            for (i, step) in steps.enumerated() { play(step, isFinal: i < steps.count - 1) }
+            // #208's paused split: captions stopped, so the last line was finished too.
+            let finishesLast = DemoMode.faceToFacePick == "paused"
+            for (i, step) in steps.enumerated() { play(step, isFinal: finishesLast || i < steps.count - 1) }
             return
         }
         Task { @MainActor in
