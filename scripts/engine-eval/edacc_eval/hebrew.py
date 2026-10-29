@@ -17,6 +17,7 @@ _POINTS = re.compile("[" + "".join(chr(c) for c in range(0x0591, 0x05C8)
 _HEBREW_PUNCT = re.compile("[" + "".join(_HEBREW_PUNCT_IN_POINTS) + "]")
 # Geresh and gershayim, and every mark an engine or a typist uses for them; unified, then dropped.
 _GERESH = re.compile("[׳״'\"`‘’“”´ʼ׳]")
+_BIDI = re.compile("[\u200e\u200f\u061c\u202a-\u202e\u2066-\u2069\ufeff]")  # direction marks: removed, not spaced
 _TAG = re.compile(r"<[^>]*>|\[[^\]]*\]|\{[^}]*\}")
 _GROUPED = re.compile(r"\b\d{1,3}(?:,\d{3})+\b")
 _PUNCT = re.compile(r"[^\w.]+|_+|(?<!\d)\.|\.(?!\d)")  # keeps the point of a decimal (3.5) and nothing else
@@ -195,7 +196,8 @@ def _numbers_to_digits(tokens: list[str]) -> list[str]:
 def normalize_he(text: str | None) -> str:
     if not text:
         return ""
-    s = unicodedata.normalize("NFKC", text).casefold()  # presentation forms (שׁ as one code point) decompose
+    s = _BIDI.sub("", text)
+    s = unicodedata.normalize("NFKC", s).casefold()  # presentation forms (שׁ as one code point) decompose
     s = unicodedata.normalize("NFD", s)
     s = _POINTS.sub("", s)
     s = unicodedata.normalize("NFC", s)

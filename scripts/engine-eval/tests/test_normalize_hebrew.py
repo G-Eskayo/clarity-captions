@@ -198,3 +198,9 @@ def test_hundred_years_is_not_102():
     # "שנים" is "years" unless עשר/עשרה follows; "מאה שנים" and "100 שנים" must read the same.
     assert he("מאה שנים") == he("100 שנים") == "100 שנים"
     assert he("לפני שלוש שנים") == "לפני 3 שנים"
+
+
+def test_bidi_marks_are_removed_not_turned_into_spaces():
+    # Apple's DictationTranscriber starts its Hebrew text with U+200F (right-to-left mark).
+    assert he("‏שלום") == he("של‏ום") == he("‫שלום‬") == he("⁧שלום⁩") == "שלום"
+    assert he("﻿שלום") == "שלום"
