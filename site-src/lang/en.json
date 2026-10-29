@@ -1,4 +1,10 @@
 {
+  "_langs": {
+    "label": "Language",
+    "question": "This page in English?",
+    "yes": "Yes, English",
+    "stay": "No, stay in English"
+  },
   "index.seal-speak-captions-for": "Seal Speak: captions for conversations",
   "index.seal-speak-shows-what": "Seal Speak shows what people around you are saying, as they say it, in large clear text. Made on your iPhone, works with no internet, no account, no ads.",
   "index.follow-the-conversation-at": "Follow the conversation at the table. Captions made on your iPhone, with no internet needed.",

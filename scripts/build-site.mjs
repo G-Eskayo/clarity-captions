@@ -5,6 +5,7 @@
 //   node scripts/build-site.mjs           write the pages
 //   node scripts/build-site.mjs --check   exit 1 if a page on disk isn't what the sources build (CI runs this)
 //   node scripts/build-site.mjs --accept he   record that he.json matches today's English (after a translator's check)
+//   SITE_PREVIEW_PUBLISH=he node scripts/build-site.mjs --out /tmp/preview   (copy site/ there first) see it published
 // No dependencies. The output is plain static HTML, so the site is published the same way as before.
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs'
 import { createHash } from 'crypto'
@@ -17,7 +18,10 @@ export const SRC = path.join(ROOT, 'site-src')
 export const ORIGIN = 'https://seal-speak.gileskayo.me/'
 const readJSON = (f) => JSON.parse(readFileSync(path.join(SRC, f), 'utf-8'))
 
-export const languages = () => readJSON('lang/languages.json')
+// SITE_PREVIEW_PUBLISH=he builds as if Hebrew were published, for a look before the owner publishes it; with
+// --out <dir> so the preview never lands in site/.
+const PREVIEW = (process.env.SITE_PREVIEW_PUBLISH || '').split(',').filter(Boolean)
+export const languages = () => readJSON('lang/languages.json').map((l) => (PREVIEW.includes(l.code) ? { ...l, published: true } : l))
 export const strings = (code) => readJSON(`lang/${code}.json`)
 export const hashOf = (text) => createHash('sha256').update(text).digest('hex').slice(0, 10)
 
@@ -55,6 +59,30 @@ const hreflangLinks = (langs, lang, page) => {
     `<link rel="alternate" hreflang="x-default" href="${urlOf('en', page)}">`].join('\n') + '\n'
 }
 
+// The language bar: links to this page in every language it has (works with no script), an empty place for the offer,
+// and the offer's words in each language. Only on a page with more than one language, so a page alone is unchanged.
+const langBar = (langs, lang, page) => {
+  const alts = alternatesFor(langs, lang, page)
+  if (alts.length < 2) return ''
+  const here = lang.code === 'en' ? '' : '../'
+  // From this page's folder to the same page in another language; an index is its folder.
+  const href = (l) => (here + outPath(l.code, page).replace(/(^|\/)index\.html$/, '$1')) || './'
+  const words = Object.fromEntries(alts.map((l) => [l.code, { ...strings(l.code)._langs, dir: l.dir }]))
+  const links = alts.map((l) => (l.code === lang.code
+    ? `<a aria-current="page" lang="${l.code}">${l.name}</a>`
+    : `<a href="${href(l)}" hreflang="${l.code}" lang="${l.code}" data-lang-choice="${l.code}">${l.name}</a>`)).join('\n    ')
+  return `<link rel="stylesheet" href="${here}lang.css">
+<div class="lang-bar">
+  <p class="lang-offer" data-lang-offer role="region" aria-label="${words[lang.code].label}" hidden></p>
+  <nav class="lang-switch" aria-label="${words[lang.code].label}">
+    ${links}
+  </nav>
+</div>
+<script type="application/json" data-lang-words>${JSON.stringify(words)}</script>
+<script type="module" src="${here}lang.js"></script>
+`
+}
+
 export function buildPage(langs, lang, page, words = strings(lang.code), english = strings('en')) {
   const template = readFileSync(path.join(SRC, 'pages', page), 'utf-8')
   const missing = []
@@ -62,11 +90,13 @@ export function buildPage(langs, lang, page, words = strings(lang.code), english
     '@lang': lang.code,
     '@dir': lang.dir,
     '@alternates': hreflangLinks(langs, lang, page),
+    '@langs': langBar(langs, lang, page),
     '@robots': lang.published ? '' : '<meta name="robots" content="noindex">\n',
     // Until the owner publishes a language, its pages say they are a draft, aren't indexed, and nothing links to them.
     '@draft': lang.published ? '' : `<p class="draft-note" style="margin:0;padding:.6rem 1rem;background:#FBE8C1;color:#141419;text-align:center;font-weight:700">${words._draft || 'Draft'}</p>\n`
   }
   let html = template.replace(KEYS, (m, k) => {
+    if (k === '@langs') return m
     if (k in special) return special[k]
     if (typeof words[k] === 'string') return words[k]
     missing.push(k)
@@ -74,7 +104,7 @@ export function buildPage(langs, lang, page, words = strings(lang.code), english
   })
   if (lang.code !== 'en') html = html.replace(/\sdata-app(?=[\s>])/g, ' data-app lang="en" dir="ltr"')
   html = html.replace(/^<!doctype html>\n/i, (d) => `${d}<!-- Built by scripts/build-site.mjs from site-src/pages/${page} and site-src/lang/${lang.code}.json: edit those, not this. -->\n`)
-  return { html: relink(html, lang), missing }
+  return { html: relink(html, lang).replace('{{@langs}}', special['@langs']), missing }
 }
 
 // A translation is stale when the English it was made from has changed since (recorded by --accept).
@@ -112,7 +142,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (stale.length) { console.error(`site build: out of date, run node scripts/build-site.mjs: ${stale.join(', ')}`); process.exit(1) }
     console.log(`site build: ok (${out.length} pages)`)
   } else {
-    for (const [f, html] of out) { mkdirSync(path.dirname(path.join(SITE, f)), { recursive: true }); writeFileSync(path.join(SITE, f), html) }
+    const i = args.indexOf('--out'), dest = i >= 0 ? path.resolve(args[i + 1]) : SITE
+    if (PREVIEW.length && dest === SITE) { console.error('site build: a preview needs --out <dir>, not site/'); process.exit(1) }
+    for (const [f, html] of out) { mkdirSync(path.dirname(path.join(dest, f)), { recursive: true }); writeFileSync(path.join(dest, f), html) }
     console.log(`site build: wrote ${out.length} pages`)
   }
 }

@@ -57,7 +57,7 @@ test('every language builds with no missing words, and every English word is use
   const { problems, out } = buildAll()
   assert.deepEqual(problems, [])
   const used = new Set(languages()[0].pages.flatMap((p) => keysOf(readFileSync(path.join(SRC, 'pages', p), 'utf-8'))))
-  assert.deepEqual(Object.keys(strings('en')).filter((k) => !used.has(k)), [])
+  assert.deepEqual(Object.keys(strings('en')).filter((k) => !k.startsWith('_') && !used.has(k)), [])
   assert.ok(out.length >= 4)
 })
 
@@ -76,4 +76,22 @@ test('pictures of the app stay English on other languages\' pages', () => {
     assert.ok(!/\sdata-app(?! lang="en" dir="ltr")[\s>]/.test(html), `${f}: a picture of the app without lang="en"`)
   }
   assert.ok(!/data-app lang=/.test(readFileSync(path.join(SITE, 'index.html'), 'utf-8')))
+})
+
+test('a language that isn\'t published is invisible from English: no link, no hreflang, no switcher entry', () => {
+  for (const l of languages().filter((x) => !x.published)) {
+    for (const [f, html] of buildAll().out.filter(([f]) => !f.includes('/'))) {
+      assert.ok(!html.includes(`hreflang="${l.code}"`) && !html.includes(`href="${l.code}/`) && !html.includes('data-lang-choice'), `${f} mentions ${l.code}`)
+    }
+  }
+})
+
+test('every page in a second language has the switcher, the offer, and links back that work from its folder', () => {
+  for (const [f, html] of buildAll().out.filter(([f]) => f.includes('/'))) {
+    assert.match(html, /<nav class="lang-switch"/, f)
+    assert.match(html, /data-lang-offer[^>]*hidden/, `${f}: the offer starts hidden (no script, no offer)`)
+    assert.match(html, /<script type="module" src="\.\.\/lang\.js">/, f)
+    for (const m of html.matchAll(/data-lang-choice="en"/g)) assert.ok(m)
+    assert.ok(!/href="\.\.\/\.\.\//.test(html), `${f}: a link went up two folders`)
+  }
 })
