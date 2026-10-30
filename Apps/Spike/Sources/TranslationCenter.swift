@@ -30,6 +30,8 @@ final class TranslationCenter: ObservableObject {
     @Published private(set) var reverseTranslations = CaptionTranslations()
     @Published private(set) var reverseConfiguration: TranslationSession.Configuration?
     private var faceToFace = false
+    /// #208: the two languages the split's halves picked (the other person's, hers); nil until both have picked.
+    private var faceToFacePair: (partner: Locale, owner: Locale)?
     private var reverseWake: AsyncStream<Void>.Continuation?
     private var latestReverse: [CaptionLine] = []
 
@@ -168,14 +170,28 @@ final class TranslationCenter: ObservableObject {
         refreshConfiguration()
     }
 
-    /// A new session for the current pair, or none. Also reads whether the pair needs its language pack.
-    /// The split opened or closed (#60): the second direction runs only while it's open.
-    func faceToFaceChanged(_ on: Bool) {
+    /// The split opened or closed (#60), or its halves picked (#208): the second direction runs only while it's open,
+    /// and in the split both directions are between the two picked languages, none until both halves have picked.
+    func faceToFaceChanged(_ on: Bool, pair: LanguagePair?) {
+        let before = (forwardSource?.minimalIdentifier, forwardTarget?.minimalIdentifier)
+        let reverseBefore = faceToFacePair.map { $0.owner.identifier + ">" + $0.partner.identifier }
         faceToFace = on
-        if !on { reverseTranslations.reset(); latestReverse = [] }
+        faceToFacePair = on ? pair.map { ($0.partner, $0.owner) } : nil
+        if (forwardSource?.minimalIdentifier, forwardTarget?.minimalIdentifier) != before { translations.reset() }
+        if !on || faceToFacePair.map({ $0.owner.identifier + ">" + $0.partner.identifier }) != reverseBefore {
+            reverseTranslations.reset(); latestReverse = []
+        }
         refreshConfiguration()
     }
 
+    /// What the captions are translated from and into: one-way, the caption language into hers; in the split, the
+    /// other person's picked language into hers.
+    private var forwardSource: Locale.Language? {
+        faceToFace ? faceToFacePair?.partner.language : CaptionLanguageCenter.engineLocale.language
+    }
+    private var forwardTarget: Locale.Language? { faceToFace ? faceToFacePair?.owner.language : target?.language }
+
+    /// A new session for the current pair, or none. Also reads whether the pair needs its language pack.
     func refreshConfiguration() {
         defer { refreshReverseConfiguration() }
         #if DEBUG && targetEnvironment(simulator)
@@ -185,12 +201,13 @@ final class TranslationCenter: ObservableObject {
         // covered the screenshots (#60).
         if usesDemoTranslator { configuration = nil; return }
         #endif
-        let source = CaptionLanguageCenter.engineLocale.language
-        guard purchase.isOwned, isOn, let target else { configuration = nil; preparing = false; unsupportedPair = false; return }
-        let wanted = TranslationSession.Configuration(source: source, target: target.language)
+        guard purchase.isOwned, isOn, let source = forwardSource, let target = forwardTarget else {
+            configuration = nil; preparing = false; unsupportedPair = false; return
+        }
+        let wanted = TranslationSession.Configuration(source: source, target: target)
         if configuration?.source != wanted.source || configuration?.target != wanted.target { configuration = wanted }
         Task {
-            let status = await LanguageAvailability().status(from: source, to: target.language)
+            let status = await LanguageAvailability().status(from: source, to: target)
             unsupportedPair = status == .unsupported
             #if DEBUG && targetEnvironment(simulator)
             if usesDemoTranslator { unsupportedPair = false }
@@ -203,8 +220,8 @@ final class TranslationCenter: ObservableObject {
         #if DEBUG && targetEnvironment(simulator)
         if usesDemoTranslator { reverseConfiguration = nil; return }
         #endif
-        guard faceToFace, purchase.isOwned, isOn, let target, !unsupportedPair else { reverseConfiguration = nil; return }
-        let wanted = TranslationSession.Configuration(source: target.language, target: CaptionLanguageCenter.engineLocale.language)
+        guard faceToFace, purchase.isOwned, isOn, let pair = faceToFacePair, !unsupportedPair else { reverseConfiguration = nil; return }
+        let wanted = TranslationSession.Configuration(source: pair.owner.language, target: pair.partner.language)
         if reverseConfiguration?.source != wanted.source || reverseConfiguration?.target != wanted.target { reverseConfiguration = wanted }
     }
 
@@ -230,7 +247,7 @@ final class TranslationCenter: ObservableObject {
     private var usesDemoTranslator: Bool { DemoMode.translate != nil || DemoMode.fakeStore }
 
     private func demoFill(_ lines: [CaptionLine]) {
-        guard isOn, purchase.isOwned else { return }
+        guard isOn, purchase.isOwned, !faceToFace || faceToFacePair != nil else { return }
         for work in translations.take(from: lines) {
             translations.finished(lineID: work.lineID, source: work.text,
                                   translation: DemoMode.englishLine(for: work.text) ?? DemoMode.faceToFaceTranslation(of: work.text) ?? work.text)
@@ -238,7 +255,7 @@ final class TranslationCenter: ObservableObject {
     }
 
     private func demoFillReverse(_ lines: [CaptionLine]) {
-        guard isOn, purchase.isOwned, faceToFace else { return }
+        guard isOn, purchase.isOwned, faceToFace, faceToFacePair != nil else { return }
         for work in reverseTranslations.take(from: lines) {
             reverseTranslations.finished(lineID: work.lineID, source: work.text,
                                          translation: DemoMode.faceToFaceTranslation(of: work.text) ?? work.text)
@@ -254,7 +271,7 @@ final class TranslationCenter: ObservableObject {
         let (stream, continuation) = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
         wake = continuation
         defer { continuation.finish() }
-        if let target, await LanguageAvailability().status(from: CaptionLanguageCenter.engineLocale.language, to: target.language) != .installed {
+        if let source = forwardSource, let target = forwardTarget, await LanguageAvailability().status(from: source, to: target) != .installed {
             preparing = true
             do { try await session.prepareTranslation() } catch { preparing = false; return }
             preparing = false
@@ -280,7 +297,7 @@ final class TranslationCenter: ObservableObject {
         let (stream, continuation) = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
         reverseWake = continuation
         defer { continuation.finish() }
-        if let target, await LanguageAvailability().status(from: target.language, to: CaptionLanguageCenter.engineLocale.language) != .installed {
+        if let pair = faceToFacePair, await LanguageAvailability().status(from: pair.owner.language, to: pair.partner.language) != .installed {
             do { try await session.prepareTranslation() } catch { return }
         }
         continuation.yield()
