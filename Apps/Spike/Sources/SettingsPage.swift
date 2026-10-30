@@ -27,6 +27,8 @@ struct SettingsPage: View {
     var onEar: ((Bool) -> Void)?
     /// #247 (PR #254): Sound like the speaker, on or off.
     var onEarMatch: ((Bool) -> Void)?
+    /// #213, the Mac: the calls' From row.
+    var onChooseCallLanguage: (() -> Void)?
     /// The translation purchase (#53): StoreKit is wired with the feature; the mock-up only shows the two states.
     var onBuyTranslation: (() -> Void)?
     var onRestorePurchases: (() -> Void)?
@@ -250,8 +252,17 @@ struct SettingsPage: View {
         if language.translationOn {
             // From is the caption language: the same setting as "Caption language" below, opening the same list. Apple's
             // speech engine needs it named before it starts (it doesn't detect it), so it's chosen, right next to Into.
-            languagePairRow(String(localized: "From"), LanguageSettingsState.name(language.captions),
-                            label: String(localized: "Translate from, ")) { onChooseCaptionLanguage?() }
+            if let call = language.callCaptions {
+                // #213, the Mac: the room and the calls each have their own From, since Apple's engine can't tell
+                // which language it hears (E27). Only the other people's words on a call are translated (owner, #213).
+                languagePairRow(String(localized: "Room"), LanguageSettingsState.name(language.captions),
+                                label: String(localized: "Translate the room from, ")) { onChooseCaptionLanguage?() }
+                languagePairRow(String(localized: "Calls"), LanguageSettingsState.name(call),
+                                label: String(localized: "Translate calls from, ")) { onChooseCallLanguage?() }
+            } else {
+                languagePairRow(String(localized: "From"), LanguageSettingsState.name(language.captions),
+                                label: String(localized: "Translate from, ")) { onChooseCaptionLanguage?() }
+            }
             languagePairRow(String(localized: "Into"), language.target.map(LanguageSettingsState.name) ?? String(localized: "Choose a language"),
                             label: String(localized: "Translate into, ")) { onChooseTranslationTarget?() }
             // #245: Into's speech model, set up here so the split never downloads.
@@ -308,7 +319,10 @@ struct SettingsPage: View {
     }
 
     private var translationNote: String {
-        String(localized: "From is the language people around you speak. Each caption shows its translation on top, with what was said in smaller text underneath. The first time, the language pack downloads once (about 200 MB); after that it works with no internet.")
+        if language.callCaptions != nil {
+            return String(localized: "Room is the language people near your Mac speak; Calls is what the other people on your calls speak. On a call only their words are translated, not yours. Each caption shows its translation on top, with what was said in smaller text underneath.")
+        }
+        return String(localized: "From is the language people around you speak. Each caption shows its translation on top, with what was said in smaller text underneath. The first time, the language pack downloads once (about 200 MB); after that it works with no internet.")
     }
 
     private func section<C: View>(_ title: LocalizedStringKey, first: Bool = false, note: String? = nil, @ViewBuilder _ content: () -> C) -> some View {
