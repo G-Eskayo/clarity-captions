@@ -64,7 +64,7 @@ final class TranslationCenter: ObservableObject {
     func start() async {
         #if DEBUG
         if DemoMode.translate != nil || DemoMode.translationOwned { purchase.entitlementChanged(owned: true); refreshConfiguration(); return }
-        if DemoMode.fakeStore { price = "$1.99"; purchase.entitlementChanged(owned: DemoMode.fakeStoreOwned); refreshConfiguration(); return }
+        if DemoMode.fakeStore { price = "$4.99"; purchase.entitlementChanged(owned: DemoMode.fakeStoreOwned); refreshConfiguration(); return }
         #endif
         if updates == nil {
             updates = Task { [weak self] in

@@ -1,7 +1,7 @@
 // Checks for the website in site/ (#44), no dependencies: node scripts/check-site.mjs
 // 1. Nothing phones home: every script, stylesheet, image, font and CSS url() is local (or a data: URL).
 // 2. Honest claims (docs/design/honest-claims-2026-10-10.md): no "who is speaking", naming speakers, speed promises,
-//    reading or hearing benefits, "free", or any price other than the real one ($4.99, once: ADR 0007) on the marketing page.
+//    reading or hearing benefits or "free" on the marketing page; and, on every page, no price but the real ones (PRICES).
 // 3. Contrast: every demo theme's caption text and speaker colours reach 7:1 (the app's rule); the page's own text,
 //    muted text and links reach 4.5:1 on their backgrounds, in light and dark.
 // 4. Links and anchors: local files exist; every #anchor has a target.
@@ -50,12 +50,37 @@ for (const js of ['demo.js', 'seal-data.js', 'motion.js', 'devices.js', 'lang.js
 
 // 2. honest claims, on the visible text of the marketing page and the demo script
 const visible = (html) => html.replace(/<style[\s\S]*?<\/style>/g, ' ').replace(/<script[\s\S]*?<\/script>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ')
+// The real prices (owner, 2026-10-30, #228). The app is $4.99 once (ADR 0007). Live Translation is $4.99 on iPhone, iPad
+// and iPhone Duo, and $1.99 on the Mac, which is its own app (ADR 0028). Pages name no other price, and $1.99 only for
+// the Mac. The StoreKit file and the app's debug fake store use the iOS price (section 10).
+export const PRICES = { app: '4.99', translationIOS: '4.99', translationMac: '1.99' }
+export const OTHER_PRICE = /\$\s?(?!(4|1)\.99\b)\d|\d+(\.\d+)? ?(usd|dollars|דולר|ש"ח|ש״ח|₪)/i
+// Each $1.99 must be said of the Mac: the devices named in its clause are all the Mac, or, when its clause names none,
+// the first device after it in its sentence (else the last one before it) is. Returns the sentences that break this.
+const DEVICE_WORDS = /\b(iPhone|iPad|Duo|Mac)\b/g
+export function macPriceProblems(text) {
+  const bad = []
+  for (const sentence of text.split(/(?<=[.!?])\s+/)) {
+    let at = 0
+    for (const clause of sentence.split(/(?<=[,;:])\s+/)) {
+      at = sentence.indexOf(clause, at)
+      for (const m of clause.matchAll(/\$\s?1\.99\b/g)) {
+        const named = [...clause.matchAll(DEVICE_WORDS)].map((d) => d[1])
+        const i = at + m.index
+        const device = named.length ? (named.every((d) => d === 'Mac') ? 'Mac' : 'other')
+          : [...sentence.slice(i).matchAll(DEVICE_WORDS)][0]?.[1] ?? [...sentence.slice(0, i).matchAll(DEVICE_WORDS)].at(-1)?.[1]
+        if (device !== 'Mac') bad.push(sentence.trim())
+      }
+    }
+  }
+  return bad
+}
 const BANNED = [
   [/(?<!(n't|not|never) )(shows|tells|see|knows?) who|(?<!(n't|not|never) .{0,20})who('s| is) (speaking|talking)/i, 'claims to know who is speaking'],
   [/name (each|the|a|your) (speaker|voice)|naming speakers|give .{0,20} a name/i, 'mentions naming speakers (removed in v1)'],
   [/within (a|one) second|instant(ly)? caption|real[- ]time accuracy|100 ?%|every word/i, 'promises speed or accuracy'],
   [/improves? (your )?reading|helps? (you )?(read|hear)|hearing loss|treat|cure|better hearing/i, 'makes a reading or hearing claim'],
-  [/\bfree\b|\$\s?(?!4\.99\b)\d|\d+(\.\d+)? ?(usd|dollars)/i, 'mentions "free" or a price other than $4.99']
+  [/\bfree\b/i, 'mentions "free"']
 ]
 // The same rules in each language the site is written in. A language with no rules here fails, so a new translation
 // can't skip them. MUST_SAY: captions can be wrong; and, while the app has no captions or screens in that language,
@@ -67,7 +92,7 @@ export const BANNED_BY_LANG = {
     [/(נותנת|נותן|לתת) שם (ל|לכל )?(דובר|קול)|שמות לדוברים/, 'mentions naming speakers (removed in v1)'],
     [/תוך שנייה|מייד(י|ית)|באופן מיידי|דיוק של 100|100 ?%|כל מילה ומילה/, 'promises speed or accuracy'],
     [/משפר(ת)? את (ה)?(קריאה|שמיעה)|עוזר(ת)? (לכם )?(לשמוע|לקרוא)|ירידה בשמיעה|אובדן שמיעה|מרפא|ריפוי|שמיעה טובה יותר/, 'makes a reading or hearing claim'],
-    [/חינם|בחינם|ללא תשלום|\$\s?(?!4\.99\b)\d|\d+(\.\d+)? ?(דולר|ש"ח|ש״ח|₪)/, 'mentions "free" or a price other than $4.99']
+    [/חינם|בחינם|ללא תשלום/, 'mentions "free"']
   ]
 }
 export const MUST_SAY = {
@@ -98,13 +123,25 @@ for (const lang of homes) {
 }
 // The Hebrew rules catch real claims and spare honest sentences.
 check(BANNED_BY_LANG.he[0][0].test('האפליקציה מראה מי מדבר') && !BANNED_BY_LANG.he[0][0].test('היא לא יודעת מי האנשים'), 'BANNED he[0] self-test')
-check(BANNED_BY_LANG.he[4][0].test('הורדה בחינם') && BANNED_BY_LANG.he[4][0].test('רק $2.99') && !BANNED_BY_LANG.he[4][0].test('$4.99 פעם אחת'), 'BANNED he[4] self-test')
+check(BANNED_BY_LANG.he[4][0].test('הורדה בחינם') && !BANNED_BY_LANG.he[4][0].test('$4.99 פעם אחת'), 'BANNED he[4] self-test')
 check(BANNED_BY_LANG.he[3][0].test('משפרת את השמיעה') && !BANNED_BY_LANG.he[3][0].test('לאמא שלי, שכבדת שמיעה'), 'BANNED he[3] self-test')
 check(NOT_YET.he.test('Seal מציגה כתוביות בעברית') && !NOT_YET.he.test('עדיין אין כתוביות בעברית'), 'NOT_YET he self-test')
 // The banned patterns must catch real claims and spare honest disclaimers.
 check(BANNED[0][0].test('Seal shows who is speaking') && !BANNED[0][0].test("It doesn't know who anyone is"), 'BANNED[0] self-test')
 check(BANNED[4][0].test('Free for everyone') && !BANNED[4][0].test('freedom'), 'BANNED[4] self-test')
-check(BANNED[4][0].test('Only $2.99') && BANNED[4][0].test('$4.999') && !BANNED[4][0].test('$4.99 once'), 'BANNED[4] allows only the real price')
+// Prices, on every page in every language (#228): only $4.99 and $1.99, and $1.99 only for the Mac.
+check(OTHER_PRICE.test('Only $2.99') && OTHER_PRICE.test('$4.999') && OTHER_PRICE.test('$1.999') && OTHER_PRICE.test('רק $2.99') && OTHER_PRICE.test('5 דולר'), 'OTHER_PRICE catches other prices')
+check(!OTHER_PRICE.test('$4.99 once') && !OTHER_PRICE.test('$1.99 on the Mac') && !OTHER_PRICE.test('$4.99 פעם אחת'), 'OTHER_PRICE allows the real prices')
+check(macPriceProblems('An optional add-on: $4.99 on iPhone, iPad and iPhone Duo, and $1.99 on the Mac.').length === 0, 'macPriceProblems: $1.99 on the Mac is fine')
+check(macPriceProblems('On the Mac it is $1.99, on the iPhone $4.99.').length === 0 && macPriceProblems('$1.99, once, in the Mac app.').length === 0, 'macPriceProblems: the Mac before or after, in another clause')
+check(macPriceProblems('Live translation, right on your phone. An add-on: $1.99, once, on your iPhone.').length === 1, 'macPriceProblems: $1.99 for the iPhone is caught')
+check(macPriceProblems('It is an optional add-on: $1.99, once.').length === 1 && macPriceProblems('$1.99 on iPad and Mac.').length === 1, 'macPriceProblems: no device, or not only the Mac, is caught')
+for (const f of pages) {
+  const text = visible(read(f))
+  const m = text.match(OTHER_PRICE)
+  check(!m, `${f} names a price other than $${PRICES.app} or Live Translation's $${PRICES.translationIOS} (iPhone, iPad, Duo) and $${PRICES.translationMac} (Mac): "${m?.[0]}"`)
+  for (const s of macPriceProblems(text)) check(false, `${f} says $${PRICES.translationMac} for something other than the Mac: "${s}"`)
+}
 check(!SCRIPT.some((s) => s.speaker !== undefined && s.speaker > 1), 'demo uses only Speaker 1 and 2')
 
 // 3. contrast
@@ -295,6 +332,24 @@ for (const d of ['iphone', 'ipad', 'mac']) {
   check((part.match(/data-faq/g) || []).length === 1, `${f} ${d}: has its own questions, once`)
   for (const id of ['story', 'private', 'easy', 'why', 'tested']) check((d === 'iphone') === part.includes(`id="${id}"`), `${f}: #${id} belongs to the iPhone part only (${d})`)
 }
+}
+
+// 10. The app's prices (#228): the StoreKit file sells Live Translation at the iOS price, not shared with family (the
+// owner, 2026-10-30: each person buys their own); the debug fake store shows the same price; no other Swift or string
+// file hard-codes a price, so the app shows StoreKit's.
+{
+  const storekit = JSON.parse(readFileSync(path.join(ROOT, 'Apps/Spike/StoreKit/SealSpeak.storekit'), 'utf-8'))
+  const translation = storekit.products.find((p) => p.productID === 'com.gileskayo.captions.translation')
+  check(translation?.displayPrice === PRICES.translationIOS, `SealSpeak.storekit: Live Translation is ${translation?.displayPrice}, not ${PRICES.translationIOS}`)
+  check(translation?.familyShareable === false, 'SealSpeak.storekit: Live Translation must not be shared with family')
+  const fake = `price = "$${PRICES.translationIOS}"`
+  for (const f of readdirSync(path.join(ROOT, 'Apps'), { recursive: true }).filter((f) => /\.(swift|xcstrings|strings)$/.test(f))) {
+    const lines = readFileSync(path.join(ROOT, 'Apps', f), 'utf-8').split('\n')
+    if (f.endsWith('TranslationCenter.swift')) check(lines.some((l) => l.includes('DemoMode.fakeStore') && l.includes(fake)), `Apps/${f}: the fake store's price must be ${fake}`)
+    for (const [i, l] of lines.entries()) {
+      if (/"[^"]*(\$\s?\d+[.,]\d\d|\d[.,]\d\d\s?(\$|USD|€|£))[^"]*"/.test(l) && !(l.includes('DemoMode.fakeStore') && l.includes(fake))) check(false, `Apps/${f}:${i + 1} hard-codes a price; show StoreKit's displayPrice`)
+    }
+  }
 }
 
 // 9. The CSS mirrors itself (#207): logical properties, so dir="rtl" flips a page. Physical left/right stays only where
