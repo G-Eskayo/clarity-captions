@@ -14,7 +14,13 @@ let package = Package(
     targets: [
         // Pure: echo matching, voice-to-language matching, lag stats. Fast tests.
         .target(name: "EarSpikeKit"),
-        .executableTarget(name: "ear-spike", dependencies: ["EarSpikeKit"]),
+        // AVSpeechSynthesizer, Translation and SpeechAnalyzer measurements, shared by the Mac tool and the probe tests.
+        .target(name: "EarProbe", dependencies: ["EarSpikeKit"], swiftSettings: [.swiftLanguageMode(.v5)]),
+        .executableTarget(name: "ear-spike", dependencies: ["EarSpikeKit", "EarProbe"],
+                          swiftSettings: [.swiftLanguageMode(.v5)]),
         .testTarget(name: "EarSpikeKitTests", dependencies: ["EarSpikeKit"]),
+        // Opt-in (EAR_PROBE=1; through xcodebuild, TEST_RUNNER_EAR_PROBE=1): runs the probes on the iPhone simulator.
+        .testTarget(name: "EarProbeTests", dependencies: ["EarSpikeKit", "EarProbe"],
+                    swiftSettings: [.swiftLanguageMode(.v5)]),
     ]
 )

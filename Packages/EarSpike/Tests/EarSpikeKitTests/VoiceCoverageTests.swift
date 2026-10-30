@@ -34,6 +34,19 @@ import Testing
         #expect(VoiceCoverage.voice(for: "nb", among: voices) == "nb-NO")
     }
 
+    @Test func aBareLanguageTakesItsMainRegionFirst() {
+        let both = ["es-MX", "es-ES", "fr-CA", "fr-FR", "zh-TW", "zh-CN", "pt-PT", "pt-BR"]
+        #expect(VoiceCoverage.voice(for: "es", among: both) == "es-ES")
+        #expect(VoiceCoverage.voice(for: "fr", among: both) == "fr-FR")
+        #expect(VoiceCoverage.voice(for: "pt", among: both) == "pt-BR")
+    }
+
+    @Test func bareChineseIsSimplified() {
+        #expect(VoiceCoverage.voice(for: "zh", among: ["zh-TW", "zh-CN"]) == "zh-CN")
+        #expect(VoiceCoverage.voice(for: "zh-TW", among: ["zh-CN", "zh-TW"]) == "zh-TW")
+        #expect(VoiceCoverage.voice(for: "zh", among: ["zh-TW"]) == nil)
+    }
+
     @Test func underscoresAndCaseDontMatter() {
         #expect(VoiceCoverage.voice(for: "EN_gb", among: voices) == "en-GB")
     }
