@@ -126,7 +126,7 @@ public struct CaptionLanguageStore {
     public static let captionKey = "captionLanguage"
     public static let translationOnKey = "translationOn"
     public static let translationTargetKey = "translationTarget"
-    private let defaults: UserDefaults
+    let defaults: UserDefaults
     public init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 
     public var captionLanguage: Locale? {
