@@ -109,6 +109,14 @@ final class FaceToFaceStatusTests: XCTestCase {
         XCTAssertEqual(FaceToFaceStatus.paused.words(for: .partner), "Paused")
     }
 
+    func testPausedAfterAFailureStillHasAWayOut() {
+        var s = picked(owner: en, partner: es)
+        XCTAssertFalse(s.offersLeaveBesideStart, "Stop itself leaves while captioning")
+        s.stoppedOnTheirOwn()
+        XCTAssertEqual(s.control, .start)
+        XCTAssertTrue(s.offersLeaveBesideStart, "Start alone could fail again and again: the split must still leave")
+    }
+
     func testEveryStatusHasWords() {
         let all: [FaceToFaceStatus] = [.tapYourLanguage, .tapToSwitch, .downloading(language: "Español", fraction: 0),
                                        .downloadFailed(language: "Español", problem: .stalled), .starting, .listening,
