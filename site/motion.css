@@ -39,6 +39,7 @@ html.motion figure.chart.grown svg .bar.pick { animation: pick-glow 1.2s ease-ou
 /* ── version switcher: the highlight slides, the version fades in ── */
 /* The sliding pill: the Versions switcher and the home page's device tabs share it. */
 .has-pill { position: relative; }
+/* physical: the script places the pill by offsetLeft, which is physical in either direction. */
 .has-pill .pill { position: absolute; left: 0; top: 0; border-radius: 999px; background: var(--accent); pointer-events: none; }
 .has-pill .pill.ready { transition: transform .45s cubic-bezier(.3, .7, .2, 1), width .45s cubic-bezier(.3, .7, .2, 1); }
 .has-pill > a, .has-pill > [role="tab"] { position: relative; z-index: 1; transition: color .3s; }
@@ -50,16 +51,17 @@ html.motion .version.enter, html.motion [data-device].enter { animation: version
 .steps.has-line { position: relative; }
 .steps-line { position: absolute; z-index: 1; border-radius: 2px; background: var(--rule); pointer-events: none; overflow: hidden; }
 .steps-line i { position: absolute; inset: 0; background: var(--teal); transform-origin: left top; }
+[dir="rtl"] .steps-line i { transform-origin: right top; }
 .steps[data-dir="across"] .steps-line i { transform: scaleX(var(--fill, 0)); }
 .steps[data-dir="down"] .steps-line i { transform: scaleY(var(--fill, 0)); }
 .steps.has-line .step-n { position: relative; z-index: 2; background: var(--bg); color: var(--text); box-shadow: inset 0 0 0 3px var(--teal);
                           transition: background .3s, color .3s; }
 .steps.has-line .step-n.lit { background: var(--teal); color: #fff; animation: step-pop .5s cubic-bezier(.3, 1.6, .5, 1) 1; }
 @keyframes step-pop { 0% { transform: scale(1); } 45% { transform: scale(1.3); } 100% { transform: scale(1); } }
-/* Stacked on a phone, the numbers move to the left of each card so the line runs down beside the words, not through them. */
+/* Stacked on a phone, the numbers move to the start of each card so the line runs down beside the words, not through them. */
 @media (max-width: 52rem) {
-  .steps.has-line .card { position: relative; padding-left: 4.1rem; }
-  .steps.has-line .step-n { position: absolute; left: 1.05rem; top: 1.35rem; margin: 0; }
+  .steps.has-line .card { position: relative; padding-inline-start: 4.1rem; }
+  .steps.has-line .step-n { position: absolute; inset-inline-start: 1.05rem; top: 1.35rem; margin: 0; }
 }
 
 /* ── home: one caption in each theme and lettering ── */

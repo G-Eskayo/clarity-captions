@@ -1,5 +1,6 @@
 <!doctype html>
-<html lang="en">
+<!-- Built by scripts/build-site.mjs from site-src/pages/index.html and site-src/lang/en.json: edit those, not this. -->
+<html lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -33,14 +34,14 @@
   a { color: var(--accent); }
   :focus-visible { outline: 3px solid var(--teal); outline-offset: 3px; border-radius: 6px; }
   .wrap { max-width: 68rem; margin: 0 auto; padding: 0 1rem; }
-  .skip { position: absolute; left: -999px; }
-  .skip:focus { left: 1rem; top: 1rem; background: var(--bg); padding: .5rem 1rem; z-index: 10; }
+  .skip { position: absolute; inset-inline-start: -999px; }
+  .skip:focus { inset-inline-start: 1rem; top: 1rem; background: var(--bg); padding: .5rem 1rem; z-index: 10; }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   header.top { display: flex; align-items: center; gap: .6rem; padding: 1.25rem 0; }
   header.top img { width: 40px; height: 40px; }
   header.top .name { font-weight: 800; letter-spacing: .02em; }
-  header.top nav { margin-left: auto; display: flex; gap: 1.1rem; font-size: .95rem; }
+  header.top nav { margin-inline-start: auto; display: flex; gap: 1.1rem; font-size: .95rem; }
   header.top nav a { color: var(--muted); text-decoration: none; }
   header.top nav a:hover { color: var(--text); }
   @media (max-width: 34rem) { header.top nav a[href^="#"] { display: none; } }
@@ -75,7 +76,7 @@
   .d-gear { width: 44px; height: 44px; border: 0; background: none; padding: 9px; color: var(--d-gear); cursor: pointer; }
   .d-gear svg { width: 100%; height: 100%; }
   .d-status { text-align: center; font-weight: 600; font-size: 15px; }
-  .d-status .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--d-text); margin-right: 7px; vertical-align: middle; }
+  .d-status .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--d-text); margin-inline-end: 7px; vertical-align: middle; }
   .phone[data-state="running"] .d-status .dot { animation: pulse 1.6s ease-in-out infinite; }
   .phone[data-state="idle"] .d-status .dot { opacity: .35; }
   @keyframes pulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
@@ -94,7 +95,7 @@
            background: var(--d-text); color: var(--d-bg); box-shadow: 0 3px 0 var(--d-lip); font: 800 18px/1 -apple-system, 'SF Pro Rounded', sans-serif;
            letter-spacing: .04em; white-space: nowrap; cursor: pointer; }
   .d-btn:active { transform: translateX(-50%) scaleX(1.06) scaleY(.9) translateY(2px); box-shadow: 0 1px 0 var(--d-lip); }
-  .d-stop { position: absolute; right: 22px; bottom: 26px; width: 54px; height: 54px; border: 0; border-radius: 50%; background: var(--d-text);
+  .d-stop { position: absolute; inset-inline-end: 22px; bottom: 26px; width: 54px; height: 54px; border: 0; border-radius: 50%; background: var(--d-text);
             color: var(--d-bg); box-shadow: 0 3px 0 var(--d-lip); cursor: pointer; display: grid; place-items: center; }
   .d-stop:active { transform: scaleX(1.06) scaleY(.9) translateY(2px); box-shadow: 0 1px 0 var(--d-lip); }
   .d-stop svg { width: 20px; height: 20px; }
@@ -125,7 +126,7 @@
   .d-retro.d-saved { color: var(--d-saved); }
   .d-retro[aria-disabled="true"] { cursor: default; }
   .rw { display: inline-block; position: relative; text-align: center; white-space: pre; }
-  .rw-probe { position: absolute; left: 0; top: 0; visibility: hidden; white-space: pre; }
+  .rw-probe { position: absolute; inset-inline-start: 0; top: 0; visibility: hidden; white-space: pre; }
   .d-page { position: absolute; inset: 0; background: var(--d-bg); overflow-y: auto; font: 15px/1.4 system-ui, sans-serif; display: flex; flex-direction: column; }
   .d-page-title { text-align: center; font: 800 17px/1.2 system-ui, sans-serif; }
   .d-body { padding: 4px 20px 24px; }
@@ -150,7 +151,7 @@
   .d-search input { width: 100%; border: 0; border-bottom: 1px solid color-mix(in srgb, var(--d-text) 18%, transparent); background: none; color: var(--d-text);
                     font: 15px/1.4 system-ui, sans-serif; padding: 8px 0; }
   .d-search input::placeholder { color: color-mix(in srgb, var(--d-text) 60%, transparent); }
-  .d-row { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid color-mix(in srgb, var(--d-text) 12%, transparent); background: none;
+  .d-row { display: block; width: 100%; text-align: start; border: 0; border-bottom: 1px solid color-mix(in srgb, var(--d-text) 12%, transparent); background: none;
            color: var(--d-text); padding: 12px 0; font: inherit; cursor: pointer; }
   .d-row strong { display: block; font-size: 16px; font-weight: 800; }
   .d-row span { display: block; font-size: 14px; opacity: .75; }
@@ -175,8 +176,8 @@
   .step-n { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--teal); color: #fff;
             font-weight: 800; margin-bottom: .6rem; }
   ul.ticks { list-style: none; padding: 0; margin: 0; display: grid; gap: .8rem; max-width: 46rem; }
-  ul.ticks li { padding-left: 1.9rem; position: relative; }
-  ul.ticks li::before { content: ''; position: absolute; left: .2rem; top: .45em; width: .75rem; height: .75rem; border-radius: 50%; background: var(--teal); }
+  ul.ticks li { padding-inline-start: 1.9rem; position: relative; }
+  ul.ticks li::before { content: ''; position: absolute; inset-inline-start: .2rem; top: .45em; width: .75rem; height: .75rem; border-radius: 50%; background: var(--teal); }
   .why { display: grid; gap: 1rem; max-width: 50rem; }
   .why .card p.src { margin-top: .5rem; font-size: .9rem; color: var(--muted); }
   .faq { max-width: 46rem; }
@@ -196,17 +197,17 @@
     table.results-t tr { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); column-gap: .75rem; }
     table.results-t th.rowhead, table.results-t th[scope="row"] { grid-column: 1 / -1; padding-bottom: 0; border-bottom: 0; }
     table.results-t th.rowhead { color: var(--muted); font-weight: 600; }
-    table.results-t td[data-bar], table.results-t th.n { min-width: 0; padding-left: 0; padding-right: 0; }
+    table.results-t td[data-bar], table.results-t th.n { min-width: 0; padding-inline: 0; }
     table.results-t th.n { white-space: normal; align-self: end; }
   }
   details.data { margin-top: 1.5rem; max-width: 50rem; }
   details.data summary { cursor: pointer; font-weight: 700; color: var(--accent); }
   details.data h3 { font-size: 1.05rem; margin: 1.5rem 0 .3rem; }
-  details.data ul { margin: .5rem 0 0; padding-left: 1.2rem; }
+  details.data ul { margin: .5rem 0 0; padding-inline-start: 1.2rem; }
   .tablewrap { overflow-x: auto; margin-top: .5rem; }
   table.data { border-collapse: collapse; width: 100%; font-size: .95rem; }
-  table.data th, table.data td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--rule); white-space: nowrap; }
-  table.data td.n, table.data th.n { text-align: right; }
+  table.data th, table.data td { text-align: start; padding: .35rem .6rem; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  table.data td.n, table.data th.n { text-align: end; }
   .src { font-size: .9rem; color: var(--muted); }
   footer { border-top: 1px solid var(--rule); padding: 2rem 0 3rem; color: var(--muted); font-size: .95rem; }
   footer nav { display: flex; flex-wrap: wrap; gap: 1.25rem; margin-bottom: .75rem; }
@@ -278,7 +279,7 @@
 
       <div class="demo-wrap">
         <div class="phone" data-demo data-state="idle" role="region" aria-label="A working demo of Seal Speak">
-          <div class="screen">
+          <div class="screen" data-app>
             <div class="d-top">
               <button class="d-gear" data-gear aria-label="Settings" aria-expanded="false">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -465,10 +466,10 @@
       <p class="intro">Everything on screen fades in and out. Nothing slides around while you read.</p>
       <div class="sample-wrap">
         <figure class="sample" data-sample aria-label="A caption shown in each of Seal's color themes and letterings">
-          <span class="sample-spk">Speaker 1</span>
-          <p class="sample-text">Is it on? Say something so we can see.</p>
+          <span class="sample-spk" data-app>Speaker 1</span>
+          <p class="sample-text" data-app>Is it on? Say something so we can see.</p>
         </figure>
-        <div class="sample-bar"><span data-sample-name>Paper · OpenDyslexic</span><button type="button" data-sample-play hidden>Play</button></div>
+        <div class="sample-bar"><span data-sample-name data-app>Paper · OpenDyslexic</span><button type="button" data-sample-play data-pause="Pause" hidden>Play</button></div>
       </div>
       <div class="grid3">
         <div class="card"><h3>Large text</h3><p>Follows your phone's text size, with A− and A+ to go bigger or smaller.</p></div>
@@ -619,7 +620,7 @@
       </div>
       <div class="tablet-wrap" data-tablet>
         <div class="tablet" role="img" aria-label="An iPad lying flat, split in two. The bottom half, facing you, shows the conversation in English. The top half is upside down, facing the other person, and shows it in Spanish. Lines from the other person are marked as translated.">
-          <div class="t-screen" aria-hidden="true">
+          <div class="t-screen" aria-hidden="true" data-app>
             <div class="t-half them" data-half="them">
               <div class="t-head">Español</div>
               <p class="t-line tr" data-mark="Traducido del inglés">Largo, pero los niños durmieron todo el camino.</p>
@@ -632,7 +633,7 @@
             </div>
           </div>
         </div>
-        <button class="flip" data-flip aria-pressed="false" hidden>↻ See their side</button>
+        <button class="flip" data-flip data-other="↻ See your side" aria-pressed="false" hidden>↻ See their side</button>
         <p class="tablet-hint">A made-up conversation. The top half is upside down because it faces them.</p>
       </div>
     </div>
@@ -645,8 +646,8 @@
         <p class="intro">Same words, same number of lines, letters about two and a half times taller. Readable from across a table.</p>
       </div>
       <figure class="to-scale" data-grow aria-label="An iPhone 12 screen and an 11-inch iPad screen drawn to the same scale, each showing the same caption. The iPad's is about four times the area, with letters about two and a half times taller.">
-        <div class="ts-phone" aria-hidden="true"><p>Dinner is almost ready.</p></div>
-        <div class="ts-pad" aria-hidden="true"><p>Dinner is almost ready.</p></div>
+        <div class="ts-phone" aria-hidden="true" data-app><p>Dinner is almost ready.</p></div>
+        <div class="ts-pad" aria-hidden="true" data-app><p>Dinner is almost ready.</p></div>
         <figcaption><span>iPhone 12</span><span>11-inch iPad</span></figcaption>
       </figure>
     </div>
@@ -746,7 +747,7 @@
       <div class="tablet-wrap">
         <div class="mac" data-mac role="img" aria-label="A video call window on a Mac, with the small Seal Speak window on top of it, captioning the call line by line with Speaker 1 and Speaker 2 labels.">
           <div class="mac-call" aria-hidden="true"><div class="mac-tile"></div><div class="mac-self"></div></div>
-          <div class="pop" aria-hidden="true">
+          <div class="pop" aria-hidden="true" data-app>
             <div class="pop-top"><span class="dot"></span>Captioning your call</div>
             <div class="pop-lines" data-pop-lines>
               <p class="pop-line s1"><b>Speaker 1</b>Grandpa wants to say hi to everyone.</p>
@@ -783,7 +784,7 @@
       <figure class="merge" data-grow aria-label="The Mac's microphone hears the room and the call comes from the app. They join into one stream, and the captions label each voice Speaker 1, Speaker 2 or Speaker 3.">
         <div class="m-src" aria-hidden="true"><span class="m-in room">In the room</span><span class="m-in call">On the call</span></div>
         <div class="m-join" aria-hidden="true"></div>
-        <div class="m-out" aria-hidden="true">
+        <div class="m-out" aria-hidden="true" data-app>
           <p class="room"><b>Speaker 1</b>Is everyone there?</p>
           <p class="call"><b>Speaker 2</b>We're all here!</p>
           <p class="room"><b>Speaker 3</b>Hi from the kitchen.</p>
@@ -796,9 +797,9 @@
     <div class="wrap">
       <h2 id="mac-ring-h">A call rings. Seal offers to caption it.</h2>
       <ol class="story3" data-story aria-label="When a call rings">
-        <li class="on"><div class="mini"><b>You're getting a call</b><span class="btns"><i>Caption call</i><i>Not now</i></span></div><p>It rings</p></li>
-        <li><div class="mini"><b><span class="dot"></span>Captioning your FaceTime call</b><span class="ln">Hi! Can you read me okay?</span></div><p>It captions</p></li>
-        <li><div class="mini"><b>Call ended</b><span class="btns"><i>Save transcript</i><i>Don't save</i></span></div><p>You choose</p></li>
+        <li class="on"><div class="mini" data-app><b>You're getting a call</b><span class="btns"><i>Caption call</i><i>Not now</i></span></div><p>It rings</p></li>
+        <li><div class="mini" data-app><b><span class="dot"></span>Captioning your FaceTime call</b><span class="ln">Hi! Can you read me okay?</span></div><p>It captions</p></li>
+        <li><div class="mini" data-app><b>Call ended</b><span class="btns"><i>Save transcript</i><i>Don't save</i></span></div><p>You choose</p></li>
       </ol>
       <p class="src">FaceTime and iPhone calls. For other apps, press Start.</p>
     </div>

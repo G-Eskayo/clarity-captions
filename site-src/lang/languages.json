@@ -1,0 +1,4 @@
+[
+  { "code": "en", "name": "English", "dir": "ltr", "published": true, "pages": ["index.html", "privacy.html", "support.html", "versions.html"] },
+  { "code": "he", "name": "עברית", "dir": "rtl", "published": false, "pages": ["index.html", "privacy.html", "support.html"] }
+]

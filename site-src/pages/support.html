@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="{{@lang}}" dir="{{@dir}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{support.seal-speak-support}}</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/favicon-64.png" type="image/png" sizes="64x64">
+<meta name="description" content="{{support.help-and-answers-for}}">
+<style>
+  :root { --bg: #FBE8D2; --text: #2B1A10; --muted: #6B5545; --accent: #6E2E0A; --rule: #EDCFAF; }  /* Peach, like the home page */
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #173331; --text: #ECE4D3; --muted: #B9B3A6; --accent: #A3E3D9; --rule: #2C4B48; }  /* Harbor */
+  }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 1.0625rem/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  main { max-width: 40rem; margin: 0 auto; padding: 2rem 1rem 3rem; }
+  h1 { font-size: 1.75rem; line-height: 1.25; margin: 0 0 .25rem; }
+  h2 { font-size: 1.2rem; margin: 2rem 0 .5rem; }
+  h3 { font-size: 1.05rem; margin: 1.5rem 0 .25rem; }
+  p, li { margin: 0 0 .75rem; }
+  .muted { color: var(--muted); }
+  .contact { border-inline-start: 4px solid var(--accent); padding-block: .25rem; padding-inline: 1rem 0; margin: 1.5rem 0; }
+  a { color: var(--accent); overflow-wrap: anywhere; }
+  nav { border-top: 1px solid var(--rule); margin-top: 2.5rem; padding-top: 1rem; }
+</style>
+{{@robots}}{{@alternates}}</head>
+<body>
+{{@draft}}{{@langs}}<main>
+  <h1>{{support.seal-speak-support}}</h1>
+  <p class="muted">{{support.live-captions-for-conversations}}</p>
+
+  <p class="contact">{{support.need-help-or-found}}</p>
+
+  <h2>{{index.questions}}</h2>
+
+  <h3>{{support.does-seal-need-the}}</h3>
+  <p>{{support.only-once-the-first}}</p>
+
+  <h3>{{support.does-seal-record-or}}</h3>
+  <p>{{support.no-sound-is-turned}}</p>
+
+  <h3>{{support.what-does-seal-cost}}</h3>
+  <p>{{support.4-99-once-there}}</p>
+
+  <h3>{{support.which-devices-and-languages}}</h3>
+  <p>{{support.iphone-12-or-newer}}</p>
+
+  <h3>{{support.why-does-it-say}}</h3>
+  <p>{{support.seal-starts-a-new}}</p>
+
+  <h3>{{support.the-captions-got-a}}</h3>
+  <p>{{support.captions-come-from-your}}</p>
+
+  <h3>{{support.the-screen-says-i}}</h3>
+  <p>{{support.the-microphone-is-hearing}}</p>
+
+  <h3>{{support.captions-stopped-by-themselves}}</h3>
+  <p>{{support.the-screen-will-say}}</p>
+
+  <!-- Hearing-aid / streamer FAQ returns once #10 (built-in mic always, ADR 0021) ships and is verified on a device. -->
+
+  <h3>{{support.how-do-i-delete}}</h3>
+  <p>{{support.tap-the-list-icon}}</p>
+
+  <h3>{{support.how-do-i-send}}</h3>
+  <p>{{support.open-it-from-the}}</p>
+
+  <nav>{{support.seal-privacy-policy-versions}}</nav>
+</main>
+</body>
+</html>
