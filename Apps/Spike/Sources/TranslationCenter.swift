@@ -48,7 +48,15 @@ final class TranslationCenter: ObservableObject {
         #if DEBUG
         if let id = DemoMode.translate { isOn = true; target = Locale(identifier: id) }
         #endif
+        ear.targetChanged(target)
+        ear.onCheck = { [weak self] in self?.earCheck() }
     }
+
+    /// #233: the translation spoken into her headphones, from the same session and the same finished words.
+    private let ear = EarCenter.shared
+
+    /// One-way captions only: face to face has its own two-way screen.
+    private var earActive: Bool { isActive && !faceToFace }
 
     /// Whether captions are translated right now: bought, on, and somewhere to translate into.
     var isActive: Bool {
@@ -153,7 +161,7 @@ final class TranslationCenter: ObservableObject {
     func setOn(_ on: Bool) {
         isOn = on
         store.translationOn = on
-        if !on { translations.reset() }
+        if !on { translations.reset(); ear.stopAll() }
         refreshConfiguration()
     }
 
@@ -161,6 +169,7 @@ final class TranslationCenter: ObservableObject {
         target = locale
         store.translationTarget = locale
         translations.reset()
+        ear.targetChanged(locale)
         refreshConfiguration()
     }
 
@@ -248,6 +257,9 @@ final class TranslationCenter: ObservableObject {
 
     private func demoFill(_ lines: [CaptionLine]) {
         guard isOn, purchase.isOwned, !faceToFace || faceToFacePair != nil else { return }
+        for phrase in ear.take(from: lines, active: earActive) {
+            ear.speak(phrase, translation: DemoMode.englishLine(for: phrase.text) ?? phrase.text)
+        }
         for work in translations.take(from: lines) {
             translations.finished(lineID: work.lineID, source: work.text,
                                   translation: DemoMode.englishLine(for: work.text) ?? DemoMode.faceToFaceTranslation(of: work.text) ?? work.text)
@@ -265,6 +277,14 @@ final class TranslationCenter: ObservableObject {
 
     private var latest: [CaptionLine] = []
 
+    /// Words held still long enough to be spoken early (#233): look again now.
+    private func earCheck() {
+        #if DEBUG && targetEnvironment(simulator)
+        if usesDemoTranslator { demoFill(latest); return }
+        #endif
+        wake?.yield()
+    }
+
     /// Runs inside `.translationTask`: makes sure the language pack is there (Apple's own sheet, the one system
     /// pop-up Seal allows, #159), then translates each finished line as it lands, until the session is replaced.
     func run(_ session: TranslationSession) async {
@@ -279,6 +299,14 @@ final class TranslationCenter: ObservableObject {
         continuation.yield()
         for await _ in stream {
             if Task.isCancelled { return }
+            // #233 first: the voice is the part where every millisecond shows.
+            for phrase in ear.take(from: latest, active: earActive) {
+                do {
+                    ear.speak(phrase, translation: try await session.translate(phrase.text).targetText)
+                } catch {
+                    if Task.isCancelled { return }
+                }
+            }
             for work in translations.take(from: latest) {
                 do {
                     let response = try await session.translate(work.text)

@@ -24,13 +24,16 @@ struct LanguageSettingsState: Equatable {
     var translationPrice: String?
     /// A purchase or restore is open: the buttons don't take a second tap.
     var purchaseBusy = false
+    /// Live Translation in your ear (#233): offered on this device, and what it's doing.
+    var earOffered = false
+    var ear: EarState = .off
     /// A plain line from the purchase (Ask to Buy, nothing to restore, didn't go through), or nil.
     var purchaseMessage: String?
 
     /// The saved choices, with the device's language filling in what hasn't been picked.
     @MainActor
     static func current(languages: CaptionLanguageCenter = .shared, translation: TranslationCenter = .shared,
-                        preferred: [String] = Locale.preferredLanguages) -> LanguageSettingsState {
+                        ear: EarCenter = .shared, preferred: [String] = Locale.preferredLanguages) -> LanguageSettingsState {
         let captions = languages.current
         var state = LanguageSettingsState(captions: captions, followsDevice: languages.followsDevice,
                                           translationOn: translation.isOn, target: translation.target)
@@ -41,6 +44,8 @@ struct LanguageSettingsState: Equatable {
         state.unsupportedPair = translation.unsupportedPair
         state.purchaseBusy = [.buying, .restoring].contains(translation.purchase.activity)
         state.purchaseMessage = translation.purchase.message
+        state.earOffered = EarCenter.offered
+        state.ear = ear.state
         #if DEBUG
         if let id = DemoMode.language { state.followsDevice = id == preferred.first }
         if let p = DemoMode.translateProgress { state.downloadProgress = p }

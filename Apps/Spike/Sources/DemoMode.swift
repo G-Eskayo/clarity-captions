@@ -39,7 +39,10 @@ import Foundation
 ///   -ClarityDemoTranslationOwned   translation bought, but off (#171); -ClarityDemoTranslate implies bought
 ///   -ClarityDemoFaceToFace  opens the face-to-face split (#60) and plays #208's flow with scripted taps, English and Spanish
 ///   -ClarityDemoFaceToFaceUntil choose|one|both|repick|paused|resumed   the same flow, held at that moment
-///   -ClarityDemoEar mark|pill|button|settings|noheadphones|novoice   Live Translation in your ear mock-up (#233), EarMockup.swift
+///   -ClarityDemoEar mark|speak|settings|noheadphones   Live Translation in your ear (#233), EarCenter.swift: on, and
+///                     headphones taken as connected (the simulator's only output is its speaker) except `noheadphones`.
+///                     `mark` holds the newest spoken line part-way said; `speak` really speaks it. With
+///                     -ClarityDemoTranslate sr: a language with no voice (Serbian).
 ///   -ClarityDemoDeveloperPanel  opens the developer panel (mic mode, Engine picker, #150): simctl can't do the 1.5 s hold
 /// It feeds the same CaptionStream the real engine feeds, so what you see is the real caption view: speaker colours,
 /// names, line breaks and sound labels. No microphone, speech model or network is involved.
@@ -96,7 +99,7 @@ enum DemoMode {
     static var translate: String? { value(after: "-ClarityDemoTranslate") }
     static var translateProgress: Double? { value(after: "-ClarityDemoTranslateProgress").flatMap(Double.init) }
     static var translationOwned: Bool { flag("-ClarityDemoTranslationOwned") }
-    /// `-ClarityDemoEar <variant>`: the in-your-ear mock-up (#233), one variant per Decision option.
+    /// `-ClarityDemoEar <variant>`: Live Translation in your ear (#233), on, in one of its states.
     static var ear: String? { value(after: "-ClarityDemoEar") }
     /// `-ClarityDemoFaceToFace` (#208): opens the split and taps through it the way two people would, through the real
     /// split state, voice matching and NaturalLanguage: her half picks English, the other half Español, they talk,
