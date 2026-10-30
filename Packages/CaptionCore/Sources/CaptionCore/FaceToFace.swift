@@ -38,6 +38,14 @@ public struct FaceToFaceEntry: Identifiable, Equatable, Sendable {
     public var isTranslated: Bool { said != nil }
 }
 
+/// #245: what a tap in a half's list does (`FaceToFace.pickPlan`).
+public enum FaceToFacePick: Equatable, Sendable {
+    /// The language's speech engine is on the device: start it in this locale.
+    case start(Locale)
+    /// It isn't: download this locale's speech files first.
+    case download(Locale)
+}
+
 public enum FaceToFace {
     /// The smallest screen side, in points, that fits two readable halves. iPad mini (744) and the unfolded iPhone Duo
     /// (669) clear it; every plain iPhone (440 at most) and the folded Duo (466) don't.
@@ -68,6 +76,17 @@ public enum FaceToFace {
         func code(_ l: Locale) -> String { l.language.languageCode?.identifier ?? l.identifier }
         if let exact = speechInstalled.first(where: { $0.identifier(.bcp47) == locale.identifier(.bcp47) }) { return exact }
         return speechInstalled.first { code($0) == code(locale) }
+    }
+
+    /// #245: what tapping `locale` in a half's list does. Start it, in the region whose speech engine is on the device;
+    /// or, with none on the device, download it first in that half, with progress, and start nothing until it's there.
+    public static func pickPlan(_ locale: Locale, speechInstalled: [Locale]) -> FaceToFacePick {
+        readyLocale(for: locale, speechInstalled: speechInstalled).map(FaceToFacePick.start) ?? .download(locale)
+    }
+
+    /// #245: a row in a half's list. A language not on the device yet says that tapping it downloads it.
+    public static func listLabel(_ name: String, ready: Bool) -> String {
+        ready ? name : name + " · " + String(localized: "Download")
     }
 
     /// #208: the languages offered for a half's list on the device, until Seal keeps its own list (#200's "Your

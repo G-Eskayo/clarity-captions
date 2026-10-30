@@ -66,6 +66,54 @@ final class SpeechDownloadTests: XCTestCase {
         XCTAssertEqual(attempts.value, 2)
     }
 
+    /// #245: Stop in the split must not wait for a speech download. Cancelling the task that runs the download ends it
+    /// at once, cancels the install, and says so, rather than failing with words nobody asked for.
+    func testCancellingTheDownloadEndsItAtOnceAndCancelsTheInstall() async {
+        let installSawCancel = Box(false)
+        let started = Box(false)
+        let download = SpeechDownload(install: { progress in
+            started.mutate { $0 = true }
+            progress(0.3)
+            await withTaskCancellationHandler {
+                for _ in 0..<50 { try? await Task.sleep(for: .milliseconds(100)) }
+            } onCancel: { installSawCancel.mutate { $0 = true } }
+        })
+        let running = Task { await download.run { _ in } }
+        while !started.value { await Task.yield() }
+        let start = ContinuousClock.now
+        running.cancel()
+        let outcome = await running.value
+        XCTAssertEqual(outcome, .cancelled)
+        XCTAssertLessThan(ContinuousClock.now - start, .seconds(1))
+        XCTAssertTrue(installSawCancel.value, "the install itself is told to stop")
+    }
+
+    func testADownloadCancelledBeforeItStartsNeverInstalls() async {
+        let installs = Box(0)
+        let download = SpeechDownload(install: { _ in installs.mutate { $0 += 1 } })
+        let running = Task { await download.run { _ in } }
+        running.cancel()
+        let outcome = await running.value
+        XCTAssertEqual(outcome, .cancelled)
+        XCTAssertEqual(installs.value, 0)
+    }
+
+    func testAfterACancelTheNextDownloadRuns() async {
+        let gate = Gate()
+        let calls = Box(0)
+        let download = SpeechDownload(install: { _ in
+            calls.mutate { $0 += 1 }
+            if calls.value == 1 { await gate.wait() }
+        })
+        let running = Task { await download.run { _ in } }
+        while calls.value == 0 { await Task.yield() }
+        running.cancel()
+        _ = await running.value
+        let again = await download.run { _ in }
+        XCTAssertEqual(again, .installed)
+        gate.open()
+    }
+
     // MARK: Stall rule
 
     func testSteadyProgressNeverStalls() {

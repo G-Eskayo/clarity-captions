@@ -186,7 +186,7 @@ public struct CaptionLanguageSwitch: Equatable, Sendable {
         switch outcome {
         case .installed: current = wanted; phase = .ready
         case .failed(let why): phase = .failed(wanted, why)
-        case .alreadyRunning: break
+        case .alreadyRunning, .cancelled: break
         }
     }
 }
