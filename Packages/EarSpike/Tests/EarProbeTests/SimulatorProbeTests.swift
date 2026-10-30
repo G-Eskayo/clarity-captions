@@ -65,7 +65,8 @@ private func emit<T: Encodable>(_ name: String, _ value: T) throws {
         try emit("translate", rows)
     }
 
-    /// The audio route the app would play into, and its latencies, on the simulator (the Mac's output).
+    #if os(iOS)
+    /// The recommended session (phone mic in, A2DP out, no call profile) and its route and latencies on the simulator.
     @Test func audioRoute() throws {
         struct Route: Encodable {
             let category: String; let outputs: [String]; let inputs: [String]
@@ -75,7 +76,7 @@ private func emit<T: Encodable>(_ name: String, _ value: T) throws {
         let s = AVAudioSession.sharedInstance()
         var err: String?
         do {
-            try s.setCategory(.playAndRecord, mode: .default, options: [.allowBluetoothHFP, .allowBluetoothA2DP, .duckOthers])
+            try s.setCategory(.playAndRecord, mode: .default, options: [.allowBluetoothA2DP, .duckOthers])
             try s.setActive(true)
         } catch { err = "\(error)" }
         let r = s.currentRoute
@@ -85,4 +86,5 @@ private func emit<T: Encodable>(_ name: String, _ value: T) throws {
                                 sampleRate: s.sampleRate, bluetoothHFPAllowed: s.categoryOptions.contains(.allowBluetoothHFP),
                                 setActiveError: err))
     }
+    #endif
 }

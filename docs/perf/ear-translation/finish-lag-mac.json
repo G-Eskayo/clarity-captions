@@ -1,0 +1,773 @@
+{
+  "date" : "2026-10-30T08:52:29Z",
+  "device" : "Mac mini (gils-mac-mini.local)",
+  "os" : "macOS Version 26.5.1 (Build 25F80)",
+  "results" : {
+    "clips" : [
+      "validation-EDACC-C22-50",
+      "validation-EDACC-C23_P1-205",
+      "validation-EDACC-C23_P1-287",
+      "validation-EDACC-C23_P2-217",
+      "validation-EDACC-C23_P2-57",
+      "test-EDACC-C19-27",
+      "test-EDACC-C42-156",
+      "test-EDACC-C42-65",
+      "validation-EDACC-C16-142",
+      "validation-EDACC-C16-205",
+      "validation-EDACC-C16-237",
+      "validation-EDACC-C16-30",
+      "validation-EDACC-C16-333",
+      "validation-EDACC-C24-157",
+      "validation-EDACC-C24-282",
+      "validation-EDACC-C24-343",
+      "validation-EDACC-C24-437",
+      "validation-EDACC-C24-466",
+      "validation-EDACC-C24-525",
+      "validation-EDACC-C24-556",
+      "test-EDACC-C02-145",
+      "test-EDACC-C02-72",
+      "validation-EDACC-C30-117",
+      "validation-EDACC-C30-150",
+      "validation-EDACC-C30-185",
+      "validation-EDACC-C30-247",
+      "validation-EDACC-C30-383",
+      "validation-EDACC-C30-482",
+      "validation-EDACC-C30-612",
+      "validation-EDACC-C30-646",
+      "validation-EDACC-C30-711",
+      "validation-EDACC-C30-743",
+      "validation-EDACC-C30-97",
+      "validation-EDACC-C40_P1-69",
+      "validation-EDACC-C40_P2-61",
+      "validation-EDACC-C40_P3-124",
+      "validation-EDACC-C40_P3-183",
+      "validation-EDACC-C40_P3-74",
+      "test-EDACC-C28-106",
+      "test-EDACC-C28-58"
+    ],
+    "finishLag" : {
+      "count" : 87,
+      "median" : 859.482458,
+      "p95" : 1157.3262000000043
+    },
+    "headStart3" : {
+      "count" : 54,
+      "median" : 1991.8938960000005,
+      "p95" : 10683.166570950005
+    },
+    "headStart5" : {
+      "count" : 42,
+      "median" : 2818.3043539999962,
+      "p95" : 10686.907974999998
+    },
+    "lines" : [
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 3.18,
+        "finalAtS" : 4.04245,
+        "finishLagMs" : 862.4499999999995,
+        "text" : "Spaghetti, but my friends made fun of me of that."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 6.84,
+        "finalAtS" : 7.8521382079999995,
+        "finishLagMs" : 1012.1382079999996,
+        "headStart3Ms" : 2936.240291999999,
+        "headStart5Ms" : 2936.1082499999993,
+        "text" : " So right now I have to just make my own sauces there."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 7.8,
+        "finalAtS" : 8.821076625,
+        "finishLagMs" : 1021.076625,
+        "text" : " Yeah."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 15.48,
+        "finalAtS" : 16.562343333,
+        "finishLagMs" : 1082.3433330000007,
+        "headStart3Ms" : 5845.675750000001,
+        "headStart5Ms" : 3946.3988750000017,
+        "text" : " No, actually, I bought one um, so so I used to play a lot one video game called Zelda."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 22.62,
+        "finalAtS" : 23.302386958,
+        "finishLagMs" : 682.3869579999986,
+        "headStart3Ms" : 3988.2050420000005,
+        "headStart5Ms" : 2985.2908330000005,
+        "text" : " Or racism or many things that I think are very wrong and in that country."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 25.32,
+        "finalAtS" : 26.116831333,
+        "finishLagMs" : 796.8313330000001,
+        "headStart3Ms" : 1956.2112499999992,
+        "headStart5Ms" : 1956.001833000002,
+        "text" : " And then it's like, what, how should I behave?"
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 27.54,
+        "finalAtS" : 28.077204833,
+        "finishLagMs" : 537.2048330000006,
+        "headStart3Ms" : 1070.8436249999984,
+        "headStart5Ms" : 1070.7112079999988,
+        "text" : " And this is a very tricky question, actually."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 28.92,
+        "finalAtS" : 29.9301525,
+        "finishLagMs" : 1010.1524999999967,
+        "text" : " Um,"
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 31.5,
+        "finalAtS" : 31.850960333,
+        "finishLagMs" : 350.96033299999976,
+        "text" : " We like that, yeah."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 33.3,
+        "finalAtS" : 33.762733291,
+        "finishLagMs" : 462.7332910000064,
+        "text" : " Yeah."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 39.78,
+        "finalAtS" : 40.467952875,
+        "finishLagMs" : 687.9528750000006,
+        "headStart3Ms" : 3840.244417000001,
+        "headStart5Ms" : 1951.8866670000036,
+        "text" : " Um, we have um, for more minutes, do you want to talk about something else?"
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 41.4,
+        "finalAtS" : 42.422823,
+        "finishLagMs" : 1022.8230000000025,
+        "text" : " that maybe?"
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 44.1,
+        "finalAtS" : 44.34435975,
+        "finishLagMs" : 244.359750000001,
+        "headStart3Ms" : 16.58933400000251,
+        "text" : " Have you ever win?"
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 44.46,
+        "finalAtS" : 45.254103375,
+        "finishLagMs" : 794.1033749999988,
+        "text" : " Okay."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 46.2,
+        "finalAtS" : 47.256145541,
+        "finishLagMs" : 1056.1455409999994,
+        "headStart3Ms" : 1007.9790830000022,
+        "headStart5Ms" : 1007.8707500000021,
+        "text" : " You should go be with your father."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 47.16,
+        "finalAtS" : 48.15778225,
+        "finishLagMs" : 997.7822500000002,
+        "headStart3Ms" : 901.3440839999944,
+        "headStart5Ms" : 901.1792919999948,
+        "text" : " He will like it for sure."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 51.6,
+        "finalAtS" : 52.162557041,
+        "finishLagMs" : 562.557040999998,
+        "headStart3Ms" : 4004.609791,
+        "headStart5Ms" : 4004.5082910000006,
+        "text" : " I'm, I'm, I'm certain that it's one of these places I did for the, you know, Vadas or Dre Martin."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 54.54,
+        "finalAtS" : 54.842672291,
+        "finishLagMs" : 302.67229100000037,
+        "headStart3Ms" : 26.222415999995974,
+        "text" : " Yeah, I see that."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 66.36,
+        "finalAtS" : 67.875156458,
+        "finishLagMs" : 1515.156458000007,
+        "headStart3Ms" : 11058.761792000005,
+        "headStart5Ms" : 11058.659917000006,
+        "text" : " Yeah, actually there are many of my classmates planning the same because, um, getting a job in China is also sometimes very hard is it has too much population, so lots of people just."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 69.9,
+        "finalAtS" : 70.2683375,
+        "finishLagMs" : 368.33749999999554,
+        "headStart3Ms" : 1020.7286250000038,
+        "headStart5Ms" : 1020.4524170000013,
+        "text" : " Yeah, I don't know what to order if they wash."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 71.34,
+        "finalAtS" : 72.170259625,
+        "finishLagMs" : 830.2596249999965,
+        "text" : " Yeah, it's maybe not a pizza."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 73.68,
+        "finalAtS" : 74.01942325,
+        "finishLagMs" : 339.42324999999585,
+        "text" : " Yeah."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 75.3,
+        "finalAtS" : 76.22281225,
+        "finishLagMs" : 922.8122500000069,
+        "headStart3Ms" : 18.93408400000851,
+        "text" : " I like it."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 76.2,
+        "finalAtS" : 76.945040666,
+        "finishLagMs" : 745.0406659999942,
+        "text" : " True."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 78.36,
+        "finalAtS" : 78.852896541,
+        "finishLagMs" : 492.89654100000746,
+        "headStart3Ms" : 908.4397910000064,
+        "headStart5Ms" : 36.00745800000027,
+        "text" : " But then I tried myself, actually."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 85.56,
+        "finalAtS" : 86.629218125,
+        "finishLagMs" : 1069.218124999992,
+        "headStart3Ms" : 3903.651624999995,
+        "headStart5Ms" : 2956.169916999997,
+        "text" : " Yeah, yeah, there are many videos on Billy Billy and YouTube as well."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 99.96,
+        "finalAtS" : 101.103714875,
+        "finishLagMs" : 1143.7148750000006,
+        "headStart3Ms" : 11664.01245899999,
+        "headStart5Ms" : 10687.348999999998,
+        "text" : " And I only learned piano in kindergarten after I graduated from, unless you graduate, after I graduated from the kindergarten, I just give that everything."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 2.4,
+        "finalAtS" : 3.259482458,
+        "finishLagMs" : 859.482458,
+        "headStart3Ms" : 129.43295799999976,
+        "headStart5Ms" : 22.317999999999838,
+        "text" : "I don't know either."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 6.84,
+        "finalAtS" : 7.845650167,
+        "finishLagMs" : 1005.6501669999998,
+        "headStart3Ms" : 1005.554375,
+        "text" : " Uh, And I failed."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 14.52,
+        "finalAtS" : 15.583360958,
+        "finishLagMs" : 1063.3609580000004,
+        "headStart3Ms" : 6757.698665999999,
+        "headStart5Ms" : 5867.359583,
+        "text" : " And I think I just, um, wait until Monday and report to the reception that I have."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 15,
+        "finalAtS" : 15.590568333,
+        "finishLagMs" : 590.5683330000002,
+        "text" : " Oh, yeah."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 16.44,
+        "finalAtS" : 17.421508042,
+        "finishLagMs" : 981.508041999998,
+        "text" : " And maybe."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 25.44,
+        "finalAtS" : 26.093934083,
+        "finishLagMs" : 653.9340829999993,
+        "headStart3Ms" : 4883.321541000001,
+        "headStart5Ms" : 4882.853749999999,
+        "text" : " And then for another half an hour running or climbing exercise."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 29.52,
+        "finalAtS" : 29.959430375,
+        "finishLagMs" : 439.4303750000006,
+        "headStart3Ms" : 423.43208300000157,
+        "headStart5Ms" : 423.3186250000003,
+        "text" : " Oh, well, we don't need to like drive directly there."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 33.42,
+        "finalAtS" : 33.782271667,
+        "finishLagMs" : 362.2716670000017,
+        "headStart3Ms" : 2972.027959000002,
+        "headStart5Ms" : 2971.740375000003,
+        "text" : " We can like stop, you know, after Inverness, for example, I don't know, whatever is there."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 36.9,
+        "finalAtS" : 37.631839083,
+        "finishLagMs" : 731.8390830000042,
+        "headStart3Ms" : 15.920291000000475,
+        "text" : " Yeah, by five."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 38.7,
+        "finalAtS" : 39.553849083,
+        "finishLagMs" : 853.8490830000001,
+        "headStart3Ms" : 1037.5270830000004,
+        "headStart5Ms" : 1037.2355410000011,
+        "text" : " Well, actually, no, it's gonna be August."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 42.6,
+        "finalAtS" : 43.355133917,
+        "finishLagMs" : 755.1339170000019,
+        "headStart3Ms" : 924.757250000006,
+        "headStart5Ms" : 45.22437500000365,
+        "text" : " Isn't the complex so clear?"
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 46.44,
+        "finalAtS" : 47.278459,
+        "finishLagMs" : 838.4590000000003,
+        "headStart3Ms" : 2063.965499999995,
+        "headStart5Ms" : 1064.5133330000008,
+        "text" : " I thought my computer is listening to me all the time."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 53.22,
+        "finalAtS" : 54.028407667,
+        "finishLagMs" : 808.4076670000045,
+        "headStart3Ms" : 3985.381167,
+        "headStart5Ms" : 3985.2447500000067,
+        "text" : " I think if I, yeah, if you if you do a hike that day, I would actually rather do it in Glen area."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 55.32,
+        "finalAtS" : 55.824814625,
+        "finishLagMs" : 504.8146250000016,
+        "text" : " Yeah."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 57.84,
+        "finalAtS" : 59.163412,
+        "finishLagMs" : 1323.4119999999975,
+        "headStart3Ms" : 28.958291999998664,
+        "headStart5Ms" : 28.906124999998895,
+        "text" : " So that's a good call."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 60.12,
+        "finalAtS" : 61.278567375,
+        "finishLagMs" : 1158.5673750000042,
+        "text" : " Cool."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 60.84,
+        "finalAtS" : 61.633986542,
+        "finishLagMs" : 793.986541999999,
+        "text" : " glad about that."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 63.12,
+        "finalAtS" : 63.539095667,
+        "finishLagMs" : 419.09566700000056,
+        "headStart3Ms" : 858.8281669999986,
+        "headStart5Ms" : 22.959624999998596,
+        "text" : " So it's a short drive, actually."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 64.5,
+        "finalAtS" : 65.449694417,
+        "finishLagMs" : 949.6944170000035,
+        "headStart3Ms" : 1015.3480419999994,
+        "text" : " from the ferry place."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 65.76,
+        "finalAtS" : 66.455918958,
+        "finishLagMs" : 695.9189579999929,
+        "text" : " an hour and a half ."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 68.34,
+        "finalAtS" : 69.233578333,
+        "finishLagMs" : 893.5783329999936,
+        "text" : " To the necessary."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 74.1,
+        "finalAtS" : 75.213154,
+        "finishLagMs" : 1113.1540000000086,
+        "headStart3Ms" : 3982.599500000006,
+        "headStart5Ms" : 3094.1288329999993,
+        "text" : " It's going just to be all the placeholders in all over all over the place."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 80.4,
+        "finalAtS" : 80.93930575,
+        "finishLagMs" : 539.3057499999969,
+        "text" : " I think that's the whole of Scotland prices to see and climb."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 84.96,
+        "finalAtS" : 85.644243792,
+        "finishLagMs" : 684.2437920000037,
+        "headStart3Ms" : 34.358084000004396,
+        "headStart5Ms" : 34.07312499999193,
+        "text" : " That's what it's for."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 87.18,
+        "finalAtS" : 87.551883417,
+        "finishLagMs" : 371.8834169999923,
+        "text" : " Good. Okay."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 2.4,
+        "finalAtS" : 3.1326567499999998,
+        "finishLagMs" : 732.6567499999999,
+        "headStart3Ms" : 2021.8716669999997,
+        "headStart5Ms" : 1096.1014169999999,
+        "text" : "All right, I think we can call it quits fair."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 4.92,
+        "finalAtS" : 6.021065791,
+        "finishLagMs" : 1101.065791,
+        "text" : " Or just up a recording now?"
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 8.76,
+        "finalAtS" : 9.777258958,
+        "finishLagMs" : 1017.2589580000011,
+        "headStart3Ms" : 1961.916125000001,
+        "headStart5Ms" : 1961.3938330000008,
+        "text" : " Yeah, it's a game where you draw."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 15.48,
+        "finalAtS" : 16.485063916,
+        "finishLagMs" : 1005.063916000001,
+        "headStart3Ms" : 5619.396291000001,
+        "text" : " Um, a grid. Well, going from one to 12 representing 12 years of school, 12 classes."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 16.44,
+        "finalAtS" : 17.456683,
+        "finishLagMs" : 1016.6830000000004,
+        "text" : " Man, yeah."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 25.32,
+        "finalAtS" : 26.067243041,
+        "finishLagMs" : 747.2430410000009,
+        "text" : " And uh, there was uh, Girl, female, bear."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 38.88,
+        "finalAtS" : 39.650521208,
+        "finishLagMs" : 770.5212079999981,
+        "headStart3Ms" : 10691.651291999999,
+        "headStart5Ms" : 10691.484167000002,
+        "text" : " I mean, I don't know, maybe there was maybe there wasn't, but it was something to bring a bit of surprise to. Yeah, I mean, their tummy is up."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 39.96,
+        "finalAtS" : 40.425557208,
+        "finishLagMs" : 465.5572079999999,
+        "text" : " Yeah."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 40.62,
+        "finalAtS" : 41.424607041,
+        "finishLagMs" : 804.6070410000041,
+        "text" : " Yeah, yeah."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 43.5,
+        "finalAtS" : 44.318817166,
+        "finishLagMs" : 818.8171660000023,
+        "text" : " Hi."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 45.24,
+        "finalAtS" : 46.213960625,
+        "finishLagMs" : 973.9606249999965,
+        "text" : " Um."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 53.88,
+        "finalAtS" : 54.88618375,
+        "finishLagMs" : 1006.1837499999981,
+        "headStart3Ms" : 5778.903124999999,
+        "text" : " And Sitting with her back, there, I think he's back, I think it was a he."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 57.72,
+        "finalAtS" : 58.739889291,
+        "finishLagMs" : 1019.8892909999984,
+        "text" : " Uh, there was a huge gorilla."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 64.56,
+        "finalAtS" : 65.460962083,
+        "finishLagMs" : 900.962082999996,
+        "headStart3Ms" : 4829.8456670000005,
+        "headStart5Ms" : 3835.262708000002,
+        "text" : " And in the church, the floor was made of stones, you know?"
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 78.12,
+        "finalAtS" : 78.992367791,
+        "finishLagMs" : 872.3677910000021,
+        "headStart3Ms" : 10678.597875000009,
+        "headStart5Ms" : 10678.528500000013,
+        "text" : " Because they are so powerful, so they do not have to avoid certain. Moscow is supposed to be very different from San Petroburg and very different from other Russians."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 83.7,
+        "finalAtS" : 84.685499083,
+        "finishLagMs" : 985.4990829999934,
+        "headStart3Ms" : 2700.763082999998,
+        "headStart5Ms" : 2700.500457999993,
+        "text" : " Yeah, I think Moscow is a nice touristic city."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 91.5,
+        "finalAtS" : 92.379518041,
+        "finishLagMs" : 879.5180409999972,
+        "headStart3Ms" : 5832.090665999999,
+        "headStart5Ms" : 4827.599875000004,
+        "text" : " I heard it's very different from Russia, I mean, from from normal Russia."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 2.04,
+        "finalAtS" : 3.053906083,
+        "finishLagMs" : 1013.9060830000002,
+        "headStart3Ms" : 1022.8267080000002,
+        "text" : "Yes, I would love."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 4.92,
+        "finalAtS" : 5.9361965,
+        "finishLagMs" : 1016.1965000000004,
+        "text" : " Just squish a tiger cup."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 7.92,
+        "finalAtS" : 8.828569417,
+        "finishLagMs" : 908.5694170000007,
+        "text" : " I think."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 17.46,
+        "finalAtS" : 18.476277625,
+        "finishLagMs" : 1016.2776250000007,
+        "headStart3Ms" : 7730.862333000001,
+        "headStart5Ms" : 6862.362417000002,
+        "text" : " But I didn't get the balls to go without a life saving jacket."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 20.64,
+        "finalAtS" : 21.227666625,
+        "finishLagMs" : 587.6666250000006,
+        "text" : " With parents."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 22.74,
+        "finalAtS" : 23.254765708,
+        "finishLagMs" : 514.7657080000023,
+        "text" : " Right. Just strange."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 33.78,
+        "finalAtS" : 34.835639375,
+        "finishLagMs" : 1055.6393749999984,
+        "headStart3Ms" : 8819.499999999998,
+        "headStart5Ms" : 7798.233125,
+        "text" : " Yeah, getting the game objectives and planning how to get each one of those, especially when the boat lane is not helping to get the dragon."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 48.12,
+        "finalAtS" : 49.274430125,
+        "finishLagMs" : 1154.4301250000046,
+        "text" : " Uh, so, yeah, that was, that was the, and the toughness and the thing that was very, very, like, uh, very uh, aspiring."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 49.26,
+        "finalAtS" : 51.711598042,
+        "finishLagMs" : 2451.5980420000005,
+        "headStart3Ms" : 17.07324999999571,
+        "text" : " Yeah, that was."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 55.14,
+        "finalAtS" : 55.893503125,
+        "finishLagMs" : 753.5031250000018,
+        "headStart3Ms" : 3855.529208,
+        "headStart5Ms" : 2956.828708000003,
+        "text" : " But I mean, it's, it's very cool and the, the show was very funny."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 61.2,
+        "finalAtS" : 61.668076208,
+        "finishLagMs" : 468.0762079999994,
+        "headStart3Ms" : 1024.017624999999,
+        "headStart5Ms" : 23.23195800000377,
+        "text" : " Me too, bro, me too."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 65.52,
+        "finalAtS" : 66.478786625,
+        "finishLagMs" : 958.7866250000019,
+        "headStart3Ms" : 1928.492250000005,
+        "headStart5Ms" : 1062.1804999999968,
+        "text" : " So, I think that's the end of the recording."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 73.08,
+        "finalAtS" : 74.099717292,
+        "finishLagMs" : 1019.7172919999957,
+        "headStart3Ms" : 4881.05170899999,
+        "headStart5Ms" : 3860.5118339999935,
+        "text" : " Uh, it's called Kimi Nonawa or uh, in English, your name."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 79.92,
+        "finalAtS" : 80.891796542,
+        "finishLagMs" : 971.7965419999928,
+        "headStart3Ms" : 3975.3904169999996,
+        "headStart5Ms" : 2945.413666999997,
+        "text" : " I do, but there's one thing, there's one sport game."
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 81.06,
+        "finalAtS" : 81.756559917,
+        "finishLagMs" : 696.5599170000019,
+        "headStart3Ms" : 19.242458999997325,
+        "text" : " I'm all right?"
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 82.68,
+        "finalAtS" : 83.630547458,
+        "finishLagMs" : 950.5474579999884,
+        "text" : " Is that even?"
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 85.56,
+        "finalAtS" : 86.972807042,
+        "finishLagMs" : 1412.8070419999972,
+        "headStart3Ms" : 1207.6422500000062,
+        "text" : " Yes, how about you?"
+      },
+      {
+        "afterInputEnded" : false,
+        "audioEndS" : 88.02,
+        "finalAtS" : 88.459233292,
+        "finishLagMs" : 439.2332919999973,
+        "headStart3Ms" : 909.9632919999863,
+        "headStart5Ms" : 909.6142089999972,
+        "text" : " What game did make an impact on your life?"
+      }
+    ],
+    "linesWithStable3" : 54,
+    "linesWithStable5" : 42
+  }
+}

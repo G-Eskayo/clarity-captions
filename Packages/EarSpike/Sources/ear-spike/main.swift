@@ -36,13 +36,13 @@ let os = ProcessInfo.processInfo.operatingSystemVersionString
 
 struct Envelope<T: Encodable>: Encodable { let device: String; let os: String; let date: String; let results: T }
 func envelope<T: Encodable>(_ r: T) -> Envelope<T> {
-    Envelope(device: "Mac mini (\(host))", os: "macOS \(os)", date: ISO8601DateFormatter().string(from: Date()), results: r)
+    Envelope(device: "Mac (\(host))", os: "macOS \(os)", date: ISO8601DateFormatter().string(from: Date()), results: r)
 }
 
 switch command {
 case "voices":
     let rows = await Voices.table()
-    try save(envelope(rows), "voices-mac.json")
+    try save(envelope(rows), arg("--name") ?? "voices-mac.json")
     for r in rows { print("\(r.language)\t\(r.fromEnglish)\t\(r.voice ?? "-")\t\(r.bestQuality ?? "-")") }
 
 case "lag":
