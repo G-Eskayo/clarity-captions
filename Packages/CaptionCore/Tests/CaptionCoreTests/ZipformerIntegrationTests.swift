@@ -36,6 +36,7 @@ final class ZipformerIntegrationTests: XCTestCase {
         let said = "שלום, מה שלומך היום? אני רוצה לספר לך על הטיול שלנו לירושלים. היה מזג אוויר נעים מאוד, "
             + "וטיילנו בעיר העתיקה עד הערב."
         let audio = try speech(said)
+        let before = Self.footprintMB()
         let backend = ZipformerBackend(modelURL: try folder())
         let loadStart = ContinuousClock.now
         try await backend.prepare()
@@ -55,18 +56,30 @@ final class ZipformerIntegrationTests: XCTestCase {
             i += piece
             try await Task.sleep(for: .milliseconds(100))
         }
+        let during = Self.footprintMB()
         await backend.finish()
         let (finals, volatile) = try await collected.value
         let got = Self.words(finals.joined(separator: " ")), want = Self.words(said)
         let errors = editDistance(got, want)
         let c = costs.all.sorted()
         print("ZIPFORMER-IT finals: \(finals.joined(separator: " | "))")
-        print(String(format: "ZIPFORMER-IT load %.2f s, %d word errors of %d, chunk compute median %.0f ms max %.0f ms over %d",
+        print(String(format: "ZIPFORMER-IT load %.2f s, %d word errors of %d, chunk compute median %.0f ms max %.0f ms over %d, "
+                     + "memory footprint %.0f MB before load, %.0f MB while captioning",
                      Double(load.components.seconds) + Double(load.components.attoseconds) / 1e18, errors, want.count,
-                     1000 * c[c.count / 2], 1000 * (c.last ?? 0), c.count))
+                     1000 * c[c.count / 2], 1000 * (c.last ?? 0), c.count, before, during))
         XCTAssertGreaterThan(volatile, 0, "words show as a volatile tail before they settle")
         XCTAssertLessThanOrEqual(Double(errors) / Double(want.count), 0.25, "synthetic speech, loose bound")
         XCTAssertLessThan(c[c.count / 2], 1.28, "each 1.28 s chunk decodes in less than 1.28 s")
+    }
+
+    /// The process's physical footprint (what iOS counts against an app's memory limit), in MB.
+    private static func footprintMB() -> Double {
+        var info = task_vm_info_data_t()
+        var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<natural_t>.size)
+        let kr = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) { task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count) }
+        }
+        return kr == KERN_SUCCESS ? Double(info.phys_footprint) / 1_048_576 : .nan
     }
 
     private final class Costs: @unchecked Sendable {
