@@ -19,6 +19,10 @@ public final class MicAudioSource: AudioSource {
     private let micMode: MicMode
     private var tapped = false
 
+    /// Live Translation in your ear (#233) is on: the session also plays, into headphones only. Read when a session
+    /// opens, so a change takes effect at the next Start.
+    public static var speaksIntoEar = false
+
     public init(micMode: MicMode = .standard) {
         self.micMode = micMode
     }
@@ -26,12 +30,16 @@ public final class MicAudioSource: AudioSource {
     public func open() throws -> AVAudioFormat {
         #if os(iOS)
         let session = AVAudioSession.sharedInstance()
-        switch micMode {
-        case .raw: try session.setCategory(.record, mode: .measurement)
-        case .standard: try session.setCategory(.record, mode: .default)
-        case .voiceProcessing: try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
-        }
+        let setup = MicSessionSetup(micMode: micMode, speaksIntoEar: Self.speaksIntoEar)
+        var options: AVAudioSession.CategoryOptions = []
+        if setup.defaultToSpeaker { options.insert(.defaultToSpeaker) }
+        if setup.allowsBluetoothA2DP { options.insert(.allowBluetoothA2DP) }
+        try session.setCategory(setup.category == .record ? .record : .playAndRecord,
+                                mode: setup.mode == .measurement ? .measurement : .default, options: options)
         try session.setActive(true)
+        if setup.prefersBuiltInMic, let mic = session.availableInputs?.first(where: { $0.portType == .builtInMic }) {
+            try? session.setPreferredInput(mic)
+        }
         #endif
         // Must happen before the tap format is read.
         if micMode == .voiceProcessing {
