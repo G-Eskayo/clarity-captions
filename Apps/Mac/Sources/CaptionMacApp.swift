@@ -178,6 +178,8 @@ struct CallPopupWindow: View {
                 .padding(.horizontal, 16)
         case .feedbackPreview:
             EmptyView()   // beta feedback is iPhone-only
+        case .captionLanguage, .translationTarget:
+            EmptyView()   // #209: the Mac's language rows don't open their lists yet; #213 wires them
         }
     }
 

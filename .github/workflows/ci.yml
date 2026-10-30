@@ -70,6 +70,30 @@ jobs:
       - name: Generate the project and build (signing off)
         run: .github/run-check.sh spike-app
 
+  # #209: the Mac app shares the iPhone's Settings files, so a change to them can break the Mac.
+  mac-app:
+    name: Mac app builds (macOS)
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Does this change touch the Mac app?
+        id: affected
+        run: echo "run=$(.github/run-check.sh mac-app --affected)" >> "$GITHUB_OUTPUT"
+      - name: Cache the bundled speaker model (Sortformer, about 230 MB, gitignored)
+        if: steps.affected.outputs.run == 'true'
+        uses: actions/cache@v4
+        with:
+          path: Apps/Mac/Resources/Models
+          key: mac-models-${{ hashFiles('scripts/fetch-diarizer-models.sh') }}
+      - name: Install xcodegen
+        if: steps.affected.outputs.run == 'true'
+        run: brew install xcodegen
+      - name: Generate the project and build (signing off; fetches the speaker model when the cache has none)
+        run: .github/run-check.sh mac-app
+
   site:
     name: Website checks (site/)
     runs-on: ubuntu-latest
