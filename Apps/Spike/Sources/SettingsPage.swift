@@ -240,6 +240,13 @@ struct SettingsPage: View {
                             label: String(localized: "Translate from, ")) { onChooseCaptionLanguage?() }
             languagePairRow(String(localized: "Into"), language.target.map(LanguageSettingsState.name) ?? String(localized: "Choose a language"),
                             label: String(localized: "Translate into, ")) { onChooseTranslationTarget?() }
+            #if DEBUG
+            if EarMockup.showsSettingsRow {
+                EarSettingsRows(style: style, target: language.target.map(LanguageSettingsState.name) ?? "",
+                                font: { scaled($0, $1) }, muted: muted, softFill: softFill)
+                    .padding(.top, 4)
+            }
+            #endif
             if let p = language.downloadProgress {
                 VStack(alignment: .leading, spacing: 6) {
                     ProgressView(value: p).tint(style.gear.color)

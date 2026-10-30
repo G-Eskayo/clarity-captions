@@ -807,6 +807,9 @@ struct ContentView: View {
                    alignment: control.presentation == .compact ? .bottomTrailing : .bottom)
         }
         .frame(height: 72)
+        #if DEBUG
+        .overlay(alignment: .leading) { if EarMockup.current == .button { EarButton(style: style, on: true) } }
+        #endif
         .frame(maxHeight: .infinity, alignment: .bottom)
     }
 
@@ -825,6 +828,9 @@ struct ContentView: View {
             if let detail = statusDetail {
                 Text(detail).font(.footnote).opacity(0.7).multilineTextAlignment(.center)
             }
+            #if DEBUG
+            if EarMockup.current == .pill { EarStatusPill(style: style).padding(.top, 6) }
+            #endif
         }
         .onChange(of: model.activity) { _, newActivity in
             if let activity = newActivity {
@@ -979,6 +985,13 @@ struct ContentView: View {
         let resolved = selection?.resolved(in: lines)
         let lineIndex = resolved == nil ? [:] : Dictionary(uniqueKeysWithValues: lines.enumerated().map { ($1.id, $0) })
         let highlight = SelectionColors.highlight(on: style.background).color
+        #if DEBUG
+        // #233 mock-up: the newest translated line is the one being spoken.
+        let earLineID = EarMockup.current == .mark && translation.isActive
+            ? lines.last(where: { translation.translations.translation(for: $0) != nil })?.id : nil
+        #else
+        let earLineID: CaptionLine.ID? = nil
+        #endif
         let newestSpokenLineID = lines.last(where: { !$0.isSoundLabel && !$0.text.trimmingCharacters(in: .whitespaces).isEmpty })?.id
         func selected(_ line: CaptionLine) -> Range<Int>? {
             guard let resolved, let i = lineIndex[line.id] else { return nil }
@@ -1008,12 +1021,20 @@ struct ContentView: View {
                                 // #53 (owner, PR #171): the translation is the line that's read, on top at caption size
                                 // behind a translate mark; what was said stays, smaller, underneath. Selection and Copy
                                 // work on what was said.
-                                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                                    Image(systemName: "translate").font(.subheadline.bold()).foregroundStyle(mutedColor(style))
-                                    Text(translated).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass))
+                                if line.id == earLineID {
+                                    #if DEBUG
+                                    EarSpeakingLine(translated: translated,
+                                                    font: style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass),
+                                                    mark: style.gear.color, text: style.text.color, volatileOpacity: style.volatileOpacity)
+                                    #endif
+                                } else {
+                                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                        Image(systemName: "translate").font(.subheadline.bold()).foregroundStyle(mutedColor(style))
+                                        Text(translated).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass))
+                                    }
+                                    .accessibilityElement(children: .combine)
+                                    .accessibilityLabel(String(localized: "Translated: ") + translated)
                                 }
-                                .accessibilityElement(children: .combine)
-                                .accessibilityLabel(String(localized: "Translated: ") + translated)
                                 Text(line.text).font(.body).foregroundStyle(mutedColor(style))
                                     .textRenderer(renderer)
                                     .trackWords(in: textFrames, key: "text-\(line.id)")
