@@ -99,6 +99,14 @@ enum DemoMode {
     static var translate: String? { value(after: "-ClarityDemoTranslate") }
     static var translateProgress: Double? { value(after: "-ClarityDemoTranslateProgress").flatMap(Double.init) }
     static var translationOwned: Bool { flag("-ClarityDemoTranslationOwned") }
+    /// #252: `-ClarityDemoCaptionDownload fr-FR:0.4`: a caption language pick still downloading, for screenshots.
+    static var captionDownload: (String, Double)? {
+        guard let v = value(after: "-ClarityDemoCaptionDownload"), let i = v.firstIndex(of: ":"), let p = Double(v[v.index(after: i)...]) else { return nil }
+        return (String(v[..<i]), p)
+    }
+    /// #252: `-ClarityDemoSwap left|right`: the swap button's two proposed places, drawn for the owner's Decision only.
+    /// Not wired and not shown without the flag until he picks one.
+    static var swap: String? { value(after: "-ClarityDemoSwap") }
     /// `-ClarityDemoEar <variant>`: Live Translation in your ear (#233), on, in one of its states.
     static var ear: String? { value(after: "-ClarityDemoEar") }
     /// `-ClarityDemoFaceToFace` (#208): opens the split and taps through it the way two people would, through the real

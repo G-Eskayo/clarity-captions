@@ -213,6 +213,11 @@ final class TranslationCenter: ObservableObject {
         guard purchase.isOwned, isOn, let source = forwardSource, let target = forwardTarget else {
             configuration = nil; preparing = false; unsupportedPair = false; return
         }
+        // #252: the same language on both sides is allowed (owner). Apple has no pair for it, so nothing to download
+        // or run: the words pass through as they are.
+        if CaptionLanguage.needsNoTranslation(from: source, into: target) {
+            configuration = nil; preparing = false; unsupportedPair = false; passThrough(latest); return
+        }
         let wanted = TranslationSession.Configuration(source: source, target: target)
         if configuration?.source != wanted.source || configuration?.target != wanted.target { configuration = wanted }
         Task {
@@ -229,7 +234,9 @@ final class TranslationCenter: ObservableObject {
         #if DEBUG && targetEnvironment(simulator)
         if usesDemoTranslator { reverseConfiguration = nil; return }
         #endif
-        guard faceToFace, purchase.isOwned, isOn, let pair = faceToFacePair, !unsupportedPair else { reverseConfiguration = nil; return }
+        guard faceToFace, purchase.isOwned, isOn, let pair = faceToFacePair, !unsupportedPair, !reversePassesThrough else {
+            reverseConfiguration = nil; return
+        }
         let wanted = TranslationSession.Configuration(source: pair.owner.language, target: pair.partner.language)
         if reverseConfiguration?.source != wanted.source || reverseConfiguration?.target != wanted.target { reverseConfiguration = wanted }
     }
@@ -245,8 +252,33 @@ final class TranslationCenter: ObservableObject {
         #if DEBUG && targetEnvironment(simulator)
         if usesDemoTranslator { demoFill(lines); demoFillReverse(reverse); return }
         #endif
-        wake?.yield()
-        reverseWake?.yield()
+        if passesThrough { passThrough(lines) } else { wake?.yield() }
+        if reversePassesThrough { passThroughReverse(reverse) } else { reverseWake?.yield() }
+    }
+
+    /// #252: From and Into are the same language, so each finished line is its own translation.
+    private var passesThrough: Bool {
+        guard purchase.isOwned, isOn, let source = forwardSource, let target = forwardTarget else { return false }
+        return CaptionLanguage.needsNoTranslation(from: source, into: target)
+    }
+
+    private var reversePassesThrough: Bool {
+        guard faceToFace, let pair = faceToFacePair else { return false }
+        return CaptionLanguage.needsNoTranslation(from: pair.owner.language, into: pair.partner.language)
+    }
+
+    private func passThrough(_ lines: [CaptionLine]) {
+        for phrase in ear.take(from: lines, active: earActive) { ear.speak(phrase, translation: phrase.text) }
+        for work in translations.take(from: lines) {
+            translations.finished(lineID: work.lineID, source: work.text, translation: work.text)
+        }
+    }
+
+    private func passThroughReverse(_ lines: [CaptionLine]) {
+        guard purchase.isOwned, isOn else { return }
+        for work in reverseTranslations.take(from: lines) {
+            reverseTranslations.finished(lineID: work.lineID, source: work.text, translation: work.text)
+        }
     }
 
     #if DEBUG && targetEnvironment(simulator)
@@ -282,7 +314,7 @@ final class TranslationCenter: ObservableObject {
         #if DEBUG && targetEnvironment(simulator)
         if usesDemoTranslator { demoFill(latest); return }
         #endif
-        wake?.yield()
+        if passesThrough { passThrough(latest) } else { wake?.yield() }
     }
 
     /// Runs inside `.translationTask`: makes sure the language pack is there (Apple's own sheet, the one system

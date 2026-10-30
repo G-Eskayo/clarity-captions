@@ -77,4 +77,39 @@ final class CaptionLanguageSwitchTests: XCTestCase {
         s.progress(0.2, for: spanish)
         XCTAssertEqual(s.phase, .downloading(spanish, progress: 0.6))
     }
+
+    // MARK: #252: what the From row says while a pick downloads
+
+    func testTheRowNamesTheCurrentLanguageWhenNothingIsDownloading() {
+        let s = CaptionLanguageSwitch(current: english)
+        XCTAssertEqual(s.shown, .init(locale: english, downloading: nil))
+    }
+
+    func testAPickDuringADownloadShowsItsProgressThenSettles() {
+        var s = CaptionLanguageSwitch(current: english)
+        _ = s.choose(french, installed: false)
+        XCTAssertEqual(s.shown, .init(locale: french, downloading: 0), "the pick sticks on screen at once")
+        s.progress(0.4, for: french)
+        XCTAssertEqual(s.shown, .init(locale: french, downloading: 0.4))
+        s.finished(.installed, for: french)
+        XCTAssertEqual(s.shown, .init(locale: french, downloading: nil))
+    }
+
+    func testAFailedPickShowsTheLanguageCaptionsAreReallyIn() {
+        var s = CaptionLanguageSwitch(current: english)
+        _ = s.choose(french, installed: false)
+        s.progress(0.7, for: french)
+        s.finished(.failed(.offline), for: french)
+        XCTAssertEqual(s.shown, .init(locale: english, downloading: nil), "never a language it isn't captioning in")
+    }
+
+    func testOnlyTheNewestPickShows() {
+        var s = CaptionLanguageSwitch(current: english)
+        _ = s.choose(spanish, installed: false)
+        s.progress(0.9, for: spanish)
+        _ = s.choose(french, installed: false)
+        XCTAssertEqual(s.shown, .init(locale: french, downloading: 0))
+        _ = s.choose(english, installed: true)
+        XCTAssertEqual(s.shown, .init(locale: english, downloading: nil))
+    }
 }
