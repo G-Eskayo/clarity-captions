@@ -500,8 +500,9 @@ Once translation is bought, Settings > Translation shows **Your languages**, Sea
 - **Serbian has no on-device engine anywhere in this table.** It needs a Seal caption pack. Parakeet v3 has
   Croatian, a close relative, but that's a *guess*, not a measurement. It also needs a Seal translation pack, and
   licence and model are unresearched (ADR 0026 rule 4: no CC BY-NC).
-- Parakeet covers 24 more European languages than Seal uses it for (English only today). Spanish, French and German
-  are measured (#158: Parakeet wins all three). The other 21 each get the same test before they switch.
+- Parakeet covers 25 European languages. Every one Apple also captions is measured and routed to Parakeet: Spanish,
+  French and German (#158), Italian and Portuguese (#234). The other 19 (Dutch, Polish and so on) have no Apple engine
+  to compare with and aren't in Seal's caption list, which comes from Apple's locales.
 
 ### The best engine for each language: three groups (owner, 2026-10-29)
 

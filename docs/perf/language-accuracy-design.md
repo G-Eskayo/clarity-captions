@@ -167,6 +167,45 @@ would run) against Apple's best locale:
 
 The report adds the Android line under each verdict: how the ONNX builds compare with Ultra on Core ML.
 
+## #234: the other languages both engines caption
+
+#234 runs the same test on **every other language Parakeet v3 covers that Apple's engine also captions**, so the app
+can route each one to the engine that wins (ADR 0029). Parakeet v3 covers 25 European languages (E14); Apple's
+`SpeechTranscriber` captions 10 languages (E27; `supportedLocales` on the M4, macOS 26.5: German, English, Spanish,
+French, Italian, Japanese, Korean, Portuguese, Cantonese, Chinese). The overlap beyond #145 and #158 is **Italian and
+Portuguese**. Parakeet's other 19 languages (Dutch, Polish, Swedish and so on) have no Apple engine to compare with and
+aren't in Seal's caption language list, which comes from Apple's locales; adding them is a separate question.
+
+| Language | FLEURS config | Clips | Distinct sentences | Audio | Apple locale(s) |
+|---|---|---:|---:|---:|---|
+| Italian | `it_it` | 865 | 346 | 3.52 h | it-IT, it-CH |
+| Portuguese | `pt_br` (Brazilian) | 919 | 349 | 3.24 h | pt-BR, pt-PT |
+
+What changes from #158, and nothing else does (same dataset commit `70bb2e8`, scorer, bootstrap, rule):
+
+- **Engines:** Apple with each of its locales for the language (best one compared, as with Spanish) and Parakeet Ultra
+  through FluidAudio, the published `parakeet-ultra-coreml` build #158 used (the app ships its 6-bit encoder, which
+  #150 measured at the same WER on EdAcc). The ONNX builds (Android path) are left out: the ticket asks which engine
+  the app routes to, and they would double the run on a loaded Mac.
+- **Normalizer:** Italian and Portuguese use #158's rules with their own words: comma `virgola` / `vírgula`, percent
+  `per cento` / `por cento`, currencies (it `euro`, `dollari`, `sterline`; pt `euros`, `dólares`, `libras`), the
+  `1º` / `2ª` ordinals as in Spanish (feminine for `ª`), hesitations (it `eh ehm mm mmm hmm`; pt `eh ehm hum hmm mm
+  mmm ahn`) and, for Portuguese, Brazilian number words (`num2words` `pt_BR`: `dezesseis`), since FLEURS Portuguese is
+  Brazilian. Italian elision (`l'uomo`) and Portuguese clitics (`disse-lhe`) split on both sides like French. Years
+  are plain cardinals in both. Portuguese spellings Brazil accepts both ways map to one form (`óptico` / `ótico`,
+  `Singapura` / `Cingapura`), added after reading the errors on Portuguese shard 1: only Apple wrote the other form,
+  so the rule can only help Apple. Tests in `tests/test_normalize_languages.py`.
+- **Errors read on Italian shard 1** before the rest ran: no formatting mismatch big enough to need a rule. The top
+  pairs are real mistakes (Apple writes `è` for `e` 16 times), names (`Martelly`), unit abbreviations (`m`, `km`,
+  `p.` against spoken words, the accepted residual above) and a few FLEURS transcripts that write `e` where `è` was
+  said, which cost every engine equally.
+- **Disk:** one language at a time on the M4 (about 5 to 9 GB free during the run): download, shard, delete the
+  tarball, run, score, then delete that language's WAVs before the next. Manifests and result files stay.
+
+Run: `LANG_LANGS=it LANG_SHERPA_MODELS=" " EVAL_WORK=<private work dir> scripts/engine-eval/m4-language-driver.sh`
+(a private work dir with symlinks to `~/edacc-eval/models` and `venv`, so the status files of another run on the
+same Mac aren't overwritten), then the same for `pt`.
+
 ## Complexity
 
 - Shard maker: one pass over each `test.tar.gz` and `test.tsv`, O(clips); memory is one WAV at a time.

@@ -7,7 +7,7 @@ import os
 enum CaptionEngineFactory {
     static var speakerModelURL: URL? { Bundle.main.url(forResource: "Sortformer_v2.1", withExtension: "mlmodelc") }
     static var parakeetModelURL: URL? { Bundle.main.url(forResource: "ParakeetUltra", withExtension: nil) }
-    /// The caption language she chose (#37). Parakeet is English only, so another language runs Apple's engine in it.
+    /// The caption language she chose (#37). It picks the engine (#234): Parakeet where it won, Apple's engine elsewhere.
     static var captionLocale: Locale { CaptionLanguageCenter.engineLocale }
     /// Only an Xcode (debug) build has the developer panel, so only it honours the panel's engine pick (owner, PR #155).
     #if DEBUG
@@ -44,8 +44,8 @@ enum CaptionEngineFactory {
         return engine
     }
 
-    /// #60 face to face: one engine per half, each in its half's language (ADR 0025 picks the recognizer per language:
-    /// Parakeet for English, Apple's engine for the rest). Since #208 each half's language is the one its list picked.
+    /// #60 face to face: one engine per half, each in its half's language, picked per language the same way as one-way
+    /// captions (#234, CaptionEngineRouting: Parakeet where it won, Apple's engine for the rest). Since #208 each half's language is the one its list picked.
     /// No engine loaded ahead is used: it was made for one-way captions.
     static func makeFaceToFace(micMode: MicMode, ownerLocale: Locale, partnerLocale: Locale) throws -> TranscriptionEngine {
         guard let speakerModel = speakerModelURL else {
