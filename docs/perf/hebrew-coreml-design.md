@@ -52,7 +52,27 @@ Weight-only and post-training, no calibration audio (`zipformer_coreml/convert.p
 Only the weights of linear and conv layers are compressed. A few small weights whose channel count isn't divisible by
 16 (191 and 383 channels) stay fp16; coremltools skips them and says so.
 
-COMPRESSION-FINDINGS
+**Never compress the front end.** The first 4-bit and 2-bit builds emitted no words at all, on any audio, while
+3- and 6-bit happened to work. Weights-only compression didn't fix it; a layer-by-layer bisection (4-bit everywhere
+except a subset, transcribing a fixed sentence) found exactly the six 2-D convolutions that read the fbank (conv2d
+subsampling and its ConvNeXt block, about 144k parameters). They stay fp16 in every compressed build (0.3 MB). The
+numbers in the comparison are all from builds made this way.
+
+**3-bit costs memory, not just accuracy.** On the app's path (the Swift backend in #222, CPU and GPU, one Hebrew
+sentence) the 4-bit build held 157 MB while captioning and the 3-bit build 545 MB; fp16 held 238 MB. The Python
+peaks show the same split (6- and 3-bit high, 4-bit low). This fits Core ML expanding lookup tables whose width isn't
+4 or 8 bits to fp16 when it loads them, but that cause is inferred, not confirmed.
+
+## Which build to ship
+
+The owner's rule, applied by `zipformer_coreml/report.py`, picks **3-bit (30.4 MB)**: its CER intervals overlap
+int8's on both sets and it stays far from Apple. It only just qualifies, though. On voice notes it makes 5.4% CER
+against int8's 4.2% (intervals 4.7–6.2 and 3.6–4.8 touch at the edge), its WER interval (9.9–12.5%) no longer overlaps
+int8's (7.6–9.6%), and it needs about 3.5 times the memory of 4-bit while captioning.
+
+**4-bit (38.6 MB) is the recommendation:** no measurable loss against int8 on either set (2.4% and 4.3% CER, every
+interval overlapping), the smallest memory of any build, and about half the size of the 75 MB the owner wanted to beat.
+2-bit is unusable (35% CER on conversation). The owner picks on the PR.
 
 ## The Apple Neural Engine rejects this encoder
 
@@ -80,8 +100,9 @@ Measured on the M4 Mac mini (macOS 26.5.1), one build per process, the first 60 
   (chunk end − frame time) + compute after the model placed it. Median and 95th percentile over every token.
 - **First word:** the same for the first token of each recording (median over recordings).
 - **Load:** opening the three models, cold for the first build of a run.
-- **Peak memory:** the scoring process's peak resident size. It includes Python, numpy and torchaudio (about
-  0.6–0.9 GB of the total), so it overstates the app; the Swift integration test (PR for #222) is the closer number.
+- **Peak memory:** the scoring process's peak resident size. It includes Python, numpy and torchaudio, so it
+  overstates the app by hundreds of MB and is only good for comparing builds. The app's number comes from the Swift
+  integration test in #222 (physical footprint, what iOS counts against an app): see Compression.
 
 These measure what Seal adds on top of the model's own emission delay (how long after a word is said the model
 emits it), which needs word timings that these sets don't have. Heat could not be measured: `powermetrics` needs
