@@ -18,7 +18,9 @@ public enum CaptionEngineChoice: String, CaseIterable, Sendable {
 /// Which caption languages run on Parakeet (ADR 0029 decision 2): every language where Parakeet Ultra matched or beat
 /// Apple's best locale on FLEURS (#158, #234; docs/perf/language-accuracy-comparison.md), and English (#145). Every
 /// other language runs Apple's engine in that language. Parakeet takes no language setting (it hears the language),
-/// so the table is by language, and every region of a won language goes to it. Each new win is one line here.
+/// so the table is by language, and every region of a won language goes to it. Each new win is one line here. Since #234
+/// that is every language both engines caption; Apple keeps Japanese, Korean, Chinese and Cantonese, which Parakeet
+/// doesn't cover.
 public enum CaptionEngineRouting {
     public static let parakeetLanguages: Set<String> = [
         "en",  // #145, EdAcc: 13.8% vs 17.2%
@@ -26,6 +28,7 @@ public enum CaptionEngineRouting {
         "fr",  // #158, FLEURS: 4.5% vs 7.5%
         "de",  // #158, FLEURS: 4.4% vs 7.2%
         "it",  // #234, FLEURS: 2.2% vs 3.6%
+        "pt",  // #234, FLEURS (Brazilian): 3.9% vs 5.3%
     ]
 
     public static func parakeetWins(_ locale: Locale) -> Bool {

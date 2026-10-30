@@ -246,3 +246,10 @@ def test_portuguese_hyphenated_clitics_split_on_both_sides():
 @pytest.mark.parametrize("lang", ["it", "pt"])
 def test_hesitations_dropped(lang):
     assert normalize("ehm mm hmm sì", lang) == "sì"
+
+
+def test_portuguese_spellings_brazil_accepts_both_ways_are_one_word():
+    # Seen on pt shard 1 (#234): only Apple wrote the other form, so merging them can only help Apple.
+    assert normalize("óptico", "pt") == normalize("ótico", "pt")
+    assert normalize("Singapura", "pt") == normalize("Cingapura", "pt")
+    assert normalize("esta", "pt") != normalize("está", "pt")  # real accent errors still count

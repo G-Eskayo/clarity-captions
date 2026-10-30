@@ -175,7 +175,9 @@ _LANGS = {
                 frozenset("eh ehm mm mmm hmm".split())),
     # FLEURS Portuguese is Brazilian (pt_br), so numbers are Brazil's ("dezesseis").
     "pt": _Lang("vírgula", "por cento", {"€": "euros", "$": "dólares", "£": "libras"},
-                frozenset("eh ehm hum hmm mm mmm ahn".split()), num2words="pt_BR"),
+                frozenset("eh ehm hum hmm mm mmm ahn".split()),
+                {"óptico": "ótico", "óptica": "ótica", "ópticos": "óticos", "ópticas": "óticas", "singapura": "cingapura"},
+                num2words="pt_BR"),
 }
 LANGUAGES = ("en",) + tuple(_LANGS) + ("he",)
 

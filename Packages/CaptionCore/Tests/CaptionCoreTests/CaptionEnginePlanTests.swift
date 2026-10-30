@@ -65,8 +65,10 @@ final class CaptionEnginePlanTests: XCTestCase {
     }
 }
 
-/// Italian and Portuguese, filled in from the #234 measurement.
+/// Italian and Portuguese, from the #234 measurement. Both won, so the only languages left on Apple are the ones
+/// Parakeet doesn't cover.
 enum CaptionEngineRoutingExpectations {
-    static let extraWon = ["it-IT", "it-CH"]  // #234: 2.2% (1.8–2.5) vs Apple 3.6% (3.1–4.1)
+    // #234 on FLEURS: Italian 2.2% (1.8–2.5) vs Apple 3.6% (3.1–4.1); Portuguese 3.9% (3.3–4.5) vs 5.3% (4.7–6.0).
+    static let extraWon = ["it-IT", "it-CH", "pt-BR", "pt-PT"]
     static let lost: [String] = []
 }
