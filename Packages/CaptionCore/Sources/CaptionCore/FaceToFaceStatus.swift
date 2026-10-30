@@ -15,6 +15,73 @@ public struct FaceToFaceDownload: Equatable, Sendable {
     }
 }
 
+/// #245: the speech downloads running in the split, at most one per half. Each is known by its ticket, so one left
+/// behind (another pick in that half, Stop) never shows progress or starts its language when it ends.
+///
+/// Space: O(1), two halves.
+public struct FaceToFaceDownloads: Equatable, Sendable {
+    public struct Ticket: Equatable, Hashable, Sendable {
+        public let half: FaceToFaceHalf
+        public let locale: Locale
+        fileprivate let id: Int
+    }
+
+    public private(set) var byHalf: [FaceToFaceHalf: FaceToFaceDownload] = [:]
+    private var current: [FaceToFaceHalf: Ticket] = [:]
+    private var next = 0
+
+    public init() {}
+
+    /// `locale` tapped in `half` and not on the device: its download starts, replacing any other in that half. Nil
+    /// when that half is already downloading it (a second tap starts nothing). A failed one starts again.
+    public mutating func begin(_ locale: Locale, for half: FaceToFaceHalf) -> Ticket? {
+        if let d = byHalf[half], d.locale == locale, case .downloading = d.progress { return nil }
+        next += 1
+        let ticket = Ticket(half: half, locale: locale, id: next)
+        current[half] = ticket
+        byHalf[half] = FaceToFaceDownload(locale: locale, progress: .downloading(0))
+        return ticket
+    }
+
+    public mutating func progress(_ fraction: Double, for ticket: Ticket) {
+        guard isCurrent(ticket) else { return }
+        byHalf[ticket.half]?.progress = .downloading(fraction)
+    }
+
+    /// The download ended. Returns the language to pick now that it's on the device; nil when it failed (the half
+    /// says so, with what to do), was cancelled, or was left behind.
+    public mutating func finished(_ ticket: Ticket, outcome: DownloadOutcome) -> Locale? {
+        guard isCurrent(ticket) else { return nil }
+        switch outcome {
+        case .installed: clear(ticket.half); return ticket.locale
+        case .alreadyRunning, .cancelled: clear(ticket.half); return nil
+        case .failed(let problem): byHalf[ticket.half]?.progress = .failed(problem); return nil
+        }
+    }
+
+    /// Leaves `half`'s download behind (another language picked there). True when one was running, to cancel.
+    @discardableResult
+    public mutating func drop(_ half: FaceToFaceHalf) -> Bool {
+        var running = false
+        if case .downloading = byHalf[half]?.progress { running = true }
+        clear(half)
+        return running
+    }
+
+    /// Leaving the split: every download is left behind.
+    public mutating func dropAll() {
+        byHalf = [:]
+        current = [:]
+    }
+
+    private func isCurrent(_ ticket: Ticket) -> Bool { current[ticket.half] == ticket }
+
+    private mutating func clear(_ half: FaceToFaceHalf) {
+        byHalf[half] = nil
+        current[half] = nil
+    }
+}
+
 /// #245: whether the two picked languages can be translated on the device right now.
 public enum FaceToFaceTranslationReadiness: Equatable, Sendable {
     case ready
