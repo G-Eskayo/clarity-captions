@@ -19,6 +19,14 @@ public struct ThirdPartyNotice: Identifiable, Equatable, Sendable {
             sourceURL: URL(string: "https://huggingface.co/moondream/parakeet-ultra")
         ),
         ThirdPartyNotice(
+            id: "hebrewzipformer",
+            name: "Hebrew speech model (ivrit.ai zipformer)",
+            licenseName: "CC BY 4.0",
+            licenseURL: URL(string: "https://creativecommons.org/licenses/by/4.0/")!,
+            note: String(localized: "Hebrew speech-recognition model by Yakov Kolani, published by ivrit.ai. Changed for Seal Speak: converted to Core ML, and the encoder's weights are compressed to 4 bits."),
+            sourceURL: URL(string: "https://huggingface.co/ivrit-ai/zipformer2-66m-streaming-he")
+        ),
+        ThirdPartyNotice(
             id: "sortformer",
             name: "Sortformer",
             licenseName: "CC BY 4.0",
