@@ -51,11 +51,23 @@ public enum FaceToFace {
 
     /// #208: the stacked list a half picks its language from. One row per downloaded translation language (regions of
     /// one language are one row, the first kept), in the order of `name`, without the language the other half chose.
-    public static func choices(downloaded: [Locale], takenByOtherHalf taken: Locale?, name: (Locale) -> String) -> [Locale] {
+    /// #245: with `ready`, a language offered in several regions keeps a ready one (one whose speech engine is on the
+    /// device) over the first.
+    public static func choices(downloaded: [Locale], takenByOtherHalf taken: Locale?, name: (Locale) -> String,
+                               ready: (Locale) -> Bool = { _ in true }) -> [Locale] {
         func code(_ l: Locale) -> String { l.language.languageCode?.identifier ?? l.identifier }
+        let readyFirst = downloaded.filter(ready) + downloaded.filter { !ready($0) }
         var seen: Set<String> = taken.map { [code($0)] } ?? []
-        let unique = downloaded.filter { seen.insert(code($0)).inserted }
+        let unique = readyFirst.filter { seen.insert(code($0)).inserted }
         return unique.sorted { name($0).localizedStandardCompare(name($1)) == .orderedAscending }
+    }
+
+    /// #245 item 3: the region of `locale`'s language whose speech engine is on the device, the exact one first; nil
+    /// when none is, and picking it must download it first (never inside the engine's start, where it hung Stop).
+    public static func readyLocale(for locale: Locale, speechInstalled: [Locale]) -> Locale? {
+        func code(_ l: Locale) -> String { l.language.languageCode?.identifier ?? l.identifier }
+        if let exact = speechInstalled.first(where: { $0.identifier(.bcp47) == locale.identifier(.bcp47) }) { return exact }
+        return speechInstalled.first { code($0) == code(locale) }
     }
 
     /// #208: the languages offered for a half's list on the device, until Seal keeps its own list (#200's "Your
