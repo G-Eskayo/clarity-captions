@@ -1,5 +1,5 @@
 {
-  "date" : "2026-10-30T08:41:10Z",
+  "date" : "2026-10-30T08:42:49Z",
   "device" : "Mac mini (gils-mac-mini.local)",
   "os" : "macOS Version 26.5.1 (Build 25F80)",
   "results" : [
@@ -49,7 +49,7 @@
         },
         {
           "caughtWithFingerprint" : true,
-          "caughtWordsOnly" : false,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz + noise 10 dB",
           "echoCaption" : "Neither of me, no intendido nombre.",
           "heardAs" : "Better than me, no intendido si nombre.",
@@ -88,7 +88,7 @@
           "spoken" : "Mi hija viene a visitarnos la semana que viene."
         },
         {
-          "caughtWithFingerprint" : false,
+          "caughtWithFingerprint" : true,
           "caughtWordsOnly" : false,
           "condition" : "8 kHz",
           "echoCaption" : "Is that a good bad estaciento?",
@@ -120,8 +120,8 @@
           "spoken" : "Reservamos una mesa para cuatro a las ocho."
         },
         {
-          "caughtWithFingerprint" : false,
-          "caughtWordsOnly" : false,
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz",
           "echoCaption" : "Cuento, sitar, dan yega, andendo?",
           "heardAs" : "Cuento sitar lan yegadandendo?",
@@ -152,8 +152,8 @@
           "spoken" : "¿Tiene algo sin frutos secos?"
         },
         {
-          "caughtWithFingerprint" : false,
-          "caughtWordsOnly" : false,
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz",
           "echoCaption" : "Mutisimas gracias, mira, yugada mucho.",
           "heardAs" : "Mutissimas gracias, mera yudadamuto.",
@@ -224,7 +224,7 @@
         },
         {
           "caughtWithFingerprint" : true,
-          "caughtWordsOnly" : false,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz",
           "echoCaption" : "Le muse ouvre de man, a neuvre.",
           "heardAs" : "Le muse ouvre de man, le nouvre.",
@@ -240,15 +240,15 @@
         },
         {
           "caughtWithFingerprint" : true,
-          "caughtWordsOnly" : false,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz",
           "echoCaption" : "Ma fivien, rendre vivit, la semain prochen.",
           "heardAs" : "Ma fivien, rendre visit, la semain prochen.",
           "spoken" : "Ma fille vient nous rendre visite la semaine prochaine."
         },
         {
-          "caughtWithFingerprint" : false,
-          "caughtWordsOnly" : false,
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz + noise 10 dB",
           "echoCaption" : "Mafie, bien, rendre vivit, la the main procheme.",
           "heardAs" : "Ma fivien, rendre visit, la semain prochen.",
@@ -256,7 +256,7 @@
         },
         {
           "caughtWithFingerprint" : true,
-          "caughtWordsOnly" : false,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz",
           "echoCaption" : "C'est place, s'pris.",
           "heardAs" : "C'est place, c'est pris?",
@@ -272,14 +272,14 @@
         },
         {
           "caughtWithFingerprint" : true,
-          "caughtWordsOnly" : false,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz",
           "echoCaption" : "Mous avons reservé, un table pourquet traventeur.",
           "heardAs" : "Nous avons reservé, un table, pour que traventeur.",
           "spoken" : "Nous avons réservé une table pour quatre à vingt heures."
         },
         {
-          "caughtWithFingerprint" : false,
+          "caughtWithFingerprint" : true,
           "caughtWordsOnly" : false,
           "condition" : "8 kHz + noise 10 dB",
           "echoCaption" : "You've ever revere, it's table, pourquette, a venter.",
@@ -304,7 +304,7 @@
         },
         {
           "caughtWithFingerprint" : true,
-          "caughtWordsOnly" : false,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz",
           "echoCaption" : "A vous quel que chose sans fruis a club.",
           "heardAs" : "Ave vous quelle que chose sans fruis a cup.",
@@ -320,7 +320,7 @@
         },
         {
           "caughtWithFingerprint" : true,
-          "caughtWordsOnly" : false,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz",
           "echoCaption" : "Merci beaucoup, c'est mavre mon idée.",
           "heardAs" : "Merci beaucoup, c'est mavre mon idée.",
@@ -328,7 +328,7 @@
         },
         {
           "caughtWithFingerprint" : true,
-          "caughtWordsOnly" : false,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz + noise 10 dB",
           "echoCaption" : "Merci beaucoup, c'est mavraiment ivée.",
           "heardAs" : "Merci beaucoup, c'est mavre mon idée.",
@@ -342,7 +342,7 @@
       "language" : "de",
       "lines" : [
         {
-          "caughtWithFingerprint" : false,
+          "caughtWithFingerprint" : true,
           "caughtWordsOnly" : false,
           "condition" : "8 kHz",
           "echoCaption" : "Vote Estebanhorf.",
@@ -350,7 +350,7 @@
           "spoken" : "Wo ist der Bahnhof?"
         },
         {
-          "caughtWithFingerprint" : false,
+          "caughtWithFingerprint" : true,
           "caughtWordsOnly" : false,
           "condition" : "8 kHz + noise 10 dB",
           "echoCaption" : "Bo is Stefan Ho.",
@@ -359,7 +359,7 @@
         },
         {
           "caughtWithFingerprint" : true,
-          "caughtWordsOnly" : false,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz",
           "echoCaption" : "Couldn't be a bitter direch nung haben.",
           "heardAs" : "Couldn't be a bitter die rech nung haben?",
@@ -367,7 +367,7 @@
         },
         {
           "caughtWithFingerprint" : true,
-          "caughtWordsOnly" : false,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz + noise 10 dB",
           "echoCaption" : "Couldn't be a bit of the rechnung haben.",
           "heardAs" : "Couldn't be a bitter die rech nung haben?",
@@ -375,7 +375,7 @@
         },
         {
           "caughtWithFingerprint" : true,
-          "caughtWordsOnly" : false,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz",
           "echoCaption" : "And Chuligung, Ish habe iren namen nicht verstanden.",
           "heardAs" : "And Schuligung, Ich habe iren namen nicht verstanden.",
@@ -406,7 +406,7 @@
           "spoken" : "Das Museum öffnet morgen um neun Uhr."
         },
         {
-          "caughtWithFingerprint" : false,
+          "caughtWithFingerprint" : true,
           "caughtWordsOnly" : false,
           "condition" : "8 kHz",
           "echoCaption" : "Mine a torta accomplish, de wochet zubesuch.",
@@ -439,7 +439,7 @@
         },
         {
           "caughtWithFingerprint" : true,
-          "caughtWordsOnly" : false,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz",
           "echoCaption" : "We have an einen tisch fir um acht or reserviet.",
           "heardAs" : "We have einen tisch wer fier um acht or reserviet.",
@@ -471,7 +471,7 @@
         },
         {
           "caughtWithFingerprint" : true,
-          "caughtWordsOnly" : false,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz",
           "echoCaption" : "Have the, it was onen nusse.",
           "heardAs" : "Haven si, it was onen nusse?",
@@ -486,7 +486,7 @@
           "spoken" : "Haben Sie etwas ohne Nüsse?"
         },
         {
-          "caughtWithFingerprint" : false,
+          "caughtWithFingerprint" : true,
           "caughtWordsOnly" : false,
           "condition" : "8 kHz",
           "echoCaption" : "Seal and dunk, dust wa werklich hilsreich.",
@@ -505,11 +505,11 @@
       "realLinesChecked" : 100
     },
     {
-      "falseEchoes" : 0,
+      "falseEchoes" : 1,
       "language" : "it",
       "lines" : [
         {
-          "caughtWithFingerprint" : false,
+          "caughtWithFingerprint" : true,
           "caughtWordsOnly" : false,
           "condition" : "8 kHz",
           "echoCaption" : "Duvela statune de training.",
@@ -517,7 +517,7 @@
           "spoken" : "Dov'è la stazione dei treni?"
         },
         {
-          "caughtWithFingerprint" : false,
+          "caughtWithFingerprint" : true,
           "caughtWordsOnly" : false,
           "condition" : "8 kHz + noise 10 dB",
           "echoCaption" : "Duve la opportunity train.",
@@ -525,8 +525,8 @@
           "spoken" : "Dov'è la stazione dei treni?"
         },
         {
-          "caughtWithFingerprint" : false,
-          "caughtWordsOnly" : false,
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz",
           "echoCaption" : "Cheap or tae kunto, per favore.",
           "heardAs" : "Chiport telgunto, per febore.",
@@ -542,7 +542,7 @@
         },
         {
           "caughtWithFingerprint" : true,
-          "caughtWordsOnly" : false,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz",
           "echoCaption" : "Miscusi, no no capito is sunome.",
           "heardAs" : "Miskusi, no no capito is sunome.",
@@ -557,8 +557,8 @@
           "spoken" : "Mi scusi, non ho capito il suo nome."
         },
         {
-          "caughtWithFingerprint" : false,
-          "caughtWordsOnly" : false,
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz",
           "echoCaption" : "Il muzai va predo mani el nove.",
           "heardAs" : "Il muzai vapre do mania le nove.",
@@ -574,23 +574,23 @@
         },
         {
           "caughtWithFingerprint" : true,
-          "caughtWordsOnly" : false,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz",
           "echoCaption" : "Mi afilia, vienna, trovarchi, la cetimana, prosima.",
           "heardAs" : "Mi afilia, vienna trovarchi, la cetimana prosima.",
           "spoken" : "Mia figlia viene a trovarci la settimana prossima."
         },
         {
-          "caughtWithFingerprint" : false,
-          "caughtWordsOnly" : false,
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz + noise 10 dB",
           "echoCaption" : "Nia fila, bien, trovarcila, se cimana proxima.",
           "heardAs" : "Mi afilia, vienna trovarchi, la cetimana prosima.",
           "spoken" : "Mia figlia viene a trovarci la settimana prossima."
         },
         {
-          "caughtWithFingerprint" : false,
-          "caughtWordsOnly" : false,
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz",
           "echoCaption" : "A libero quisto pasto.",
           "heardAs" : "Eli verloquisto pasto.",
@@ -605,16 +605,16 @@
           "spoken" : "È libero questo posto?"
         },
         {
-          "caughtWithFingerprint" : false,
-          "caughtWordsOnly" : false,
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz",
           "echoCaption" : "Abi, I'm a prenotato, tagolo, per quattro, aliotto.",
           "heardAs" : "Habiamo pre notato, tabolo, per quattro, ale opto.",
           "spoken" : "Abbiamo prenotato un tavolo per quattro alle otto."
         },
         {
-          "caughtWithFingerprint" : false,
-          "caughtWordsOnly" : false,
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz + noise 10 dB",
           "echoCaption" : "Abi, am afreno tato, tago, pecuatro, aliotto.",
           "heardAs" : "Habiamo pre notato, tabolo, per quattro, ale opto.",
@@ -622,7 +622,7 @@
         },
         {
           "caughtWithFingerprint" : true,
-          "caughtWordsOnly" : false,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz",
           "echoCaption" : "Cuanto cigualia piedi.",
           "heardAs" : "Cuanto chivolia piedi.",
@@ -637,7 +637,7 @@
           "spoken" : "Quanto ci vuole a piedi?"
         },
         {
-          "caughtWithFingerprint" : false,
+          "caughtWithFingerprint" : true,
           "caughtWordsOnly" : false,
           "condition" : "8 kHz",
           "echoCaption" : "I will cause a sense of frutasita.",
@@ -654,15 +654,15 @@
         },
         {
           "caughtWithFingerprint" : true,
-          "caughtWordsOnly" : false,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz",
           "echoCaption" : "Gracia mile, mi estato molto utile.",
           "heardAs" : "Grace mile, mi estato molto utile.",
           "spoken" : "Grazie mille, mi è stato molto utile."
         },
         {
-          "caughtWithFingerprint" : false,
-          "caughtWordsOnly" : false,
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
           "condition" : "8 kHz + noise 10 dB",
           "echoCaption" : "Gracie mile, mie estatum moltoski.",
           "heardAs" : "Grace mile, mi estato molto utile.",
@@ -676,7 +676,7 @@
       "language" : "he",
       "lines" : [
         {
-          "caughtWithFingerprint" : false,
+          "caughtWithFingerprint" : true,
           "caughtWordsOnly" : false,
           "condition" : "8 kHz",
           "echoCaption" : "A photo, Hanatarakivit.",
@@ -716,7 +716,7 @@
           "spoken" : "סליחה, לא קלטתי את השם שלך."
         },
         {
-          "caughtWithFingerprint" : false,
+          "caughtWithFingerprint" : true,
           "caughtWordsOnly" : false,
           "condition" : "8 kHz + noise 10 dB",
           "echoCaption" : "He has local activities as shem shellach.",
@@ -780,7 +780,7 @@
           "spoken" : "הזמנו שולחן לארבעה בשמונה."
         },
         {
-          "caughtWithFingerprint" : false,
+          "caughtWithFingerprint" : true,
           "caughtWordsOnly" : false,
           "condition" : "8 kHz + noise 10 dB",
           "echoCaption" : "As Manushu, Hanle, Alba, Abish Monach.",
@@ -907,7 +907,7 @@
           "spoken" : "博物館は明日の朝九時に開きます。"
         },
         {
-          "caughtWithFingerprint" : false,
+          "caughtWithFingerprint" : true,
           "caughtWordsOnly" : false,
           "condition" : "8 kHz",
           "echoCaption" : "Listen, mega, nice, so be nikimas.",
@@ -979,7 +979,7 @@
           "spoken" : "ナッツが入っていないものはありますか？"
         },
         {
-          "caughtWithFingerprint" : false,
+          "caughtWithFingerprint" : true,
           "caughtWordsOnly" : false,
           "condition" : "8 kHz + noise 10 dB",
           "echoCaption" : "Next to the highest day, Monoari Maska.",

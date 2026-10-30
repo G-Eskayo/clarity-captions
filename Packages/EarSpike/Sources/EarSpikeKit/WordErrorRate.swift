@@ -21,7 +21,7 @@ public enum WordErrorRate {
                                   "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen",
                                   "eighteen", "nineteen", "twenty"]
 
-    static func normal(_ text: String) -> [String] {
+    public static func normal(_ text: String) -> [String] {
         EchoGuard.words(text).map { w in numbers.firstIndex(of: w).map(String.init) ?? w }
     }
 }

@@ -5,6 +5,8 @@
 //   swift run --package-path Packages/EarSpike ear-spike lag        --out DIR   translate + synthesize timings
 //   swift run --package-path Packages/EarSpike ear-spike echo       --out DIR   the app's voice fed to the captioner
 //   swift run --package-path Packages/EarSpike ear-spike fingerprint --out DIR  echo guard with the own-voice fingerprint
+//   swift run --package-path Packages/EarSpike ear-spike finish-lag --out DIR   end of speech -> finished line (EdAcc, live-paced)
+//   swift run --package-path Packages/EarSpike ear-spike headset-real --out DIR 16 kHz vs 8 kHz on real speech (EdAcc)
 //   swift run --package-path Packages/EarSpike ear-spike acoustic   --out DIR   speaker -> mic, voice processing off/on
 //   swift run --package-path Packages/EarSpike ear-spike headset    --out DIR   16 kHz vs 8 kHz vs room mic accuracy
 @preconcurrency import AVFoundation
@@ -201,6 +203,64 @@ case "fingerprint":
         print("\(l.language): caught words-only \(w)/\(l.lines.count), with fingerprint \(p)/\(l.lines.count), false echoes \(l.falseEchoes)/\(l.realLinesChecked)")
     }
 
+case "finish-lag":
+    // End of speech to finished line, on real conversational English (EdAcc) played in real time: the wait before
+    // the translator can start. 10 clips per stream with 2 s gaps, like turns in a conversation.
+    let shard = URL(fileURLWithPath: arg("--shard") ?? NSString(string: "~/edacc-eval/shards-203/shard-001").expandingTildeInPath)
+    let clips = try EdaccClip.load(shard: shard, min: 3, max: 15, count: Int(arg("--clips") ?? "40")!)
+    let en = Locale(identifier: "en-US")
+    try await Transcribe.ensureInstalled(en)
+    var all: [LineTiming] = []
+    for (si, group) in stride(from: 0, to: clips.count, by: 10).map({ Array(clips[$0..<min($0 + 10, clips.count)]) }).enumerated() {
+        var parts: [AVAudioPCMBuffer] = []
+        for c in group { parts.append(try c.audio(in: shard)); parts.append(AudioFiles.silence(2.0, rate: 16000)) }
+        let lines = try await StreamLag.run(AudioFiles.concat(parts), locale: en)
+        all += lines
+        let lag = LagStats(lines.filter { !$0.afterInputEnded }.map(\.finishLagMs))
+        print("stream \(si): \(lines.count) lines, finish lag p50 \(Int(lag.median ?? -1)) p95 \(Int(lag.p95 ?? -1)) ms")
+    }
+    let live = all.filter { !$0.afterInputEnded }
+    struct F: Encodable {
+        let clips: [String]; let lines: [LineTiming]
+        let finishLag: LagStats; let headStart3: LagStats; let headStart5: LagStats
+        let linesWithStable3: Int; let linesWithStable5: Int
+    }
+    let f = F(clips: clips.map(\.clipID), lines: all, finishLag: LagStats(live.map(\.finishLagMs)),
+              headStart3: LagStats(live.compactMap(\.headStart3Ms)), headStart5: LagStats(live.compactMap(\.headStart5Ms)),
+              linesWithStable3: live.filter { $0.headStart3Ms != nil }.count, linesWithStable5: live.filter { $0.headStart5Ms != nil }.count)
+    try save(envelope(f), "finish-lag-mac.json")
+    print("all: \(live.count) lines; finish lag p50 \(f.finishLag.median ?? -1) p95 \(f.finishLag.p95 ?? -1); head start 3w p50 \(f.headStart3.median ?? -1) (\(f.linesWithStable3) lines), 5w p50 \(f.headStart5.median ?? -1) (\(f.linesWithStable5))")
+
+case "headset-real":
+    // Real conversational English (EdAcc) at 16 kHz (the band an mSBC headset mic carries, no codec loss) and
+    // narrowed to 8 kHz (CVSD, older headsets). Pooled WER, the same clips both ways.
+    let shard = URL(fileURLWithPath: arg("--shard") ?? NSString(string: "~/edacc-eval/shards-203/shard-001").expandingTildeInPath)
+    let clips = try EdaccClip.load(shard: shard, min: 3, max: 15, count: Int(arg("--clips") ?? "80")!)
+    let en = Locale(identifier: "en-US")
+    try await Transcribe.ensureInstalled(en)
+    let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("ear-spike-headset-real")
+    try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+    struct Clip: Encodable { let clip: String; let words: Int; let wide: Double; let narrow: Double }
+    var rows: [Clip] = []
+    for c in clips {
+        let wide = try c.audio(in: shard)
+        let wu = tmp.appendingPathComponent("w.caf"), nu = tmp.appendingPathComponent("n.caf")
+        try AudioFiles.write(wide, to: wu); try AudioFiles.write(try AudioFiles.narrowband(wide), to: nu)
+        let words = WordErrorRate.normal(c.reference).count
+        rows.append(Clip(clip: c.clipID, words: words,
+                         wide: WordErrorRate.of((try? await Transcribe.file(wu, locale: en)) ?? "", reference: c.reference),
+                         narrow: WordErrorRate.of((try? await Transcribe.file(nu, locale: en)) ?? "", reference: c.reference)))
+    }
+    try? FileManager.default.removeItem(at: tmp)
+    func pooled(_ k: KeyPath<Clip, Double>) -> Double {
+        rows.reduce(0) { $0 + $1[keyPath: k] * Double($1.words) } / Double(rows.reduce(0) { $0 + $1.words })
+    }
+    struct H: Encodable { let clips: [Clip]; let pooledWER16k: Double; let pooledWER8k: Double; let narrowWorseClips: Int }
+    let h = H(clips: rows, pooledWER16k: pooled(\.wide), pooledWER8k: pooled(\.narrow),
+              narrowWorseClips: rows.filter { $0.narrow > $0.wide }.count)
+    try save(envelope(h), "headset-real-mac.json")
+    print("EdAcc \(rows.count) clips: 16 kHz WER \(h.pooledWER16k), 8 kHz WER \(h.pooledWER8k), 8 kHz worse on \(h.narrowWorseClips)")
+
 case "acoustic":
     // Out loud: Mac mini speakers -> USB camera mic (16 kHz) in the same room, voice processing off then on.
     struct Run: Encodable {
@@ -297,6 +357,6 @@ case "headset":
     for c in conds { print("\(c.condition): WER \(c.wer)") }
 
 default:
-    print("usage: ear-spike voices|lag|echo|fingerprint|acoustic|headset --out DIR")
+    print("usage: ear-spike voices|lag|echo|fingerprint|finish-lag|headset-real|acoustic|headset --out DIR")
     exit(2)
 }
