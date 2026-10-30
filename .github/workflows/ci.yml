@@ -1,7 +1,7 @@
 name: CI
 
 # Runs on every PR and on main. This is the same check the MARVIN pipeline and merge gate run locally
-# (see config/projects/clarity-captions.json): CaptionCore's unit tests, and the app building for the iOS Simulator.
+# (see config/projects/clarity-captions.json): CaptionCore's unit tests, the app building for the iOS Simulator, and the Mac app building.
 on:
   pull_request:
   push:
@@ -55,6 +55,34 @@ jobs:
           xcodegen generate
           xcodebuild -project CaptionSpike.xcodeproj -scheme CaptionSpike \
             -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+
+  # #209: the Mac app shares the iPhone's Settings files, so a change to them can break the Mac. Build it every time.
+  mac-app:
+    name: Mac app builds (macOS)
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache the bundled speaker model (Sortformer, about 230 MB, gitignored)
+        id: model
+        uses: actions/cache@v4
+        with:
+          path: Apps/Mac/Resources/Models
+          key: mac-models-${{ hashFiles('scripts/fetch-diarizer-models.sh') }}
+      - name: Fetch the speaker model
+        if: steps.model.outputs.cache-hit != 'true'
+        run: |
+          sh scripts/fetch-diarizer-models.sh
+          mkdir -p Apps/Mac/Resources/Models
+          mv Apps/Spike/Resources/Models/Sortformer_v2.1.mlmodelc Apps/Mac/Resources/Models/
+      - name: Install xcodegen
+        run: brew install xcodegen
+      - name: Generate the project and build (signing off)
+        working-directory: Apps/Mac
+        run: |
+          xcodegen generate
+          xcodebuild -project CaptionMac.xcodeproj -scheme CaptionMac -configuration Debug \
+            -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build
 
   site:
     name: Website checks (site/)
