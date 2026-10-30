@@ -55,8 +55,12 @@ enum CaptionEngineFactory {
         let plan = Self.plan(for: locale ?? captionLocale)
         let selection = plan.selection
         let recognizer = Self.recognizer(for: plan)
+        var source: AudioSource?
+        #if DEBUG
+        source = DemoMode.audioFile.map { FileAudioSource(url: $0) }
+        #endif
         let engine = TranscriptionEngine(locale: plan.locale, micMode: micMode, diarizerModelURL: speakerModel,
-                                         recognizer: recognizer, startReason: selection.reason)
+                                         recognizer: recognizer, startReason: selection.reason, audioSource: source)
         engine.onFallback = { _ in
             var history = EngineFallbackHistory()
             history.record(Date(), now: Date())

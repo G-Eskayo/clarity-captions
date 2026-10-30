@@ -92,6 +92,9 @@ enum DemoMode {
     /// `-ClarityDemoLanguage es-ES`: captions in this language (#37). `-ClarityDemoTranslate en-US`: translation on,
     /// into this language (#53). `-ClarityDemoTranslateProgress 0.42`: its language pack mid-download.
     static var language: String? { value(after: "-ClarityDemoLanguage") }
+    /// #220: captions replay this sound file through the real engine instead of the microphone (the simulator's
+    /// microphone hears nothing useful), so a screenshot shows a real engine's words.
+    static var audioFile: URL? { value(after: "-ClarityDemoAudio").map { URL(fileURLWithPath: $0) } }
     static var translate: String? { value(after: "-ClarityDemoTranslate") }
     static var translateProgress: Double? { value(after: "-ClarityDemoTranslateProgress").flatMap(Double.init) }
     static var translationOwned: Bool { flag("-ClarityDemoTranslationOwned") }
