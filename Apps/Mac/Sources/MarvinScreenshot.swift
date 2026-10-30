@@ -8,6 +8,7 @@ import SwiftUI
 /// at 2x and quits. Needs no Screen Recording permission. Scenes:
 ///   `-SealPopupMockup auto|waiting|stopped`
 ///   `-SealCallMockup ringing|call|ended` (`-SealCallPhase 0...1`): a call arriving mid-conversation (#178)
+///   `-SealTranslateMockup offer|settings|call|room`: Live Translation on the Mac (#213)
 /// `-MarvinLiveSnapshot <png> -MarvinLiveSnapshotAfter <seconds>` instead snapshots the live window while the app keeps
 /// running (proof of a real run, without Screen Recording).  the #172 pop-up mock-up (Paper when light, Harbor when dark)
 enum MarvinScreenshot {
@@ -23,7 +24,9 @@ enum MarvinScreenshot {
 
         let variant = CallPopupMockup.Variant(rawValue: defaults.string(forKey: "SealPopupMockup") ?? "auto") ?? .auto
         let view = Group {
-            if let step = defaults.string(forKey: "SealCallMockup").flatMap(CallArrivalMockup.Step.init) {
+            if let step = defaults.string(forKey: "SealTranslateMockup").flatMap(TranslationMockup.Step.init) {
+                TranslationMockup(step: step, style: style)
+            } else if let step = defaults.string(forKey: "SealCallMockup").flatMap(CallArrivalMockup.Step.init) {
                 CallArrivalMockup(step: step, style: style, phase: defaults.object(forKey: "SealCallPhase") == nil ? 0.18 : defaults.double(forKey: "SealCallPhase"))
             } else {
                 CallPopupMockup(variant: variant, style: style)

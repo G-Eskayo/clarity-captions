@@ -6,6 +6,8 @@ import Foundation
 public struct TranslationPurchase: Equatable, Sendable {
     /// The product in App Store Connect and in the StoreKit test file.
     public static let productID = "com.gileskayo.captions.translation"
+    /// The Mac's own product (#213): the Mac app is its own App Store record with its own price (ADR 0028, #176).
+    public static let macProductID = "com.gileskayo.captions.mac.translation"
 
     public enum Activity: Equatable, Sendable { case idle, buying, restoring, waitingForApproval }
     public enum BuyResult: Equatable, Sendable { case bought, cancelled, pending, failed }
