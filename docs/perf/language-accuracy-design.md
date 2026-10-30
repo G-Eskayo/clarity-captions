@@ -179,7 +179,7 @@ aren't in Seal's caption language list, which comes from Apple's locales; adding
 | Language | FLEURS config | Clips | Distinct sentences | Audio | Apple locale(s) |
 |---|---|---:|---:|---:|---|
 | Italian | `it_it` | 865 | 346 | 3.52 h | it-IT, it-CH |
-| Portuguese | `pt_br` (Brazilian) | see the report | | | pt-BR, pt-PT |
+| Portuguese | `pt_br` (Brazilian) | 919 | 349 | 3.24 h | pt-BR, pt-PT |
 
 What changes from #158, and nothing else does (same dataset commit `70bb2e8`, scorer, bootstrap, rule):
 
@@ -192,7 +192,9 @@ What changes from #158, and nothing else does (same dataset commit `70bb2e8`, sc
   `1º` / `2ª` ordinals as in Spanish (feminine for `ª`), hesitations (it `eh ehm mm mmm hmm`; pt `eh ehm hum hmm mm
   mmm ahn`) and, for Portuguese, Brazilian number words (`num2words` `pt_BR`: `dezesseis`), since FLEURS Portuguese is
   Brazilian. Italian elision (`l'uomo`) and Portuguese clitics (`disse-lhe`) split on both sides like French. Years
-  are plain cardinals in both. Tests in `tests/test_normalize_languages.py`.
+  are plain cardinals in both. Portuguese spellings Brazil accepts both ways map to one form (`óptico` / `ótico`,
+  `Singapura` / `Cingapura`), added after reading the errors on Portuguese shard 1: only Apple wrote the other form,
+  so the rule can only help Apple. Tests in `tests/test_normalize_languages.py`.
 - **Errors read on Italian shard 1** before the rest ran: no formatting mismatch big enough to need a rule. The top
   pairs are real mistakes (Apple writes `è` for `e` 16 times), names (`Martelly`), unit abbreviations (`m`, `km`,
   `p.` against spoken words, the accepted residual above) and a few FLEURS transcripts that write `e` where `è` was
