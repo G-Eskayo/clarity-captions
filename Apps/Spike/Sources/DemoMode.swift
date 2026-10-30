@@ -389,13 +389,9 @@ extension CaptionModel {
     }
 
     /// Stand-in for Stop reaching the engines: the player ends and the controller's state change follows.
-    func demoStopSplit() async {
-        // #245: the owner's iPad. The controller leaves a start that never returns at once (idle), but the engine's
-        // own stop may never come back either; Stop must leave the split anyway.
-        if DemoMode.faceToFaceHung {
-            if state == .preparing { handleCaptionStateChange(.idle) }
-            try? await Task.sleep(for: .seconds(600))
-        }
+    /// With `-ClarityDemoFaceToFaceHung` the start never returns; like CaptionSessionController (#245), a stop while
+    /// still starting leaves it behind at once.
+    func demoStopSplit() {
         demoSplitPlayer?.cancel()
         demoSplitPlayer = nil
         switch state {

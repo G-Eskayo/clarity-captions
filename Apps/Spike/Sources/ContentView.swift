@@ -395,7 +395,7 @@ final class CaptionModel: ObservableObject {
         splitStopping = true
         defer { splitStopping = false }
         #if DEBUG
-        if DemoMode.isOn { await demoStopSplit(); return }
+        if DemoMode.isOn { demoStopSplit(); return }
         #endif
         await controller.stopAndWait()
     }
