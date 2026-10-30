@@ -47,19 +47,31 @@ def _convert(prog, precision: str):
                       skip_model_load=True)  # loading would start an ANE compile, which this encoder fails
 
 
+# Only the weights of linear and conv layers are compressed, and never the front end: the six 2-D convolutions that
+# read the fbank (about 144k parameters, 0.3 MB at fp16). With the front end at 4 or 2 bits the encoder emitted no
+# words at all, on any audio (3 and 6 bits happened to survive); a layer-by-layer bisection found exactly these.
+WEIGHT_OPS = ("linear", "conv")
+
+
+def front_end_ops(model) -> list[str]:
+    """Names of the 2-D convolutions (rank-4 weights): the subsampling front end over the fbank."""
+    return [o.name for f in model._mil_program.functions.values() for o in f.operations
+            if o.op_type == "conv" and o.weight.val is not None and o.weight.val.ndim == 4]
+
+
 def compress(model, variant: str):
     import coremltools.optimize.coreml as cto
     if variant in ("fp32", "fp16"):
         return model
     if variant == "int8":
-        cfg = cto.OptimizationConfig(global_config=cto.OpLinearQuantizerConfig(
-            mode="linear_symmetric", dtype="int8", granularity="per_channel"))
-        return cto.linear_quantize_weights(model, cfg)
+        op = cto.OpLinearQuantizerConfig(mode="linear_symmetric", dtype="int8", granularity="per_channel")
+        return cto.linear_quantize_weights(model, cto.OptimizationConfig(
+            op_type_configs={t: op for t in WEIGHT_OPS}, op_name_configs={n: None for n in front_end_ops(model)}))
     if variant.startswith("pal"):
-        bits = int(variant[3:])
-        cfg = cto.OptimizationConfig(global_config=cto.OpPalettizerConfig(
-            mode="kmeans", nbits=bits, granularity="per_grouped_channel", group_size=GROUP))
-        return cto.palettize_weights(model, cfg)
+        op = cto.OpPalettizerConfig(mode="kmeans", nbits=int(variant[3:]), granularity="per_grouped_channel",
+                                    group_size=GROUP)
+        return cto.palettize_weights(model, cto.OptimizationConfig(
+            op_type_configs={t: op for t in WEIGHT_OPS}, op_name_configs={n: None for n in front_end_ops(model)}))
     raise ValueError(variant)
 
 
