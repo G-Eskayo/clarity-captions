@@ -1,4 +1,5 @@
-"""Text normalizer for the reference and every engine: English (#145), Spanish, French, German (#158), Hebrew (#202).
+"""Text normalizer for the reference and every engine: English (#145), Spanish, French, German (#158), Italian,
+Portuguese (#234), Hebrew (#202).
 
 Choices are documented in docs/perf/engine-accuracy-design.md and docs/perf/language-accuracy-design.md ("Scoring").
 The same function runs on both sides, so any residual quirk costs every engine equally.
@@ -160,6 +161,7 @@ class _Lang:
     currency: dict
     fillers: frozenset
     variants: dict = field(default_factory=dict)  # both spellings accepted by the language's academy -> one form
+    num2words: str = ""                           # num2words language code, when it isn't the key
 
 
 _LANGS = {
@@ -169,6 +171,11 @@ _LANGS = {
                 frozenset("euh heu hum mm mmm hmm".split())),
     "de": _Lang("komma", "prozent", {"€": "euro", "$": "dollar", "£": "pfund"},
                 frozenset("äh ähm öh öhm hm hmm mm mmm".split())),
+    "it": _Lang("virgola", "per cento", {"€": "euro", "$": "dollari", "£": "sterline"},
+                frozenset("eh ehm mm mmm hmm".split())),
+    # FLEURS Portuguese is Brazilian (pt_br), so numbers are Brazil's ("dezesseis").
+    "pt": _Lang("vírgula", "por cento", {"€": "euros", "$": "dólares", "£": "libras"},
+                frozenset("eh ehm hum hmm mm mmm ahn".split()), num2words="pt_BR"),
 }
 LANGUAGES = ("en",) + tuple(_LANGS) + ("he",)
 
@@ -195,6 +202,7 @@ def strip_accents(text: str) -> str:
 
 def _words(n: int, lang: str, to: str = "cardinal") -> str:
     from num2words import num2words
+    lang = _LANGS[lang].num2words or lang if lang in _LANGS else lang
     try:
         return " " + num2words(n, lang=lang, to=to).casefold() + " "
     except (OverflowError, NotImplementedError, ValueError):
@@ -233,8 +241,9 @@ def _fr_roman(m: re.Match) -> str:
     return _fr_ordinal(n, suffix)
 
 
-def _es_ordinal(m: re.Match) -> str:
-    w = _words(int(m.group(1)), "es", "ordinal").strip()
+def _marked_ordinal(m: re.Match, lang: str) -> str:
+    """Spanish, Italian and Portuguese "1º" / "2ª": the ordinal, made feminine by its last vowel for ª."""
+    w = _words(int(m.group(1)), lang, "ordinal").strip()
     if m.group(2) == "ª" and w.endswith("o"):
         w = w[:-1] + "a"
     return f" {w} "
@@ -263,8 +272,8 @@ def _normalize_lang(text: str | None, lang: str) -> str:
         return ""
     cfg = _LANGS[lang]
     s = unicodedata.normalize("NFC", text)
-    if lang == "es":
-        s = _ES_ORDINAL.sub(_es_ordinal, s)  # before NFKC, which turns º/ª into o/a
+    if lang in ("es", "it", "pt"):
+        s = _ES_ORDINAL.sub(lambda m: _marked_ordinal(m, lang), s)  # before NFKC, which turns º/ª into o/a
     if lang == "fr":
         s = _FR_ROMAN_ORDINAL.sub(_fr_roman, s)  # case-sensitive: needs the capitals
         s = _FR_ORDINAL.sub(lambda m: _fr_ordinal(int(m.group(1)), m.group(2)), s)
@@ -288,7 +297,8 @@ _LETTER_DIGIT_ANY = re.compile(r"(?<=[^\W\d_])(?=\d)|(?<=\d)(?=[^\W\d_])")
 
 
 def normalize(text: str | None, language: str | None = None) -> str:
-    """English (language None or "en") is #145's normalizer, unchanged; "es", "fr", "de" use the #158 rules;
+    """English (language None or "en") is #145's normalizer, unchanged; "es", "fr", "de" use the #158 rules, and
+    "it", "pt" the same rules (#234);
     "he" is #202's (edacc_eval/hebrew.py)."""
     if language in (None, "en"):
         return _normalize_en(text)

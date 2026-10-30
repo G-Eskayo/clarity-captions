@@ -104,6 +104,12 @@ def test_rerun_is_idempotent(tmp_path):
     assert not list((tmp_path / "shards").rglob("*.tmp"))
 
 
+def test_italian_and_portuguese_are_fleurs_languages_for_234():
+    # Apple's two locales each (SpeechTranscriber.supportedLocales on macOS 26.5); the best one is compared.
+    assert LANGUAGES["it"].config == "it_it" and LANGUAGES["it"].locales == ("it-IT", "it-CH")
+    assert LANGUAGES["pt"].config == "pt_br" and LANGUAGES["pt"].locales == ("pt-BR", "pt-PT")
+
+
 def test_hebrew_is_a_fleurs_language_for_201():
     from edacc_eval.fleurs import LANGUAGES
     assert LANGUAGES["he"].config == "he_il" and LANGUAGES["he"].locales == ("he-IL",)
