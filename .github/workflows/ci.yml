@@ -1,7 +1,10 @@
 name: CI
 
-# Runs on every PR and on main. This is the same check the MARVIN pipeline and merge gate run locally
-# (see config/projects/clarity-captions.json): CaptionCore's unit tests, and the app building for the iOS Simulator.
+# Runs exactly the required checks in .github/required-checks.json (marvin#826): one job per check, named as the list
+# names it, each running `.github/run-check.sh <id>`, the same runner MARVIN's merge gate uses. Branch protection on
+# main requires these names; scripts/required-checks.test.mjs fails if this file and the list drift apart.
+# On a PR, MARVIN_BASE makes each check run only when the change touches its paths (and skip its setup otherwise);
+# on main, after every merge, it is empty and every check runs.
 on:
   pull_request:
   push:
@@ -11,6 +14,9 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  MARVIN_BASE: ${{ github.event.pull_request.base.sha }}
+
 jobs:
   caption-core:
     name: CaptionCore unit tests
@@ -18,17 +24,22 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Does this change touch CaptionCore?
+        id: affected
+        run: echo "run=$(.github/run-check.sh caption-core --affected)" >> "$GITHUB_OUTPUT"
       - name: Toolchain
+        if: steps.affected.outputs.run == 'true'
         run: swift --version && xcodebuild -version
       - name: Cache SwiftPM build
+        if: steps.affected.outputs.run == 'true'
         uses: actions/cache@v4
         with:
           path: Packages/CaptionCore/.build
           key: spm-${{ runner.os }}-${{ hashFiles('Packages/CaptionCore/Package.resolved') }}
           restore-keys: spm-${{ runner.os }}-
-      - name: swift test
-        working-directory: Packages/CaptionCore
-        run: swift test
+      - run: .github/run-check.sh caption-core
 
   spike-app:
     name: App builds (iOS Simulator)
@@ -36,25 +47,28 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Does this change touch the app?
+        id: affected
+        run: echo "run=$(.github/run-check.sh spike-app --affected)" >> "$GITHUB_OUTPUT"
       - name: Cache the bundled models (speaker + Parakeet, about 740 MB, gitignored)
+        if: steps.affected.outputs.run == 'true'
         id: model
         uses: actions/cache@v4
         with:
           path: Apps/Spike/Resources/Models
           key: bundled-models-${{ hashFiles('scripts/fetch-diarizer-models.sh', 'scripts/fetch-asr-models.sh', 'scripts/models/*.sha256') }}
       - name: Fetch the speaker and Parakeet models
-        if: steps.model.outputs.cache-hit != 'true'
+        if: steps.affected.outputs.run == 'true' && steps.model.outputs.cache-hit != 'true'
         run: |
           sh scripts/fetch-diarizer-models.sh
           sh scripts/fetch-asr-models.sh
       - name: Install xcodegen
+        if: steps.affected.outputs.run == 'true'
         run: brew install xcodegen
       - name: Generate the project and build (signing off)
-        working-directory: Apps/Spike
-        run: |
-          xcodegen generate
-          xcodebuild -project CaptionSpike.xcodeproj -scheme CaptionSpike \
-            -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+        run: .github/run-check.sh spike-app
 
   site:
     name: Website checks (site/)
@@ -62,12 +76,10 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Pages match their sources (site-src, #207)
-        run: node --test scripts/build-site.test.mjs scripts/lang-offer.test.mjs && node scripts/build-site.mjs --check
-      - name: Nothing phones home, honest claims, contrast, links, demo logic
-        run: node scripts/check-site.mjs
-      - name: Evidence log entries (one file each, #210)
-        run: node --test scripts/check-evidence.test.mjs && node scripts/check-evidence.mjs
+      - name: Pages match their sources, nothing phones home, evidence entries, the required-checks list
+        run: .github/run-check.sh site

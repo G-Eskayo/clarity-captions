@@ -1,0 +1,66 @@
+{
+  "_readme": "This repo's required checks (marvin#826). GitHub CI runs each one as a job with this exact name, MARVIN's merge gate runs the same ones through .github/run-check.sh (its project profile folds this list in), and branch protection on main requires these names. A check with \"paths\" runs only when a PR touches one (globs, * crosses /); on main, after a merge, every check runs. Format: lib/required_checks.py in G-Eskayo/marvin. Drift test: node --test scripts/required-checks.test.mjs",
+  "checks": [
+    {
+      "id": "caption-core",
+      "name": "CaptionCore unit tests",
+      "cwd": "Packages/CaptionCore",
+      "paths": [
+        "Packages/*"
+      ],
+      "command": [
+        "swift",
+        "test"
+      ],
+      "parser": "swift-test",
+      "requires": [
+        "swift",
+        "xcode"
+      ],
+      "timeout_s": 1500
+    },
+    {
+      "id": "spike-app",
+      "name": "App builds (iOS Simulator)",
+      "cwd": "Apps/Spike",
+      "paths": [
+        "Apps/*",
+        "Packages/*",
+        "scripts/fetch-*",
+        "scripts/models/*",
+        "design/*"
+      ],
+      "command": [
+        "bash",
+        "-c",
+        "D=$(mktemp -d \"${TMPDIR:-/tmp}/clarity-derived.XXXXXX\"); trap 'rm -rf \"$D\"' EXIT; xcodegen generate && xcodebuild -project CaptionSpike.xcodeproj -scheme CaptionSpike -destination 'generic/platform=iOS Simulator' -derivedDataPath \"$D\" CODE_SIGNING_ALLOWED=NO build"
+      ],
+      "parser": "xcodebuild",
+      "requires": [
+        "xcodegen",
+        "xcode"
+      ],
+      "timeout_s": 2400
+    },
+    {
+      "id": "site",
+      "name": "Website checks (site/)",
+      "cwd": ".",
+      "paths": [
+        "site/*",
+        "site-src/*",
+        "scripts/*",
+        "docs/research/evidence/*"
+      ],
+      "command": [
+        "bash",
+        "-c",
+        "node --test scripts/build-site.test.mjs scripts/lang-offer.test.mjs scripts/required-checks.test.mjs && node scripts/build-site.mjs --check && node scripts/check-site.mjs && node --test scripts/check-evidence.test.mjs && node scripts/check-evidence.mjs"
+      ],
+      "requires": [
+        "node"
+      ],
+      "timeout_s": 300
+    }
+  ]
+}
