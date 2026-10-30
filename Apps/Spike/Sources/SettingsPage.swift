@@ -43,8 +43,12 @@ struct SettingsPage: View {
                         // Translation is a one-time purchase (owner, #171): bought or not, it keeps this one place at the
                         // top, with the same shape, so buying it changes what's in the space, never the layout. It sits
                         // above the sample so the sample and the buttons that change it stay together (owner, #171).
+                        // The Mac hides Translate captions and Caption language until #213 wires them there (owner, #230):
+                        // until then their rows would show but do nothing when clicked.
+                        #if !os(macOS)
                         section("Translate captions", first: true, note: language.translationOwned ? translationNote : translationOfferNote) { translationRows }
                             .id("translation")
+                        #endif
                         preview
                             .overlay(alignment: .top) { Rectangle().fill(rule).frame(height: 1) }
                         section("Colors", first: true) { colorsRow }
@@ -54,11 +58,13 @@ struct SettingsPage: View {
                         section("Stop when it's quiet") { idleStopRow }.id("idleStop")
                         if beta.isOn { testVersionSection.id("betaFeedback") }
                         if showsTourReplay { section("How to use Seal") { tourRow }.id("tour") }
+                        #if !os(macOS)
                         section("Caption language", note: String(localized: "Seal captions the language people are speaking. Change it when you're somewhere they speak another language.")) {
                             captionLanguageRow
                             CaptionLanguageDownloadLine(style: style, phase: language.captionDownload)
                         }
                         .id("language")
+                        #endif
                         section("About") { aboutRows }.id("about")
                     }
                     .padding(.horizontal, 20)
