@@ -4,6 +4,7 @@
 //   swift run --package-path Packages/EarSpike ear-spike voices     --out DIR   which languages have a voice
 //   swift run --package-path Packages/EarSpike ear-spike lag        --out DIR   translate + synthesize timings
 //   swift run --package-path Packages/EarSpike ear-spike echo       --out DIR   the app's voice fed to the captioner
+//   swift run --package-path Packages/EarSpike ear-spike fingerprint --out DIR  echo guard with the own-voice fingerprint
 //   swift run --package-path Packages/EarSpike ear-spike acoustic   --out DIR   speaker -> mic, voice processing off/on
 //   swift run --package-path Packages/EarSpike ear-spike headset    --out DIR   16 kHz vs 8 kHz vs room mic accuracy
 @preconcurrency import AVFoundation
@@ -136,6 +137,70 @@ case "echo":
     try? FileManager.default.removeItem(at: tmp)
     try save(envelope(results), "echo-digital-mac.json")
 
+case "fingerprint":
+    // The echo guard's own-voice fingerprint: the app captions its rendered voice with the caption engine (English
+    // here) before playing it, then a caption of that voice coming back through the mic should match. The way back is
+    // simulated (8 kHz band, then 8 kHz plus noise at 10 dB SNR); a real speaker-to-mic test is a device step.
+    struct Line: Encodable {
+        let spoken: String; let heardAs: String; let condition: String; let echoCaption: String
+        let caughtWordsOnly: Bool; let caughtWithFingerprint: Bool
+    }
+    struct Lang: Encodable { let language: String; let lines: [Line]; let falseEchoes: Int; let realLinesChecked: Int }
+    let synth = AVSpeechSynthesizer()
+    let en = Locale(identifier: "en-US")
+    try await Transcribe.ensureInstalled(en)
+    let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("ear-spike-fingerprint")
+    try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+    var langs: [Lang] = []
+    for target in (arg("--targets") ?? "es,fr,de,it,he,ja").split(separator: ",").map(String.init) {
+        let (_, translated) = await TranslateLag.linesOrReference(target: target, lines: SampleLines.english)
+        guard let tlines = translated,
+              let voice = Voices.best(for: VoiceCoverage.voice(for: target, among: AVSpeechSynthesisVoice.speechVoices().map(\.language)) ?? "")
+        else { print("\(target): no pair or no voice"); continue }
+        var lines: [Line] = []
+        var falseEchoes = 0, realChecked = 0
+        for (i, spoken) in tlines.enumerated() {
+            var bufs: [AVAudioPCMBuffer] = []
+            _ = await SynthLag.render(spoken, voice: voice, synth: synth) { b in
+                let copy = AVAudioPCMBuffer(pcmFormat: b.format, frameCapacity: b.frameLength)!
+                copy.frameLength = b.frameLength
+                if let s = b.int16ChannelData { memcpy(copy.int16ChannelData![0], s[0], Int(b.frameLength) * 2) }
+                if let s = b.floatChannelData { memcpy(copy.floatChannelData![0], s[0], Int(b.frameLength) * 4) }
+                bufs.append(copy)
+            }
+            let clean = AudioFiles.concat([AudioFiles.silence(0.5, rate: 16000), try AudioFiles.resample(bufs, to: 16000),
+                                           AudioFiles.silence(0.5, rate: 16000)])
+            let cu = tmp.appendingPathComponent("c.caf")
+            try AudioFiles.write(clean, to: cu)
+            let heardAs = (try? await Transcribe.file(cu, locale: en)) ?? ""
+            let narrow = try AudioFiles.narrowband(clean)
+            var guardWords = EchoGuard(), guardPrint = EchoGuard()
+            guardWords.spoke(spoken, from: 0, to: 4)
+            guardPrint.spoke(spoken, heardAs: heardAs, from: 0, to: 4)
+            for (name, audio) in [("8 kHz", narrow), ("8 kHz + noise 10 dB", AudioFiles.noisy(narrow, snrDb: 10))] {
+                let u = tmp.appendingPathComponent("d.caf")
+                try AudioFiles.write(audio, to: u)
+                let echo = (try? await Transcribe.file(u, locale: en)) ?? ""
+                lines.append(Line(spoken: spoken, heardAs: heardAs, condition: name, echoCaption: echo,
+                                  caughtWordsOnly: echo.isEmpty || guardWords.isEcho(echo, from: 0.3, to: 4.2),
+                                  caughtWithFingerprint: echo.isEmpty || guardPrint.isEcho(echo, from: 0.3, to: 4.2)))
+                print("\(target)[\(i)] \(name): heard \"\(heardAs)\" echo \"\(echo)\" words \(lines.last!.caughtWordsOnly) print \(lines.last!.caughtWithFingerprint)")
+            }
+            // The other person talking over the voice: every English sample line must stay a caption.
+            for real in SampleLines.english {
+                realChecked += 1
+                if guardPrint.isEcho(real, from: 0.3, to: 4.2) { falseEchoes += 1; print("  FALSE ECHO: \(real)") }
+            }
+        }
+        langs.append(Lang(language: target, lines: lines, falseEchoes: falseEchoes, realLinesChecked: realChecked))
+    }
+    try? FileManager.default.removeItem(at: tmp)
+    try save(envelope(langs), "echo-fingerprint-mac.json")
+    for l in langs {
+        let w = l.lines.filter(\.caughtWordsOnly).count, p = l.lines.filter(\.caughtWithFingerprint).count
+        print("\(l.language): caught words-only \(w)/\(l.lines.count), with fingerprint \(p)/\(l.lines.count), false echoes \(l.falseEchoes)/\(l.realLinesChecked)")
+    }
+
 case "acoustic":
     // Out loud: Mac mini speakers -> USB camera mic (16 kHz) in the same room, voice processing off then on.
     struct Run: Encodable {
@@ -232,6 +297,6 @@ case "headset":
     for c in conds { print("\(c.condition): WER \(c.wer)") }
 
 default:
-    print("usage: ear-spike voices|lag|echo|acoustic|headset --out DIR")
+    print("usage: ear-spike voices|lag|echo|fingerprint|acoustic|headset --out DIR")
     exit(2)
 }

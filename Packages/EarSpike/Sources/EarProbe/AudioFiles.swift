@@ -56,6 +56,21 @@ public enum AudioFiles {
         try resample([try resample([buffer], to: 8000)], to: buffer.format.sampleRate)
     }
 
+    /// White noise mixed in at `snrDb` below the signal's RMS. Seeded, so runs repeat.
+    public static func noisy(_ buffer: AVAudioPCMBuffer, snrDb: Double, seed: UInt64 = 233) -> AVAudioPCMBuffer {
+        let b = AVAudioPCMBuffer(pcmFormat: buffer.format, frameCapacity: buffer.frameLength)!
+        b.frameLength = buffer.frameLength
+        let level = rms(buffer) / pow(10, snrDb / 20) * 3.0.squareRoot() // uniform in -a...a has RMS a/sqrt(3)
+        var state = seed
+        let src = buffer.floatChannelData![0], dst = b.floatChannelData![0]
+        for i in 0..<Int(buffer.frameLength) {
+            state = state &* 6364136223846793005 &+ 1442695040888963407
+            let u = Double(state >> 11) / Double(1 << 53) * 2 - 1
+            dst[i] = src[i] + Float(u * level)
+        }
+        return b
+    }
+
     public static func rms(_ b: AVAudioPCMBuffer) -> Double {
         guard b.frameLength > 0, let f = b.floatChannelData?[0] else { return 0 }
         var s = 0.0

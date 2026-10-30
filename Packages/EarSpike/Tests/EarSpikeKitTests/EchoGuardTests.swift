@@ -60,4 +60,49 @@ import Testing
         #expect(EchoGuard.similarity(caption: "Hello, WORLD!", spoken: "hello world") == 1)
         #expect(EchoGuard.similarity(caption: "", spoken: "hello") == 0)
     }
+
+    // The caption engine runs in the other person's language, so it hears the app's Spanish voice as English-sounding
+    // nonsense (echo-digital-mac.json). The app captions its own rendered voice first and remembers what it heard.
+    @Test func gibberishOfTheAppsVoiceMatchesWhatTheAppHeardItselfSay() {
+        var guardian = EchoGuard()
+        guardian.spoke("¿Nos trae la cuenta, por favor?", heardAs: "No, strike, la quanta, perfavor.", from: 10, to: 12)
+        #expect(guardian.isEcho("No strike la quanta per favor", from: 10.3, to: 12.4))
+    }
+
+    @Test func heardAsDoesNotMakeRealSpeechEcho() {
+        var guardian = EchoGuard()
+        guardian.spoke("¿Nos trae la cuenta, por favor?", heardAs: "No, strike, la quanta, perfavor.", from: 10, to: 12)
+        #expect(!guardian.isEcho("Can we get the bill please", from: 10.3, to: 12.4))
+    }
+
+    @Test func heardAsStillNeedsTheTimeOverlap() {
+        var guardian = EchoGuard(tail: 0.8)
+        guardian.spoke("¿Nos trae la cuenta, por favor?", heardAs: "No, strike, la quanta, perfavor.", from: 10, to: 12)
+        #expect(!guardian.isEcho("No strike la quanta per favor", from: 14, to: 15))
+    }
+
+    // Sound-alike nonsense changes its word breaks between the clean render and the way back through a mic, but keeps
+    // most of its letters (echo-fingerprint-mac.json): "yudadamuto" comes back as "yugada mucho".
+    @Test func soundAlikeNonsenseWithOtherWordBreaksIsEcho() {
+        var guardian = EchoGuard()
+        guardian.spoke("Muchísimas gracias, me ha ayudado mucho.", heardAs: "Mutissimas gracias, mera yudadamuto.",
+                       from: 0, to: 3)
+        #expect(guardian.isEcho("Mutisimas gracias, mira, yugada mucho.", from: 0.2, to: 3.2))
+    }
+
+    @Test func realEnglishOverTheVoiceStaysACaption() {
+        var guardian = EchoGuard()
+        guardian.spoke("Muchísimas gracias, me ha ayudado mucho.", heardAs: "Mutissimas gracias, mera yudadamuto.",
+                       from: 0, to: 3)
+        for line in ["Thank you so much, that was really helpful.", "Where is the train station?",
+                     "My daughter is coming to visit next week."] {
+            #expect(!guardian.isEcho(line, from: 0.2, to: 3.2))
+        }
+    }
+
+    @Test func letterSimilarityIgnoresSpacesAndAccents() {
+        #expect(EchoGuard.soundsLike(caption: "yugada mucho", spoken: "yudadamuto") > 0.3)
+        #expect(EchoGuard.soundsLike(caption: "Dónde", spoken: "donde") == 1)
+        #expect(EchoGuard.soundsLike(caption: "ab", spoken: "ab") == 0) // too short for one trigram
+    }
 }
