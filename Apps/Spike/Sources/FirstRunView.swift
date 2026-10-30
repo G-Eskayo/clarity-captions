@@ -32,8 +32,16 @@ struct FirstRunSystem {
                 }
             },
             requestMicrophone: { _ = await AVAudioApplication.requestRecordPermission() },
-            speechModelInstalled: { await SpeechModelInstaller.isInstalled(locale: CaptionLanguageCenter.engineLocale) },
-            speechSupport: { await SpeechSupport.check(locale: CaptionLanguageCenter.engineLocale) },
+            // A language Seal brings its own engine for (#220, Hebrew) needs nothing from Apple: it is already here, and
+            // only the hardware check applies (asking Apple's engine about the language would say it can't).
+            speechModelInstalled: {
+                let locale = CaptionLanguageCenter.engineLocale
+                return CaptionEngineFactory.isBundled(locale) ? true : await SpeechModelInstaller.isInstalled(locale: locale)
+            },
+            speechSupport: {
+                let locale = CaptionLanguageCenter.engineLocale
+                return await SpeechSupport.check(locale: CaptionEngineFactory.isBundled(locale) ? Locale(identifier: "en-US") : locale)
+            },
             hasSeenWelcome: { store.hasSeenWelcome },
             markWelcomeSeen: { store.markWelcomeSeen() },
             speakerModelWarm: { store.isSpeakerModelWarm(forBuild: buildKey) },

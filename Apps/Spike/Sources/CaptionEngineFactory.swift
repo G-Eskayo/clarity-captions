@@ -12,6 +12,9 @@ enum CaptionEngineFactory {
     static var hebrewModelURL: URL? { Bundle.main.url(forResource: "HebrewZipformer", withExtension: nil) }
     /// Caption languages Seal brings its own engine for, so they're listed and need no download from Apple (#220).
     static var bundledLanguages: [Locale] { hebrewModelURL != nil ? [Locale(identifier: "he-IL")] : [] }
+    static func isBundled(_ locale: Locale) -> Bool {
+        bundledLanguages.contains { CaptionLanguage.bcp47($0) == CaptionLanguage.bcp47(locale) }
+    }
     static func modelURL(_ model: SealModel) -> URL? {
         switch model {
         case .parakeetUltra: parakeetModelURL
@@ -32,7 +35,7 @@ enum CaptionEngineFactory {
     static func plan(for language: Locale, now: Date = Date()) -> CaptionEnginePlan {
         CaptionEnginePlan.make(captionLanguage: language, choice: CaptionEngineChoice.stored(developerBuild: developerBuild),
                                now: now, recentFallbacks: EngineFallbackHistory().recent(now: now),
-                               availableMemory: UInt64(os_proc_available_memory()),
+                               availableMemory: availableMemory,
                                modelPresent: SealModel.forLanguage(language).flatMap(modelURL) != nil)
     }
 
@@ -43,6 +46,16 @@ enum CaptionEngineFactory {
         case .hebrewZipformer?: hebrewModelURL.map { .zipformer(modelURL: $0) } ?? .apple
         case nil: .apple
         }
+    }
+
+    /// What this app may still allocate. The simulator has no per-app limit and reports 0, which read as "memory is
+    /// short" and kept every simulator run on Apple's engine; there it is the Mac's memory.
+    static var availableMemory: UInt64 {
+        let available = UInt64(os_proc_available_memory())
+        #if targetEnvironment(simulator)
+        if available == 0 { return ProcessInfo.processInfo.physicalMemory }
+        #endif
+        return available
     }
 
     static func selection(now: Date = Date()) -> EngineSelection { plan(now: now).selection }

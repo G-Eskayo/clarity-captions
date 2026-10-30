@@ -231,6 +231,7 @@ public final class TranscriptionEngine {
                 // Design §5: the model is missing or won't load. Apple's engine for this launch, captions keep flowing.
                 await made.cancel()
                 fallbackDetail = String(describing: error)
+                NSLog("TranscriptionEngine: %@ failed to load, falling back to Apple's engine: %@", made.name, fallbackDetail ?? "")
                 recordFallback(.loadFailed)
                 made = AppleSpeechBackend(locale: locale)
                 try await made.prepare()

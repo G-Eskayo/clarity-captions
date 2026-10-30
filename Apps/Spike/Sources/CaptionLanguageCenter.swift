@@ -56,8 +56,7 @@ final class CaptionLanguageCenter: ObservableObject {
 
     /// Settings, the language list or first run picked a language.
     func choose(_ locale: Locale) async {
-        let bundled = CaptionEngineFactory.bundledLanguages.contains { CaptionLanguage.bcp47($0) == CaptionLanguage.bcp47(locale) }
-        let installed = bundled ? true : await SpeechModelInstaller.isInstalled(locale: locale)
+        let installed = CaptionEngineFactory.isBundled(locale) ? true : await SpeechModelInstaller.isInstalled(locale: locale)
         let before = current
         guard let download = change.choose(locale, installed: installed) else {
             if CaptionLanguage.bcp47(current) != CaptionLanguage.bcp47(before) || followsDevice { set(current, chosen: true) }
