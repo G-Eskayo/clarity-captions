@@ -77,7 +77,7 @@ def build_report(scores: dict, sizes: dict, parts: dict, latency: dict, pick: st
         cells = []
         for s in SETS:
             c = scores.get(s, {}).get(label)
-            cells += [f"{_pct(c.cer.value)} {_ci(c.cer)}", f"{_pct(c.wer.value)} {_ci(c.wer)}"] if c else ["–", "–"]
+            cells += [f"{_pct(c.cer.value)} ({_ci(c.cer)})", f"{_pct(c.wer.value)} ({_ci(c.wer)})"] if c else ["–", "–"]
         bold = "**" if label == model_name(pick or "") else ""
         L.append(f"| {bold}{name}{bold} | {size} | " + " | ".join(cells) + " |")
     L += ["", "Sizes are the three `.mlpackage` folders (encoder, decoder, joiner). Parts per build:", ""]
