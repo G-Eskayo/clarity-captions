@@ -488,8 +488,10 @@ struct ContentView: View {
     @ObservedObject private var languages = CaptionLanguageCenter.shared
     /// #53: live translation, its purchase, and each line's translated text.
     @ObservedObject private var translation = TranslationCenter.shared
+    /// #233: the translation spoken into her headphones, and the line it's saying.
+    @ObservedObject private var ear = EarCenter.shared
     /// #37 / #53: caption language and translation, as Settings and the language list show them.
-    private var language: LanguageSettingsState { .current(languages: languages, translation: translation) }
+    private var language: LanguageSettingsState { .current(languages: languages, translation: translation, ear: ear) }
     /// Height of the soft fade under the status row (#117 topedge); the first caption line starts below it (#137).
     static let captionsTopFade: CGFloat = 56
     @State private var shownScreen: AppScreen = .captions
@@ -617,6 +619,7 @@ struct ContentView: View {
         .onChange(of: launchCovering) { maybeStartTour() }
         .onChange(of: model.tour) { old, new in tourChanged(from: old, to: new) }
         .onChange(of: scenePhase) { _, phase in
+            ear.foregroundChanged(phase == .active)
             model.appActiveChanged(phase == .active)
             model.scenePhaseChanged(phase)
         }
@@ -733,6 +736,7 @@ struct ContentView: View {
                          onChooseCaptionLanguage: { go { $0.open(.captionLanguage) } },
                          onTranslation: { translation.setOn($0) },
                          onChooseTranslationTarget: { go { $0.open(.translationTarget) } },
+                         onEar: { ear.setOn($0) },
                          onBuyTranslation: { Task { await translation.unlock() } },
                          onRestorePurchases: { Task { await translation.restore() } })
         case .translationTarget:
@@ -979,6 +983,8 @@ struct ContentView: View {
         let resolved = selection?.resolved(in: lines)
         let lineIndex = resolved == nil ? [:] : Dictionary(uniqueKeysWithValues: lines.enumerated().map { ($1.id, $0) })
         let highlight = SelectionColors.highlight(on: style.background).color
+        // #233: the line the voice is saying.
+        let earSpeaking = translation.isActive ? ear.speaking : nil
         let newestSpokenLineID = lines.last(where: { !$0.isSoundLabel && !$0.text.trimmingCharacters(in: .whitespaces).isEmpty })?.id
         func selected(_ line: CaptionLine) -> Range<Int>? {
             guard let resolved, let i = lineIndex[line.id] else { return nil }
@@ -1004,16 +1010,27 @@ struct ContentView: View {
                                     .textRenderer(renderer)
                                     .accessibilityLabel(line.soundLabel.map { soundLabelA11yLabel(for: $0) } ?? "")
                                     .trackWords(in: textFrames, key: "text-\(line.id)")
-                            } else if translation.isActive, let translated = translation.translations.translation(for: line) {
+                            } else if translation.isActive,
+                                      let translated = translation.translations.translation(for: line) ?? ear.spokenTranslations[line.id] {
                                 // #53 (owner, PR #171): the translation is the line that's read, on top at caption size
                                 // behind a translate mark; what was said stays, smaller, underneath. Selection and Copy
-                                // work on what was said.
-                                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                                    Image(systemName: "translate").font(.subheadline.bold()).foregroundStyle(mutedColor(style))
-                                    Text(translated).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass))
+                                // work on what was said. #233: until a line's own translation lands, what the voice said
+                                // for it shows.
+                                if let earSpeaking, earSpeaking.lineID == line.id {
+                                    let shown = translated.split(separator: " ").count
+                                    EarSpeakingLine(translated: translated,
+                                                    firm: EarProgress.firmWords(shown: shown, lineWords: line.text.split(separator: " ").count,
+                                                                                phrase: earSpeaking.words, share: earSpeaking.share),
+                                                    font: style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass),
+                                                    mark: style.gear.color, text: style.text.color, volatileOpacity: style.volatileOpacity)
+                                } else {
+                                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                        Image(systemName: "translate").font(.subheadline.bold()).foregroundStyle(mutedColor(style))
+                                        Text(translated).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass))
+                                    }
+                                    .accessibilityElement(children: .combine)
+                                    .accessibilityLabel(String(localized: "Translated: ") + translated)
                                 }
-                                .accessibilityElement(children: .combine)
-                                .accessibilityLabel(String(localized: "Translated: ") + translated)
                                 Text(line.text).font(.body).foregroundStyle(mutedColor(style))
                                     .textRenderer(renderer)
                                     .trackWords(in: textFrames, key: "text-\(line.id)")
