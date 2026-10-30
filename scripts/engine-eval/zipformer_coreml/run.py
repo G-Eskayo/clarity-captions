@@ -39,7 +39,7 @@ def model_name(variant: str) -> str:
 class CoreMLZipformer:
     """The three Core ML models of one build, with the encoder states carried between chunks."""
 
-    def __init__(self, folder: Path, compute_units: str = "ALL"):
+    def __init__(self, folder: Path, compute_units: str = "CPU_AND_GPU"):
         import coremltools as ct
         folder = Path(folder)
         cu = getattr(ct.ComputeUnit, compute_units)
@@ -107,7 +107,7 @@ def _load(path: Path) -> np.ndarray:
     return samples
 
 
-def score(variant: str, builds: Path, shard_dir: Path, results: Path, compute_units: str = "ALL",
+def score(variant: str, builds: Path, shard_dir: Path, results: Path, compute_units: str = "CPU_AND_GPU",
           status: Path | None = None) -> dict:
     from edacc_eval.runner import run_loop
     from edacc_eval.shards import read_manifest
@@ -127,7 +127,7 @@ def score(variant: str, builds: Path, shard_dir: Path, results: Path, compute_un
                     shard_number=int(shard_dir.name.split("-")[-1]), host=socket.gethostname(), on_progress=progress)
 
 
-def latency(variant: str, builds: Path, clips: list[Path], compute_units: str = "ALL", seconds: float = 60.0) -> dict:
+def latency(variant: str, builds: Path, clips: list[Path], compute_units: str = "CPU_AND_GPU", seconds: float = 60.0) -> dict:
     """Load time, first-word and steady latency, compute per chunk and peak memory for one build, over the first
     `seconds` of each clip. Run one build per process: peak memory (ru_maxrss) is per process."""
     m = CoreMLZipformer(Path(builds) / variant, compute_units)
@@ -161,14 +161,14 @@ def main(argv=None):
     s.add_argument("--builds", type=Path, required=True)
     s.add_argument("--shard-dir", type=Path, required=True)
     s.add_argument("--results", type=Path, required=True)
-    s.add_argument("--compute-units", default="ALL")
+    s.add_argument("--compute-units", default="CPU_AND_GPU")
     s.add_argument("--status", type=Path)
     la = sub.add_parser("latency")
     la.add_argument("--variant", required=True)
     la.add_argument("--builds", type=Path, required=True)
     la.add_argument("--clips", type=Path, nargs="+", required=True)
     la.add_argument("--out", type=Path, required=True)
-    la.add_argument("--compute-units", default="ALL")
+    la.add_argument("--compute-units", default="CPU_AND_GPU")
     la.add_argument("--seconds", type=float, default=60.0)
     a = ap.parse_args(argv)
     if a.cmd == "score":

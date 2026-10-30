@@ -44,7 +44,7 @@ def _convert(prog, precision: str):
     import coremltools as ct
     return ct.convert(prog, convert_to="mlprogram", minimum_deployment_target=ct.target.iOS18,
                       compute_precision=ct.precision.FLOAT32 if precision == "fp32" else ct.precision.FLOAT16,
-                      compute_units=ct.ComputeUnit.ALL)
+                      skip_model_load=True)  # loading would start an ANE compile, which this encoder fails
 
 
 def compress(model, variant: str):

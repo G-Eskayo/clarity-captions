@@ -86,6 +86,42 @@ def test_token_latency_is_the_wait_to_the_chunk_end_plus_that_chunks_compute():
     np.testing.assert_allclose(lat, [1.28 - 0.04 + 0.05, 0.0 + 0.05, 1.28 - 0.64 + 0.03])
 
 
+# --- the recommendation rule ------------------------------------------------------------------------------------------
+
+def _cell(cer, lo, hi):
+    from edacc_eval.report_hebrew import HebrewCell, Rate
+    r = Rate(cer, lo, hi)
+    return HebrewCell(wer=r, cer=r, lenient_wer=r, lenient_cer=r, words=1, chars=1, sub=0, dele=0, ins=0, clips=1,
+                      groups=1, audio_seconds=1, processing_seconds=1)
+
+
+def _scores(**variants):
+    from zipformer_coreml.report import APPLE, SHERPA_INT8, SETS
+    from zipformer_coreml.run import model_name
+    base = {SHERPA_INT8: _cell(0.025, 0.021, 0.028), APPLE: _cell(0.104, 0.078, 0.133)}
+    return {s: {**base, **{model_name(v): _cell(*c) for v, c in variants.items()}} for s in SETS}
+
+
+def test_the_smallest_build_overlapping_int8_and_far_from_apple_is_recommended():
+    from zipformer_coreml.report import choose
+    scores = _scores(fp16=(0.025, 0.021, 0.028), pal4=(0.027, 0.023, 0.031), pal3=(0.031, 0.029, 0.035),
+                     pal2=(0.20, 0.15, 0.25))
+    sizes = {"fp16": 135e6, "pal4": 35e6, "pal3": 27e6, "pal2": 19e6}
+    # pal2 is far worse than int8; pal3's interval starts above int8's; pal4 overlaps.
+    assert choose(scores, sizes) == "pal4"
+
+
+def test_overlap_alone_is_not_enough_if_the_build_is_not_well_clear_of_apple():
+    from edacc_eval.report_hebrew import Rate  # noqa: F401
+    from zipformer_coreml.report import choose
+    from zipformer_coreml.run import model_name
+    scores = _scores(pal3=(0.026, 0.020, 0.080), fp16=(0.025, 0.021, 0.028))
+    # pal3's interval overlaps int8's but its upper bound reaches Apple's interval
+    assert choose(scores, {"pal3": 27e6, "fp16": 135e6}) == "fp16"
+    del scores["eval-whatsapp"][model_name("fp16")]
+    assert choose(scores, {"pal3": 27e6, "fp16": 135e6}) is None  # a build must be scored on both sets
+
+
 # --- the translator ---------------------------------------------------------------------------------------------------
 
 onnx = pytest.importorskip("onnx")
