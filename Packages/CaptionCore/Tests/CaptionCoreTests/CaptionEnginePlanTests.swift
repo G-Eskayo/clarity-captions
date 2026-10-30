@@ -67,6 +67,6 @@ final class CaptionEnginePlanTests: XCTestCase {
 
 /// Italian and Portuguese, filled in from the #234 measurement.
 enum CaptionEngineRoutingExpectations {
-    static let extraWon: [String] = []
+    static let extraWon = ["it-IT", "it-CH"]  // #234: 2.2% (1.8–2.5) vs Apple 3.6% (3.1–4.1)
     static let lost: [String] = []
 }

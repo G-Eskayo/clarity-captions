@@ -25,6 +25,7 @@ public enum CaptionEngineRouting {
         "es",  // #158, FLEURS: 2.8% vs 4.0%
         "fr",  // #158, FLEURS: 4.5% vs 7.5%
         "de",  // #158, FLEURS: 4.4% vs 7.2%
+        "it",  // #234, FLEURS: 2.2% vs 3.6%
     ]
 
     public static func parakeetWins(_ locale: Locale) -> Bool {
