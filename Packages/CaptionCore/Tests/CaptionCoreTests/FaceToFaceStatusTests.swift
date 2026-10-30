@@ -6,13 +6,8 @@ import XCTest
 final class FaceToFaceStatusTests: XCTestCase {
     private let en = Locale(identifier: "en-US")
     private let es = Locale(identifier: "es-ES")
-    private func name(_ l: Locale) -> String {
-        ["en": "English", "es": "Español"][l.language.languageCode?.identifier ?? ""] ?? l.identifier
-    }
-    private func status(_ half: FaceToFaceHalf, _ split: FaceToFaceSplit, _ state: CaptionState,
-                        downloads: [FaceToFaceHalf: FaceToFaceDownload] = [:],
-                        translation: FaceToFaceTranslationReadiness = .ready) -> FaceToFaceStatus {
-        FaceToFaceStatus.of(half, split: split, state: state, downloads: downloads, translation: translation, name: name)
+    private func status(_ half: FaceToFaceHalf, _ split: FaceToFaceSplit, _ state: CaptionState) -> FaceToFaceStatus {
+        FaceToFaceStatus.of(half, split: split, state: state)
     }
     private func picked(owner: Locale? = nil, partner: Locale? = nil) -> FaceToFaceSplit {
         var s = FaceToFaceSplit()
@@ -56,39 +51,6 @@ final class FaceToFaceStatusTests: XCTestCase {
         XCTAssertEqual(status(.partner, picked(owner: en, partner: es), .listening), .listening)
     }
 
-    // MARK: downloads
-
-    func testAHalfDownloadingItsLanguageSaysSoWithProgress() {
-        let d: [FaceToFaceHalf: FaceToFaceDownload] = [.partner: FaceToFaceDownload(locale: es, progress: .downloading(0.4))]
-        let st = status(.partner, picked(owner: en), .listening, downloads: d)
-        XCTAssertEqual(st, .downloading(language: "Español", fraction: 0.4))
-        XCTAssertEqual(st.words(for: .partner), "Downloading Español (40%)")
-        XCTAssertEqual(status(.owner, picked(owner: en), .listening, downloads: d), .listeningWaitingForOther,
-                       "the other half carries on listening")
-    }
-
-    func testAFailedDownloadSaysWhatToDoInTheHalfThatPickedIt() {
-        let d: [FaceToFaceHalf: FaceToFaceDownload] = [.partner: FaceToFaceDownload(locale: es, progress: .failed(.offline))]
-        let st = status(.partner, FaceToFaceSplit(), .idle, downloads: d)
-        XCTAssertEqual(st, .downloadFailed(language: "Español", problem: .offline))
-        XCTAssertTrue(st.words(for: .partner).contains("Wi-Fi"), st.words(for: .partner))
-        XCTAssertTrue(st.words(for: .partner).contains("Español"), st.words(for: .partner))
-    }
-
-    // MARK: translation
-
-    func testThePairBeingDownloadedIsSaid() {
-        let st = status(.owner, picked(owner: en, partner: es), .listening, translation: .downloading)
-        XCTAssertEqual(st, .translationDownloading(pair: "Español ↔ English"))
-        XCTAssertEqual(st.words(for: .owner), "Listening. Downloading Español ↔ English translation")
-    }
-
-    func testAPairAppleCantTranslateIsSaidAndCaptionsCarryOn() {
-        let st = status(.partner, picked(owner: en, partner: es), .listening, translation: .unsupported)
-        XCTAssertEqual(st, .cantTranslate(pair: "Español ↔ English"))
-        XCTAssertEqual(st.words(for: .partner), "Can't translate Español ↔ English on this device. Captions show as said")
-    }
-
     // MARK: stopped
 
     func testAFailureIsSaidInBothHalvesWithWhatToDo() {
@@ -118,17 +80,14 @@ final class FaceToFaceStatusTests: XCTestCase {
     }
 
     func testEveryStatusHasWords() {
-        let all: [FaceToFaceStatus] = [.tapYourLanguage, .tapToSwitch, .downloading(language: "Español", fraction: 0),
-                                       .downloadFailed(language: "Español", problem: .stalled), .starting, .listening,
-                                       .listeningWaitingForOther, .translationDownloading(pair: "a ↔ b"),
-                                       .cantTranslate(pair: "a ↔ b"), .paused, .failed("x")]
+        let all: [FaceToFaceStatus] = [.tapYourLanguage, .tapToSwitch, .starting, .listening, .listeningWaitingForOther,
+                                       .paused, .failed("x")]
         for st in all { for half in [FaceToFaceHalf.owner, .partner] { XCTAssertFalse(st.words(for: half).isEmpty, "\(st)") } }
     }
 }
 
 /// #245 item 3: a language whose speech engine isn't on the device was offered like any other; picking it started a
-/// silent download inside the engine's start. Offered languages now say whether they're ready, and a ready one is
-/// picked as the installed region the engine will use.
+/// silent download inside the engine's start. A language is offered as the installed region the engine will use.
 final class FaceToFaceReadinessTests: XCTestCase {
     private func l(_ id: String) -> Locale { Locale(identifier: id) }
 
@@ -155,13 +114,6 @@ final class FaceToFaceReadinessTests: XCTestCase {
                                          translatable: ["en", "es"])
         let rows = FaceToFace.choices(downloaded: offered, takenByOtherHalf: nil, name: { $0.identifier })
         XCTAssertEqual(rows.map { FaceToFace.readyLocale(for: $0, speechInstalled: installed)?.identifier }, ["en-US", "es-MX"])
-    }
-
-    func testAReadyRegionIsKeptOverAnUnreadyOneWhenOnlyExactRegionsCount() {
-        let ready: Set<String> = ["es-MX"]
-        let rows = FaceToFace.choices(downloaded: [l("es-ES"), l("es-MX")], takenByOtherHalf: nil, name: { $0.identifier },
-                                      ready: { ready.contains($0.identifier) })
-        XCTAssertEqual(rows.map(\.identifier), ["es-MX"])
     }
 }
 

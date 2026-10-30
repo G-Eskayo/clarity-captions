@@ -103,3 +103,27 @@ final class StopDuringAHungStartTests: XCTestCase {
     }
 }
 
+
+/// #245: Stop leaves the split even when the engines don't finish stopping. It waits a moment for them, never longer.
+final class WaitAtMostTests: XCTestCase {
+    func testWorkThatNeverFinishesIsLeftAfterTheLimit() async {
+        let start = ContinuousClock.now
+        let finished = await waitAtMost(.milliseconds(200)) { try? await Task.sleep(for: .seconds(30)) }
+        XCTAssertFalse(finished)
+        XCTAssertLessThan(ContinuousClock.now - start, .seconds(1))
+    }
+
+    func testWorkThatFinishesIsWaitedFor() async {
+        let done = DoneFlag()
+        let finished = await waitAtMost(.seconds(5)) { try? await Task.sleep(for: .milliseconds(20)); done.set() }
+        XCTAssertTrue(finished)
+        XCTAssertTrue(done.isSet)
+    }
+}
+
+private final class DoneFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var done = false
+    func set() { lock.withLock { done = true } }
+    var isSet: Bool { lock.withLock { done } }
+}
