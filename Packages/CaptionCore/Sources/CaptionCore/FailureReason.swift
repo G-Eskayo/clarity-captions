@@ -35,6 +35,8 @@ public enum FailureReason {
             return String(localized: "The microphone format isn't compatible — try a different mic mode in Settings")
         case .converterUnavailable:
             return String(localized: "Audio processing isn't available right now — tap to try again")
+        case .speechModelNotOnDevice:
+            return String(localized: "This language isn't set up on this device. Set it up in Settings")
         }
     }
 

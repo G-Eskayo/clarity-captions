@@ -5,6 +5,7 @@ import StoreKit
 import SwiftUI
 import UIKit
 import Translation
+import Speech
 
 /// Live translation (#53): the one-time purchase (StoreKit 2), on or off, the language it goes into, Apple's
 /// on-device Translation (picked in #159), and the translated text for each caption line. Settings, the Into list and
@@ -26,6 +27,11 @@ final class TranslationCenter: ObservableObject {
     @Published private(set) var translations = CaptionTranslations()
     /// Handed to `.translationTask`; a new value starts a new session, nil stops it.
     @Published private(set) var configuration: TranslationSession.Configuration?
+    /// #245, the owner's rule: everything a translation language needs is set up up front, in Settings. Into's own
+    /// speech model (the split captions it in her half) downloads here, with real progress, never when a feature starts.
+    @Published private(set) var intoSpeech: CaptionLanguageSwitch.Phase = .ready
+    /// The Into language whose speech model is being checked or downloaded now.
+    private var intoSpeechFor: Locale?
     /// #60 face to face, the second direction: her words (the language she reads) into the other person's language.
     @Published private(set) var reverseTranslations = CaptionTranslations()
     @Published private(set) var reverseConfiguration: TranslationSession.Configuration?
@@ -163,6 +169,7 @@ final class TranslationCenter: ObservableObject {
         store.translationOn = on
         if !on { translations.reset(); ear.stopAll() }
         refreshConfiguration()
+        if on { setUpIntoSpeech() }
     }
 
     func setTarget(_ locale: Locale) {
@@ -171,6 +178,38 @@ final class TranslationCenter: ObservableObject {
         translations.reset()
         ear.targetChanged(locale)
         refreshConfiguration()
+        intoSpeech = .ready
+        setUpIntoSpeech()
+    }
+
+    /// #245: makes sure Into's speech model is on the device, downloading it with progress when it isn't. Runs when
+    /// translation is turned on, Into changes, or Settings opens with translation on (a failed download tries again
+    /// there). Its language pack comes through Apple's own sheet, from the session `refreshConfiguration` sets up. A
+    /// language Apple's speech engine doesn't have stays as it is: one-way translation into it still works, it just
+    /// can't be a half of the split.
+    func setUpIntoSpeech() {
+        guard purchase.isOwned, isOn, let target, intoSpeechFor != target else { return }
+        #if DEBUG
+        if DemoMode.isOn { return }
+        #endif
+        // A download for an Into she has since changed carries on unwatched; its end changes nothing on screen.
+        intoSpeechFor = target
+        Task { [weak self] in
+            defer { if self?.intoSpeechFor == target { self?.intoSpeechFor = nil } }
+            guard let locale = await SpeechTranscriber.supportedLocale(equivalentTo: target),
+                  !(await SpeechModelInstaller.isInstalled(locale: locale)) else { return }
+            guard let self, self.intoSpeechFor == target else { return }
+            intoSpeech = .downloading(locale, progress: 0)
+            let outcome = await SpeechDownload.language(locale).run { [weak self] p in
+                Task { @MainActor in
+                    guard let self, self.intoSpeechFor == target,
+                          case .downloading(let l, let shown) = self.intoSpeech else { return }
+                    self.intoSpeech = .downloading(l, progress: max(shown, min(p, 1)))
+                }
+            }
+            guard self.intoSpeechFor == target else { return }
+            if case .failed(let why) = outcome { intoSpeech = .failed(locale, why) } else { intoSpeech = .ready }
+        }
     }
 
     /// The caption language changed (#37): translate from the new one.

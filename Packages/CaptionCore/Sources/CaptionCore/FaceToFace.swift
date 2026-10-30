@@ -58,10 +58,19 @@ public enum FaceToFace {
         return unique.sorted { name($0).localizedStandardCompare(name($1)) == .orderedAscending }
     }
 
-    /// #208: the languages offered for a half's list on the device, until Seal keeps its own list (#200's "Your
-    /// languages"; Apple can only say whether a pair is downloaded, not list what is). The caption and Into languages,
-    /// then every language whose speech engine is on the device and that Apple can translate (`translatable`: language
-    /// codes). Regions of one language are folded into one row by `choices`.
+    /// #245 item 3: the region of `locale`'s language whose speech engine is on the device, the exact one first; nil
+    /// when none is, and the language isn't offered (the split never downloads: a download inside the engine's start
+    /// hung Stop).
+    public static func readyLocale(for locale: Locale, speechInstalled: [Locale]) -> Locale? {
+        func code(_ l: Locale) -> String { l.language.languageCode?.identifier ?? l.identifier }
+        if let exact = speechInstalled.first(where: { $0.identifier(.bcp47) == locale.identifier(.bcp47) }) { return exact }
+        return speechInstalled.first { code($0) == code(locale) }
+    }
+
+    /// #208: the languages that may be offered for a half's list on the device, until Seal keeps its own list (#200's
+    /// "Your languages"; Apple can only say whether a pair is downloaded, not list what is). The caption and Into
+    /// languages, then every language whose speech engine is on the device and that Apple can translate (`translatable`:
+    /// language codes). #245: only the ready ones among them are offered (`FaceToFaceReadyLanguages`).
     public static func offered(captionLanguage: Locale, into: Locale?, speechInstalled: [Locale], translatable: Set<String>) -> [Locale] {
         func code(_ l: Locale) -> String { l.language.languageCode?.identifier ?? l.identifier }
         return [captionLanguage] + (into.map { [$0] } ?? []) + speechInstalled.filter { translatable.contains(code($0)) }
