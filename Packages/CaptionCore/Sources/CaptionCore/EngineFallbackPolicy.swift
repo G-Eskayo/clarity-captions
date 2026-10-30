@@ -15,6 +15,22 @@ public enum CaptionEngineChoice: String, CaseIterable, Sendable {
     }
 }
 
+/// Seal's own model for a caption language (ADR 0025, #220): Parakeet Ultra for English, the ivrit.ai streaming
+/// zipformer for Hebrew (owner, 2026-10-30: Hebrew moves off Apple's engine, which made about four times the errors on
+/// conversation, #217). Every other language runs Apple's engine. One table, so each new win is one line.
+public enum SealModel: String, Sendable, Equatable {
+    case parakeetUltra
+    case hebrewZipformer
+
+    public static func forLanguage(_ locale: Locale) -> SealModel? {
+        switch locale.language.languageCode {
+        case .english?: .parakeetUltra
+        case .hebrew?: .hebrewZipformer
+        default: nil
+        }
+    }
+}
+
 /// Why a session runs on Apple's engine when Parakeet was asked for. Goes in diagnostics and the beta report.
 public enum FallbackReason: String, Sendable, Equatable {
     case modelMissing, loadFailed, lowMemory, locale, repeatedFallbacks, noWordsFromSpeech, memoryWarning, thermalCritical
@@ -55,8 +71,8 @@ public enum EngineFallbackPolicy {
     public static func engine(for choice: CaptionEngineChoice, now: Date, recentFallbacks: [Date], availableMemory: UInt64,
                               locale: Locale, modelPresent: Bool) -> EngineSelection {
         guard choice == .parakeet else { return EngineSelection(engine: .apple, reason: nil) }
+        if SealModel.forLanguage(locale) == nil { return EngineSelection(engine: .apple, reason: .locale) }
         if !modelPresent { return EngineSelection(engine: .apple, reason: .modelMissing) }
-        if locale.language.languageCode != .english { return EngineSelection(engine: .apple, reason: .locale) }
         let inWindow = recentFallbacks.filter { $0 <= now && now.timeIntervalSince($0) <= pinWindow }
         if inWindow.count >= 2 { return EngineSelection(engine: .apple, reason: .repeatedFallbacks) }
         if availableMemory < memoryFloor { return EngineSelection(engine: .apple, reason: .lowMemory) }
@@ -135,6 +151,8 @@ public struct SilentEngineWatchdog: Sendable {
 public struct CaptionEnginePlan: Sendable, Equatable {
     public let selection: EngineSelection
     public let locale: Locale
+    /// Which of Seal's models runs, or nil for Apple's engine. `modelPresent` in `make` is this language's model.
+    public var sealModel: SealModel? { selection.engine == .parakeet ? SealModel.forLanguage(locale) : nil }
 
     public static func make(captionLanguage: Locale, choice: CaptionEngineChoice, now: Date, recentFallbacks: [Date],
                             availableMemory: UInt64, modelPresent: Bool) -> CaptionEnginePlan {

@@ -72,6 +72,7 @@ public final class CaptionSessionController {
         state = .preparing
         let engine: CaptioningEngine
         do { engine = try makeEngine() } catch {
+            NSLog("CaptionSessionController: making the engine failed: %@", String(describing: error))
             state = .failed(FailureReason.plainLanguage(for: error))
             return
         }
@@ -144,6 +145,7 @@ public final class CaptionSessionController {
             await engine.stop()
             state = endedState
         } catch {
+            NSLog("CaptionSessionController: start failed: %@", String(describing: error))
             await engine.stop()
             state = stopRequested ? endedState : .failed(FailureReason.plainLanguage(for: error))
         }

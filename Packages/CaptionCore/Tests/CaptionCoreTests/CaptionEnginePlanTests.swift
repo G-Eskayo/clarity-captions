@@ -38,4 +38,32 @@ final class CaptionEnginePlanTests: XCTestCase {
         XCTAssertEqual(plan("en-US", modelPresent: false).selection.reason, .modelMissing)
         XCTAssertEqual(plan("fr-CA", modelPresent: false).locale.identifier(.bcp47), "fr-CA")
     }
+
+    // MARK: Hebrew on Seal's own engine (#220, owner 2026-10-30)
+
+    func testHebrewRunsSealsZipformerWhenItIsBundled() {
+        let p = plan("he-IL")
+        XCTAssertEqual(p.selection, EngineSelection(engine: .parakeet, reason: nil))
+        XCTAssertEqual(p.sealModel, .hebrewZipformer)
+        XCTAssertEqual(p.locale.identifier(.bcp47), "he-IL")
+    }
+
+    func testEnglishNamesParakeetAsItsModelAndOtherLanguagesNone() {
+        XCTAssertEqual(plan("en-US").sealModel, .parakeetUltra)
+        XCTAssertNil(plan("es-ES").sealModel)
+        XCTAssertNil(plan("he-IL", choice: .apple).sealModel, "the developer panel's Apple pick wins")
+    }
+
+    func testHebrewWithoutItsModelSaysTheModelIsMissing() {
+        let p = plan("he-IL", modelPresent: false)
+        XCTAssertEqual(p.selection, EngineSelection(engine: .apple, reason: .modelMissing))
+        XCTAssertNil(p.sealModel)
+    }
+
+    func testEachLanguageMapsToItsOwnModel() {
+        XCTAssertEqual(SealModel.forLanguage(Locale(identifier: "he")), .hebrewZipformer)
+        XCTAssertEqual(SealModel.forLanguage(Locale(identifier: "iw-IL")), .hebrewZipformer, "the old code for Hebrew")
+        XCTAssertEqual(SealModel.forLanguage(Locale(identifier: "en-IN")), .parakeetUltra)
+        XCTAssertNil(SealModel.forLanguage(Locale(identifier: "ar-SA")))
+    }
 }

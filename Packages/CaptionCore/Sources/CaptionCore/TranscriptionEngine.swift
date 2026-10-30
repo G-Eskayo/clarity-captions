@@ -72,6 +72,8 @@ public enum SpeechRecognizerSetup: Sendable, Equatable {
     case apple
     /// Parakeet from this bundled folder; Apple's engine takes over if it can't load or has to stop.
     case parakeet(modelURL: URL)
+    /// Hebrew on Seal's own streaming zipformer (#220) from this bundled folder; the same fallback to Apple's engine.
+    case zipformer(modelURL: URL)
 }
 
 /// Live audio (the microphone, or call audio on the Mac, through `AudioSource`, #172) -> a speech recognizer behind
@@ -156,6 +158,7 @@ public final class TranscriptionEngine {
             switch setup {
             case .apple: return AppleSpeechBackend(locale: locale)
             case .parakeet(let url): return ParakeetBackend(modelURL: url)
+            case .zipformer(let url): return ZipformerBackend(modelURL: url)
             }
         } }
     }
@@ -196,6 +199,13 @@ public final class TranscriptionEngine {
                 self.decodeLock.withLock { self.lastDecodeSeconds = seconds; self.decodeTimes.add(seconds) }
             }
             return backend
+        case .zipformer(let url):
+            let backend = ZipformerBackend(modelURL: url)
+            backend.onDecode = { [weak self] seconds in
+                guard let self else { return }
+                self.decodeLock.withLock { self.lastDecodeSeconds = seconds; self.decodeTimes.add(seconds) }
+            }
+            return backend
         }
     }
 
@@ -221,6 +231,7 @@ public final class TranscriptionEngine {
                 // Design §5: the model is missing or won't load. Apple's engine for this launch, captions keep flowing.
                 await made.cancel()
                 fallbackDetail = String(describing: error)
+                NSLog("TranscriptionEngine: %@ failed to load, falling back to Apple's engine: %@", made.name, fallbackDetail ?? "")
                 recordFallback(.loadFailed)
                 made = AppleSpeechBackend(locale: locale)
                 try await made.prepare()

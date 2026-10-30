@@ -55,6 +55,11 @@ final class EngineFallbackPolicyTests: XCTestCase {
         XCTAssertEqual(choose(locale: Locale(identifier: "en-GB")).engine, .parakeet)
     }
 
+    func testHebrewIsSealsEngineToo() {
+        XCTAssertEqual(choose(locale: Locale(identifier: "he-IL")), EngineSelection(engine: .parakeet, reason: nil))
+        XCTAssertEqual(choose(locale: Locale(identifier: "he-IL"), modelPresent: false).reason, .modelMissing)
+    }
+
     func testTwoFallbacksInADayPinAppleForTwentyFourHours() {
         let pinned = choose(fallbacks: [now.addingTimeInterval(-3_600), now.addingTimeInterval(-60)])
         XCTAssertEqual(pinned, EngineSelection(engine: .apple, reason: .repeatedFallbacks))
