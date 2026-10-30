@@ -1,0 +1,1524 @@
+{
+  "date": "2026-10-30T08:55:58+00:00",
+  "device": "iPhone 17 Pro simulator (clone EarSpike-233), iOS 26.5, on the Mac mini M4",
+  "results": {
+    "allvoices": [
+      {
+        "identifier": "com.apple.speech.synthesis.voice.Albert",
+        "language": "en-US",
+        "name": "Albert",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.speech.synthesis.voice.BadNews",
+        "language": "en-US",
+        "name": "Bad News",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.speech.synthesis.voice.Bahh",
+        "language": "en-US",
+        "name": "Bahh",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.speech.synthesis.voice.Bells",
+        "language": "en-US",
+        "name": "Bells",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.speech.synthesis.voice.Boing",
+        "language": "en-US",
+        "name": "Boing",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.speech.synthesis.voice.Bubbles",
+        "language": "en-US",
+        "name": "Bubbles",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.speech.synthesis.voice.Cellos",
+        "language": "en-US",
+        "name": "Cellos",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.speech.synthesis.voice.Deranged",
+        "language": "en-US",
+        "name": "Wobble",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.speech.synthesis.voice.Fred",
+        "language": "en-US",
+        "name": "Fred",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.speech.synthesis.voice.GoodNews",
+        "language": "en-US",
+        "name": "Good News",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.speech.synthesis.voice.Hysterical",
+        "language": "en-US",
+        "name": "Jester",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.speech.synthesis.voice.Junior",
+        "language": "en-US",
+        "name": "Junior",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.speech.synthesis.voice.Kathy",
+        "language": "en-US",
+        "name": "Kathy",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.speech.synthesis.voice.Organ",
+        "language": "en-US",
+        "name": "Organ",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.speech.synthesis.voice.Princess",
+        "language": "en-US",
+        "name": "Superstar",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.speech.synthesis.voice.Ralph",
+        "language": "en-US",
+        "name": "Ralph",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.speech.synthesis.voice.Trinoids",
+        "language": "en-US",
+        "name": "Trinoids",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.speech.synthesis.voice.Whisper",
+        "language": "en-US",
+        "name": "Whisper",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.speech.synthesis.voice.Zarvox",
+        "language": "en-US",
+        "name": "Zarvox",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.compact.bn-IN.Paya",
+        "language": "bn-IN",
+        "name": "Piya",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.compact.kn-IN.Alpana",
+        "language": "kn-IN",
+        "name": "Soumya",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.compact.te-IN.Geeta",
+        "language": "te-IN",
+        "name": "Geeta",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.ar-001.Maged",
+        "language": "ar-001",
+        "name": "Majed",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.bg-BG.Daria",
+        "language": "bg-BG",
+        "name": "Daria",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.ca-ES.Montserrat",
+        "language": "ca-ES",
+        "name": "Montse",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.cs-CZ.Zuzana",
+        "language": "cs-CZ",
+        "name": "Zuzana",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.da-DK.Sara",
+        "language": "da-DK",
+        "name": "Sara",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.de-DE.Anna",
+        "language": "de-DE",
+        "name": "Anna",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.el-GR.Melina",
+        "language": "el-GR",
+        "name": "Melina",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.en-AU.Karen",
+        "language": "en-AU",
+        "name": "Karen",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.en-GB.Daniel",
+        "language": "en-GB",
+        "name": "Daniel",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.en-IE.Moira",
+        "language": "en-IE",
+        "name": "Moira",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.en-IN.Rishi",
+        "language": "en-IN",
+        "name": "Rishi",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.en-US.Samantha",
+        "language": "en-US",
+        "name": "Samantha",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.en-ZA.Tessa",
+        "language": "en-ZA",
+        "name": "Tessa",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.es-ES.Monica",
+        "language": "es-ES",
+        "name": "Mónica",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.es-MX.Paulina",
+        "language": "es-MX",
+        "name": "Paulina",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.fi-FI.Satu",
+        "language": "fi-FI",
+        "name": "Satu",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.fr-CA.Amelie",
+        "language": "fr-CA",
+        "name": "Amélie",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.fr-FR.Thomas",
+        "language": "fr-FR",
+        "name": "Thomas",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.he-IL.Carmit",
+        "language": "he-IL",
+        "name": "Carmit",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.hi-IN.Lekha",
+        "language": "hi-IN",
+        "name": "Lekha",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.hr-HR.Lana",
+        "language": "hr-HR",
+        "name": "Lana",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.hu-HU.Mariska",
+        "language": "hu-HU",
+        "name": "Tünde",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.id-ID.Damayanti",
+        "language": "id-ID",
+        "name": "Damayanti",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.it-IT.Alice",
+        "language": "it-IT",
+        "name": "Alice",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.ja-JP.Kyoko",
+        "language": "ja-JP",
+        "name": "Kyoko",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.ko-KR.Yuna",
+        "language": "ko-KR",
+        "name": "Yuna",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.ms-MY.Amira",
+        "language": "ms-MY",
+        "name": "Amira",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.nb-NO.Nora",
+        "language": "nb-NO",
+        "name": "Nora",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.nl-BE.Ellen",
+        "language": "nl-BE",
+        "name": "Ellen",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.nl-NL.Xander",
+        "language": "nl-NL",
+        "name": "Xander",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.pl-PL.Zosia",
+        "language": "pl-PL",
+        "name": "Zosia",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.pt-BR.Luciana",
+        "language": "pt-BR",
+        "name": "Luciana",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.pt-PT.Joana",
+        "language": "pt-PT",
+        "name": "Joana",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.ro-RO.Ioana",
+        "language": "ro-RO",
+        "name": "Ioana",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.ru-RU.Milena",
+        "language": "ru-RU",
+        "name": "Milena",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.sk-SK.Laura",
+        "language": "sk-SK",
+        "name": "Laura",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.sl-SI.Tina",
+        "language": "sl-SI",
+        "name": "Tina",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.sv-SE.Alva",
+        "language": "sv-SE",
+        "name": "Alva",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.ta-IN.Vani",
+        "language": "ta-IN",
+        "name": "Vani",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.th-TH.Kanya",
+        "language": "th-TH",
+        "name": "Kanya",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.tr-TR.Yelda",
+        "language": "tr-TR",
+        "name": "Yelda",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.uk-UA.Lesya",
+        "language": "uk-UA",
+        "name": "Lesya",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.vi-VN.Linh",
+        "language": "vi-VN",
+        "name": "Linh",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.zh-CN.Tingting",
+        "language": "zh-CN",
+        "name": "Tingting",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.zh-HK.Sinji",
+        "language": "yue-HK",
+        "name": "Sinji",
+        "quality": "default"
+      },
+      {
+        "identifier": "com.apple.voice.super-compact.zh-TW.Meijia",
+        "language": "zh-TW",
+        "name": "Meijia",
+        "quality": "default"
+      }
+    ],
+    "render": [
+      {
+        "language": "ar",
+        "render": [
+          {
+            "audibleMs": 980.7494378035842,
+            "audioMs": 1785.487528344671,
+            "firstBufferMs": 977.9829978942871,
+            "leadingSilenceMs": 2.766439909297052,
+            "synthesisMs": 994.8049783706665
+          },
+          {
+            "audibleMs": 16.737947647804035,
+            "audioMs": 3948.344671201814,
+            "firstBufferMs": 10.796904563903809,
+            "leadingSilenceMs": 5.941043083900227,
+            "synthesisMs": 40.779948234558105
+          },
+          {
+            "audibleMs": 8.473465437251154,
+            "audioMs": 3050.8390022675735,
+            "firstBufferMs": 5.707025527954102,
+            "leadingSilenceMs": 2.766439909297052,
+            "synthesisMs": 30.677080154418945
+          },
+          {
+            "audibleMs": 10.53389935266404,
+            "audioMs": 3786.6666666666665,
+            "firstBufferMs": 5.771994590759277,
+            "leadingSilenceMs": 4.761904761904763,
+            "synthesisMs": 48.49803447723389
+          },
+          {
+            "audibleMs": 39.35970520486637,
+            "audioMs": 3829.0702947845807,
+            "firstBufferMs": 34.86990928649902,
+            "leadingSilenceMs": 4.489795918367347,
+            "synthesisMs": 63.99893760681152
+          },
+          {
+            "audibleMs": 17.483124916785968,
+            "audioMs": 2415.827664399093,
+            "firstBufferMs": 11.542081832885742,
+            "leadingSilenceMs": 5.941043083900227,
+            "synthesisMs": 37.70709037780762
+          },
+          {
+            "audibleMs": 18.697401206779915,
+            "audioMs": 3990.7029478458053,
+            "firstBufferMs": 8.584022521972656,
+            "leadingSilenceMs": 10.113378684807257,
+            "synthesisMs": 42.98603534698486
+          },
+          {
+            "audibleMs": 17.2025660430493,
+            "audioMs": 4929.750566893424,
+            "firstBufferMs": 8.086919784545898,
+            "leadingSilenceMs": 9.1156462585034,
+            "synthesisMs": 36.79990768432617
+          },
+          {
+            "audibleMs": 14.39549108751777,
+            "audioMs": 3553.605442176871,
+            "firstBufferMs": 8.136987686157227,
+            "leadingSilenceMs": 6.258503401360544,
+            "synthesisMs": 29.180049896240234
+          },
+          {
+            "audibleMs": 15.54397393786718,
+            "audioMs": 4555.283446712017,
+            "firstBufferMs": 7.290005683898926,
+            "leadingSilenceMs": 8.253968253968255,
+            "synthesisMs": 35.1489782333374
+          }
+        ],
+        "voice": "com.apple.voice.super-compact.ar-001.Maged"
+      },
+      {
+        "language": "de",
+        "render": [
+          {
+            "audibleMs": 111.8745355433077,
+            "audioMs": 1288.9342403628118,
+            "firstBufferMs": 107.02192783355713,
+            "leadingSilenceMs": 4.852607709750567,
+            "synthesisMs": 129.30893898010254
+          },
+          {
+            "audibleMs": 8.001755024570457,
+            "audioMs": 1916.3718820861677,
+            "firstBufferMs": 7.004022598266602,
+            "leadingSilenceMs": 0.997732426303855,
+            "synthesisMs": 25.848984718322754
+          },
+          {
+            "audibleMs": 6.542608656850802,
+            "audioMs": 3074.784580498866,
+            "firstBufferMs": 5.0460100173950195,
+            "leadingSilenceMs": 1.4965986394557824,
+            "synthesisMs": 25.578975677490234
+          },
+          {
+            "audibleMs": 9.648816342256506,
+            "audioMs": 2388.707482993197,
+            "firstBufferMs": 5.15902042388916,
+            "leadingSilenceMs": 4.489795918367347,
+            "synthesisMs": 23.501992225646973
+          },
+          {
+            "audibleMs": 12.332742868367237,
+            "audioMs": 2612.199546485261,
+            "firstBufferMs": 7.071971893310547,
+            "leadingSilenceMs": 5.26077097505669,
+            "synthesisMs": 26.81100368499756
+          },
+          {
+            "audibleMs": 4.819038146747753,
+            "audioMs": 1170.6575963718822,
+            "firstBufferMs": 3.775954246520996,
+            "leadingSilenceMs": 1.0430839002267573,
+            "synthesisMs": 14.529943466186523
+          },
+          {
+            "audibleMs": 12.472404211827147,
+            "audioMs": 2996.0090702947846,
+            "firstBufferMs": 7.256984710693359,
+            "leadingSilenceMs": 5.215419501133787,
+            "synthesisMs": 34.1259241104126
+          },
+          {
+            "audibleMs": 9.884260668505886,
+            "audioMs": 2148.0725623582766,
+            "firstBufferMs": 5.077004432678223,
+            "leadingSilenceMs": 4.807256235827664,
+            "synthesisMs": 25.03800392150879
+          },
+          {
+            "audibleMs": 23.694547752674474,
+            "audioMs": 1566.3945578231294,
+            "firstBufferMs": 6.597042083740234,
+            "leadingSilenceMs": 17.09750566893424,
+            "synthesisMs": 22.480010986328125
+          },
+          {
+            "audibleMs": 20.33383683012186,
+            "audioMs": 2577.8231292517007,
+            "firstBufferMs": 4.868984222412109,
+            "leadingSilenceMs": 15.46485260770975,
+            "synthesisMs": 24.058938026428223
+          }
+        ],
+        "voice": "com.apple.voice.super-compact.de-DE.Anna"
+      },
+      {
+        "language": "es",
+        "render": [
+          {
+            "audibleMs": 207.37055738496673,
+            "audioMs": 1540.9977324263039,
+            "firstBufferMs": 202.65400409698486,
+            "leadingSilenceMs": 4.71655328798186,
+            "synthesisMs": 217.9279327392578
+          },
+          {
+            "audibleMs": 9.606540392315576,
+            "audioMs": 1713.6507936507937,
+            "firstBufferMs": 6.431937217712402,
+            "leadingSilenceMs": 3.1746031746031744,
+            "synthesisMs": 21.75891399383545
+          },
+          {
+            "audibleMs": 8.82455398706622,
+            "audioMs": 1837.7777777777778,
+            "firstBufferMs": 3.3370256423950195,
+            "leadingSilenceMs": 5.487528344671201,
+            "synthesisMs": 16.816020011901855
+          },
+          {
+            "audibleMs": 7.783784390577113,
+            "audioMs": 1644.8072562358275,
+            "firstBufferMs": 4.337072372436523,
+            "leadingSilenceMs": 3.4467120181405897,
+            "synthesisMs": 16.883015632629395
+          },
+          {
+            "audibleMs": 7.870651340268367,
+            "audioMs": 2178.049886621315,
+            "firstBufferMs": 4.559993743896484,
+            "leadingSilenceMs": 3.310657596371882,
+            "synthesisMs": 24.61397647857666
+          },
+          {
+            "audibleMs": 8.130020111326187,
+            "audioMs": 1342.9931972789116,
+            "firstBufferMs": 4.637956619262695,
+            "leadingSilenceMs": 3.492063492063492,
+            "synthesisMs": 20.91395854949951
+          },
+          {
+            "audibleMs": 9.660361705183172,
+            "audioMs": 2191.9274376417234,
+            "firstBufferMs": 6.122946739196777,
+            "leadingSilenceMs": 3.5374149659863945,
+            "synthesisMs": 23.886919021606445
+          },
+          {
+            "audibleMs": 8.395053751073997,
+            "audioMs": 1489.5691609977323,
+            "firstBufferMs": 6.8531036376953125,
+            "leadingSilenceMs": 1.5419501133786848,
+            "synthesisMs": 21.412014961242676
+          },
+          {
+            "audibleMs": 7.7846308143771425,
+            "audioMs": 1499.591836734694,
+            "firstBufferMs": 3.702998161315918,
+            "leadingSilenceMs": 4.081632653061225,
+            "synthesisMs": 19.061923027038574
+          },
+          {
+            "audibleMs": 12.180663203976863,
+            "audioMs": 2491.5192743764173,
+            "firstBufferMs": 8.87000560760498,
+            "leadingSilenceMs": 3.310657596371882,
+            "synthesisMs": 21.232962608337402
+          }
+        ],
+        "voice": "com.apple.voice.super-compact.es-ES.Monica"
+      },
+      {
+        "language": "fr",
+        "render": [
+          {
+            "audibleMs": 162.90982128541216,
+            "audioMs": 845.1700680272108,
+            "firstBufferMs": 159.82592105865479,
+            "leadingSilenceMs": 3.0839002267573696,
+            "synthesisMs": 167.62793064117432
+          },
+          {
+            "audibleMs": 13.784167912541605,
+            "audioMs": 1785.2607709750569,
+            "firstBufferMs": 8.478045463562012,
+            "leadingSilenceMs": 5.306122448979592,
+            "synthesisMs": 26.656031608581543
+          },
+          {
+            "audibleMs": 12.553539773504209,
+            "audioMs": 2368.1179138321995,
+            "firstBufferMs": 7.066011428833008,
+            "leadingSilenceMs": 5.487528344671201,
+            "synthesisMs": 23.743033409118652
+          },
+          {
+            "audibleMs": 9.42798543138569,
+            "audioMs": 1889.795918367347,
+            "firstBufferMs": 4.257917404174805,
+            "leadingSilenceMs": 5.170068027210885,
+            "synthesisMs": 16.819000244140625
+          },
+          {
+            "audibleMs": 10.457553463457934,
+            "audioMs": 2888.2086167800453,
+            "firstBufferMs": 5.741000175476074,
+            "leadingSilenceMs": 4.71655328798186,
+            "synthesisMs": 31.787991523742676
+          },
+          {
+            "audibleMs": 21.779611570224198,
+            "audioMs": 1215.3287981859412,
+            "firstBufferMs": 16.927003860473633,
+            "leadingSilenceMs": 4.852607709750567,
+            "synthesisMs": 24.98304843902588
+          },
+          {
+            "audibleMs": 9.582781867375449,
+            "audioMs": 2900.045351473923,
+            "firstBufferMs": 8.31294059753418,
+            "leadingSilenceMs": 1.2698412698412698,
+            "synthesisMs": 29.940009117126465
+          },
+          {
+            "audibleMs": 14.576933605600647,
+            "audioMs": 2144.671201814059,
+            "firstBufferMs": 8.000969886779785,
+            "leadingSilenceMs": 6.575963718820862,
+            "synthesisMs": 28.779983520507812
+          },
+          {
+            "audibleMs": 9.600831051262057,
+            "audioMs": 2133.6961451247166,
+            "firstBufferMs": 7.560014724731445,
+            "leadingSilenceMs": 2.0408163265306123,
+            "synthesisMs": 25.694966316223145
+          },
+          {
+            "audibleMs": 10.007657604693286,
+            "audioMs": 2296.1451247165533,
+            "firstBufferMs": 5.291104316711426,
+            "leadingSilenceMs": 4.71655328798186,
+            "synthesisMs": 20.78700065612793
+          }
+        ],
+        "voice": "com.apple.voice.super-compact.fr-FR.Thomas"
+      },
+      {
+        "language": "he",
+        "render": [
+          {
+            "audibleMs": 72.54947540170751,
+            "audioMs": 1420.2267573696145,
+            "firstBufferMs": 67.33405590057373,
+            "leadingSilenceMs": 5.215419501133787,
+            "synthesisMs": 81.32398128509521
+          },
+          {
+            "audibleMs": 16.428483694859374,
+            "audioMs": 2511.5646258503402,
+            "firstBufferMs": 11.213064193725586,
+            "leadingSilenceMs": 5.215419501133787,
+            "synthesisMs": 34.58297252655029
+          },
+          {
+            "audibleMs": 9.683391145027144,
+            "audioMs": 2365.8503401360545,
+            "firstBufferMs": 7.687926292419434,
+            "leadingSilenceMs": 1.99546485260771,
+            "synthesisMs": 27.107954025268555
+          },
+          {
+            "audibleMs": 19.697696822030203,
+            "audioMs": 2387.800453514739,
+            "firstBufferMs": 5.411982536315918,
+            "leadingSilenceMs": 14.285714285714285,
+            "synthesisMs": 21.371006965637207
+          },
+          {
+            "audibleMs": 21.76478590284075,
+            "audioMs": 2062.721088435374,
+            "firstBufferMs": 7.479071617126465,
+            "leadingSilenceMs": 14.285714285714285,
+            "synthesisMs": 22.471070289611816
+          },
+          {
+            "audibleMs": 18.54375089917864,
+            "audioMs": 1250.0226757369614,
+            "firstBufferMs": 4.2580366134643555,
+            "leadingSilenceMs": 14.285714285714285,
+            "synthesisMs": 18.252015113830566
+          },
+          {
+            "audibleMs": 22.711665289742605,
+            "audioMs": 1911.7913832199547,
+            "firstBufferMs": 8.42595100402832,
+            "leadingSilenceMs": 14.285714285714285,
+            "synthesisMs": 23.852944374084473
+          },
+          {
+            "audibleMs": 10.601168143776269,
+            "audioMs": 2250.0680272108843,
+            "firstBufferMs": 8.515000343322754,
+            "leadingSilenceMs": 2.0861678004535147,
+            "synthesisMs": 24.13809299468994
+          },
+          {
+            "audibleMs": 14.573455981386491,
+            "audioMs": 1652.0181405895692,
+            "firstBufferMs": 9.99295711517334,
+            "leadingSilenceMs": 4.580498866213152,
+            "synthesisMs": 20.106911659240723
+          },
+          {
+            "audibleMs": 7.69248875901272,
+            "audioMs": 1775.3287981859412,
+            "firstBufferMs": 5.062103271484375,
+            "leadingSilenceMs": 2.630385487528345,
+            "synthesisMs": 23.39303493499756
+          }
+        ],
+        "voice": "com.apple.voice.super-compact.he-IL.Carmit"
+      },
+      {
+        "language": "it",
+        "render": [
+          {
+            "audibleMs": 78.90721062684005,
+            "audioMs": 1483.6734693877552,
+            "firstBufferMs": 76.54893398284912,
+            "leadingSilenceMs": 2.35827664399093,
+            "synthesisMs": 91.4769172668457
+          },
+          {
+            "audibleMs": 24.33839450888082,
+            "audioMs": 1934.512471655329,
+            "firstBufferMs": 8.28397274017334,
+            "leadingSilenceMs": 16.05442176870748,
+            "synthesisMs": 23.11098575592041
+          },
+          {
+            "audibleMs": 16.4795299344052,
+            "audioMs": 2133.2879818594106,
+            "firstBufferMs": 11.76297664642334,
+            "leadingSilenceMs": 4.71655328798186,
+            "synthesisMs": 26.71992778778076
+          },
+          {
+            "audibleMs": 24.415494135988542,
+            "audioMs": 1692.108843537415,
+            "firstBufferMs": 19.83499526977539,
+            "leadingSilenceMs": 4.580498866213152,
+            "synthesisMs": 34.6759557723999
+          },
+          {
+            "audibleMs": 12.439505064568552,
+            "audioMs": 2829.8866213151928,
+            "firstBufferMs": 6.181001663208008,
+            "leadingSilenceMs": 6.258503401360544,
+            "synthesisMs": 27.773022651672363
+          },
+          {
+            "audibleMs": 8.200983644342747,
+            "audioMs": 1332.8344671201814,
+            "firstBufferMs": 5.615949630737305,
+            "leadingSilenceMs": 2.5850340136054424,
+            "synthesisMs": 23.231029510498047
+          },
+          {
+            "audibleMs": 10.447342195748742,
+            "audioMs": 2575.2834467120183,
+            "firstBufferMs": 8.089065551757812,
+            "leadingSilenceMs": 2.35827664399093,
+            "synthesisMs": 27.924060821533203
+          },
+          {
+            "audibleMs": 7.527578963714392,
+            "audioMs": 1312.9705215419501,
+            "firstBufferMs": 3.582000732421875,
+            "leadingSilenceMs": 3.9455782312925174,
+            "synthesisMs": 17.313003540039062
+          },
+          {
+            "audibleMs": 10.399771709831393,
+            "audioMs": 1924.8072562358277,
+            "firstBufferMs": 8.358955383300781,
+            "leadingSilenceMs": 2.0408163265306123,
+            "synthesisMs": 18.833041191101074
+          },
+          {
+            "audibleMs": 9.880170930269895,
+            "audioMs": 2377.1882086167802,
+            "firstBufferMs": 5.2089691162109375,
+            "leadingSilenceMs": 4.671201814058957,
+            "synthesisMs": 23.190975189208984
+          }
+        ],
+        "voice": "com.apple.voice.super-compact.it-IT.Alice"
+      },
+      {
+        "language": "ja",
+        "render": [
+          {
+            "audibleMs": 84.80318736597523,
+            "audioMs": 1308.1179138321995,
+            "firstBufferMs": 78.5900354385376,
+            "leadingSilenceMs": 6.213151927437641,
+            "synthesisMs": 87.87500858306885
+          },
+          {
+            "audibleMs": 19.137863464095965,
+            "audioMs": 2194.1950113378684,
+            "firstBufferMs": 7.165074348449707,
+            "leadingSilenceMs": 11.97278911564626,
+            "synthesisMs": 27.532100677490234
+          },
+          {
+            "audibleMs": 41.39064883969538,
+            "audioMs": 3097.777777777778,
+            "firstBufferMs": 28.284072875976562,
+            "leadingSilenceMs": 13.10657596371882,
+            "synthesisMs": 40.551066398620605
+          },
+          {
+            "audibleMs": 59.11617073612689,
+            "audioMs": 3053.6961451247166,
+            "firstBufferMs": 7.86900520324707,
+            "leadingSilenceMs": 51.24716553287982,
+            "synthesisMs": 28.843998908996582
+          },
+          {
+            "audibleMs": 12.221593099927146,
+            "audioMs": 2281.859410430839,
+            "firstBufferMs": 4.920005798339844,
+            "leadingSilenceMs": 7.301587301587302,
+            "synthesisMs": 22.305965423583984
+          },
+          {
+            "audibleMs": 101.64368122343033,
+            "audioMs": 1794.875283446712,
+            "firstBufferMs": 6.72304630279541,
+            "leadingSilenceMs": 94.92063492063492,
+            "synthesisMs": 24.24299716949463
+          },
+          {
+            "audibleMs": 62.35984990385925,
+            "audioMs": 2252.607709750567,
+            "firstBufferMs": 5.080938339233398,
+            "leadingSilenceMs": 57.27891156462585,
+            "synthesisMs": 24.647951126098633
+          },
+          {
+            "audibleMs": 16.323094465294663,
+            "audioMs": 2252.925170068027,
+            "firstBufferMs": 6.119012832641602,
+            "leadingSilenceMs": 10.204081632653061,
+            "synthesisMs": 24.465084075927734
+          },
+          {
+            "audibleMs": 15.347279356180135,
+            "audioMs": 2573.3786848072564,
+            "firstBufferMs": 8.862018585205078,
+            "leadingSilenceMs": 6.4852607709750565,
+            "synthesisMs": 28.841018676757812
+          },
+          {
+            "audibleMs": 69.57278286248378,
+            "audioMs": 3691.0657596371884,
+            "firstBufferMs": 6.624937057495117,
+            "leadingSilenceMs": 62.94784580498866,
+            "synthesisMs": 28.82099151611328
+          }
+        ],
+        "voice": "com.apple.voice.super-compact.ja-JP.Kyoko"
+      },
+      {
+        "language": "pt",
+        "render": [
+          {
+            "audibleMs": 89.00060848313935,
+            "audioMs": 1997.233560090703,
+            "firstBufferMs": 84.91897583007812,
+            "leadingSilenceMs": 4.081632653061225,
+            "synthesisMs": 100.6009578704834
+          },
+          {
+            "audibleMs": 11.605034058326495,
+            "audioMs": 2168.888888888889,
+            "firstBufferMs": 5.6639909744262695,
+            "leadingSilenceMs": 5.941043083900227,
+            "synthesisMs": 26.008009910583496
+          },
+          {
+            "audibleMs": 10.940735994282765,
+            "audioMs": 2554.6938775510207,
+            "firstBufferMs": 5.679965019226074,
+            "leadingSilenceMs": 5.26077097505669,
+            "synthesisMs": 24.227023124694824
+          },
+          {
+            "audibleMs": 7.489960772109951,
+            "audioMs": 1847.936507936508,
+            "firstBufferMs": 3.4990310668945312,
+            "leadingSilenceMs": 3.99092970521542,
+            "synthesisMs": 19.38605308532715
+          },
+          {
+            "audibleMs": 10.603584843157641,
+            "audioMs": 3086.1678004535147,
+            "firstBufferMs": 5.887031555175781,
+            "leadingSilenceMs": 4.71655328798186,
+            "synthesisMs": 27.413010597229004
+          },
+          {
+            "audibleMs": 5.581374827966668,
+            "audioMs": 1787.0748299319728,
+            "firstBufferMs": 3.0870437622070312,
+            "leadingSilenceMs": 2.494331065759637,
+            "synthesisMs": 20.655035972595215
+          },
+          {
+            "audibleMs": 11.322948256858082,
+            "audioMs": 2892.2448979591836,
+            "firstBufferMs": 5.5179595947265625,
+            "leadingSilenceMs": 5.804988662131519,
+            "synthesisMs": 27.32992172241211
+          },
+          {
+            "audibleMs": 6.537709117206046,
+            "audioMs": 1899.2290249433106,
+            "firstBufferMs": 5.676031112670898,
+            "leadingSilenceMs": 0.8616780045351474,
+            "synthesisMs": 21.45099639892578
+          },
+          {
+            "audibleMs": 9.491588631454778,
+            "audioMs": 2009.886621315193,
+            "firstBufferMs": 5.409955978393555,
+            "leadingSilenceMs": 4.081632653061225,
+            "synthesisMs": 21.814942359924316
+          },
+          {
+            "audibleMs": 8.267150033358273,
+            "audioMs": 2343.083900226757,
+            "firstBufferMs": 3.5959482192993164,
+            "leadingSilenceMs": 4.671201814058957,
+            "synthesisMs": 18.518924713134766
+          }
+        ],
+        "voice": "com.apple.voice.super-compact.pt-BR.Luciana"
+      },
+      {
+        "language": "ru",
+        "render": [
+          {
+            "audibleMs": 69.28283518404106,
+            "audioMs": 1422.9931972789116,
+            "firstBufferMs": 64.02206420898438,
+            "leadingSilenceMs": 5.26077097505669,
+            "synthesisMs": 72.61598110198975
+          },
+          {
+            "audibleMs": 13.124035448173817,
+            "audioMs": 2288.344671201814,
+            "firstBufferMs": 7.046937942504883,
+            "leadingSilenceMs": 6.077097505668934,
+            "synthesisMs": 28.615951538085938
+          },
+          {
+            "audibleMs": 10.125363137986925,
+            "audioMs": 2469.9773242630386,
+            "firstBufferMs": 5.6809186935424805,
+            "leadingSilenceMs": 4.444444444444445,
+            "synthesisMs": 22.091031074523926
+          },
+          {
+            "audibleMs": 10.267460611131456,
+            "audioMs": 2330.4308390022675,
+            "firstBufferMs": 5.823016166687012,
+            "leadingSilenceMs": 4.444444444444445,
+            "synthesisMs": 25.39801597595215
+          },
+          {
+            "audibleMs": 8.722508218553331,
+            "audioMs": 2829.614512471655,
+            "firstBufferMs": 4.278063774108887,
+            "leadingSilenceMs": 4.444444444444445,
+            "synthesisMs": 25.745034217834473
+          },
+          {
+            "audibleMs": 6.485604569484858,
+            "audioMs": 1172.7437641723354,
+            "firstBufferMs": 3.4470558166503906,
+            "leadingSilenceMs": 3.038548752834467,
+            "synthesisMs": 24.78206157684326
+          },
+          {
+            "audibleMs": 11.293726659415801,
+            "audioMs": 2956.5079365079364,
+            "firstBufferMs": 5.398035049438477,
+            "leadingSilenceMs": 5.895691609977325,
+            "synthesisMs": 22.176027297973633
+          },
+          {
+            "audibleMs": 13.220459695846316,
+            "audioMs": 1969.9773242630386,
+            "firstBufferMs": 5.283951759338379,
+            "leadingSilenceMs": 7.936507936507936,
+            "synthesisMs": 21.129965782165527
+          },
+          {
+            "audibleMs": 8.477823490999182,
+            "audioMs": 1912.8798185941043,
+            "firstBufferMs": 3.988027572631836,
+            "leadingSilenceMs": 4.489795918367347,
+            "synthesisMs": 20.68305015563965
+          },
+          {
+            "audibleMs": 11.998318209399441,
+            "audioMs": 2539.4104308390024,
+            "firstBufferMs": 7.191061973571777,
+            "leadingSilenceMs": 4.807256235827664,
+            "synthesisMs": 31.11100196838379
+          }
+        ],
+        "voice": "com.apple.voice.super-compact.ru-RU.Milena"
+      },
+      {
+        "language": "zh",
+        "render": [
+          {
+            "audibleMs": 107.64482443024511,
+            "audioMs": 1346.3492063492065,
+            "firstBufferMs": 65.4679536819458,
+            "leadingSilenceMs": 42.176870748299315,
+            "synthesisMs": 80.8800458908081
+          },
+          {
+            "audibleMs": 14.463661987494989,
+            "audioMs": 1804.716553287982,
+            "firstBufferMs": 4.577040672302246,
+            "leadingSilenceMs": 9.886621315192743,
+            "synthesisMs": 19.759058952331543
+          },
+          {
+            "audibleMs": 13.599906227215618,
+            "audioMs": 2797.9591836734694,
+            "firstBufferMs": 6.389021873474121,
+            "leadingSilenceMs": 7.210884353741497,
+            "synthesisMs": 27.691006660461426
+          },
+          {
+            "audibleMs": 6.965309476095532,
+            "audioMs": 2601.496598639456,
+            "firstBufferMs": 5.378007888793945,
+            "leadingSilenceMs": 1.5873015873015872,
+            "synthesisMs": 29.255032539367676
+          },
+          {
+            "audibleMs": 15.099721646903594,
+            "audioMs": 2221.360544217687,
+            "firstBufferMs": 9.20403003692627,
+            "leadingSilenceMs": 5.895691609977325,
+            "synthesisMs": 28.99301052093506
+          },
+          {
+            "audibleMs": 11.670305442377554,
+            "audioMs": 1287.3469387755101,
+            "firstBufferMs": 5.048990249633789,
+            "leadingSilenceMs": 6.621315192743764,
+            "synthesisMs": 18.66292953491211
+          },
+          {
+            "audibleMs": 11.206994240516437,
+            "audioMs": 2267.845804988662,
+            "firstBufferMs": 5.265951156616211,
+            "leadingSilenceMs": 5.941043083900227,
+            "synthesisMs": 26.16596221923828
+          },
+          {
+            "audibleMs": 11.378627591122306,
+            "audioMs": 1664.8979591836735,
+            "firstBufferMs": 4.213094711303711,
+            "leadingSilenceMs": 7.165532879818595,
+            "synthesisMs": 18.806099891662598
+          },
+          {
+            "audibleMs": 13.511049341993267,
+            "audioMs": 1756.8253968253969,
+            "firstBufferMs": 6.0280561447143555,
+            "leadingSilenceMs": 7.482993197278911,
+            "synthesisMs": 24.169087409973145
+          },
+          {
+            "audibleMs": 34.96524535068849,
+            "audioMs": 2441.2698412698414,
+            "firstBufferMs": 4.0808916091918945,
+            "leadingSilenceMs": 30.8843537414966,
+            "synthesisMs": 24.33300018310547
+          }
+        ],
+        "voice": "com.apple.voice.super-compact.zh-CN.Tingting"
+      }
+    ],
+    "route": {
+      "bluetoothHFPAllowed": false,
+      "category": "AVAudioSessionCategoryPlayAndRecord",
+      "inputs": [
+        "MicrophoneBuiltIn: MicrophoneBuiltIn"
+      ],
+      "ioBufferMs": 10,
+      "outputLatencyMs": 0.09999999747378752,
+      "outputs": [
+        "Speaker: Speaker"
+      ],
+      "sampleRate": 48000
+    },
+    "translate": [
+      {
+        "result": "error: TranslationError(cause: Translation.TranslationError.Cause.unsupportedLanguagePairing, sourceLanguage: Optional(Foundation.Locale.Language(components: Foundation.Locale.Language.Components(languageCode: Optional(en), script: nil, region: nil))), targetLanguage: Optional(Foundation.Locale.Language(components: Foundation.Locale.Language.Components(languageCode: Optional(es), script: nil, region: nil))))",
+        "status": "unsupported",
+        "target": "es"
+      },
+      {
+        "result": "error: TranslationError(cause: Translation.TranslationError.Cause.unsupportedLanguagePairing, sourceLanguage: Optional(Foundation.Locale.Language(components: Foundation.Locale.Language.Components(languageCode: Optional(en), script: nil, region: nil))), targetLanguage: Optional(Foundation.Locale.Language(components: Foundation.Locale.Language.Components(languageCode: Optional(fr), script: nil, region: nil))))",
+        "status": "unsupported",
+        "target": "fr"
+      },
+      {
+        "result": "error: TranslationError(cause: Translation.TranslationError.Cause.unsupportedLanguagePairing, sourceLanguage: Optional(Foundation.Locale.Language(components: Foundation.Locale.Language.Components(languageCode: Optional(en), script: nil, region: nil))), targetLanguage: Optional(Foundation.Locale.Language(components: Foundation.Locale.Language.Components(languageCode: Optional(de), script: nil, region: nil))))",
+        "status": "unsupported",
+        "target": "de"
+      },
+      {
+        "result": "error: TranslationError(cause: Translation.TranslationError.Cause.unsupportedLanguagePairing, sourceLanguage: Optional(Foundation.Locale.Language(components: Foundation.Locale.Language.Components(languageCode: Optional(en), script: nil, region: nil))), targetLanguage: Optional(Foundation.Locale.Language(components: Foundation.Locale.Language.Components(languageCode: Optional(he), script: nil, region: nil))))",
+        "status": "unsupported",
+        "target": "he"
+      },
+      {
+        "result": "error: TranslationError(cause: Translation.TranslationError.Cause.unsupportedLanguagePairing, sourceLanguage: Optional(Foundation.Locale.Language(components: Foundation.Locale.Language.Components(languageCode: Optional(en), script: nil, region: nil))), targetLanguage: Optional(Foundation.Locale.Language(components: Foundation.Locale.Language.Components(languageCode: Optional(ja), script: nil, region: nil))))",
+        "status": "unsupported",
+        "target": "ja"
+      }
+    ],
+    "voices": [
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "ar-AE",
+        "sampleVoice": "com.apple.voice.super-compact.ar-001.Maged",
+        "voice": "ar-001",
+        "voicesInLanguage": 1
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "da",
+        "sampleVoice": "com.apple.voice.super-compact.da-DK.Sara",
+        "voice": "da-DK",
+        "voicesInLanguage": 1
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "de",
+        "sampleVoice": "com.apple.voice.super-compact.de-DE.Anna",
+        "voice": "de-DE",
+        "voicesInLanguage": 1
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "de-CH",
+        "sampleVoice": "com.apple.voice.super-compact.de-DE.Anna",
+        "voice": "de-DE",
+        "voicesInLanguage": 1
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "source",
+        "language": "en",
+        "sampleVoice": "com.apple.voice.super-compact.en-US.Samantha",
+        "voice": "en-US",
+        "voicesInLanguage": 25
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "source",
+        "language": "en-AU",
+        "sampleVoice": "com.apple.voice.super-compact.en-AU.Karen",
+        "voice": "en-AU",
+        "voicesInLanguage": 25
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "source",
+        "language": "en-CA",
+        "sampleVoice": "com.apple.voice.super-compact.en-AU.Karen",
+        "voice": "en-AU",
+        "voicesInLanguage": 25
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "source",
+        "language": "en-GB",
+        "sampleVoice": "com.apple.voice.super-compact.en-GB.Daniel",
+        "voice": "en-GB",
+        "voicesInLanguage": 25
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "source",
+        "language": "en-IE",
+        "sampleVoice": "com.apple.voice.super-compact.en-IE.Moira",
+        "voice": "en-IE",
+        "voicesInLanguage": 25
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "source",
+        "language": "en-IN",
+        "sampleVoice": "com.apple.voice.super-compact.en-IN.Rishi",
+        "voice": "en-IN",
+        "voicesInLanguage": 25
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "source",
+        "language": "en-NZ",
+        "sampleVoice": "com.apple.voice.super-compact.en-AU.Karen",
+        "voice": "en-AU",
+        "voicesInLanguage": 25
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "source",
+        "language": "en-SG",
+        "sampleVoice": "com.apple.voice.super-compact.en-AU.Karen",
+        "voice": "en-AU",
+        "voicesInLanguage": 25
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "source",
+        "language": "en-ZA",
+        "sampleVoice": "com.apple.voice.super-compact.en-ZA.Tessa",
+        "voice": "en-ZA",
+        "voicesInLanguage": 25
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "es",
+        "sampleVoice": "com.apple.voice.super-compact.es-ES.Monica",
+        "voice": "es-ES",
+        "voicesInLanguage": 2
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "es-MX",
+        "sampleVoice": "com.apple.voice.super-compact.es-MX.Paulina",
+        "voice": "es-MX",
+        "voicesInLanguage": 2
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "es-US",
+        "sampleVoice": "com.apple.voice.super-compact.es-ES.Monica",
+        "voice": "es-ES",
+        "voicesInLanguage": 2
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "fr",
+        "sampleVoice": "com.apple.voice.super-compact.fr-FR.Thomas",
+        "voice": "fr-FR",
+        "voicesInLanguage": 2
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "fr-CA",
+        "sampleVoice": "com.apple.voice.super-compact.fr-CA.Amelie",
+        "voice": "fr-CA",
+        "voicesInLanguage": 2
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "hi",
+        "sampleVoice": "com.apple.voice.super-compact.hi-IN.Lekha",
+        "voice": "hi-IN",
+        "voicesInLanguage": 1
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "id",
+        "sampleVoice": "com.apple.voice.super-compact.id-ID.Damayanti",
+        "voice": "id-ID",
+        "voicesInLanguage": 1
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "it",
+        "sampleVoice": "com.apple.voice.super-compact.it-IT.Alice",
+        "voice": "it-IT",
+        "voicesInLanguage": 1
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "it-CH",
+        "sampleVoice": "com.apple.voice.super-compact.it-IT.Alice",
+        "voice": "it-IT",
+        "voicesInLanguage": 1
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "ja",
+        "sampleVoice": "com.apple.voice.super-compact.ja-JP.Kyoko",
+        "voice": "ja-JP",
+        "voicesInLanguage": 1
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "ko",
+        "sampleVoice": "com.apple.voice.super-compact.ko-KR.Yuna",
+        "voice": "ko-KR",
+        "voicesInLanguage": 1
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "nb",
+        "sampleVoice": "com.apple.voice.super-compact.nb-NO.Nora",
+        "voice": "nb-NO",
+        "voicesInLanguage": 1
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "nl",
+        "sampleVoice": "com.apple.voice.super-compact.nl-NL.Xander",
+        "voice": "nl-NL",
+        "voicesInLanguage": 2
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "pl",
+        "sampleVoice": "com.apple.voice.super-compact.pl-PL.Zosia",
+        "voice": "pl-PL",
+        "voicesInLanguage": 1
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "pt",
+        "sampleVoice": "com.apple.voice.super-compact.pt-BR.Luciana",
+        "voice": "pt-BR",
+        "voicesInLanguage": 2
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "pt-PT",
+        "sampleVoice": "com.apple.voice.super-compact.pt-PT.Joana",
+        "voice": "pt-PT",
+        "voicesInLanguage": 2
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "ru",
+        "sampleVoice": "com.apple.voice.super-compact.ru-RU.Milena",
+        "voice": "ru-RU",
+        "voicesInLanguage": 1
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "sv",
+        "sampleVoice": "com.apple.voice.super-compact.sv-SE.Alva",
+        "voice": "sv-SE",
+        "voicesInLanguage": 1
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "th",
+        "sampleVoice": "com.apple.voice.super-compact.th-TH.Kanya",
+        "voice": "th-TH",
+        "voicesInLanguage": 1
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "tr",
+        "sampleVoice": "com.apple.voice.super-compact.tr-TR.Yelda",
+        "voice": "tr-TR",
+        "voicesInLanguage": 1
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "uk",
+        "sampleVoice": "com.apple.voice.super-compact.uk-UA.Lesya",
+        "voice": "uk-UA",
+        "voicesInLanguage": 1
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "vi",
+        "sampleVoice": "com.apple.voice.super-compact.vi-VN.Linh",
+        "voice": "vi-VN",
+        "voicesInLanguage": 1
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "zh",
+        "sampleVoice": "com.apple.voice.super-compact.zh-CN.Tingting",
+        "voice": "zh-CN",
+        "voicesInLanguage": 1
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "zh-HK",
+        "sampleVoice": "com.apple.voice.super-compact.zh-TW.Meijia",
+        "voice": "zh-TW",
+        "voicesInLanguage": 1
+      },
+      {
+        "bestQuality": "default",
+        "fromEnglish": "unsupported",
+        "language": "zh-TW",
+        "sampleVoice": "com.apple.voice.super-compact.zh-TW.Meijia",
+        "voice": "zh-TW",
+        "voicesInLanguage": 1
+      }
+    ]
+  }
+}

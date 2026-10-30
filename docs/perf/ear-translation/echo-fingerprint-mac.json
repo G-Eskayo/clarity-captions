@@ -1,0 +1,1009 @@
+{
+  "date" : "2026-10-30T08:42:49Z",
+  "device" : "Mac mini (gils-mac-mini.local)",
+  "os" : "macOS Version 26.5.1 (Build 25F80)",
+  "results" : [
+    {
+      "falseEchoes" : 0,
+      "language" : "es",
+      "lines" : [
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "Dunde esta la estación de green.",
+          "heardAs" : "Dunde esta estación de green.",
+          "spoken" : "¿Dónde está la estación de tren?"
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "And then they say, like, I see in the green.",
+          "heardAs" : "Dunde esta estación de green.",
+          "spoken" : "¿Dónde está la estación de tren?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "No, la cuenta, por favor.",
+          "heardAs" : "Nos gré la cuenta, por favor.",
+          "spoken" : "¿Nos trae la cuenta, por favor?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "Ne pre la cuenta, por favor.",
+          "heardAs" : "Nos gré la cuenta, por favor.",
+          "spoken" : "¿Nos trae la cuenta, por favor?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "Better than the, no, intendigo, nombre.",
+          "heardAs" : "Better than me, no intendido si nombre.",
+          "spoken" : "Perdone, no he entendido su nombre."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "Neither of me, no intendido nombre.",
+          "heardAs" : "Better than me, no intendido si nombre.",
+          "spoken" : "Perdone, no he entendido su nombre."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "El muse labre mañana las nueve.",
+          "heardAs" : "El mu se labre mañana las nueve.",
+          "spoken" : "El museo abre mañana a las nueve."
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "In Muchilagri, mañana, las music.",
+          "heardAs" : "El mu se labre mañana las nueve.",
+          "spoken" : "El museo abre mañana a las nueve."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "Mi jabien a visitor nos la semana que viene.",
+          "heardAs" : "Mi habien habisitar nos la semana que viene.",
+          "spoken" : "Mi hija viene a visitarnos la semana que viene."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "",
+          "heardAs" : "Mi habien habisitar nos la semana que viene.",
+          "spoken" : "Mi hija viene a visitarnos la semana que viene."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "Is that a good bad estaciento?",
+          "heardAs" : "Is there a good pados taciento?",
+          "spoken" : "¿Está ocupado este asiento?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "Is that a?",
+          "heardAs" : "Is there a good pados taciento?",
+          "spoken" : "¿Está ocupado este asiento?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "Listen, vemos, una mesa para cuatro a lasotto.",
+          "heardAs" : ", para cuatro alaso.",
+          "spoken" : "Reservamos una mesa para cuatro a las ocho."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "",
+          "heardAs" : ", para cuatro alaso.",
+          "spoken" : "Reservamos una mesa para cuatro a las ocho."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "Cuento, sitar, dan yega, andendo?",
+          "heardAs" : "Cuento sitar lan yegadandendo?",
+          "spoken" : "¿Cuánto se tarda en llegar andando?"
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : ",",
+          "heardAs" : "Cuento sitar lan yegadandendo?",
+          "spoken" : "¿Cuánto se tarda en llegar andando?"
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "DNL was in filter shakers.",
+          "heardAs" : "The en elgos influter secos?",
+          "spoken" : "¿Tiene algo sin frutos secos?"
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "The unions of you through the paper?",
+          "heardAs" : "The en elgos influter secos?",
+          "spoken" : "¿Tiene algo sin frutos secos?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "Mutisimas gracias, mira, yugada mucho.",
+          "heardAs" : "Mutissimas gracias, mera yudadamuto.",
+          "spoken" : "Muchísimas gracias, me ha ayudado mucho."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "",
+          "heardAs" : "Mutissimas gracias, mera yudadamuto.",
+          "spoken" : "Muchísimas gracias, me ha ayudado mucho."
+        }
+      ],
+      "realLinesChecked" : 100
+    },
+    {
+      "falseEchoes" : 0,
+      "language" : "fr",
+      "lines" : [
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "Willagard.",
+          "heardAs" : "We la guard.",
+          "spoken" : "Où est la gare ?"
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "Una girl.",
+          "heardAs" : "We la guard.",
+          "spoken" : "Où est la gare ?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "Ladition, s'il vous plait.",
+          "heardAs" : "Ladition, si vous plait.",
+          "spoken" : "L'addition, s'il vous plaît ?"
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "La Vicion, il vous les?",
+          "heardAs" : "Ladition, si vous plait.",
+          "spoken" : "L'addition, s'il vous plaît ?"
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "Visually, Je ne tais contri vaudrenon.",
+          "heardAs" : "Desolet, Je ne tais compris vetre nom.",
+          "spoken" : "Désolé, je n'ai pas compris votre nom."
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "Vivouly, you should meet a concrete, vous comment.",
+          "heardAs" : "Desolet, Je ne tais compris vetre nom.",
+          "spoken" : "Désolé, je n'ai pas compris votre nom."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "Le muse ouvre de man, a neuvre.",
+          "heardAs" : "Le muse ouvre de man, le nouvre.",
+          "spoken" : "Le musée ouvre demain à neuf heures."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "",
+          "heardAs" : "Le muse ouvre de man, le nouvre.",
+          "spoken" : "Le musée ouvre demain à neuf heures."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "Ma fivien, rendre vivit, la semain prochen.",
+          "heardAs" : "Ma fivien, rendre visit, la semain prochen.",
+          "spoken" : "Ma fille vient nous rendre visite la semaine prochaine."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "Mafie, bien, rendre vivit, la the main procheme.",
+          "heardAs" : "Ma fivien, rendre visit, la semain prochen.",
+          "spoken" : "Ma fille vient nous rendre visite la semaine prochaine."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "C'est place, s'pris.",
+          "heardAs" : "C'est place, c'est pris?",
+          "spoken" : "Cette place est prise ?"
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "It's pleasant, please.",
+          "heardAs" : "C'est place, c'est pris?",
+          "spoken" : "Cette place est prise ?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "Mous avons reservé, un table pourquet traventeur.",
+          "heardAs" : "Nous avons reservé, un table, pour que traventeur.",
+          "spoken" : "Nous avons réservé une table pour quatre à vingt heures."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "You've ever revere, it's table, pourquette, a venter.",
+          "heardAs" : "Nous avons reservé, un table, pour que traventeur.",
+          "spoken" : "Nous avons réservé une table pour quatre à vingt heures."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "Conbien de temfo il pour il a pier.",
+          "heardAs" : "Conbien de temfaux il pouri aller appier.",
+          "spoken" : "Combien de temps faut-il pour y aller à pied ?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "",
+          "heardAs" : "Conbien de temfaux il pouri aller appier.",
+          "spoken" : "Combien de temps faut-il pour y aller à pied ?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "A vous quel que chose sans fruis a club.",
+          "heardAs" : "Ave vous quelle que chose sans fruis a cup.",
+          "spoken" : "Avez-vous quelque chose sans fruits à coque ?"
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "I've been vouquel que chose for 3 o'clock.",
+          "heardAs" : "Ave vous quelle que chose sans fruis a cup.",
+          "spoken" : "Avez-vous quelque chose sans fruits à coque ?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "Merci beaucoup, c'est mavre mon idée.",
+          "heardAs" : "Merci beaucoup, c'est mavre mon idée.",
+          "spoken" : "Merci beaucoup, ça m'a vraiment aidé."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "Merci beaucoup, c'est mavraiment ivée.",
+          "heardAs" : "Merci beaucoup, c'est mavre mon idée.",
+          "spoken" : "Merci beaucoup, ça m'a vraiment aidé."
+        }
+      ],
+      "realLinesChecked" : 100
+    },
+    {
+      "falseEchoes" : 0,
+      "language" : "de",
+      "lines" : [
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "Vote Estebanhorf.",
+          "heardAs" : "Vo Isteban Hof?",
+          "spoken" : "Wo ist der Bahnhof?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "Bo is Stefan Ho.",
+          "heardAs" : "Vo Isteban Hof?",
+          "spoken" : "Wo ist der Bahnhof?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "Couldn't be a bitter direch nung haben.",
+          "heardAs" : "Couldn't be a bitter die rech nung haben?",
+          "spoken" : "Können wir bitte die Rechnung haben?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "Couldn't be a bit of the rechnung haben.",
+          "heardAs" : "Couldn't be a bitter die rech nung haben?",
+          "spoken" : "Können wir bitte die Rechnung haben?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "And Chuligung, Ish habe iren namen nicht verstanden.",
+          "heardAs" : "And Schuligung, Ich habe iren namen nicht verstanden.",
+          "spoken" : "Entschuldigung, ich habe Ihren Namen nicht verstanden."
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "And fluidigung, they have a even naam in Mr. Shanden.",
+          "heardAs" : "And Schuligung, Ich habe iren namen nicht verstanden.",
+          "spoken" : "Entschuldigung, ich habe Ihren Namen nicht verstanden."
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "Dust movie on ethnet, nagen, um, nein uller.",
+          "heardAs" : "Das moseum, infinite, nalgen, um, nein, ure.",
+          "spoken" : "Das Museum öffnet morgen um neun Uhr."
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "That movie, an ethnic novel, online UR.",
+          "heardAs" : "Das moseum, infinite, nalgen, um, nein, ure.",
+          "spoken" : "Das Museum öffnet morgen um neun Uhr."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "Mine a torta accomplish, de wochet zubesuch.",
+          "heardAs" : "Maine torta kom neste vochet zubesuch.",
+          "spoken" : "Meine Tochter kommt nächste Woche zu Besuch."
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "Mine is doctor company.",
+          "heardAs" : "Maine torta kom neste vochet zubesuch.",
+          "spoken" : "Meine Tochter kommt nächste Woche zu Besuch."
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "If these are flats, fry?",
+          "heardAs" : "Is Deezer Platz Frei?",
+          "spoken" : "Ist dieser Platz frei?"
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "If these are black price,",
+          "heardAs" : "Is Deezer Platz Frei?",
+          "spoken" : "Ist dieser Platz frei?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "We have an einen tisch fir um acht or reserviet.",
+          "heardAs" : "We have einen tisch wer fier um acht or reserviet.",
+          "spoken" : "Wir haben einen Tisch für vier um acht Uhr reserviert."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "",
+          "heardAs" : "We have einen tisch wer fier um acht or reserviet.",
+          "spoken" : "Wir haben einen Tisch für vier um acht Uhr reserviert."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "The Langadalat is the fus dot hin.",
+          "heardAs" : "The Langadalat is zufus.hin.",
+          "spoken" : "Wie lange dauert es zu Fuß dorthin?"
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "The Langadaw is to full dot pin.",
+          "heardAs" : "The Langadalat is zufus.hin.",
+          "spoken" : "Wie lange dauert es zu Fuß dorthin?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "Have the, it was onen nusse.",
+          "heardAs" : "Haven si, it was onen nusse?",
+          "spoken" : "Haben Sie etwas ohne Nüsse?"
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "Pardon me, if that's only this.",
+          "heardAs" : "Haven si, it was onen nusse?",
+          "spoken" : "Haben Sie etwas ohne Nüsse?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "Seal and dunk, dust wa werklich hilsreich.",
+          "heardAs" : "Feel and dunk, das wa werklich hil freich.",
+          "spoken" : "Vielen Dank, das war wirklich hilfreich."
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "Feel and dunk, death brothers play pale right.",
+          "heardAs" : "Feel and dunk, das wa werklich hil freich.",
+          "spoken" : "Vielen Dank, das war wirklich hilfreich."
+        }
+      ],
+      "realLinesChecked" : 100
+    },
+    {
+      "falseEchoes" : 1,
+      "language" : "it",
+      "lines" : [
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "Duvela statune de training.",
+          "heardAs" : "Duvela statione de traini.",
+          "spoken" : "Dov'è la stazione dei treni?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "Duve la opportunity train.",
+          "heardAs" : "Duvela statione de traini.",
+          "spoken" : "Dov'è la stazione dei treni?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "Cheap or tae kunto, per favore.",
+          "heardAs" : "Chiport telgunto, per febore.",
+          "spoken" : "Ci porta il conto, per favore?"
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "She thought they couldn't...",
+          "heardAs" : "Chiport telgunto, per febore.",
+          "spoken" : "Ci porta il conto, per favore?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "Miscusi, no no capito is sunome.",
+          "heardAs" : "Miskusi, no no capito is sunome.",
+          "spoken" : "Mi scusi, non ho capito il suo nome."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "",
+          "heardAs" : "Miskusi, no no capito is sunome.",
+          "spoken" : "Mi scusi, non ho capito il suo nome."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "Il muzai va predo mani el nove.",
+          "heardAs" : "Il muzai vapre do mania le nove.",
+          "spoken" : "Il museo apre domani alle nove."
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "Even they vaquido manually, Norway.",
+          "heardAs" : "Il muzai vapre do mania le nove.",
+          "spoken" : "Il museo apre domani alle nove."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "Mi afilia, vienna, trovarchi, la cetimana, prosima.",
+          "heardAs" : "Mi afilia, vienna trovarchi, la cetimana prosima.",
+          "spoken" : "Mia figlia viene a trovarci la settimana prossima."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "Nia fila, bien, trovarcila, se cimana proxima.",
+          "heardAs" : "Mi afilia, vienna trovarchi, la cetimana prosima.",
+          "spoken" : "Mia figlia viene a trovarci la settimana prossima."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "A libero quisto pasto.",
+          "heardAs" : "Eli verloquisto pasto.",
+          "spoken" : "È libero questo posto?"
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "Any little quisto panto.",
+          "heardAs" : "Eli verloquisto pasto.",
+          "spoken" : "È libero questo posto?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "Abi, I'm a prenotato, tagolo, per quattro, aliotto.",
+          "heardAs" : "Habiamo pre notato, tabolo, per quattro, ale opto.",
+          "spoken" : "Abbiamo prenotato un tavolo per quattro alle otto."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "Abi, am afreno tato, tago, pecuatro, aliotto.",
+          "heardAs" : "Habiamo pre notato, tabolo, per quattro, ale opto.",
+          "spoken" : "Abbiamo prenotato un tavolo per quattro alle otto."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "Cuanto cigualia piedi.",
+          "heardAs" : "Cuanto chivolia piedi.",
+          "spoken" : "Quanto ci vuole a piedi?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "",
+          "heardAs" : "Cuanto chivolia piedi.",
+          "spoken" : "Quanto ci vuole a piedi?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "I will cause a sense of frutasita.",
+          "heardAs" : "Aqual cause a sense of frutasica.",
+          "spoken" : "Ha qualcosa senza frutta secca?"
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "I was called the sense of rotatata.",
+          "heardAs" : "Aqual cause a sense of frutasica.",
+          "spoken" : "Ha qualcosa senza frutta secca?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "Gracia mile, mi estato molto utile.",
+          "heardAs" : "Grace mile, mi estato molto utile.",
+          "spoken" : "Grazie mille, mi è stato molto utile."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "Gracie mile, mie estatum moltoski.",
+          "heardAs" : "Grace mile, mi estato molto utile.",
+          "spoken" : "Grazie mille, mi è stato molto utile."
+        }
+      ],
+      "realLinesChecked" : 100
+    },
+    {
+      "falseEchoes" : 0,
+      "language" : "he",
+      "lines" : [
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "A photo, Hanatarakivit.",
+          "heardAs" : "Efuta kanatarakivit.",
+          "spoken" : "איפה תחנת הרכבת?"
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "It was a...",
+          "heardAs" : "Efuta kanatarakivit.",
+          "spoken" : "איפה תחנת הרכבת?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "If Charlotte Cabelita, Heshbon, Bivakasha.",
+          "heardAs" : "If Charlotte Cabelita Heshbon, Bivakasha.",
+          "spoken" : "אפשר לקבל את החשבון, בבקשה?"
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "If Sean is a hashbon, the vakashah.",
+          "heardAs" : "If Charlotte Cabelita Heshbon, Bivakasha.",
+          "spoken" : "אפשר לקבל את החשבון, בבקשה?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "Local at the shem shelach.",
+          "heardAs" : "Sligha, local at the shem shelach.",
+          "spoken" : "סליחה, לא קלטתי את השם שלך."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "He has local activities as shem shellach.",
+          "heardAs" : "Sligha, local at the shem shelach.",
+          "spoken" : "סליחה, לא קלטתי את השם שלך."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "Hamu, they own, if tahmahal, betesha, babukil.",
+          "heardAs" : "Hamu, they only, if tahmahal, betesha, baboker.",
+          "spoken" : "המוזיאון נפתח מחר בתשע בבוקר."
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "I'm of the only ,",
+          "heardAs" : "Hamu, they only, if tahmahal, betesha, baboker.",
+          "spoken" : "המוזיאון נפתח מחר בתשע בבוקר."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "Habachalibali, vakirba, shevu, aba.",
+          "heardAs" : "Habachalibale, vakirba, shevu, aba.",
+          "spoken" : "הבת שלי באה לבקר בשבוע הבא."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "",
+          "heardAs" : "Habachalibale, vakirba, shevu, aba.",
+          "spoken" : "הבת שלי באה לבקר בשבוע הבא."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "Hamakuma zetafus.",
+          "heardAs" : "Hamakuma zetafus.",
+          "spoken" : "המקום הזה תפוס?"
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "And the kumas get the food.",
+          "heardAs" : "Hamakuma zetafus.",
+          "spoken" : "המקום הזה תפוס?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "Has Manushul Hanler be Abishmona.",
+          "heardAs" : "Has Manushul Hanler be Abishmona.",
+          "spoken" : "הזמנו שולחן לארבעה בשמונה."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "As Manushu, Hanle, Alba, Abish Monach.",
+          "heardAs" : "Has Manushul Hanler be Abishmona.",
+          "spoken" : "הזמנו שולחן לארבעה בשמונה."
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "Come, man, look.",
+          "heardAs" : "Come, man, look here, leche, le chamberegel.",
+          "spoken" : "כמה זמן לוקח ללכת לשם ברגל?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "Some of man look here.",
+          "heardAs" : "Come, man, look here, leche, le chamberegel.",
+          "spoken" : "כמה זמן לוקח ללכת לשם ברגל?"
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "Yes, , , , , ,",
+          "heardAs" : "Yes, lachhema shehubliye gozim.",
+          "spoken" : "יש לכם משהו בלי אגוזים?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "",
+          "heardAs" : "Yes, lachhema shehubliye gozim.",
+          "spoken" : "יש לכם משהו בלי אגוזים?"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "So, daraba, zemma mash, ezel.",
+          "heardAs" : "So, daraba, zemma mash eser.",
+          "spoken" : "תודה רבה, זה ממש עזר."
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "So, demo, mash, evil.",
+          "heardAs" : "So, daraba, zemma mash eser.",
+          "spoken" : "תודה רבה, זה ממש עזר."
+        }
+      ],
+      "realLinesChecked" : 100
+    },
+    {
+      "falseEchoes" : 0,
+      "language" : "ja",
+      "lines" : [
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "Thank you.",
+          "heardAs" : "Ikiva, dokodeska.",
+          "spoken" : "駅はどこですか？"
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "If you like yoko, this, huh?",
+          "heardAs" : "Ikiva, dokodeska.",
+          "spoken" : "駅はどこですか？"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "Okay, okay, okay, okay.",
+          "heardAs" : "Okay, okay, okay, okay.",
+          "spoken" : "お会計をお願いできますか？"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "Okay, okay, okay.",
+          "heardAs" : "Okay, okay, okay, okay.",
+          "spoken" : "お会計をお願いできますか？"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "Sumi Maseng, unamayo, kiko, masen desta.",
+          "heardAs" : "Sumi Maseng, una mayo, kitore masen desta.",
+          "spoken" : "すみません、お名前を聞き取れませんでした。"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "",
+          "heardAs" : "Sumi Maseng, una mayo, kitore masen desta.",
+          "spoken" : "すみません、お名前を聞き取れませんでした。"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "How could it come back?",
+          "heardAs" : "How could it come back? Hirakimas?",
+          "spoken" : "博物館は明日の朝九時に開きます。"
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "How does it stand back? I don't know, I thought it was in Hirakima.",
+          "heardAs" : "How could it come back? Hirakimas?",
+          "spoken" : "博物館は明日の朝九時に開きます。"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "Listen, mega, nice, so be nikimas.",
+          "heardAs" : "Musumega, naishula sobinikimas.",
+          "spoken" : "娘が来週遊びに来ます。"
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "Listen, they got nice.",
+          "heardAs" : "Musumega, naishula sobinikimas.",
+          "spoken" : "娘が来週遊びに来ます。"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz",
+          "echoCaption" : "",
+          "heardAs" : "Kono sequiva, te masca?",
+          "spoken" : "この席は空いていますか？"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "",
+          "heardAs" : "Kono sequiva, te masca?",
+          "spoken" : "この席は空いていますか？"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : ", yongi, yo yak simasta.",
+          "heardAs" : ", yongi, yo yak shimasta.",
+          "spoken" : "八時に四人で予約しました。"
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "I think you, you mean, that yo yak, you must start.",
+          "heardAs" : ", yongi, yo yak shimasta.",
+          "spoken" : "八時に四人で予約しました。"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "I don't know, could I kakari mask, huh?",
+          "heardAs" : "I don't, don't know, could I, kakari masca?",
+          "spoken" : "歩いてどのくらいかかりますか？"
+        },
+        {
+          "caughtWithFingerprint" : false,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "How do you say?",
+          "heardAs" : "I don't, don't know, could I, kakari masca?",
+          "spoken" : "歩いてどのくらいかかりますか？"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "Not to the height, say, monobari masca.",
+          "heardAs" : "That's to the height, dengai, monobari, masca.",
+          "spoken" : "ナッツが入っていないものはありますか？"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "Next to the highest day, Monoari Maska.",
+          "heardAs" : "That's to the height, dengai, monobari, masca.",
+          "spoken" : "ナッツが入っていないものはありますか？"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : false,
+          "condition" : "8 kHz",
+          "echoCaption" : "Pondoni, Arigato, Gosaimas, Totemo, Tascari, masta.",
+          "heardAs" : "Ponto, ni, arigato, go zaimas, Totemo, tascari, masta.",
+          "spoken" : "本当にありがとうございます、とても助かりました。"
+        },
+        {
+          "caughtWithFingerprint" : true,
+          "caughtWordsOnly" : true,
+          "condition" : "8 kHz + noise 10 dB",
+          "echoCaption" : "",
+          "heardAs" : "Ponto, ni, arigato, go zaimas, Totemo, tascari, masta.",
+          "spoken" : "本当にありがとうございます、とても助かりました。"
+        }
+      ],
+      "realLinesChecked" : 100
+    }
+  ]
+}

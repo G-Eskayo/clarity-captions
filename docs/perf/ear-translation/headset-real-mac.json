@@ -1,0 +1,492 @@
+{
+  "date" : "2026-10-30T08:53:09Z",
+  "device" : "Mac mini (gils-mac-mini.local)",
+  "os" : "macOS Version 26.5.1 (Build 25F80)",
+  "results" : {
+    "clips" : [
+      {
+        "clip" : "validation-EDACC-C22-50",
+        "narrow" : 0.3333333333333333,
+        "wide" : 0.25,
+        "words" : 24
+      },
+      {
+        "clip" : "validation-EDACC-C23_P1-205",
+        "narrow" : 0,
+        "wide" : 0,
+        "words" : 19
+      },
+      {
+        "clip" : "validation-EDACC-C23_P1-287",
+        "narrow" : 0.08823529411764706,
+        "wide" : 0.11764705882352941,
+        "words" : 34
+      },
+      {
+        "clip" : "validation-EDACC-C23_P2-217",
+        "narrow" : 0.09523809523809523,
+        "wide" : 0.09523809523809523,
+        "words" : 21
+      },
+      {
+        "clip" : "validation-EDACC-C23_P2-57",
+        "narrow" : 0.4878048780487805,
+        "wide" : 0.43902439024390244,
+        "words" : 41
+      },
+      {
+        "clip" : "test-EDACC-C19-27",
+        "narrow" : 0.1282051282051282,
+        "wide" : 0.1794871794871795,
+        "words" : 39
+      },
+      {
+        "clip" : "test-EDACC-C42-156",
+        "narrow" : 0.5,
+        "wide" : 0.25,
+        "words" : 16
+      },
+      {
+        "clip" : "test-EDACC-C42-65",
+        "narrow" : 0.18181818181818182,
+        "wide" : 0.2727272727272727,
+        "words" : 11
+      },
+      {
+        "clip" : "validation-EDACC-C16-142",
+        "narrow" : 0.4,
+        "wide" : 0.4,
+        "words" : 10
+      },
+      {
+        "clip" : "validation-EDACC-C16-205",
+        "narrow" : 0.2857142857142857,
+        "wide" : 0.25,
+        "words" : 28
+      },
+      {
+        "clip" : "validation-EDACC-C16-237",
+        "narrow" : 0.25,
+        "wide" : 0.25,
+        "words" : 8
+      },
+      {
+        "clip" : "validation-EDACC-C16-30",
+        "narrow" : 0.2857142857142857,
+        "wide" : 0.2857142857142857,
+        "words" : 21
+      },
+      {
+        "clip" : "validation-EDACC-C16-333",
+        "narrow" : 0.08333333333333333,
+        "wide" : 0.08333333333333333,
+        "words" : 12
+      },
+      {
+        "clip" : "validation-EDACC-C24-157",
+        "narrow" : 0.034482758620689655,
+        "wide" : 0.034482758620689655,
+        "words" : 29
+      },
+      {
+        "clip" : "validation-EDACC-C24-282",
+        "narrow" : 0.25,
+        "wide" : 0.08333333333333333,
+        "words" : 12
+      },
+      {
+        "clip" : "validation-EDACC-C24-343",
+        "narrow" : 0.058823529411764705,
+        "wide" : 0.17647058823529413,
+        "words" : 17
+      },
+      {
+        "clip" : "validation-EDACC-C24-437",
+        "narrow" : 0.32,
+        "wide" : 0.2,
+        "words" : 25
+      },
+      {
+        "clip" : "validation-EDACC-C24-466",
+        "narrow" : 0.10810810810810811,
+        "wide" : 0.10810810810810811,
+        "words" : 37
+      },
+      {
+        "clip" : "validation-EDACC-C24-525",
+        "narrow" : 0.3157894736842105,
+        "wide" : 0.3157894736842105,
+        "words" : 19
+      },
+      {
+        "clip" : "validation-EDACC-C24-556",
+        "narrow" : 0.36363636363636365,
+        "wide" : 0.3181818181818182,
+        "words" : 22
+      },
+      {
+        "clip" : "test-EDACC-C02-145",
+        "narrow" : 0.17647058823529413,
+        "wide" : 0.17647058823529413,
+        "words" : 17
+      },
+      {
+        "clip" : "test-EDACC-C02-72",
+        "narrow" : 0.1111111111111111,
+        "wide" : 0.1111111111111111,
+        "words" : 27
+      },
+      {
+        "clip" : "validation-EDACC-C30-117",
+        "narrow" : 0.2222222222222222,
+        "wide" : 0.2222222222222222,
+        "words" : 9
+      },
+      {
+        "clip" : "validation-EDACC-C30-150",
+        "narrow" : 0.21428571428571427,
+        "wide" : 0.21428571428571427,
+        "words" : 28
+      },
+      {
+        "clip" : "validation-EDACC-C30-185",
+        "narrow" : 0.8333333333333334,
+        "wide" : 1,
+        "words" : 6
+      },
+      {
+        "clip" : "validation-EDACC-C30-247",
+        "narrow" : 0.32,
+        "wide" : 0.36,
+        "words" : 25
+      },
+      {
+        "clip" : "validation-EDACC-C30-383",
+        "narrow" : 0.07692307692307693,
+        "wide" : 0.07692307692307693,
+        "words" : 13
+      },
+      {
+        "clip" : "validation-EDACC-C30-482",
+        "narrow" : 0.14285714285714285,
+        "wide" : 0.14285714285714285,
+        "words" : 14
+      },
+      {
+        "clip" : "validation-EDACC-C30-612",
+        "narrow" : 0.2222222222222222,
+        "wide" : 0.2222222222222222,
+        "words" : 18
+      },
+      {
+        "clip" : "validation-EDACC-C30-646",
+        "narrow" : 0.037037037037037035,
+        "wide" : 0.1111111111111111,
+        "words" : 27
+      },
+      {
+        "clip" : "validation-EDACC-C30-711",
+        "narrow" : 0.375,
+        "wide" : 0.4375,
+        "words" : 16
+      },
+      {
+        "clip" : "validation-EDACC-C30-743",
+        "narrow" : 0.13333333333333333,
+        "wide" : 0.13333333333333333,
+        "words" : 15
+      },
+      {
+        "clip" : "validation-EDACC-C30-97",
+        "narrow" : 0.8571428571428571,
+        "wide" : 0.8571428571428571,
+        "words" : 7
+      },
+      {
+        "clip" : "validation-EDACC-C40_P1-69",
+        "narrow" : 0.07142857142857142,
+        "wide" : 0.07142857142857142,
+        "words" : 28
+      },
+      {
+        "clip" : "validation-EDACC-C40_P2-61",
+        "narrow" : 0.2857142857142857,
+        "wide" : 0.2857142857142857,
+        "words" : 28
+      },
+      {
+        "clip" : "validation-EDACC-C40_P3-124",
+        "narrow" : 0.13333333333333333,
+        "wide" : 0.13333333333333333,
+        "words" : 15
+      },
+      {
+        "clip" : "validation-EDACC-C40_P3-183",
+        "narrow" : 0.16666666666666666,
+        "wide" : 0.16666666666666666,
+        "words" : 18
+      },
+      {
+        "clip" : "validation-EDACC-C40_P3-74",
+        "narrow" : 0.35714285714285715,
+        "wide" : 0.21428571428571427,
+        "words" : 14
+      },
+      {
+        "clip" : "test-EDACC-C28-106",
+        "narrow" : 0.25,
+        "wide" : 0.35,
+        "words" : 20
+      },
+      {
+        "clip" : "test-EDACC-C28-58",
+        "narrow" : 0.07692307692307693,
+        "wide" : 0.07692307692307693,
+        "words" : 13
+      },
+      {
+        "clip" : "validation-EDACC-C07-64",
+        "narrow" : 0.15789473684210525,
+        "wide" : 0.10526315789473684,
+        "words" : 19
+      },
+      {
+        "clip" : "validation-EDACC-C13-19",
+        "narrow" : 0.1,
+        "wide" : 0.06666666666666667,
+        "words" : 30
+      },
+      {
+        "clip" : "validation-EDACC-C11-73",
+        "narrow" : 0.05128205128205128,
+        "wide" : 0.07692307692307693,
+        "words" : 39
+      },
+      {
+        "clip" : "test-EDACC-C05_P0-159",
+        "narrow" : 0.5,
+        "wide" : 0.3333333333333333,
+        "words" : 18
+      },
+      {
+        "clip" : "test-EDACC-C05_P0-216",
+        "narrow" : 0.16666666666666666,
+        "wide" : 0.1111111111111111,
+        "words" : 18
+      },
+      {
+        "clip" : "test-EDACC-C05_P0-276",
+        "narrow" : 0.05263157894736842,
+        "wide" : 0.05263157894736842,
+        "words" : 19
+      },
+      {
+        "clip" : "test-EDACC-C05_P0-52",
+        "narrow" : 0.5,
+        "wide" : 0.35714285714285715,
+        "words" : 14
+      },
+      {
+        "clip" : "test-EDACC-C05_P1-175",
+        "narrow" : 0.3888888888888889,
+        "wide" : 0.5,
+        "words" : 18
+      },
+      {
+        "clip" : "test-EDACC-C36_P1-134",
+        "narrow" : 0.038461538461538464,
+        "wide" : 0.038461538461538464,
+        "words" : 26
+      },
+      {
+        "clip" : "test-EDACC-C36_P1-194",
+        "narrow" : 0.07407407407407407,
+        "wide" : 0.14814814814814814,
+        "words" : 27
+      },
+      {
+        "clip" : "test-EDACC-C36_P1-40",
+        "narrow" : 0,
+        "wide" : 0,
+        "words" : 10
+      },
+      {
+        "clip" : "test-EDACC-C36_P2-1",
+        "narrow" : 0,
+        "wide" : 0,
+        "words" : 5
+      },
+      {
+        "clip" : "test-EDACC-C36_P2-157",
+        "narrow" : 0.06666666666666667,
+        "wide" : 0.06666666666666667,
+        "words" : 15
+      },
+      {
+        "clip" : "test-EDACC-C36_P2-273",
+        "narrow" : 0.07692307692307693,
+        "wide" : 0.15384615384615385,
+        "words" : 13
+      },
+      {
+        "clip" : "test-EDACC-C36_P2-39",
+        "narrow" : 0,
+        "wide" : 0,
+        "words" : 12
+      },
+      {
+        "clip" : "test-EDACC-C36_P2-449",
+        "narrow" : 0,
+        "wide" : 0,
+        "words" : 17
+      },
+      {
+        "clip" : "validation-EDACC-C09-120",
+        "narrow" : 0.2,
+        "wide" : 0.24,
+        "words" : 25
+      },
+      {
+        "clip" : "validation-EDACC-C09-153",
+        "narrow" : 0.3,
+        "wide" : 0.26666666666666666,
+        "words" : 30
+      },
+      {
+        "clip" : "validation-EDACC-C09-186",
+        "narrow" : 0.03125,
+        "wide" : 0.0625,
+        "words" : 32
+      },
+      {
+        "clip" : "validation-EDACC-C09-25",
+        "narrow" : 0.3333333333333333,
+        "wide" : 0.4166666666666667,
+        "words" : 12
+      },
+      {
+        "clip" : "validation-EDACC-C09-280",
+        "narrow" : 0.10526315789473684,
+        "wide" : 0,
+        "words" : 19
+      },
+      {
+        "clip" : "validation-EDACC-C09-373",
+        "narrow" : 0.5,
+        "wide" : 0.5,
+        "words" : 4
+      },
+      {
+        "clip" : "validation-EDACC-C09-69",
+        "narrow" : 0.09090909090909091,
+        "wide" : 0.09090909090909091,
+        "words" : 11
+      },
+      {
+        "clip" : "test-EDACC-C64-243",
+        "narrow" : 0,
+        "wide" : 0,
+        "words" : 22
+      },
+      {
+        "clip" : "test-EDACC-C64-309",
+        "narrow" : 0.25,
+        "wide" : 0.25,
+        "words" : 20
+      },
+      {
+        "clip" : "validation-EDACC-C39-118",
+        "narrow" : 0.2222222222222222,
+        "wide" : 0.3333333333333333,
+        "words" : 9
+      },
+      {
+        "clip" : "validation-EDACC-C39-150",
+        "narrow" : 0.2857142857142857,
+        "wide" : 0.2857142857142857,
+        "words" : 7
+      },
+      {
+        "clip" : "validation-EDACC-C39-214",
+        "narrow" : 0.13636363636363635,
+        "wide" : 0.18181818181818182,
+        "words" : 22
+      },
+      {
+        "clip" : "validation-EDACC-C39-28",
+        "narrow" : 0.2857142857142857,
+        "wide" : 0.2857142857142857,
+        "words" : 7
+      },
+      {
+        "clip" : "test-EDACC-C47_P1-13",
+        "narrow" : 0,
+        "wide" : 0,
+        "words" : 10
+      },
+      {
+        "clip" : "test-EDACC-C47_P2-38",
+        "narrow" : 0.14285714285714285,
+        "wide" : 0.08571428571428572,
+        "words" : 35
+      },
+      {
+        "clip" : "test-EDACC-C63-177",
+        "narrow" : 0.22727272727272727,
+        "wide" : 0.13636363636363635,
+        "words" : 22
+      },
+      {
+        "clip" : "validation-EDACC-C50-112",
+        "narrow" : 0.37142857142857144,
+        "wide" : 0.37142857142857144,
+        "words" : 35
+      },
+      {
+        "clip" : "validation-EDACC-C50-142",
+        "narrow" : 0.5833333333333334,
+        "wide" : 0.6666666666666666,
+        "words" : 12
+      },
+      {
+        "clip" : "validation-EDACC-C50-203",
+        "narrow" : 0.525,
+        "wide" : 0.4,
+        "words" : 40
+      },
+      {
+        "clip" : "validation-EDACC-C50-232",
+        "narrow" : 0.2857142857142857,
+        "wide" : 0.32142857142857145,
+        "words" : 28
+      },
+      {
+        "clip" : "validation-EDACC-C50-409",
+        "narrow" : 0.42857142857142855,
+        "wide" : 0.38095238095238093,
+        "words" : 42
+      },
+      {
+        "clip" : "validation-EDACC-C50-468",
+        "narrow" : 0.23684210526315788,
+        "wide" : 0.23684210526315788,
+        "words" : 38
+      },
+      {
+        "clip" : "validation-EDACC-C50-497",
+        "narrow" : 0.29411764705882354,
+        "wide" : 0.29411764705882354,
+        "words" : 17
+      },
+      {
+        "clip" : "validation-EDACC-C50-83",
+        "narrow" : 0.14285714285714285,
+        "wide" : 0,
+        "words" : 14
+      }
+    ],
+    "narrowWorseClips" : 20,
+    "pooledWER16k" : 0.20482673267326731,
+    "pooledWER8k" : 0.2141089108910891
+  }
+}
