@@ -901,6 +901,8 @@ struct ContentView: View {
             partner: FaceToFace.entries(for: .partner, lines: lines, half: faceToFaceHalf, translation: faceToFaceTranslation),
             ownerLanguage: split.language(of: .owner)?.nameInItself ?? "",
             partnerLanguage: split.language(of: .partner)?.nameInItself ?? "",
+            ownerLanguageID: split.language(of: .owner)?.identifier, partnerLanguageID: split.language(of: .partner)?.identifier,
+            translatedLook: DemoMode.translatedLook,
             ownerChoices: ownerChoices?.map(\.nameInItself), partnerChoices: partnerChoices?.map(\.nameInItself),
             choose: { half, i in
                 guard let list = half == .owner ? ownerChoices : partnerChoices, list.indices.contains(i) else { return }
@@ -1010,6 +1012,20 @@ struct ContentView: View {
                                     .textRenderer(renderer)
                                     .accessibilityLabel(line.soundLabel.map { soundLabelA11yLabel(for: $0) } ?? "")
                                     .trackWords(in: textFrames, key: "text-\(line.id)")
+                            } else if let look = DemoMode.translatedLook, translation.isActive,
+                                      let translated = translation.translations.translation(for: line) ?? ear.spokenTranslations[line.id] {
+                                // #246 mock-up (debug demo flag only): the same line drawn in one of the options.
+                                let speaking = earSpeaking.flatMap { $0.lineID == line.id ? $0 : nil }
+                                TranslatedCaptionView(look: look, translated: translated, said: line.text, saidLanguage: DemoMode.language,
+                                                      speakingFirm: speaking.map {
+                                                          EarProgress.firmWords(shown: translated.split(separator: " ").count,
+                                                                                lineWords: line.text.split(separator: " ").count,
+                                                                                phrase: $0.words, share: $0.share)
+                                                      },
+                                                      font: style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass),
+                                                      text: style.text.color, muted: mutedColor(style), mark: style.gear.color,
+                                                      volatileOpacity: style.volatileOpacity,
+                                                      startsOpen: line.id == lines.dropLast().last(where: { !$0.isSoundLabel })?.id)
                             } else if translation.isActive,
                                       let translated = translation.translations.translation(for: line) ?? ear.spokenTranslations[line.id] {
                                 // #53 (owner, PR #171): the translation is the line that's read, on top at caption size
