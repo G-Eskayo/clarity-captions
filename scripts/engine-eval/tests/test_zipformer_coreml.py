@@ -264,3 +264,21 @@ def test_an_unknown_op_on_a_live_tensor_is_named():
     m = _model([helper.make_node("Erf", ["x"], ["y"])], [("x", F, [2])], [("y", F)])
     with pytest.raises(onnx_mil.Unsupported, match="Erf"):
         onnx_mil.to_program(m, {"x": ((2,), np.float32)})
+
+
+@needs_mac
+def test_compression_leaves_the_2d_front_end_at_full_precision():
+    """At 4 and 2 bits a compressed front end silenced the encoder (#220); compression must skip it."""
+    from zipformer_coreml import convert as zc
+    nodes = [helper.make_node("Conv", ["x", "w2"], ["c2"], kernel_shape=[3, 3], pads=[1, 1, 1, 1]),
+             helper.make_node("Reshape", ["c2", "flat"], ["f"]),
+             helper.make_node("MatMul", ["f", "w"], ["y"])]
+    m = _model(nodes, [("x", F, [1, 1, 8, 8])], [("y", F)],
+               [("w2", rng.standard_normal((64, 1, 3, 3)).astype(np.float32)), ("flat", np.array([1, 4096], np.int64)),
+                ("w", rng.standard_normal((4096, 32)).astype(np.float32))])
+    base = zc._convert(onnx_mil.to_program(m, {"x": ((1, 1, 8, 8), np.float32)}), "fp16")
+    assert zc.front_end_ops(base) == [o.name for f in base._mil_program.functions.values() for o in f.operations
+                                       if o.op_type == "conv"]
+    pal = zc.compress(base, "pal4")
+    ops = [o.op_type for f in pal._mil_program.functions.values() for o in f.operations]
+    assert ops.count("constexpr_lut_to_dense") == 1, "only the linear weight is palettized"
