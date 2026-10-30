@@ -90,7 +90,13 @@ final class CaptionMacModel: ObservableObject {
             guard let url = Bundle.main.url(forResource: "Sortformer_v2.1", withExtension: "mlmodelc") else {
                 throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc"))
             }
-            return TranscriptionEngine(micMode: .standard, diarizerModelURL: url, audioSource: (self?.listenOverride ?? ListenTo.current).audioSource())
+            // #220: Hebrew on Seal's own engine when the Mac's first language is Hebrew; US English on Apple's otherwise.
+            let hebrew = Bundle.main.url(forResource: "HebrewZipformer", withExtension: nil)
+            let locale = MacCaptionLanguage.locale(preferred: Locale.preferredLanguages, hebrewBundled: hebrew != nil)
+            let recognizer: SpeechRecognizerSetup = SealModel.forLanguage(locale) == .hebrewZipformer
+                ? hebrew.map { .zipformer(modelURL: $0) } ?? .apple : .apple
+            return TranscriptionEngine(locale: locale, micMode: .standard, diarizerModelURL: url, recognizer: recognizer,
+                                       audioSource: (self?.listenOverride ?? ListenTo.current).audioSource())
         }, idleStopSetting: { [weak self] in self?.idleStop ?? .default })
 
         if let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {

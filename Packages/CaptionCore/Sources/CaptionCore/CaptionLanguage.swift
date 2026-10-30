@@ -58,6 +58,13 @@ public enum CaptionLanguage {
     }
 
     public static func bcp47(_ l: Locale) -> String { l.identifier(.bcp47) }
+
+    /// The speech engine's list plus the languages Seal captions with its own bundled model (#220: Hebrew, which
+    /// Apple's SpeechTranscriber doesn't have). A language already listed keeps its place and isn't repeated.
+    public static func adding(_ seal: [Locale], to speech: [Locale]) -> [Locale] {
+        var seen = Set(speech.map(bcp47))
+        return speech + seal.filter { seen.insert(bcp47($0)).inserted }
+    }
 }
 
 /// The list behind "Caption language" and translation's "From" (#37, #53): the language people around her speak.
@@ -219,5 +226,16 @@ public enum TranslationTargetList {
             rows = [first] + rows.map { Row(locale: $0.locale, isCurrent: false) }
         }
         return rows
+    }
+}
+
+/// The Mac's caption language (#220). The Mac has no caption-language setting yet and has always captioned in US
+/// English; Hebrew, on Seal's own bundled engine, is used when the Mac's first language is Hebrew. Pure.
+public enum MacCaptionLanguage {
+    public static func locale(preferred: [String], hebrewBundled: Bool) -> Locale {
+        if hebrewBundled, let first = preferred.first, Locale(identifier: first).language.languageCode == .hebrew {
+            return Locale(identifier: "he-IL")
+        }
+        return Locale(identifier: "en-US")
     }
 }

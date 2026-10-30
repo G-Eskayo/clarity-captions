@@ -57,6 +57,9 @@ struct CaptionLanguagePage: View {
             translatable = DemoLanguages.translation.map(Locale.Language.init(identifier:))
         }
         #endif
+        // Languages Seal captions with its own bundled engine (#220): listed, and already on the device.
+        speech = CaptionLanguage.adding(CaptionEngineFactory.bundledLanguages, to: speech)
+        installed = CaptionLanguage.adding(CaptionEngineFactory.bundledLanguages, to: installed)
         let rows = CaptionLanguageList.rows(speech: speech, installed: installed, current: current,
                                             translation: into.map { (into: $0, supported: translatable) })
         // The chosen language stays first; the rest keep their groups and read in her own alphabet inside each.

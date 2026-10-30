@@ -40,7 +40,7 @@ final class CaptionLanguageCenter: ObservableObject {
 
     /// Reads the engine's languages and settles the caption language. Called at launch and by first run.
     func refresh() async {
-        let list = await SpeechTranscriber.supportedLocales
+        let list = CaptionLanguage.adding(CaptionEngineFactory.bundledLanguages, to: await SpeechTranscriber.supportedLocales)
         supported = list
         switch CaptionLanguage.resolve(saved: followsDevice ? nil : current, preferred: preferred, supported: list) {
         case .use(let locale):
@@ -56,7 +56,8 @@ final class CaptionLanguageCenter: ObservableObject {
 
     /// Settings, the language list or first run picked a language.
     func choose(_ locale: Locale) async {
-        let installed = await SpeechModelInstaller.isInstalled(locale: locale)
+        let bundled = CaptionEngineFactory.bundledLanguages.contains { CaptionLanguage.bcp47($0) == CaptionLanguage.bcp47(locale) }
+        let installed = bundled ? true : await SpeechModelInstaller.isInstalled(locale: locale)
         let before = current
         guard let download = change.choose(locale, installed: installed) else {
             if CaptionLanguage.bcp47(current) != CaptionLanguage.bcp47(before) || followsDevice { set(current, chosen: true) }

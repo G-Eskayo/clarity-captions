@@ -40,6 +40,12 @@ targets:
       - path: Resources/Models/Sortformer_v2.1.mlmodelc
         type: folder
         buildPhase: resources
+      # Hebrew's engine (#220): SEAL_ASR_MODEL=hebrew SEAL_MODEL_DEST=Apps/Mac/Resources/Models/HebrewZipformer
+      # scripts/fetch-asr-models.sh. Optional, like the iPhone's, until its release asset is published.
+      - path: Resources/Models/HebrewZipformer
+        type: folder
+        buildPhase: resources
+        optional: true
     dependencies:
       - package: CaptionCore
       # #180 / #181: the red Listening light and the press feedback, shared with the iPhone.
