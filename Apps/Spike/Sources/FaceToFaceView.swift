@@ -19,6 +19,9 @@ struct FaceToFaceView<Control: View>: View {
     /// languages instead of its lines; nil once it has picked. Tapping one starts that half.
     var ownerChoices: [String]? = nil
     var partnerChoices: [String]? = nil
+    /// #245: what each half says is happening, in plain words, always ("Tap your language to start", "Listening").
+    var ownerStatus: String = ""
+    var partnerStatus: String = ""
     var choose: (FaceToFaceHalf, Int) -> Void = { _, _ in }
     /// The language name at the middle line, tapped: that half's list again (the owner's `change-language`).
     var pickAgain: (FaceToFaceHalf) -> Void = { _ in }
@@ -34,7 +37,7 @@ struct FaceToFaceView<Control: View>: View {
     var body: some View {
         GeometryReader { geo in
             VStack(spacing: 0) {
-                half(partner, language: partnerLanguage, choices: partnerChoices, isOwner: false)
+                half(partner, language: partnerLanguage, choices: partnerChoices, status: partnerStatus, isOwner: false)
                     .rotationEffect(.degrees(180))
                     .accessibilityLabel(String(localized: "The other person's half"))
                 Capsule()
@@ -42,16 +45,24 @@ struct FaceToFaceView<Control: View>: View {
                     .frame(width: geo.size.width * 0.4, height: 3)
                     .padding(.vertical, 10)
                     .accessibilityHidden(true)
-                half(owner, language: ownerLanguage, choices: ownerChoices, isOwner: true)
+                half(owner, language: ownerLanguage, choices: ownerChoices, status: ownerStatus, isOwner: true)
                     .overlay(alignment: .bottom) { control().frame(height: 72) }
             }
         }
     }
 
-    @ViewBuilder
-    private func half(_ entries: [FaceToFaceEntry], language: String, choices: [String]?, isOwner: Bool) -> some View {
-        if let choices { picker(choices, isOwner: isOwner) }
-        else { lines(entries, language: language, isOwner: isOwner, position: isOwner ? $ownerScroll : $partnerScroll) }
+    /// #245: each half's status sits at the top of the half from its reader's side (the middle of the screen), next to
+    /// its language name, so the split never sits silent.
+    private func half(_ entries: [FaceToFaceEntry], language: String, choices: [String]?, status: String, isOwner: Bool) -> some View {
+        VStack(spacing: 2) {
+            if !status.isEmpty {
+                Text(status).font(.footnote.weight(.semibold)).foregroundStyle(mutedColor(style))
+                    .multilineTextAlignment(.center).padding(.top, 6)
+                    .accessibilityAddTraits(.updatesFrequently)
+            }
+            if let choices { picker(choices, isOwner: isOwner) }
+            else { lines(entries, language: language, isOwner: isOwner, position: isOwner ? $ownerScroll : $partnerScroll) }
+        }
     }
 
     /// #208: the half's languages stacked in the middle of the half, dimmed until one is tapped. Above Stop in her half.
@@ -121,17 +132,30 @@ struct FaceToFaceView<Control: View>: View {
     }
 }
 
-/// #208: the languages each half's list offers on this device (`FaceToFace.offered`). Debug demos use stand-ins: the
-/// simulator has no Translation languages.
+/// #208: the languages each half's list offers on this device. #245: only the fully ready ones: the speech model on the
+/// device (`SpeechTranscriber.installedLocales`) and the translation pair downloaded (`LanguageAvailability`'s
+/// `.installed`, either way round). Nothing here downloads. Debug demos use stand-ins: the simulator has no Translation
+/// languages.
 enum FaceToFaceLanguageList {
-    @MainActor static func load() async -> [Locale] {
+    @MainActor static func load() async -> FaceToFaceReadyLanguages {
         #if DEBUG
-        if DemoMode.isOn { return DemoMode.faceToFaceDownloaded }
+        if DemoMode.isOn { return DemoMode.faceToFaceReady }
         #endif
         let installed = Array(await SpeechTranscriber.installedLocales)
-        let translatable = Set(await LanguageAvailability().supportedLanguages.compactMap { $0.languageCode?.identifier })
-        return FaceToFace.offered(captionLanguage: CaptionLanguageCenter.engineLocale, into: TranslationCenter.shared.target,
-                                        speechInstalled: installed, translatable: translatable)
+        let availability = LanguageAvailability()
+        let translatable = Set(await availability.supportedLanguages.compactMap { $0.languageCode?.identifier })
+        let candidates = FaceToFace.offered(captionLanguage: CaptionLanguageCenter.engineLocale, into: TranslationCenter.shared.target,
+                                            speechInstalled: installed, translatable: translatable)
+        var pairs: Set<String> = []
+        for (i, a) in candidates.enumerated() {
+            for b in candidates[(i + 1)...] where !pairs.contains(FaceToFaceReadyLanguages.pairKey(a, b)) {
+                let forward = await availability.status(from: a.language, to: b.language)
+                let back = await availability.status(from: b.language, to: a.language)
+                if forward == .installed && back == .installed { pairs.insert(FaceToFaceReadyLanguages.pairKey(a, b)) }
+            }
+        }
+        return FaceToFaceReadyLanguages(candidates: candidates, speechInstalled: installed,
+                                        pairInstalled: { pairs.contains(FaceToFaceReadyLanguages.pairKey($0, $1)) })
     }
 }
 

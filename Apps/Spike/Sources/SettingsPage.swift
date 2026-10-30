@@ -188,6 +188,10 @@ struct SettingsPage: View {
     }
 
     @ViewBuilder private var translationRows: some View {
+        // #245: Face to face sent her here: fewer than two languages are ready for the split. Said in one line, first.
+        if let reason = language.setupReason {
+            Text(verbatim: reason).font(scaled(15, .bold)).accessibilityAddTraits(.isStaticText)
+        }
         if language.translationOwned { ownedTranslationRows } else { translationOfferRows }
         if let message = language.purchaseMessage {
             Text(verbatim: message).font(scaled(13, .semibold)).foregroundStyle(muted)
@@ -240,6 +244,8 @@ struct SettingsPage: View {
                             label: String(localized: "Translate from, ")) { onChooseCaptionLanguage?() }
             languagePairRow(String(localized: "Into"), language.target.map(LanguageSettingsState.name) ?? String(localized: "Choose a language"),
                             label: String(localized: "Translate into, ")) { onChooseTranslationTarget?() }
+            // #245: Into's speech model, set up here so the split never downloads.
+            CaptionLanguageDownloadLine(style: style, phase: language.intoSpeech)
             if let p = language.downloadProgress {
                 VStack(alignment: .leading, spacing: 6) {
                     ProgressView(value: p).tint(style.gear.color)

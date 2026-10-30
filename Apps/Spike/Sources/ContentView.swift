@@ -64,14 +64,18 @@ final class CaptionModel: ObservableObject {
     @Published private(set) var faceToFace = false
     /// #208: each half's language, what captions run in, which half each settled line belongs to, paused or not.
     @Published private(set) var split = FaceToFaceSplit()
-    /// The languages each half's list offers (`FaceToFaceLanguageList`), read when the split opens.
-    @Published private(set) var faceToFaceDownloaded: [Locale] = []
+    /// The languages each half's list offers (`FaceToFaceLanguageList`), read when the split opens. #245: only fully
+    /// ready ones (speech model on the device, translation pair downloaded); the split never downloads.
+    @Published private(set) var faceToFaceReady = FaceToFaceReadyLanguages(candidates: [], speechInstalled: [], pairInstalled: { _, _ in false })
+    /// #245: Face to face was tapped with fewer than two languages ready. The screen opens Settings and clears it.
+    @Published var faceToFaceNeedsSetup = false
     /// Each voice's language, and so its half, as the engine last reported it.
     @Published private(set) var speakerLanguages = SpeakerLanguages()
     /// The split's captions with each language as the engines know it, for the next engine made.
     private var splitEngine: FaceToFaceSplit.Captions?
-    /// The split's starts, restarts and Stop, one after another: a quick second tap waits for the first.
-    private(set) var splitTask: Task<Void, Never>?
+    /// The split's starts and restarts, one after another: a quick second tap waits for the first. Stop drops
+    /// everything queued and never waits behind it (#245).
+    let splitQueue = SplitWorkQueue()
     /// Debug demos only: the stand-in for the split's engines (`runSplitDemo`), and how many sessions it has played.
     var demoSplitPlayer: Task<Void, Never>?
     var demoSplitRound = 0
@@ -87,7 +91,8 @@ final class CaptionModel: ObservableObject {
             guard let self else { throw CancellationError() }
             if self.faceToFace {
                 switch self.splitEngine {
-                case .one(_, let locale): return try CaptionEngineFactory.make(micMode: self.micMode, locale: locale)
+                case .one(_, let locale):
+                    return try CaptionEngineFactory.make(micMode: self.micMode, locale: locale, speechModel: .mustBeOnDevice)
                 case .both(let owner, let partner):
                     return try CaptionEngineFactory.makeFaceToFace(micMode: self.micMode, ownerLocale: owner, partnerLocale: partner)
                 case nil: throw CancellationError()
@@ -306,20 +311,27 @@ final class CaptionModel: ObservableObject {
     }
 
     /// The Face to face button (#60): one-way captions stop and the split opens with each half's language list (#208).
-    /// Nothing captions until a half picks; Stop is in her half from the start, and leaves.
+    /// Nothing captions until a half picks; Stop is in her half from the start, and leaves. #245: with fewer than two
+    /// languages fully ready, Settings' translation setup opens instead (`faceToFaceNeedsSetup`) and one-way captions
+    /// carry on.
     func startFaceToFace() {
         guard !faceToFace else { return }
-        inSplitOrder {
+        splitQueue.enqueue { isCurrent in
+            let ready = await FaceToFaceLanguageList.load()
+            guard isCurrent() else { return }
+            guard ready.opening == .split else { self.faceToFaceNeedsSetup = true; return }
             await self.stopSplitCaptions()
             await EngineWarmupHost.shared.release()   // made for one-way captions; two engines need the memory
-            self.faceToFaceDownloaded = await FaceToFaceLanguageList.load()
+            guard isCurrent() else { return }
+            self.faceToFaceReady = ready
             self.speakerLanguages = SpeakerLanguages()
             self.split = FaceToFaceSplit(opening: self.stream.lines)
             self.faceToFace = true
         }
     }
 
-    /// A language tapped in a half's list: that half starts (or, with both picked, both restart in the new pair).
+    /// A language tapped in a half's list: that half starts (or, with both picked, both restart in the new pair). Every
+    /// language offered is ready, so nothing downloads here (#245: a download hidden in the start hung Stop).
     func pickFaceToFace(_ locale: Locale, for half: FaceToFaceHalf) {
         guard faceToFace, split.pick(locale, for: half) else { return }
         restartSplitCaptions()
@@ -339,23 +351,34 @@ final class CaptionModel: ObservableObject {
             restartSplitCaptions()
         case .stop:
             tour.did(.tappedStop)
-            inSplitOrder {
-                await self.stopSplitCaptions()
-                guard self.faceToFace else { return }
-                self.endSplitSession()
-                self.endFaceToFace()
-            }
+            leaveFaceToFace()
+        }
+    }
+
+    /// #245, never trapped: Stop leaves the split in every state. Nothing queued runs, and it waits a moment for the
+    /// engines to stop, never longer: a start that never returns or an engine that won't stop carries on unwatched,
+    /// and its end changes nothing on screen.
+    func leaveFaceToFace() {
+        guard faceToFace else { return }
+        splitQueue.cancelAll()
+        splitQueue.enqueue { isCurrent in
+            _ = await waitAtMost(.seconds(1)) { await self.stopSplitCaptions() }
+            guard isCurrent(), self.faceToFace else { return }
+            self.endSplitSession()
+            self.endFaceToFace()
         }
     }
 
     /// Ends the split's running captions, if any, and starts them in what the halves picked now.
     private func restartSplitCaptions() {
-        inSplitOrder {
+        splitQueue.enqueue { isCurrent in
             await self.stopSplitCaptions()
-            guard self.faceToFace else { return }
+            guard isCurrent(), self.faceToFace else { return }
             self.endSplitSession()
             guard !self.split.isPaused, let captions = self.split.captions else { return }
-            self.splitEngine = await Self.engineLocales(captions)
+            let engines = await Self.engineLocales(captions)
+            guard isCurrent(), self.faceToFace else { return }
+            self.splitEngine = engines
             self.speakerLanguages = SpeakerLanguages()
             self.split.sessionStarted()
             self.tour.did(.tappedStart)
@@ -372,17 +395,9 @@ final class CaptionModel: ObservableObject {
         splitStopping = true
         defer { splitStopping = false }
         #if DEBUG
-        if DemoMode.isOn { demoStopSplit(); return }
+        if DemoMode.isOn { await demoStopSplit(); return }
         #endif
         await controller.stopAndWait()
-    }
-
-    private func inSplitOrder(_ work: @escaping @MainActor () async -> Void) {
-        let previous = splitTask
-        splitTask = Task { @MainActor in
-            await previous?.value
-            await work()
-        }
     }
 
     /// The picked languages as the speech engines name them ("es-ES" for "es").
@@ -489,7 +504,11 @@ struct ContentView: View {
     /// #53: live translation, its purchase, and each line's translated text.
     @ObservedObject private var translation = TranslationCenter.shared
     /// #37 / #53: caption language and translation, as Settings and the language list show them.
-    private var language: LanguageSettingsState { .current(languages: languages, translation: translation) }
+    private var language: LanguageSettingsState {
+        var state = LanguageSettingsState.current(languages: languages, translation: translation)
+        state.setupReason = showsFaceToFaceSetupReason ? FaceToFaceReadyLanguages.setupReason : nil
+        return state
+    }
     /// Height of the soft fade under the status row (#117 topedge); the first caption line starts below it (#137).
     static let captionsTopFade: CGFloat = 56
     @State private var shownScreen: AppScreen = .captions
@@ -524,6 +543,8 @@ struct ContentView: View {
     @State private var demoRatingTap: Int?
     /// #60: the split is open (from the Face to face button until Stop, #208).
     private var faceToFace: Bool { model.faceToFace }
+    /// #245: Settings was opened by Face to face, with fewer than two languages ready; it says why until she leaves.
+    @State private var showsFaceToFaceSetupReason = false
     /// The window's size, which decides whether the screen is big enough to offer the face-to-face split.
     @State private var windowSize: CGSize = .zero
     /// Debug demos only: flips an invisible pixel so screen recordings keep writing frames (see runDemoPause).
@@ -629,6 +650,17 @@ struct ContentView: View {
         .translationTask(translation.reverseConfiguration) { session in await translation.runReverse(session) }
         .onChange(of: model.stream.lines) { _, _ in translationLinesChanged() }
         .onChange(of: model.speakerLanguages) { _, _ in translationLinesChanged() }
+        .onChange(of: model.faceToFaceNeedsSetup) { _, needs in
+            guard needs else { return }
+            model.faceToFaceNeedsSetup = false
+            showsFaceToFaceSetupReason = true
+            translation.setUpIntoSpeech()
+            if nav.current == .captions { go { $0.gearTapped() } }
+        }
+        .onChange(of: shownScreen) { _, screen in
+            if screen == .captions { showsFaceToFaceSetupReason = false }
+            if screen == .settings { translation.setUpIntoSpeech() }
+        }
         .onChange(of: faceToFace) { _, on in translation.faceToFaceChanged(on, pair: model.split.languagePair); translationLinesChanged() }
         .onChange(of: model.split) { _, split in translation.faceToFaceChanged(faceToFace, pair: split.languagePair); translationLinesChanged() }
         .task {
@@ -887,7 +919,10 @@ struct ContentView: View {
     private var faceToFaceSplit: some View {
         let split = model.split, lines = model.faceToFaceLines
         func choices(_ half: FaceToFaceHalf) -> [Locale]? {
-            split.showsList(half) ? split.choices(for: half, downloaded: model.faceToFaceDownloaded, name: \.nameInItself) : nil
+            split.showsList(half) ? model.faceToFaceReady.choices(for: half, in: split, name: \.nameInItself) : nil
+        }
+        func status(_ half: FaceToFaceHalf) -> String {
+            FaceToFaceStatus.of(half, split: split, state: model.state).words(for: half)
         }
         let ownerChoices = choices(.owner), partnerChoices = choices(.partner)
         let control = PrimaryControl.inSplit(split.control)
@@ -898,6 +933,7 @@ struct ContentView: View {
             ownerLanguage: split.language(of: .owner)?.nameInItself ?? "",
             partnerLanguage: split.language(of: .partner)?.nameInItself ?? "",
             ownerChoices: ownerChoices?.map(\.nameInItself), partnerChoices: partnerChoices?.map(\.nameInItself),
+            ownerStatus: status(.owner), partnerStatus: status(.partner),
             choose: { half, i in
                 guard let list = half == .owner ? ownerChoices : partnerChoices, list.indices.contains(i) else { return }
                 model.pickFaceToFace(list[i], for: half)
@@ -907,6 +943,13 @@ struct ContentView: View {
                 MorphingControl(control: control, fullWidth: min(windowSize.width * 0.47, 440),
                                 fill: style.text, label: style.background) { model.performInSplit(split.control) }
                     .frame(maxWidth: .infinity, alignment: control.presentation == .compact ? .trailing : .center)
+                    // #245: paused, Start alone could fail again and again. A way out sits beside it.
+                    .overlay(alignment: .leading) {
+                        if split.offersLeaveBesideStart {
+                            RetroWords(word: String(localized: "Leave"), color: gearColor, background: style.background.color,
+                                       size: .body, label: String(localized: "Leave face to face")) { model.leaveFaceToFace() }
+                        }
+                    }
             })
     }
 
