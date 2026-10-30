@@ -71,3 +71,30 @@ def test_bootstrap_single_speaker_is_degenerate():
 def test_bootstrap_empty():
     lo, hi = bootstrap_ci({}, n_boot=10, seed=1)
     assert math.isnan(lo) and math.isnan(hi)
+
+
+def test_long_texts_take_the_fast_path_with_the_same_error_count(monkeypatch):
+    """eval-d1 transcripts run to 3,000+ characters: the C alignment must give the same minimum edit distance."""
+    import random
+    from edacc_eval import wer
+    rng = random.Random(201)
+    alphabet = "אבגדהוזחטיכלמנסעפצקרשת "
+    for _ in range(30):
+        ref = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 120)))
+        hyp = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 120)))
+        monkeypatch.setattr(wer, "FAST_CELLS", 10 ** 12)
+        slow = wer.char_counts(ref, hyp), wer.align_counts(ref, hyp)
+        monkeypatch.setattr(wer, "FAST_CELLS", 0)
+        fast = wer.char_counts(ref, hyp), wer.align_counts(ref, hyp)
+        for s, f in zip(slow, fast):
+            assert (s.errors, s.n) == (f.errors, f.n)
+
+
+def test_fast_path_handles_a_conversation_length_text_quickly():
+    import time
+    from edacc_eval.wer import char_counts
+    ref = "שלום לכולם וברוכים הבאים לפרק " * 120
+    hyp = ref.replace("לכולם", "לכלם")
+    t0 = time.perf_counter()
+    c = char_counts(ref, hyp)
+    assert c.errors == 120 and c.dele == 120 and time.perf_counter() - t0 < 5

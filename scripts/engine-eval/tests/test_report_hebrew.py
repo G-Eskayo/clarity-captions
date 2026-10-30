@@ -111,3 +111,30 @@ def test_one_model_name_under_two_engines_is_refused_not_merged():
     import pytest
     with pytest.raises(ValueError):
         score_hebrew([man("c1", "שלום")], [r("c1", "a", "שלום", model="same"), r("c1", "b", "שלום", model="same")])
+
+
+def test_conversation_set_comes_first_with_its_revision_and_bootstrap_unit(tmp_path):
+    for name, idx, row in [
+        ("he", {"shards": ["shard-001"], "config": "he_il", "clips": 1, "sentences": 1, "audio_hours": 0.001},
+         man("c1", "שלום")),
+        ("eval-d1", {"shards": ["shard-001"], "set": "eval-d1", "repo": "ivrit-ai/eval-d1",
+                     "revision": "7899b0427df2e1d722c043ac41211ac7da15c737", "clips": 1, "audio_hours": 0.08},
+         {**man("eval-d1-1", "מה שלומך"), "set": "eval-d1", "group": "eval-d1-1"}),
+    ]:
+        d = tmp_path / "shards" / name
+        (d / "shard-001").mkdir(parents=True)
+        (d / "index.json").write_text(json.dumps(idx))
+        (d / "shard-001" / "manifest.jsonl").write_text(json.dumps(row, ensure_ascii=False) + "\n")
+    res = tmp_path / "results"
+    res.mkdir()
+    (res / "x.jsonl").write_text("".join(json.dumps(r(c, "apple-dictation", t, model="DictationTranscriber he-IL"),
+                                                    ensure_ascii=False) + "\n" for c, t in
+                                         [("c1", "שלום"), ("eval-d1-1", "מה שלומך")]))
+    out = tmp_path / "report.md"
+    write_hebrew_report(tmp_path / "shards", res, out)
+    md = out.read_text()
+    assert md.index("## ivrit.ai eval-d1 (conversation)") < md.index("## FLEURS he (read speech)")
+    d1 = md.split("## ivrit.ai eval-d1 (conversation)")[1].split("## FLEURS")[0]
+    assert "`ivrit-ai/eval-d1` @ `7899b04`" in d1 and "bootstrap over recordings" in d1
+    assert "bootstrap over sentences" in md.split("## FLEURS he (read speech)")[1]
+    assert "eval-d1" not in md.split("Test sets not scored:")[1]
