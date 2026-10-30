@@ -244,10 +244,19 @@ struct SettingsPage: View {
         if language.translationOn {
             // From is the caption language: the same setting as "Caption language" below, opening the same list. Apple's
             // speech engine needs it named before it starts (it doesn't detect it), so it's chosen, right next to Into.
-            languagePairRow(String(localized: "From"), LanguageSettingsState.name(language.captions),
+            // #252: a pick that's downloading shows at once, with its progress, so it never looks like it didn't stick.
+            languagePairRow(String(localized: "From"), fromValue,
                             label: String(localized: "Translate from, ")) { onChooseCaptionLanguage?() }
+            #if DEBUG
+            if DemoMode.swap == "left" { swapProposal(systemName: "arrow.up.arrow.down").frame(maxWidth: .infinity, alignment: .leading) }
+            #endif
             languagePairRow(String(localized: "Into"), language.target.map(LanguageSettingsState.name) ?? String(localized: "Choose a language"),
                             label: String(localized: "Translate into, ")) { onChooseTranslationTarget?() }
+                #if DEBUG
+                .overlay(alignment: .topTrailing) {
+                    if DemoMode.swap == "right" { swapProposal(systemName: "arrow.left.arrow.right").offset(x: -30, y: -28) }
+                }
+                #endif
             if language.earOffered {
                 EarSettingsRows(style: style, state: language.ear, target: language.target.map(LanguageSettingsState.name) ?? "",
                                 font: { scaled($0, $1) }, muted: muted, softFill: softFill) { onEar?($0) }
@@ -273,6 +282,25 @@ struct SettingsPage: View {
             }
         }
     }
+
+    private var fromValue: String {
+        let name = LanguageSettingsState.name(language.from.locale)
+        guard let p = language.from.downloading else { return name }
+        return String(format: String(localized: "%@ · downloading %lld%%"), name, Int(p * 100))
+    }
+
+    #if DEBUG
+    /// #252: the swap button as proposed to the owner (a Decision on the PR), drawn only under `-ClarityDemoSwap`.
+    /// Icon only in the gear color, no background (#96). Not wired until he picks its place.
+    private func swapProposal(systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(scaled(17, .bold))
+            .foregroundStyle(style.gear.color)
+            .frame(width: 44, height: 32)
+            .contentShape(Rectangle())
+            .accessibilityLabel(String(localized: "Swap From and Into"))
+    }
+    #endif
 
     /// "From  Spanish (Spain)  ›" and "Into  English (US)  ›": the words line up so the pair reads as one sentence.
     private func languagePairRow(_ word: String, _ value: String, label: String, action: @escaping () -> Void) -> some View {

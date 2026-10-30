@@ -122,3 +122,20 @@ final class CaptionLanguageTests: XCTestCase {
         XCTAssertEqual(c, .use(Locale(identifier: "es-ES")))
     }
 }
+
+/// #252: the same language on both sides is allowed (owner). Apple's Translation has no pair for it, so the words pass
+/// through as they are.
+final class SameLanguageTranslationTests: XCTestCase {
+    private func lang(_ id: String) -> Locale.Language { Locale.Language(identifier: id) }
+
+    func testTheSameLanguageNeedsNoTranslation() {
+        XCTAssertTrue(CaptionLanguage.needsNoTranslation(from: lang("fr-FR"), into: lang("fr-FR")))
+        XCTAssertTrue(CaptionLanguage.needsNoTranslation(from: lang("en-US"), into: lang("en-GB")), "regions read the same")
+        XCTAssertTrue(CaptionLanguage.needsNoTranslation(from: lang("en-US"), into: lang("en-Latn-US")))
+    }
+
+    func testDifferentLanguagesAndScriptsAreTranslated() {
+        XCTAssertFalse(CaptionLanguage.needsNoTranslation(from: lang("en-US"), into: lang("fr-FR")))
+        XCTAssertFalse(CaptionLanguage.needsNoTranslation(from: lang("zh-CN"), into: lang("zh-Hant-TW")), "Simplified into Traditional is real work")
+    }
+}

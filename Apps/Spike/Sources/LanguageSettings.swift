@@ -13,6 +13,8 @@ struct LanguageSettingsState: Equatable {
     var target: Locale?
     /// The caption language's own download (#37), while one runs or after one failed.
     var captionDownload: CaptionLanguageSwitch.Phase = .ready
+    /// What translation's From row names (#252): a pick downloading, with its progress, else the caption language.
+    var from: CaptionLanguageSwitch.Shown { .init(current: captions, phase: captionDownload) }
     /// The translation language pack for this pair: nil when it's on the device, else 0...1 while it downloads. Apple's
     /// download sheet reports no progress, so a real download shows `translationPreparing` instead (demo screens only).
     var downloadProgress: Double?
@@ -52,6 +54,7 @@ struct LanguageSettingsState: Equatable {
         #if DEBUG
         if let id = DemoMode.language { state.followsDevice = id == preferred.first }
         if let p = DemoMode.translateProgress { state.downloadProgress = p }
+        if let (id, p) = DemoMode.captionDownload { state.captionDownload = .downloading(Locale(identifier: id), progress: p) }
         #endif
         return state
     }

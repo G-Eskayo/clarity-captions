@@ -48,6 +48,12 @@ public enum CaptionLanguage {
             .first { !sameLanguage($0, captions) }
     }
 
+    /// The same language on both sides, which the owner allows (#252): Apple's Translation has no pair for it, so the
+    /// words pass through as they are. Regions read the same; scripts don't (Simplified into Traditional is real work).
+    public static func needsNoTranslation(from: Locale.Language, into: Locale.Language) -> Bool {
+        sameLanguage(Locale(identifier: from.maximalIdentifier), Locale(identifier: into.maximalIdentifier))
+    }
+
     /// Same language and script; the region may differ.
     static func sameLanguage(_ a: Locale, _ b: Locale) -> Bool {
         a.language.languageCode == b.language.languageCode && script(a) == script(b)
@@ -176,6 +182,22 @@ public struct CaptionLanguageSwitch: Equatable, Sendable {
         return locale
     }
 
+    /// What translation's From row names (#252): the language just picked, with its download's progress, from the
+    /// moment it's picked; else the one captions are really in. A failed pick shows the language still in use.
+    public struct Shown: Equatable, Sendable {
+        public let locale: Locale
+        /// 0...1 while it downloads; nil when it's on the device.
+        public let downloading: Double?
+        public init(locale: Locale, downloading: Double?) { self.locale = locale; self.downloading = downloading }
+
+        public init(current: Locale, phase: Phase) {
+            if case .downloading(let l, let p) = phase { self.init(locale: l, downloading: p) }
+            else { self.init(locale: current, downloading: nil) }
+        }
+    }
+
+    public var shown: Shown { Shown(current: current, phase: phase) }
+
     public mutating func progress(_ p: Double, for locale: Locale) {
         guard case .downloading(let l, let shown) = phase, Self.same(l, locale) else { return }
         phase = .downloading(l, progress: max(shown, min(p, 1)))
@@ -191,8 +213,9 @@ public struct CaptionLanguageSwitch: Equatable, Sendable {
     }
 }
 
-/// The Into list (#53): every language Apple's Translation has, except the one being captioned, each once, the current
-/// one first. Scripts stay apart (Simplified and Traditional Chinese are two rows).
+/// The Into list (#53): every language Apple's Translation has, each once, the current one first. The one being
+/// captioned is listed too: the same language on both sides is allowed (owner, #252). Scripts stay apart (Simplified
+/// and Traditional Chinese are two rows).
 public enum TranslationTargetList {
     public struct Row: Equatable, Sendable, Identifiable {
         public let locale: Locale
@@ -209,7 +232,7 @@ public enum TranslationTargetList {
             let parts = [code, code == "zh" ? full.script?.identifier : nil, full.region?.identifier].compactMap { $0 }
             return Locale(identifier: parts.joined(separator: "-"))
         }
-            .filter { !CaptionLanguage.sameLanguage($0, captions) && seen.insert(CaptionLanguage.bcp47($0)).inserted }
+            .filter { seen.insert(CaptionLanguage.bcp47($0)).inserted }
             .sorted { CaptionLanguage.bcp47($0) < CaptionLanguage.bcp47($1) }
         let isCurrent = { (l: Locale) in current.map { CaptionLanguage.sameLanguage($0, l) && ($0.region == nil || $0.region == l.region) } ?? false }
         var rows = locales.map { Row(locale: $0, isCurrent: isCurrent($0)) }
@@ -219,5 +242,38 @@ public enum TranslationTargetList {
             rows = [first] + rows.map { Row(locale: $0.locale, isCurrent: false) }
         }
         return rows
+    }
+}
+
+/// Swapping translation's From and Into (#252). From is captioned, so it must be a language the speech engine has; Into
+/// may be any language Translation has. Into becomes From in the speech engine's own name for it (its region if the
+/// engine has it, else the one she uses, else the first in a fixed order; scripts never cross), and From becomes Into
+/// as it is. Into changes at once; From may need its download first, and if that fails, Into goes back.
+public struct LanguageSwap: Equatable, Sendable {
+    /// The new From (the caption language) and Into.
+    public let from: Locale
+    public let into: Locale
+    /// Into before the swap, for a From download that fails.
+    public let previousInto: Locale
+
+    /// Nil when there's nothing to swap: Into isn't chosen, the engine's list hasn't come back, or the engine can't
+    /// caption the Into language.
+    public static func plan(from: Locale, into: Locale?, speech: [Locale], preferred: [String]) -> LanguageSwap? {
+        guard let into else { return nil }
+        let key = CaptionLanguage.bcp47
+        let candidates = speech.filter { CaptionLanguage.sameLanguage($0, into) }.sorted { key($0) < key($1) }
+        let hinted = preferred.map(Locale.init(identifier:)).filter { CaptionLanguage.sameLanguage($0, into) }.compactMap(\.region)
+        let regions = (into.region.map { [$0] } ?? []) + hinted
+        let pick = regions.lazy.compactMap { r in candidates.first { $0.region == r } }.first ?? candidates.first
+        guard let pick else { return nil }
+        return LanguageSwap(from: pick, into: from, previousInto: into)
+    }
+
+    /// Into once the caption language has moved on: the swap's, unless the swap's own download failed and captions
+    /// are still in the old language. A newer pick of From keeps the swapped Into.
+    public func into(after change: CaptionLanguageSwitch) -> Locale {
+        let key = CaptionLanguage.bcp47
+        if case .failed(let l, _) = change.phase, key(l) == key(from), key(change.current) != key(from) { return previousInto }
+        return into
     }
 }

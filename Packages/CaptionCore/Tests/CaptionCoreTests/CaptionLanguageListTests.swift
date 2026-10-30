@@ -92,10 +92,17 @@ final class CaptionLanguageListTests: XCTestCase {
 
     // MARK: Into (#53): the languages captions can be translated into
 
-    func testIntoListsEveryTranslationLanguageExceptTheOneBeingCaptioned() {
+    func testIntoListsEveryTranslationLanguageIncludingTheOneBeingCaptioned() {
+        // #252 (owner): the same language on both sides is allowed, so English → French can be swapped.
         let r = TranslationTargetList.rows(supported: translation.map(Locale.Language.init(identifier:)), from: l("es-ES"), current: l("en-US"))
-        XCTAssertFalse(r.contains { $0.locale.language.languageCode?.identifier == "es" })
-        XCTAssertEqual(r.count, translation.count - 1)
+        XCTAssertTrue(r.contains { $0.locale.language.languageCode?.identifier == "es" })
+        XCTAssertEqual(r.count, translation.count)
+    }
+
+    func testIntoCanBeTheCaptionLanguageAndTicksIt() {
+        let r = TranslationTargetList.rows(supported: translation.map(Locale.Language.init(identifier:)), from: l("fr-FR"), current: l("fr-FR"))
+        XCTAssertEqual(r.first?.locale.identifier(.bcp47), "fr-FR")
+        XCTAssertEqual(r.filter(\.isCurrent).count, 1)
     }
 
     func testIntoTicksTheCurrentTargetAndPutsItFirst() {
