@@ -38,14 +38,6 @@ public struct FaceToFaceEntry: Identifiable, Equatable, Sendable {
     public var isTranslated: Bool { said != nil }
 }
 
-/// #245: what a tap in a half's list does (`FaceToFace.pickPlan`).
-public enum FaceToFacePick: Equatable, Sendable {
-    /// The language's speech engine is on the device: start it in this locale.
-    case start(Locale)
-    /// It isn't: download this locale's speech files first.
-    case download(Locale)
-}
-
 public enum FaceToFace {
     /// The smallest screen side, in points, that fits two readable halves. iPad mini (744) and the unfolded iPhone Duo
     /// (669) clear it; every plain iPhone (440 at most) and the folded Duo (466) don't.
@@ -59,40 +51,26 @@ public enum FaceToFace {
 
     /// #208: the stacked list a half picks its language from. One row per downloaded translation language (regions of
     /// one language are one row, the first kept), in the order of `name`, without the language the other half chose.
-    /// #245: with `ready`, a language offered in several regions keeps a ready one (one whose speech engine is on the
-    /// device) over the first.
-    public static func choices(downloaded: [Locale], takenByOtherHalf taken: Locale?, name: (Locale) -> String,
-                               ready: (Locale) -> Bool = { _ in true }) -> [Locale] {
+    public static func choices(downloaded: [Locale], takenByOtherHalf taken: Locale?, name: (Locale) -> String) -> [Locale] {
         func code(_ l: Locale) -> String { l.language.languageCode?.identifier ?? l.identifier }
-        let readyFirst = downloaded.filter(ready) + downloaded.filter { !ready($0) }
         var seen: Set<String> = taken.map { [code($0)] } ?? []
-        let unique = readyFirst.filter { seen.insert(code($0)).inserted }
+        let unique = downloaded.filter { seen.insert(code($0)).inserted }
         return unique.sorted { name($0).localizedStandardCompare(name($1)) == .orderedAscending }
     }
 
     /// #245 item 3: the region of `locale`'s language whose speech engine is on the device, the exact one first; nil
-    /// when none is, and picking it must download it first (never inside the engine's start, where it hung Stop).
+    /// when none is, and the language isn't offered (the split never downloads: a download inside the engine's start
+    /// hung Stop).
     public static func readyLocale(for locale: Locale, speechInstalled: [Locale]) -> Locale? {
         func code(_ l: Locale) -> String { l.language.languageCode?.identifier ?? l.identifier }
         if let exact = speechInstalled.first(where: { $0.identifier(.bcp47) == locale.identifier(.bcp47) }) { return exact }
         return speechInstalled.first { code($0) == code(locale) }
     }
 
-    /// #245: what tapping `locale` in a half's list does. Start it, in the region whose speech engine is on the device;
-    /// or, with none on the device, download it first in that half, with progress, and start nothing until it's there.
-    public static func pickPlan(_ locale: Locale, speechInstalled: [Locale]) -> FaceToFacePick {
-        readyLocale(for: locale, speechInstalled: speechInstalled).map(FaceToFacePick.start) ?? .download(locale)
-    }
-
-    /// #245: a row in a half's list. A language not on the device yet says that tapping it downloads it.
-    public static func listLabel(_ name: String, ready: Bool) -> String {
-        ready ? name : name + " · " + String(localized: "Download")
-    }
-
-    /// #208: the languages offered for a half's list on the device, until Seal keeps its own list (#200's "Your
-    /// languages"; Apple can only say whether a pair is downloaded, not list what is). The caption and Into languages,
-    /// then every language whose speech engine is on the device and that Apple can translate (`translatable`: language
-    /// codes). Regions of one language are folded into one row by `choices`.
+    /// #208: the languages that may be offered for a half's list on the device, until Seal keeps its own list (#200's
+    /// "Your languages"; Apple can only say whether a pair is downloaded, not list what is). The caption and Into
+    /// languages, then every language whose speech engine is on the device and that Apple can translate (`translatable`:
+    /// language codes). #245: only the ready ones among them are offered (`FaceToFaceReadyLanguages`).
     public static func offered(captionLanguage: Locale, into: Locale?, speechInstalled: [Locale], translatable: Set<String>) -> [Locale] {
         func code(_ l: Locale) -> String { l.language.languageCode?.identifier ?? l.identifier }
         return [captionLanguage] + (into.map { [$0] } ?? []) + speechInstalled.filter { translatable.contains(code($0)) }
