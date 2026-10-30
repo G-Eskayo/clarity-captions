@@ -30,7 +30,8 @@ final class TranslationCenter: ObservableObject {
     /// #245, the owner's rule: everything a translation language needs is set up up front, in Settings. Into's own
     /// speech model (the split captions it in her half) downloads here, with real progress, never when a feature starts.
     @Published private(set) var intoSpeech: CaptionLanguageSwitch.Phase = .ready
-    private var intoSpeechTask: Task<Void, Never>?
+    /// The Into language whose speech model is being checked or downloaded now.
+    private var intoSpeechFor: Locale?
     /// #60 face to face, the second direction: her words (the language she reads) into the other person's language.
     @Published private(set) var reverseTranslations = CaptionTranslations()
     @Published private(set) var reverseConfiguration: TranslationSession.Configuration?
@@ -177,7 +178,7 @@ final class TranslationCenter: ObservableObject {
         translations.reset()
         ear.targetChanged(locale)
         refreshConfiguration()
-        intoSpeechTask?.cancel(); intoSpeechTask = nil; intoSpeech = .ready
+        intoSpeech = .ready
         setUpIntoSpeech()
     }
 
@@ -187,22 +188,26 @@ final class TranslationCenter: ObservableObject {
     /// language Apple's speech engine doesn't have stays as it is: one-way translation into it still works, it just
     /// can't be a half of the split.
     func setUpIntoSpeech() {
-        guard purchase.isOwned, isOn, let target, intoSpeechTask == nil else { return }
+        guard purchase.isOwned, isOn, let target, intoSpeechFor != target else { return }
         #if DEBUG
         if DemoMode.isOn { return }
         #endif
-        intoSpeechTask = Task { [weak self] in
-            defer { self?.intoSpeechTask = nil }
+        // A download for an Into she has since changed carries on unwatched; its end changes nothing on screen.
+        intoSpeechFor = target
+        Task { [weak self] in
+            defer { if self?.intoSpeechFor == target { self?.intoSpeechFor = nil } }
             guard let locale = await SpeechTranscriber.supportedLocale(equivalentTo: target),
-                  !(await SpeechModelInstaller.isInstalled(locale: locale)) else { self?.intoSpeech = .ready; return }
-            self?.intoSpeech = .downloading(locale, progress: 0)
-            let outcome = await SpeechDownload.language(locale).run { p in
+                  !(await SpeechModelInstaller.isInstalled(locale: locale)) else { return }
+            guard let self, self.intoSpeechFor == target else { return }
+            intoSpeech = .downloading(locale, progress: 0)
+            let outcome = await SpeechDownload.language(locale).run { [weak self] p in
                 Task { @MainActor in
-                    guard let self, case .downloading(let l, let shown) = self.intoSpeech else { return }
+                    guard let self, self.intoSpeechFor == target,
+                          case .downloading(let l, let shown) = self.intoSpeech else { return }
                     self.intoSpeech = .downloading(l, progress: max(shown, min(p, 1)))
                 }
             }
-            guard let self, !Task.isCancelled else { return }
+            guard self.intoSpeechFor == target else { return }
             if case .failed(let why) = outcome { intoSpeech = .failed(locale, why) } else { intoSpeech = .ready }
         }
     }
