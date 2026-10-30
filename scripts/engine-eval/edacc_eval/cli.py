@@ -16,6 +16,16 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--out", type=Path, required=True)
     b.add_argument("--target-hours", type=float, default=1.0)
 
+    bs = sub.add_parser("build-shards-staged", help="the same shards, downloading one parquet at a time (#203)")
+    bs.add_argument("--urls", type=Path, required=True, help="file with one parquet URL per line")
+    bs.add_argument("--download-dir", type=Path, required=True)
+    bs.add_argument("--out", type=Path, required=True)
+    bs.add_argument("--target-hours", type=float, default=1.0)
+
+    mc = sub.add_parser("match-shards", help="check rebuilt shards hold the clips an earlier run scored, shard for shard")
+    mc.add_argument("--shards", type=Path, required=True)
+    mc.add_argument("--results", type=Path, required=True)
+
     fl = sub.add_parser("fleurs-shards", help="cut FLEURS test splits into per-language shards (#158)")
     fl.add_argument("--corpus", type=Path, required=True, help="directory with <config>/test.tsv and test.tar.gz")
     fl.add_argument("--out", type=Path, required=True)
@@ -95,6 +105,16 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "build-shards":
         from .shards import build_shards
         print(json.dumps(build_shards(a.corpus, a.out, a.target_hours), indent=2))
+    elif a.cmd == "build-shards-staged":
+        from .shards import build_shards_staged, fetch_each
+        urls = [u.strip() for u in a.urls.read_text().splitlines() if u.strip()]
+        print(json.dumps(build_shards_staged(fetch_each(urls, a.download_dir), a.out, a.target_hours), indent=2))
+    elif a.cmd == "match-shards":
+        from .shards import match_earlier_results
+        got = match_earlier_results(a.shards, a.results)
+        print(json.dumps({k: (v if not isinstance(v, list) else {"count": len(v), "first": v[:5]})
+                          for k, v in got.items()}, indent=2))
+        return 0 if not (got["moved"] or got["missing"] or got["extra"]) else 1
     elif a.cmd == "fleurs-shards":
         from .fleurs import build_fleurs_shards
         print(json.dumps(build_fleurs_shards(a.corpus, a.out, a.languages.split(","), a.target_hours), indent=2))

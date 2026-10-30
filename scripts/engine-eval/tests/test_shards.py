@@ -1,6 +1,7 @@
 """Shard maker: stratified assignment, exclusions, manifests, resampling (#145). Temp dirs only."""
 import io
 import json
+from pathlib import Path
 
 import numpy as np
 import pyarrow as pa
@@ -8,7 +9,8 @@ import pyarrow.parquet as pq
 import pytest
 import soundfile as sf
 
-from edacc_eval.shards import Clip, assign_shards, build_shards, clip_id_for, read_manifest, shard_count
+from edacc_eval.shards import (Clip, assign_shards, build_shards, build_shards_staged, clip_id_for, fetch_each,
+                               match_earlier_results, read_manifest, shard_count)
 
 
 def wav_bytes(seconds=1.0, sr=32000, freq=440.0):
@@ -119,3 +121,106 @@ def test_read_manifest_missing_clip_audio_is_reported(tmp_path):
     (d / "manifest.jsonl").write_text(json.dumps({"clip_id": "a", "file": "audio/a.wav"}) + "\n")
     with pytest.raises(FileNotFoundError, match="a.wav"):
         read_manifest(d, check_audio=True)
+
+
+def three_parquets(corpus):
+    """Enough clips over three files that a small target gives several shards."""
+    corpus.mkdir(parents=True)
+    accents = ["Irish English", "Vietnamese", "Kenyan English"]
+    k = 0
+    for f, split in enumerate(["test", "test", "validation"]):
+        rows = []
+        for j in range(5):
+            k += 1
+            rows.append({"speaker": f"S{k % 4}", "text": f"WORD NUMBER {k}", "accent": accents[k % 3],
+                         "path": f"EDACC-C{f:02d}-{j}.wav", "sec": 0.5 + 0.1 * j})
+        rows.append({"speaker": "S9", "text": "IGNORE_TIME_SEGMENT_IN_SCORING", "accent": "Irish English",
+                     "path": f"EDACC-C{f:02d}-x.wav"})
+        make_parquet(corpus / f"{split}-{f:05d}-of-00003.parquet", rows)
+
+
+def shard_tree(out):
+    """Every file under out, with WAV contents, so two builds can be compared exactly."""
+    return {str(p.relative_to(out)): p.read_bytes() for p in sorted(out.rglob("*")) if p.is_file()}
+
+
+def test_staged_build_matches_the_all_at_once_build(tmp_path):
+    corpus = tmp_path / "corpus"
+    three_parquets(corpus)
+    a, b = tmp_path / "a", tmp_path / "b"
+    sa = build_shards(corpus, a, target_hours=1.5 / 3600)
+    sb = build_shards_staged(sorted(corpus.glob("*.parquet")), b, target_hours=1.5 / 3600)
+    assert sa["n_shards"] > 2
+    assert sa == sb
+    assert shard_tree(a) == shard_tree(b)
+
+
+def test_staged_build_needs_only_one_parquet_at_a_time(tmp_path):
+    corpus = tmp_path / "corpus"
+    three_parquets(corpus)
+    src = sorted(corpus.glob("*.parquet"))
+    dl = tmp_path / "dl"
+    seen = []
+
+    def fake_fetch(url, dest):
+        seen.append(len(list(dl.glob("*"))))  # what is already on disk when the next file arrives
+        dest.write_bytes(Path(url).read_bytes())
+
+    out = tmp_path / "out"
+    summary = build_shards_staged(fetch_each([str(p) for p in src], dl, fetch=fake_fetch), out,
+                                  target_hours=1.5 / 3600)
+    assert seen == [0, 0, 0]
+    assert list(dl.glob("*")) == []
+    assert summary == build_shards(corpus, tmp_path / "ref", target_hours=1.5 / 3600)
+    assert not (out / "_staging").exists()
+
+
+def test_fetch_each_keeps_the_original_file_name_and_removes_partials(tmp_path):
+    dl = tmp_path / "dl"
+
+    def broken(url, dest):
+        dest.write_bytes(b"half")
+        raise OSError("connection reset")
+
+    gen = fetch_each(["https://example.invalid/data/test-00000-of-00010-abc.parquet?download=true"], dl, fetch=broken)
+    with pytest.raises(OSError):
+        next(gen)
+    assert list(dl.glob("*")) == []
+
+    got = []
+    for p in fetch_each(["https://example.invalid/data/test-00000-of-00010-abc.parquet"], dl,
+                        fetch=lambda u, d: d.write_bytes(b"x")):
+        got.append(p.name)
+    assert got == ["test-00000-of-00010-abc.parquet"]
+
+
+def test_staged_build_is_rerunnable(tmp_path):
+    corpus = tmp_path / "corpus"
+    three_parquets(corpus)
+    out = tmp_path / "out"
+    build_shards_staged(sorted(corpus.glob("*.parquet")), out, target_hours=1.5 / 3600)
+    first = shard_tree(out)
+    build_shards_staged(sorted(corpus.glob("*.parquet")), out, target_hours=1.5 / 3600)
+    assert shard_tree(out) == first
+
+
+def test_match_earlier_results_finds_moved_and_missing_clips(tmp_path):
+    corpus = tmp_path / "corpus"
+    three_parquets(corpus)
+    out = tmp_path / "out"
+    build_shards_staged(sorted(corpus.glob("*.parquet")), out, target_hours=1.5 / 3600)
+    results = tmp_path / "results"
+    results.mkdir()
+    for d in sorted(out.glob("shard-*")):
+        k = int(d.name.split("-")[1])
+        with (results / f"apple-{d.name}.jsonl").open("w") as fh:
+            for c in read_manifest(d):
+                fh.write(json.dumps({"clip_id": c["clip_id"], "shard": k, "engine": "e"}) + "\n")
+    assert match_earlier_results(out, results) == {"shards": len(list(out.glob("shard-*"))),
+                                                   "clips": 15, "moved": [], "missing": [], "extra": []}
+    first = sorted(results.glob("*.jsonl"))[0]
+    lines = first.read_text().splitlines()
+    moved = json.loads(lines[0]); moved["shard"] = 99
+    first.write_text("\n".join([json.dumps(moved)] + lines[1:] + [json.dumps({"clip_id": "ghost", "shard": 1})]) + "\n")
+    got = match_earlier_results(out, results)
+    assert got["moved"] == [moved["clip_id"]] and got["missing"] == ["ghost"] and got["extra"] == []

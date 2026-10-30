@@ -206,6 +206,15 @@ footprint (`engine-eval memory`); sizes are whole folders on disk and deflate-zi
 3.12 env (the mobius Python 3.10 lock's scipy doesn't load on macOS 27) and the folders were copied to the M4.
 k-means palettization with a worker pool crashed ("Pool not running"); one worker works (about 10 minutes per variant).
 
+**Low bits (#203).** `compress_parakeet.py` also makes `ultra-pal3`, `ultra-pal2` and `ultra-mixed246`. The mixed
+plan (`edacc_eval/lowbit.py`) gives the front end and the first and last conformer blocks 6 bits, attention 4 and
+the middle feed-forward and convolution weights 2, about 2.7 bits on average. It refuses an export whose weight
+names it can't read, rather than quietly building a uniform model. `m4-low-bit.sh` chains export, builds, shards,
+accuracy (6-bit again alongside, for a same-hour speed comparison), latency, memory and sizes, with a machine-load
+log. If the 2012 mini is offline, `build-shards-staged` rebuilds the shards on the M4 one parquet at a time (about
+15 minutes, under 1 GB of corpus on disk at once), and `match-shards` checks every clip an earlier run scored is in
+the same shard.
+
 ## Complexity
 
 - Shard maker: one pass over the corpus, O(clips) time, streams one parquet file at a time (memory bounded by
