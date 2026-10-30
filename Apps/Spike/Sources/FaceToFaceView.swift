@@ -15,6 +15,11 @@ struct FaceToFaceView<Control: View>: View {
     /// Each half's language, named in that language: the one its list picked (#208).
     let ownerLanguage: String
     let partnerLanguage: String
+    /// #246 mock-up: each half's language identifier, for option B's tag on the other half's translated lines.
+    var ownerLanguageID: String? = nil
+    var partnerLanguageID: String? = nil
+    /// #246 mock-up (debug demo flag only): translated lines drawn in this option; nil draws today's look.
+    var translatedLook: TranslatedCaptionLook? = nil
     /// #208: a half that hasn't picked its language (or is picking again) shows the stacked, dimmed list of downloaded
     /// languages instead of its lines; nil once it has picked. Tapping one starts that half.
     var ownerChoices: [String]? = nil
@@ -80,7 +85,8 @@ struct FaceToFaceView<Control: View>: View {
             .accessibilityHint(String(localized: "Pick another language"))
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 14) {
-                    ForEach(entries) { entry in line(entry) }
+                    ForEach(entries) { entry in line(entry, saidLanguage: isOwner ? partnerLanguageID : ownerLanguageID,
+                                                     opensSaid: entry.id == entries.last(where: \.isTranslated)?.id) }
                 }
                 .padding(.horizontal, 8)
             }
@@ -100,10 +106,14 @@ struct FaceToFaceView<Control: View>: View {
     }
 
     @ViewBuilder
-    private func line(_ entry: FaceToFaceEntry) -> some View {
+    private func line(_ entry: FaceToFaceEntry, saidLanguage: String?, opensSaid: Bool) -> some View {
         let font = style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: device)
         VStack(alignment: .leading, spacing: 2) {
-            if let said = entry.said {
+            if let said = entry.said, let look = translatedLook {
+                TranslatedCaptionView(look: look, translated: entry.text, said: said, saidLanguage: saidLanguage, font: font,
+                                      text: style.text.color, muted: mutedColor(style), mark: style.gear.color,
+                                      volatileOpacity: style.volatileOpacity, startsOpen: opensSaid)
+            } else if let said = entry.said {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Image(systemName: "translate").font(.subheadline.bold()).foregroundStyle(mutedColor(style))
                     Text(entry.text).font(font)
