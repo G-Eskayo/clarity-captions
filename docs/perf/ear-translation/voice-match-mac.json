@@ -1,0 +1,891 @@
+{
+  "date" : "2026-10-30T18:37:07Z",
+  "device" : "Mac (c02f52gpq05ps-macbook-pro.local)",
+  "os" : "macOS Version 27.0.1 (Build 26A434)",
+  "results" : {
+    "defaultVoice" : "com.apple.voice.compact.es-ES.Monica",
+    "loadAverage" : "304.5 278.3 285.5",
+    "matchMicroseconds" : 28.126001358032227,
+    "matches" : [
+      {
+        "defaultAudibleMs" : [
+          18.398561077593676,
+          20.531594942486475,
+          18.56848289636798,
+          25.53380918610934,
+          44.77260217645001,
+          18.6219873125591,
+          17.159460482954167,
+          29.0479439564573,
+          19.52161983567841,
+          27.453638171933406
+        ],
+        "defaultPaceOff" : 0.3565249610499355,
+        "defaultPitchOffSemitones" : 5.773804640255061,
+        "defaultVoice" : {
+          "pitchMultiplier" : 1,
+          "rate" : 0.5,
+          "voiceID" : "com.apple.voice.compact.es-ES.Monica"
+        },
+        "matched" : {
+          "pitchMultiplier" : 1.0160273,
+          "rate" : 0.42,
+          "voiceID" : "com.apple.eloquence.es-ES.Eddy"
+        },
+        "matchedAudibleMs" : [
+          11.600564956665039,
+          6.174447059631348,
+          28.65293312072754,
+          6.482516288757324,
+          6.903581619262695,
+          6.9995269775390625,
+          5.410978317260742,
+          6.507449150085449,
+          7.473557472229004,
+          14.153482437133789
+        ],
+        "matchedPaceOff" : 0.10559169622763864,
+        "matchedPitchOffSemitones" : 0.3660966143600318,
+        "matchedVoiceName" : "Eddy",
+        "sameVoicePlainAudibleMs" : [
+          5.783509254455566,
+          6.941558837890625,
+          25.56649398803711,
+          23.140583992004395,
+          7.636599540710449,
+          15.345488548278809,
+          7.767030715942383,
+          22.079520225524902,
+          17.3105525970459,
+          13.23950481414795
+        ],
+        "speaker" : "Speaker 1: low, slow (man)"
+      },
+      {
+        "defaultAudibleMs" : [
+          25.084533291338794,
+          25.17563123551626,
+          15.25148441461749,
+          17.28178453553561,
+          20.058609103940242,
+          16.088074653867693,
+          30.45642226731696,
+          17.01495826920144,
+          19.483592072311712,
+          20.95863924004864
+        ],
+        "defaultPaceOff" : -0.16805526122950154,
+        "defaultPitchOffSemitones" : -1.410406574886414,
+        "defaultVoice" : {
+          "pitchMultiplier" : 1,
+          "rate" : 0.5,
+          "voiceID" : "com.apple.voice.compact.es-ES.Monica"
+        },
+        "matched" : {
+          "pitchMultiplier" : 0.9928677,
+          "rate" : 0.5626922,
+          "voiceID" : "com.apple.eloquence.es-ES.Shelley"
+        },
+        "matchedAudibleMs" : [
+          10.464942932128906,
+          9.046948432922363,
+          28.281973838806152,
+          6.823454856872559,
+          13.750997543334961,
+          20.739981651306152,
+          8.885997772216797,
+          8.963497161865234,
+          11.182034492492676,
+          7.594468116760254
+        ],
+        "matchedPaceOff" : 0.041765583646169224,
+        "matchedPitchOffSemitones" : -0.27633383495476727,
+        "matchedVoiceName" : "Shelley",
+        "sameVoicePlainAudibleMs" : [
+          7.63503360748291,
+          9.898937225341797,
+          22.92405128479004,
+          7.216045379638672,
+          6.381002426147461,
+          4.86595344543457,
+          8.599061012268066,
+          7.8275041580200195,
+          7.282497406005859,
+          6.823984146118164
+        ],
+        "speaker" : "Speaker 2: high, quick (woman)"
+      },
+      {
+        "defaultAudibleMs" : [
+          19.008555012225024,
+          18.264591883099268,
+          20.33254196314044,
+          33.75066709626559,
+          45.80161676385235,
+          25.083011596921892,
+          19.231437144636295,
+          32.33490169724099,
+          22.961642304245306,
+          17.41860017754864
+        ],
+        "defaultPaceOff" : 0.11076213187237594,
+        "defaultPitchOffSemitones" : -9.13206120932462,
+        "defaultVoice" : {
+          "pitchMultiplier" : 1,
+          "rate" : 0.5,
+          "voiceID" : "com.apple.voice.compact.es-ES.Monica"
+        },
+        "matched" : {
+          "pitchMultiplier" : 1.1672858,
+          "rate" : 0.50229996,
+          "voiceID" : "com.apple.eloquence.es-ES.Sandy"
+        },
+        "matchedAudibleMs" : [
+          6.800976753234863,
+          29.1085262298584,
+          95.3010606765747,
+          51.01897144317627,
+          21.329455375671387,
+          6.786006927490234,
+          7.67793083190918,
+          9.600111961364746,
+          33.94602108001709,
+          7.394996643066406
+        ],
+        "matchedPaceOff" : 0.05347778752927845,
+        "matchedPitchOffSemitones" : 0.4416909541757541,
+        "matchedVoiceName" : "Sandy",
+        "sameVoicePlainAudibleMs" : [
+          8.721915245056152,
+          7.881524085998535,
+          24.031021118164062,
+          10.670083999633789,
+          47.02549457550049,
+          8.978520393371582,
+          10.791473388671875,
+          6.628500938415527,
+          30.802063941955566,
+          11.173096656799316
+        ],
+        "speaker" : "Speaker 3: like speaker 2, slower (woman)"
+      },
+      {
+        "defaultAudibleMs" : [
+          28.807558613299243,
+          62.773645113384916,
+          17.007437249700498,
+          20.387782574781216,
+          14.613724803708308,
+          17.60107895684621,
+          15.346406398176336,
+          21.756984598241967,
+          17.875577965561224,
+          35.86671457269024
+        ],
+        "defaultPaceOff" : -0.26335543254376925,
+        "defaultPitchOffSemitones" : 7.498700027002313,
+        "defaultVoice" : {
+          "pitchMultiplier" : 1,
+          "rate" : 0.5,
+          "voiceID" : "com.apple.voice.compact.es-ES.Monica"
+        },
+        "matched" : {
+          "pitchMultiplier" : 1.0444516,
+          "rate" : 0.5886458,
+          "voiceID" : "com.apple.eloquence.es-ES.Reed"
+        },
+        "matchedAudibleMs" : [
+          43.403900146484375,
+          6.21748161315918,
+          25.02208423614502,
+          26.9635066986084,
+          10.65652847290039,
+          8.153472900390625,
+          5.487987518310547,
+          9.828482627868652,
+          8.377474784851074,
+          30.129996299743652
+        ],
+        "matchedPaceOff" : 0.08803745803340202,
+        "matchedPitchOffSemitones" : 0.024219609717029383,
+        "matchedVoiceName" : "Reed",
+        "sameVoicePlainAudibleMs" : [
+          24.64703369140625,
+          15.20645809173584,
+          26.855899810791016,
+          6.534049034118652,
+          8.056012153625488,
+          5.132079124450684,
+          7.911989212036133,
+          7.6635589599609375,
+          9.150525093078613,
+          30.026999473571777
+        ],
+        "speaker" : "Speaker 4: quick (man)"
+      }
+    ],
+    "normalSyllablesPerSecond" : 4.582904222451082,
+    "speakersTenLines" : [
+      {
+        "audioSeconds" : 27.7553125,
+        "label" : "Speaker 1: low, slow (man)",
+        "processingMsPerAudioSecond" : 2.0119922080060864,
+        "settledAfterSeconds" : 2.0475,
+        "traits" : {
+          "pitchHz" : 109.61165416364759,
+          "syllablesPerSecond" : 4.147250698974837
+        },
+        "truth" : "com.apple.voice.compact.en-GB.Daniel rate 0.45 pitch 0.9"
+      },
+      {
+        "audioSeconds" : 18.623375,
+        "label" : "Speaker 2: high, quick (woman)",
+        "processingMsPerAudioSecond" : 3.392509133688048,
+        "settledAfterSeconds" : 2.0475,
+        "traits" : {
+          "pitchHz" : 196.9650463759342,
+          "syllablesPerSecond" : 6.501095690284879
+        },
+        "truth" : "com.apple.voice.compact.en-US.Samantha rate 0.56 pitch 1.1"
+      },
+      {
+        "audioSeconds" : 28.8080625,
+        "label" : "Speaker 3: like speaker 2, slower (woman)",
+        "processingMsPerAudioSecond" : 9.760707006766498,
+        "settledAfterSeconds" : 2.0475,
+        "traits" : {
+          "pitchHz" : 298.02666259900656,
+          "syllablesPerSecond" : 4.421261798310978
+        },
+        "truth" : "com.apple.eloquence.en-US.Sandy rate 0.48 pitch 1.0"
+      },
+      {
+        "audioSeconds" : 19.641625,
+        "label" : "Speaker 4: quick (man)",
+        "processingMsPerAudioSecond" : 2.509014417101078,
+        "settledAfterSeconds" : 4.0096875,
+        "traits" : {
+          "pitchHz" : 110.59022091526599,
+          "syllablesPerSecond" : 6.544117647058823
+        },
+        "truth" : "com.apple.eloquence.en-US.Reed rate 0.58 pitch 1.0"
+      }
+    ],
+    "speakersTwoLines" : [
+      {
+        "audioSeconds" : 4.640625,
+        "label" : "Speaker 1: low, slow (man)",
+        "processingMsPerAudioSecond" : 2.328789194023569,
+        "settledAfterSeconds" : 2.0475,
+        "traits" : {
+          "pitchHz" : 125.39966960976771,
+          "syllablesPerSecond" : 3.7974683544303796
+        },
+        "truth" : "com.apple.voice.compact.en-GB.Daniel rate 0.45 pitch 0.9"
+      },
+      {
+        "audioSeconds" : 4.156375,
+        "label" : "Speaker 2: high, quick (woman)",
+        "processingMsPerAudioSecond" : 2.417699623343095,
+        "settledAfterSeconds" : 2.0475,
+        "traits" : {
+          "pitchHz" : 189.8970922822854,
+          "syllablesPerSecond" : 6.191950464396284
+        },
+        "truth" : "com.apple.voice.compact.en-US.Samantha rate 0.56 pitch 1.1"
+      },
+      {
+        "audioSeconds" : 5.1293125,
+        "label" : "Speaker 3: like speaker 2, slower (woman)",
+        "processingMsPerAudioSecond" : 2.5586718539382636,
+        "settledAfterSeconds" : 2.0475,
+        "traits" : {
+          "pitchHz" : 296.6350417276952,
+          "syllablesPerSecond" : 4.63768115942029
+        },
+        "truth" : "com.apple.eloquence.en-US.Sandy rate 0.48 pitch 1.0"
+      },
+      {
+        "audioSeconds" : 4.0540625,
+        "label" : "Speaker 4: quick (man)",
+        "processingMsPerAudioSecond" : 1.9901234173861098,
+        "settledAfterSeconds" : 2.0475,
+        "traits" : {
+          "pitchHz" : 113.50786492310958,
+          "syllablesPerSecond" : 6.9930069930069925
+        },
+        "truth" : "com.apple.eloquence.en-US.Reed rate 0.58 pitch 1.0"
+      }
+    ],
+    "target" : "es",
+    "voices" : [
+      {
+        "calibration" : {
+          "id" : "com.apple.voice.compact.es-ES.Monica",
+          "pitchCurve" : [
+            {
+              "input" : 0.7,
+              "value" : 160.5782765125641
+            },
+            {
+              "input" : 0.8,
+              "value" : 165.98559428785418
+            },
+            {
+              "input" : 0.9,
+              "value" : 169.59016498601932
+            },
+            {
+              "input" : 1,
+              "value" : 174.62760470146674
+            },
+            {
+              "input" : 1.1,
+              "value" : 192.03043389821485
+            },
+            {
+              "input" : 1.25,
+              "value" : 218.34357162311008
+            },
+            {
+              "input" : 1.4,
+              "value" : 244.77512997558898
+            }
+          ],
+          "pitchHz" : 174.62760470146674,
+          "rateCurve" : [
+            {
+              "input" : 0.4,
+              "value" : 5.434782608695652
+            },
+            {
+              "input" : 0.45,
+              "value" : 5.434782608695652
+            },
+            {
+              "input" : 0.5,
+              "value" : 5.9880239520958085
+            },
+            {
+              "input" : 0.55,
+              "value" : 7.731958762886598
+            },
+            {
+              "input" : 0.6,
+              "value" : 9.523809523809522
+            }
+          ],
+          "syllablesPerSecond" : 5.9880239520958085
+        },
+        "name" : "Mónica",
+        "pitchSpanSemitones" : 7.29816298045994,
+        "rateSpan" : 1.752380952380952,
+        "seconds" : 27.39173400402069
+      },
+      {
+        "calibration" : {
+          "id" : "com.apple.eloquence.es-ES.Eddy",
+          "pitchCurve" : [
+            {
+              "input" : 0.7,
+              "value" : 104.1073575799344
+            },
+            {
+              "input" : 0.8,
+              "value" : 110.86086588214643
+            },
+            {
+              "input" : 0.9,
+              "value" : 113.63387442328361
+            },
+            {
+              "input" : 1,
+              "value" : 123.14651714282843
+            },
+            {
+              "input" : 1.1,
+              "value" : 137.20474736333628
+            },
+            {
+              "input" : 1.25,
+              "value" : 156.49981228499598
+            },
+            {
+              "input" : 1.4,
+              "value" : 187.0168537127295
+            }
+          ],
+          "pitchHz" : 123.14651714282843,
+          "rateCurve" : [
+            {
+              "input" : 0.4,
+              "value" : 5.10204081632653
+            },
+            {
+              "input" : 0.45,
+              "value" : 5.504587155963303
+            },
+            {
+              "input" : 0.5,
+              "value" : 6.185567010309278
+            },
+            {
+              "input" : 0.55,
+              "value" : 7.8125
+            },
+            {
+              "input" : 0.6,
+              "value" : 9.966777408637872
+            }
+          ],
+          "syllablesPerSecond" : 6.185567010309278
+        },
+        "name" : "Eddy",
+        "pitchSpanSemitones" : 10.141155094967285,
+        "rateSpan" : 1.9534883720930234,
+        "seconds" : 6.085417032241821
+      },
+      {
+        "calibration" : {
+          "id" : "com.apple.eloquence.es-ES.Flo",
+          "pitchCurve" : [
+            {
+              "input" : 0.7,
+              "value" : 189.37645466231282
+            },
+            {
+              "input" : 0.8,
+              "value" : 211.73987860252936
+            },
+            {
+              "input" : 0.9,
+              "value" : 227.92813568370164
+            },
+            {
+              "input" : 1,
+              "value" : 254.24303899105004
+            },
+            {
+              "input" : 1.1,
+              "value" : 264.9322830250638
+            },
+            {
+              "input" : 1.25,
+              "value" : 274.2122047009842
+            },
+            {
+              "input" : 1.4,
+              "value" : 290.0126979258759
+            }
+          ],
+          "pitchHz" : 254.24303899105004,
+          "rateCurve" : [
+            {
+              "input" : 0.4,
+              "value" : 5.110732538330494
+            },
+            {
+              "input" : 0.45,
+              "value" : 5.514705882352941
+            },
+            {
+              "input" : 0.5,
+              "value" : 6.211180124223603
+            },
+            {
+              "input" : 0.55,
+              "value" : 7.83289817232376
+            },
+            {
+              "input" : 0.6,
+              "value" : 10.06711409395973
+            }
+          ],
+          "syllablesPerSecond" : 6.211180124223603
+        },
+        "name" : "Flo",
+        "pitchSpanSemitones" : 7.378309178313378,
+        "rateSpan" : 1.9697986577181208,
+        "seconds" : 4.286609053611755
+      },
+      {
+        "calibration" : {
+          "id" : "com.apple.eloquence.es-ES.Grandma",
+          "pitchCurve" : [
+            {
+              "input" : 0.7,
+              "value" : 104.5404224976983
+            },
+            {
+              "input" : 0.8,
+              "value" : 110.3473208458506
+            },
+            {
+              "input" : 0.9,
+              "value" : 114.05698516041178
+            },
+            {
+              "input" : 1,
+              "value" : 122.30908291612599
+            },
+            {
+              "input" : 1.1,
+              "value" : 134.04049664982227
+            },
+            {
+              "input" : 1.25,
+              "value" : 160.0322648012163
+            },
+            {
+              "input" : 1.4,
+              "value" : 183.15723966109488
+            }
+          ],
+          "pitchHz" : 122.30908291612599,
+          "rateCurve" : [
+            {
+              "input" : 0.4,
+              "value" : 5.093378607809846
+            },
+            {
+              "input" : 0.45,
+              "value" : 5.4945054945054945
+            },
+            {
+              "input" : 0.5,
+              "value" : 6.198347107438017
+            },
+            {
+              "input" : 0.55,
+              "value" : 7.8125
+            },
+            {
+              "input" : 0.6,
+              "value" : 10
+            }
+          ],
+          "syllablesPerSecond" : 6.198347107438017
+        },
+        "name" : "Grandma",
+        "pitchSpanSemitones" : 9.708261990936244,
+        "rateSpan" : 1.9633333333333336,
+        "seconds" : 4.022104978561401
+      },
+      {
+        "calibration" : {
+          "id" : "com.apple.eloquence.es-ES.Grandpa",
+          "pitchCurve" : [
+            {
+              "input" : 0.7,
+              "value" : 82.0571253611166
+            },
+            {
+              "input" : 0.8,
+              "value" : 80.21842763842064
+            },
+            {
+              "input" : 0.9,
+              "value" : 81.34767430076774
+            },
+            {
+              "input" : 1,
+              "value" : 93.09296630324215
+            },
+            {
+              "input" : 1.1,
+              "value" : 102.63401292024287
+            },
+            {
+              "input" : 1.25,
+              "value" : 123.62062684141576
+            },
+            {
+              "input" : 1.4,
+              "value" : 153.80330321888812
+            }
+          ],
+          "pitchHz" : 93.09296630324215,
+          "rateCurve" : [
+            {
+              "input" : 0.4,
+              "value" : 5.093378607809846
+            },
+            {
+              "input" : 0.45,
+              "value" : 5.504587155963303
+            },
+            {
+              "input" : 0.5,
+              "value" : 6.224066390041493
+            },
+            {
+              "input" : 0.55,
+              "value" : 7.853403141361257
+            },
+            {
+              "input" : 0.6,
+              "value" : 10
+            }
+          ],
+          "syllablesPerSecond" : 6.224066390041493
+        },
+        "name" : "Grandpa",
+        "pitchSpanSemitones" : 10.87663162513236,
+        "rateSpan" : 1.9633333333333336,
+        "seconds" : 3.900552988052368
+      },
+      {
+        "calibration" : {
+          "id" : "com.apple.eloquence.es-ES.Reed",
+          "pitchCurve" : [
+            {
+              "input" : 0.7,
+              "value" : 95.44539168945433
+            },
+            {
+              "input" : 0.8,
+              "value" : 97.89016689262557
+            },
+            {
+              "input" : 0.9,
+              "value" : 102.98614532790685
+            },
+            {
+              "input" : 1,
+              "value" : 109.36179272612327
+            },
+            {
+              "input" : 1.1,
+              "value" : 118.68895628279844
+            },
+            {
+              "input" : 1.25,
+              "value" : 142.33387819493262
+            },
+            {
+              "input" : 1.4,
+              "value" : 176.40839285170435
+            }
+          ],
+          "pitchHz" : 109.36179272612327,
+          "rateCurve" : [
+            {
+              "input" : 0.4,
+              "value" : 5.093378607809846
+            },
+            {
+              "input" : 0.45,
+              "value" : 5.4945054945054945
+            },
+            {
+              "input" : 0.5,
+              "value" : 6.211180124223603
+            },
+            {
+              "input" : 0.55,
+              "value" : 7.8125
+            },
+            {
+              "input" : 0.6,
+              "value" : 9.966777408637872
+            }
+          ],
+          "syllablesPerSecond" : 6.211180124223603
+        },
+        "name" : "Reed",
+        "pitchSpanSemitones" : 10.634061031036513,
+        "rateSpan" : 1.956810631229236,
+        "seconds" : 4.680572032928467
+      },
+      {
+        "calibration" : {
+          "id" : "com.apple.eloquence.es-ES.Rocko",
+          "pitchCurve" : [
+            {
+              "input" : 0.7,
+              "value" : 83.07993161508536
+            },
+            {
+              "input" : 0.8,
+              "value" : 80.66458277961354
+            },
+            {
+              "input" : 0.9,
+              "value" : 79.69009782756294
+            },
+            {
+              "input" : 1,
+              "value" : 81.8177140979941
+            },
+            {
+              "input" : 1.1,
+              "value" : 89.6123229623998
+            },
+            {
+              "input" : 1.25,
+              "value" : 112.16929655061347
+            },
+            {
+              "input" : 1.4,
+              "value" : 139.32731018253617
+            }
+          ],
+          "pitchHz" : 81.8177140979941,
+          "rateCurve" : [
+            {
+              "input" : 0.4,
+              "value" : 5.093378607809846
+            },
+            {
+              "input" : 0.45,
+              "value" : 5.514705882352941
+            },
+            {
+              "input" : 0.5,
+              "value" : 6.211180124223603
+            },
+            {
+              "input" : 0.55,
+              "value" : 7.8125
+            },
+            {
+              "input" : 0.6,
+              "value" : 10
+            }
+          ],
+          "syllablesPerSecond" : 6.211180124223603
+        },
+        "name" : "Rocko",
+        "pitchSpanSemitones" : 8.950873693462258,
+        "rateSpan" : 1.9633333333333336,
+        "seconds" : 3.6665369272232056
+      },
+      {
+        "calibration" : {
+          "id" : "com.apple.eloquence.es-ES.Sandy",
+          "pitchCurve" : [
+            {
+              "input" : 0.7,
+              "value" : 216.76298150774178
+            },
+            {
+              "input" : 0.8,
+              "value" : 239.50546707395947
+            },
+            {
+              "input" : 0.9,
+              "value" : 260.1713278472448
+            },
+            {
+              "input" : 1,
+              "value" : 285.72485258003223
+            },
+            {
+              "input" : 1.1,
+              "value" : 283.8578426792524
+            },
+            {
+              "input" : 1.25,
+              "value" : 302.0295638863487
+            },
+            {
+              "input" : 1.4,
+              "value" : 309.1976363459338
+            }
+          ],
+          "pitchHz" : 285.72485258003223,
+          "rateCurve" : [
+            {
+              "input" : 0.4,
+              "value" : 5.119453924914676
+            },
+            {
+              "input" : 0.45,
+              "value" : 5.535055350553505
+            },
+            {
+              "input" : 0.5,
+              "value" : 6.25
+            },
+            {
+              "input" : 0.55,
+              "value" : 7.874015748031497
+            },
+            {
+              "input" : 0.6,
+              "value" : 10.06711409395973
+            }
+          ],
+          "syllablesPerSecond" : 6.25
+        },
+        "name" : "Sandy",
+        "pitchSpanSemitones" : 6.1489307335153915,
+        "rateSpan" : 1.9664429530201337,
+        "seconds" : 3.194687008857727
+      },
+      {
+        "calibration" : {
+          "id" : "com.apple.eloquence.es-ES.Shelley",
+          "pitchCurve" : [
+            {
+              "input" : 0.7,
+              "value" : 148.9007226023193
+            },
+            {
+              "input" : 0.8,
+              "value" : 160.22585828423325
+            },
+            {
+              "input" : 0.9,
+              "value" : 170.97425873275296
+            },
+            {
+              "input" : 1,
+              "value" : 191.3503737028535
+            },
+            {
+              "input" : 1.1,
+              "value" : 197.67867112239145
+            },
+            {
+              "input" : 1.25,
+              "value" : 220.7680061618361
+            },
+            {
+              "input" : 1.4,
+              "value" : 247.08943762513033
+            }
+          ],
+          "pitchHz" : 191.3503737028535,
+          "rateCurve" : [
+            {
+              "input" : 0.4,
+              "value" : 5.084745762711864
+            },
+            {
+              "input" : 0.45,
+              "value" : 5.4945054945054945
+            },
+            {
+              "input" : 0.5,
+              "value" : 6.198347107438017
+            },
+            {
+              "input" : 0.55,
+              "value" : 7.83289817232376
+            },
+            {
+              "input" : 0.6,
+              "value" : 9.966777408637872
+            }
+          ],
+          "syllablesPerSecond" : 6.198347107438017
+        },
+        "name" : "Shelley",
+        "pitchSpanSemitones" : 8.768191027674204,
+        "rateSpan" : 1.9601328903654482,
+        "seconds" : 2.868825078010559
+      }
+    ]
+  }
+}

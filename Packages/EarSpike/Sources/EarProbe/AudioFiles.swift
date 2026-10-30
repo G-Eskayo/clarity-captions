@@ -23,6 +23,40 @@ public enum AudioFiles {
         return result
     }
 
+    /// A copy the synthesizer can't reuse under us.
+    public static func copy(_ b: AVAudioPCMBuffer) -> AVAudioPCMBuffer {
+        let c = AVAudioPCMBuffer(pcmFormat: b.format, frameCapacity: b.frameLength)!
+        c.frameLength = b.frameLength
+        if let s = b.int16ChannelData { memcpy(c.int16ChannelData![0], s[0], Int(b.frameLength) * 2) }
+        if let s = b.floatChannelData { memcpy(c.floatChannelData![0], s[0], Int(b.frameLength) * 4) }
+        return c
+    }
+
+    public static func samples(_ b: AVAudioPCMBuffer) -> [Float] {
+        guard let f = b.floatChannelData?[0] else { return [] }
+        return Array(UnsafeBufferPointer(start: f, count: Int(b.frameLength)))
+    }
+
+    /// Scaled to `rms` (0.05, about -26 dBFS: quiet), never clipping.
+    public static func normalized(_ b: AVAudioPCMBuffer, rms target: Double = 0.05) -> AVAudioPCMBuffer {
+        let level = rms(b)
+        guard level > 0, let f = b.floatChannelData?[0] else { return b }
+        var peak: Float = 0
+        for i in 0..<Int(b.frameLength) { peak = max(peak, abs(f[i])) }
+        let gain = Float(min(target / level, 0.9 / Double(max(peak, 1e-6))))
+        for i in 0..<Int(b.frameLength) { f[i] *= gain }
+        return b
+    }
+
+    /// AAC in an .m4a, small enough to commit.
+    public static func writeM4A(_ buffer: AVAudioPCMBuffer, to url: URL) throws {
+        try? FileManager.default.removeItem(at: url)
+        let settings: [String: Any] = [AVFormatIDKey: kAudioFormatMPEG4AAC, AVSampleRateKey: buffer.format.sampleRate,
+                                       AVNumberOfChannelsKey: 1, AVEncoderBitRateKey: 48000]
+        let file = try AVAudioFile(forWriting: url, settings: settings, commonFormat: .pcmFormatFloat32, interleaved: false)
+        try file.write(from: buffer)
+    }
+
     public static func silence(_ seconds: Double, rate: Double) -> AVAudioPCMBuffer {
         let f = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: rate, channels: 1, interleaved: false)!
         let b = AVAudioPCMBuffer(pcmFormat: f, frameCapacity: AVAudioFrameCount(seconds * rate))!
