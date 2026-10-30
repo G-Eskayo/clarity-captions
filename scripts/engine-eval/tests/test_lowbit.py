@@ -1,7 +1,7 @@
 """Low-bit Ultra builds (#203): which bits each encoder weight gets in the mixed 2/4/6 build. Pure, no coremltools."""
 import pytest
 
-from edacc_eval.lowbit import UNIFORM_BITS, average_bits, block_index, mixed_plan
+from edacc_eval.lowbit import MIXED_PLANS, UNIFORM_BITS, average_bits, block_index, mixed_plan
 
 # Const names as the mobius fp16 export names them (torch.jit trace of NeMo's ConformerEncoder, then coremltools).
 N = 24
@@ -92,10 +92,41 @@ def test_compressor_offers_every_build_and_imports_without_coremltools():
     import importlib.util
     from pathlib import Path
 
-    from edacc_eval.lowbit import MIXED_NAME
-
     spec = importlib.util.spec_from_file_location("compress_parakeet",
                                                   Path(__file__).resolve().parents[1] / "compress_parakeet.py")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    assert set(mod.VARIANTS) == set(UNIFORM_BITS) | {MIXED_NAME}
+    assert set(mod.VARIANTS) == set(UNIFORM_BITS) | set(MIXED_PLANS)
+
+
+def test_both_mixed_layouts_are_offered():
+    # Decision mixed-layout on #219: build both.
+    assert set(MIXED_PLANS) == {"ultra-mixed246", "ultra-mixed24"}
+
+
+def test_lower_mixed_plan_edges_four_rest_two():
+    plan = mixed_plan(names(), layout="ultra-mixed24")
+    assert plan["pre_encode_conv_0_weight_to_fp16"] == 4
+    assert plan["layers_0_self_attn_linear_q_weight_to_fp16"] == 4
+    assert plan[f"layers_{N - 1}_feed_forward2_linear2_weight_to_fp16"] == 4
+    assert plan["layers_5_self_attn_linear_q_weight_to_fp16"] == 2
+    assert plan["layers_5_feed_forward1_linear1_weight_to_fp16"] == 2
+    assert plan["layers_5_conv_pointwise_conv1_weight_to_fp16"] == 2
+    assert set(plan.values()) == {2, 4}
+
+
+def test_lower_mixed_plan_still_refuses_unknown_weights_inside_a_block():
+    with pytest.raises(ValueError, match="layers_3_mystery"):
+        mixed_plan(names(n=6) + ["layers_3_mystery_weight_to_fp16"], layout="ultra-mixed24")
+
+
+def test_unknown_layout_is_refused():
+    with pytest.raises(KeyError):
+        mixed_plan(names(), layout="ultra-mixed99")
+
+
+def test_lower_mixed_plan_average_on_ultra_shapes_is_near_two_point_two():
+    sizes = {n: 1024 * (4096 if "feed_forward" in n else 2048 if "pointwise_conv1" in n else 1024) for n in names()}
+    avg = average_bits(mixed_plan(names(), layout="ultra-mixed24"), sizes)
+    assert 2.0 < avg < 2.3
+    assert avg < average_bits(mixed_plan(names()), sizes)

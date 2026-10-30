@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Compressed Parakeet Ultra encoders for the size test (#150 "[E] Switch captions to Parakeet Ultra") and the
-low-bit test (#203 "2-bit north star, English first": 3-bit, 2-bit and mixed 2/4/6-bit).
+low-bit test (#203 "2-bit north star, English first": 3-bit, 2-bit and mixed 2/4/6 and 2/4-bit).
 
 Input: the fp16 Ultra encoder .mlpackage exported with FluidInference/mobius
 (models/stt/parakeet-redux/coreml/export_encoder_fp16.py --name ultra, iOS 18 target), and the published
@@ -30,7 +30,7 @@ def _pal(nbits: int, workers: int):
                                   num_kmeans_workers=workers, weight_threshold=2048)
 
 
-# name: description. Uniform builds take their width from edacc_eval.lowbit.UNIFORM_BITS; the mixed one is per weight.
+# name: description. Uniform builds take their width from edacc_eval.lowbit.UNIFORM_BITS; the mixed ones are per weight.
 VARIANTS = {
     "ultra-pal6": "6-bit k-means palettization, per grouped channel (group 16), data-free",
     "ultra-pal4": "4-bit k-means palettization, per grouped channel (group 16), data-free",
@@ -38,19 +38,21 @@ VARIANTS = {
     "ultra-pal2": "2-bit k-means palettization, per grouped channel (group 16), data-free",
     "ultra-mixed246": ("mixed k-means palettization, per grouped channel (group 16), data-free: front end and first and "
                        "last conformer blocks 6-bit, attention 4-bit, middle feed-forward and convolution 2-bit"),
+    "ultra-mixed24": ("mixed k-means palettization, per grouped channel (group 16), data-free: front end and first and "
+                      "last conformer blocks 4-bit, everything else 2-bit"),
 }
 
 
 def _config(name: str, model, workers: int):
     """(OptimizationConfig, average bits) for one variant."""
     import coremltools.optimize.coreml as cto
-    from edacc_eval.lowbit import MIXED_NAME, UNIFORM_BITS, average_bits, mixed_plan
+    from edacc_eval.lowbit import MIXED_PLANS, UNIFORM_BITS, average_bits, mixed_plan
 
     if name in UNIFORM_BITS:
         return cto.OptimizationConfig(global_config=_pal(UNIFORM_BITS[name], workers)), float(UNIFORM_BITS[name])
-    assert name == MIXED_NAME, name
+    assert name in MIXED_PLANS, name
     meta = cto.get_weights_metadata(model, weight_threshold=2048)
-    plan = mixed_plan(list(meta))
+    plan = mixed_plan(list(meta), layout=name)
     avg = average_bits(plan, {n: int(m.val.size) for n, m in meta.items()})
     print(f"{name}: {len(plan)} weights, " + ", ".join(f"{b}-bit {sum(v == b for v in plan.values())}"
                                                        for b in (6, 4, 2)) + f", average {avg:.2f} bits", flush=True)

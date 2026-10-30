@@ -1,11 +1,13 @@
 #!/bin/bash
 # M4 Mac mini: the low-bit Parakeet Ultra test (#203), one sequential chain, resumable at every step.
-#   1. mobius env + fp16 Ultra encoder export, then 3-bit, 2-bit and mixed 2/4/6 builds (compress_parakeet.py);
-#      the export scratch (about 10 GB) is deleted once the builds exist
+#   1. mobius env + fp16 Ultra encoder export, then 3-bit, 2-bit and the two mixed builds, 2/4/6 and 2/4
+#      (compress_parakeet.py); the export scratch (about 10 GB) is deleted once the builds exist, the env is kept
+#      (the owner approved installing it once; EVAL_DROP_ENV=1 deletes it too)
 #   2. EdAcc shards rebuilt here, one parquet at a time (the 2012 mini that keeps them may be offline), checked
 #      clip for clip against #150's result files so the new rows score exactly the clips the old ones did
-#   3. every shard, one run per clip, for the new builds and 6-bit again (same machine, same hour, so the speed
-#      comparison is fair), scored locally; machine load sampled every 30 s the whole time
+#   3. every shard, one run per clip, for the new builds, scored locally; 6-bit's accuracy is #150's (same clips,
+#      same Parakeet path; Decision pal6-rerun on #219), but 6-bit runs shard 1 again in the same hour so the speed
+#      comparison is fair; machine load sampled every 30 s the whole time
 #   4. the live-latency sample (shard 1) and memory footprint for the same builds
 #   5. sizes, report, delete the shards
 # Start: EVAL_REPO=<worktree> nohup nice -n 15 scripts/engine-eval/m4-low-bit.sh >> ~/edacc-eval/logs/203.log 2>&1 &
@@ -19,8 +21,10 @@ C="${EVAL_CONVERT:-$WORK/convert}"
 M="$C/mobius/models/stt"
 CPY="$M/parakeet-tdt-v3-0.6b/coreml/.venv/bin/python"
 PY="$WORK/venv/bin/python"
-BUILDS="${EVAL_LOWBIT_BUILDS:-ultra-pal3,ultra-pal2,ultra-mixed246}"
-ENGINES="${EVAL_LOWBIT_ENGINES:-local:ultra-pal6,local:ultra-pal3,local:ultra-pal2,local:ultra-mixed246}"
+BUILDS="${EVAL_LOWBIT_BUILDS:-ultra-pal3,ultra-pal2,ultra-mixed246,ultra-mixed24}"
+NEW="${EVAL_LOWBIT_ENGINES:-local:ultra-pal3,local:ultra-pal2,local:ultra-mixed246,local:ultra-mixed24}"
+REF="${EVAL_LOWBIT_SPEED_REF:-local:ultra-pal6}"   # speed reference: shard 1 only, in its own folder
+ENGINES="$REF,$NEW"
 R="$WORK/results-203"            # its own result files: the #150 files already hold 6-bit lines that resume would skip
 S="$WORK/shards-203"
 BIN="$REPO/Packages/EngineEval/.build/release/engine-eval"
@@ -62,7 +66,8 @@ if [ "${EVAL_SKIP_BUILD:-0}" != "1" ]; then
   # One k-means worker: a pool crashed with "Pool not running" in #150.
   "$CPY" "$HERE/compress_parakeet.py" "$C/work/encoder_fp16_ultra.mlpackage" --base "$WORK/models/fluidaudio/parakeet-ultra" \
     --out "$WORK/models/variants" --variants "$BUILDS" --sizes "$SIZES" --workers 1 || { echo "palettization failed"; exit 1; }
-  rm -rf "$C"
+  rm -rf "$C/work" "$C/cache/hf"
+  [ "${EVAL_DROP_ENV:-0}" = "1" ] && rm -rf "$C"
 fi
 (cd "$REPO/Packages/EngineEval" && swift build -c release 2>&1 | tail -1)
 
@@ -77,13 +82,22 @@ fi
 "$PY" -m edacc_eval.cli match-shards --shards "$S" --results "$WORK/results" > "$R/shard-match.json" \
   || { echo "rebuilt shards differ from #150's; see $R/shard-match.json"; exit 1; }
 
+if [ ! -e "$R/speedref/done" ]; then
+  status "3/5 speed reference: $REF on shard 1"
+  mkdir -p "$R/speedref"
+  "$BIN" run --shard-dir "$S/shard-001" --results "$R/speedref/apple-shard-001.jsonl" --engines "$REF" --repeats 1 \
+    --models-dir "$WORK/models" --status "$WORK/status-engine.json" && touch "$R/speedref/done"
+  "$PY" -m edacc_eval.cli report --shards "$S" --results "$R/speedref" --out "$R/speedref/report.md" \
+    --json-out "$R/speedref/report.json" > /dev/null || echo "speed reference score failed"
+fi
+
 N=$("$PY" -c 'import json,sys; print(json.load(open(sys.argv[1]))["n_shards"])' "$S/index.json")
 for k in $(seq 1 "$N"); do
   name=$(printf 'shard-%03d' "$k")
   marker="$R/done-$name"
   [ -e "$marker" ] && continue
-  status "3/5 accuracy, $name of $N: $ENGINES"
-  "$BIN" run --shard-dir "$S/$name" --results "$R/apple-$name.jsonl" --engines "$ENGINES" --repeats 1 \
+  status "3/5 accuracy, $name of $N: $NEW"
+  "$BIN" run --shard-dir "$S/$name" --results "$R/apple-$name.jsonl" --engines "$NEW" --repeats 1 \
     --models-dir "$WORK/models" --status "$WORK/status-engine.json" && touch "$marker"
   "$PY" -m edacc_eval.cli report --shards "$S" --results "$R" --out "$R/report.md" --json-out "$R/report.json" \
     > /dev/null || echo "score failed after $name"
