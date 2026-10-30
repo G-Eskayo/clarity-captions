@@ -20,9 +20,11 @@ public enum SynthLag {
     /// Renders `text` with `voice` to buffers (no speaker), timing the first audible sample.
     @MainActor
     public static func render(_ text: String, voice: AVSpeechSynthesisVoice?, synth: AVSpeechSynthesizer,
+                              configure: ((AVSpeechUtterance) -> Void)? = nil,
                               keep: ((AVAudioPCMBuffer) -> Void)? = nil) async -> SynthSample {
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = voice
+        configure?(utterance)
         let t0 = CFAbsoluteTimeGetCurrent()
         return await withCheckedContinuation { (done: CheckedContinuation<SynthSample, Never>) in
             var first: Double?
