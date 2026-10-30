@@ -100,7 +100,7 @@ final class FirstRunModel: ObservableObject {
             switch await system.speechDownload.run(onProgress: { p in Task { @MainActor in self.progress = p } }) {
             case .installed: break
             case .failed(let why): problem = why.message(language: LanguageSettingsState.name(CaptionLanguageCenter.engineLocale)); downloadProblem = why
-            case .alreadyRunning, .cancelled: working = false; return
+            case .alreadyRunning: working = false; return
             }
             if problem == nil {
                 let elapsed = Date().timeIntervalSince(startTime)

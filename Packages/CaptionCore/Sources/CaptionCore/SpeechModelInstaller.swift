@@ -25,13 +25,7 @@ public enum SpeechModelInstaller {
             }
         }
         defer { poll.cancel() }
-        // #245: Stop in the split cancels this; the system's download stops with it rather than running on unseen.
-        try await withTaskCancellationHandler {
-            try await request.downloadAndInstall()
-        } onCancel: {
-            request.progress.cancel()
-        }
-        try Task.checkCancellation()
+        try await request.downloadAndInstall()
         onProgress(1)
     }
 }

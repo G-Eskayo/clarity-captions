@@ -33,8 +33,6 @@ public enum DownloadOutcome: Equatable, Sendable {
     case failed(DownloadProblem)
     /// A download is already in progress; nothing new was started.
     case alreadyRunning
-    /// #245: the task waiting for it was cancelled (Stop in the split); the install was told to stop too.
-    case cancelled
 }
 
 /// Counts watchdog ticks with no forward progress. Progress that goes backwards is not movement.
@@ -91,65 +89,27 @@ public final class SpeechDownload: @unchecked Sendable {
         let latest = Latest()
         let once = FirstWins()
         let install = self.install
-        let work = WorkBox()
-        // #245: Stop in the split cancels the task waiting here. The install is cancelled with it, and this returns at
-        // once whether or not the install notices.
-        return await withTaskCancellationHandler {
-            await withCheckedContinuation { continuation in
-                work.resume = { if once.claim() { continuation.resume(returning: .cancelled) } }
-                if Task.isCancelled { work.cancel(); return }
-                work.set(Task {
-                    do {
-                        try await install { p in latest.set(p); onProgress(p) }
-                        if once.claim() { continuation.resume(returning: Task.isCancelled ? .cancelled : .installed) }
-                    } catch {
-                        if once.claim() {
-                            continuation.resume(returning: Task.isCancelled ? .cancelled : .failed(DownloadProblem.from(error)))
-                        }
-                    }
-                })
-                Task { [tick, stallTicks, sleep] in
-                    var watch = StallWatch(limit: stallTicks)
-                    while !work.isCancelled {
-                        await sleep(tick)
-                        if once.isClaimed { return }
-                        if watch.tick(progress: latest.value) {
-                            if once.claim() { work.cancel(); continuation.resume(returning: .failed(.stalled)) }
-                            return
-                        }
+        return await withCheckedContinuation { continuation in
+            let work = Task {
+                do {
+                    try await install { p in latest.set(p); onProgress(p) }
+                    if once.claim() { continuation.resume(returning: .installed) }
+                } catch {
+                    if once.claim() { continuation.resume(returning: .failed(DownloadProblem.from(error))) }
+                }
+            }
+            Task { [tick, stallTicks, sleep] in
+                var watch = StallWatch(limit: stallTicks)
+                while !work.isCancelled {
+                    await sleep(tick)
+                    if once.isClaimed { return }
+                    if watch.tick(progress: latest.value) {
+                        if once.claim() { work.cancel(); continuation.resume(returning: .failed(.stalled)) }
+                        return
                     }
                 }
             }
-        } onCancel: {
-            work.cancel()
         }
-    }
-}
-
-/// The install's task, and how to end the wait for it, for a cancel that can arrive before either exists.
-private final class WorkBox: @unchecked Sendable {
-    private let lock = NSLock()
-    private var task: Task<Void, Never>?
-    private var cancelled = false
-    private var _resume: (() -> Void)?
-
-    var resume: (() -> Void)? {
-        get { lock.withLock { _resume } }
-        set { lock.withLock { _resume = newValue } }
-    }
-
-    func set(_ task: Task<Void, Never>) {
-        let late = lock.withLock { () -> Bool in self.task = task; return cancelled }
-        if late { task.cancel() }
-    }
-
-    var isCancelled: Bool { lock.withLock { cancelled || (task?.isCancelled ?? false) } }
-
-    /// Cancels the install, if started, and ends the wait.
-    func cancel() {
-        let (task, resume) = lock.withLock { () -> (Task<Void, Never>?, (() -> Void)?) in cancelled = true; return (self.task, _resume) }
-        task?.cancel()
-        resume?()
     }
 }
 
