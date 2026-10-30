@@ -9,6 +9,6 @@ extension LanguageSettingsState {
     /// bought on the Mac until #213 adds its own purchase (ADR 0028, #176).
     @MainActor
     static func current() -> LanguageSettingsState {
-        LanguageSettingsState(captions: Locale(identifier: "en-US"), followsDevice: false, translationOn: false, target: nil)
+        LanguageSettingsState(captions: Locale(identifier: "en-US"), followsDevice: false, translationOn: false, target: nil, callCaptions: nil)
     }
 }

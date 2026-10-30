@@ -11,6 +11,9 @@ struct LanguageSettingsState: Equatable {
     var followsDevice: Bool
     var translationOn: Bool
     var target: Locale?
+    /// #213, the Mac only: what the other people on calls speak. Set, translation has two From rows, the room's (the
+    /// caption language) and the calls'; nil on the iPhone, which has one.
+    var callCaptions: Locale?
     /// The caption language's own download (#37), while one runs or after one failed.
     var captionDownload: CaptionLanguageSwitch.Phase = .ready
     /// The translation language pack for this pair: nil when it's on the device, else 0...1 while it downloads. Apple's
@@ -36,7 +39,7 @@ struct LanguageSettingsState: Equatable {
                         preferred: [String] = Locale.preferredLanguages) -> LanguageSettingsState {
         let captions = languages.current
         var state = LanguageSettingsState(captions: captions, followsDevice: languages.followsDevice,
-                                          translationOn: translation.isOn, target: translation.target)
+                                          translationOn: translation.isOn, target: translation.target, callCaptions: nil)
         state.captionDownload = languages.change.phase
         state.translationOwned = translation.purchase.isOwned
         state.translationPrice = translation.price

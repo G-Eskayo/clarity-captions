@@ -13,6 +13,8 @@ struct CallPopupView: View {
         let name: String?
         let text: String
         var volatile = false
+        /// #213: the line's translation, shown on top with what was said smaller underneath (the iPhone's #53 look).
+        var translation: String? = nil
     }
 
     enum Status: Equatable {
@@ -158,11 +160,30 @@ struct CallPopupView: View {
                                     .font(.system(size: 13, weight: .semibold))
                                     .foregroundStyle(speakerColors[speaker % speakerColors.count].color)
                             }
-                            Text(line.text)
-                                .font(captionFont)
-                                .foregroundStyle(style.text.color.opacity(line.volatile ? style.volatileOpacity : 1))
+                            if let translated = line.translation {
+                                // The iPhone's translated line (#53, owner on PR #171): the translation is what's read, at
+                                // caption size behind a translate mark; what was said stays, smaller, underneath.
+                                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                    Image(systemName: "translate").font(.system(size: 13, weight: .bold)).foregroundStyle(mutedColor(style))
+                                    Text(translated).font(captionFont)
+                                }
+                                .foregroundStyle(style.text.color)
                                 .fixedSize(horizontal: false, vertical: true)
-                                .textSelection(.enabled)
+                                .accessibilityElement(children: .combine)
+                                .accessibilityLabel(String(localized: "Translated: ") + translated)
+                                Text(line.text)
+                                    .font(.system(size: 14))
+                                    .foregroundStyle(mutedColor(style))
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .textSelection(.enabled)
+                                    .accessibilityLabel(String(localized: "Said: ") + line.text)
+                            } else {
+                                Text(line.text)
+                                    .font(captionFont)
+                                    .foregroundStyle(style.text.color.opacity(line.volatile ? style.volatileOpacity : 1))
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .textSelection(.enabled)
+                            }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .id(line.id)
