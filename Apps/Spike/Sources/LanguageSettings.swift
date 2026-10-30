@@ -1,6 +1,8 @@
 import CaptionCore
 import Foundation
+#if canImport(UIKit)
 import UIKit
+#endif
 
 /// What Settings shows for the caption language (#37) and translation (#53).
 struct LanguageSettingsState: Equatable {
@@ -27,7 +29,8 @@ struct LanguageSettingsState: Equatable {
     /// A plain line from the purchase (Ask to Buy, nothing to restore, didn't go through), or nil.
     var purchaseMessage: String?
 
-    /// The saved choices, with the device's language filling in what hasn't been picked.
+    #if os(iOS)
+    /// The saved choices, with the device's language filling in what hasn't been picked. The Mac has its own (#209).
     @MainActor
     static func current(languages: CaptionLanguageCenter = .shared, translation: TranslationCenter = .shared,
                         preferred: [String] = Locale.preferredLanguages) -> LanguageSettingsState {
@@ -47,13 +50,20 @@ struct LanguageSettingsState: Equatable {
         #endif
         return state
     }
+    #endif
 
     static func name(_ locale: Locale) -> String {
         Locale.current.localizedString(forIdentifier: locale.identifier) ?? locale.identifier
     }
 
-    /// "iPad" or "iPhone", for "matches this iPad".
-    static var deviceWord: String { UIDevice.current.model }
+    /// "iPad", "iPhone" or "Mac", for "matches this iPad".
+    static var deviceWord: String {
+        #if os(iOS)
+        UIDevice.current.model
+        #else
+        String(localized: "Mac")
+        #endif
+    }
 
     /// Settings' sample caption in the caption language, and its translation. A short fixed table: the real
     /// captions are translated live, this is only the preview line.

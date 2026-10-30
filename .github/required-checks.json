@@ -43,6 +43,29 @@
       "timeout_s": 2400
     },
     {
+      "id": "mac-app",
+      "name": "Mac app builds (macOS)",
+      "cwd": "Apps/Mac",
+      "paths": [
+        "Apps/Mac/*",
+        "Apps/Spike/Sources/*",
+        "Apps/Spike/Resources/Fonts/*",
+        "Packages/*",
+        "scripts/fetch-diarizer-models.sh"
+      ],
+      "command": [
+        "bash",
+        "-c",
+        "D=$(mktemp -d \"${TMPDIR:-/tmp}/clarity-mac-derived.XXXXXX\"); trap 'rm -rf \"$D\"' EXIT; M=Resources/Models/Sortformer_v2.1.mlmodelc; if [ ! -d \"$M\" ]; then sh ../../scripts/fetch-diarizer-models.sh && mkdir -p Resources/Models && cp -cR ../Spike/Resources/Models/Sortformer_v2.1.mlmodelc Resources/Models/; fi; xcodegen generate && xcodebuild -project CaptionMac.xcodeproj -scheme CaptionMac -configuration Debug -destination 'platform=macOS' -derivedDataPath \"$D\" CODE_SIGNING_ALLOWED=NO build"
+      ],
+      "parser": "xcodebuild",
+      "requires": [
+        "xcodegen",
+        "xcode"
+      ],
+      "timeout_s": 2400
+    },
+    {
       "id": "site",
       "name": "Website checks (site/)",
       "cwd": ".",
