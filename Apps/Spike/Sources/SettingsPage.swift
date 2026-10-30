@@ -254,11 +254,14 @@ struct SettingsPage: View {
                             label: String(localized: "Translate into, ")) { onChooseTranslationTarget?() }
             // #245: Into's speech model, set up here so the split never downloads.
             CaptionLanguageDownloadLine(style: style, phase: language.intoSpeech)
+            // #233's ear rows are iPhone and iPad only: the Mac target has no EarViews.swift, and hides this section (#209).
+            #if !os(macOS)
             if language.earOffered {
                 EarSettingsRows(style: style, state: language.ear, target: language.target.map(LanguageSettingsState.name) ?? "",
                                 font: { scaled($0, $1) }, muted: muted, softFill: softFill) { onEar?($0) }
                     .padding(.top, 4)
             }
+            #endif
             if let p = language.downloadProgress {
                 VStack(alignment: .leading, spacing: 6) {
                     ProgressView(value: p).tint(style.gear.color)
