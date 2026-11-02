@@ -196,6 +196,10 @@ struct SettingsPage: View {
     }
 
     @ViewBuilder private var translationRows: some View {
+        // #245: Face to face sent her here: fewer than two languages are ready for the split. Said in one line, first.
+        if let reason = language.setupReason {
+            Text(verbatim: reason).font(scaled(15, .bold)).accessibilityAddTraits(.isStaticText)
+        }
         if language.translationOwned { ownedTranslationRows } else { translationOfferRows }
         if let message = language.purchaseMessage {
             Text(verbatim: message).font(scaled(13, .semibold)).foregroundStyle(muted)
@@ -257,11 +261,16 @@ struct SettingsPage: View {
                     if DemoMode.swap == "right" { swapProposal(systemName: "arrow.left.arrow.right").offset(x: -30, y: -28) }
                 }
                 #endif
+            // #245: Into's speech model, set up here so the split never downloads.
+            CaptionLanguageDownloadLine(style: style, phase: language.intoSpeech)
+            // #233's ear rows are iPhone and iPad only: the Mac target has no EarViews.swift, and hides this section (#209).
+            #if !os(macOS)
             if language.earOffered {
                 EarSettingsRows(style: style, state: language.ear, target: language.target.map(LanguageSettingsState.name) ?? "",
                                 font: { scaled($0, $1) }, muted: muted, softFill: softFill) { onEar?($0) }
                     .padding(.top, 4)
             }
+            #endif
             if let p = language.downloadProgress {
                 VStack(alignment: .leading, spacing: 6) {
                     ProgressView(value: p).tint(style.gear.color)
