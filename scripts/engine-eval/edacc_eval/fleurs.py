@@ -26,6 +26,8 @@ LANGUAGES = {
     "es": Language("es_419", ("es-MX", "es-US", "es-ES")),  # FLEURS Spanish is Latin American; Apple has no es-419
     "fr": Language("fr_fr", ("fr-FR",)),
     "de": Language("de_de", ("de-DE",)),
+    "it": Language("it_it", ("it-IT", "it-CH")),  # #234
+    "pt": Language("pt_br", ("pt-BR", "pt-PT")),  # #234; FLEURS Portuguese is Brazilian
     "he": Language("he_il", ("he-IL",)),  # #201; Apple's Hebrew is DictationTranscriber, SpeechTranscriber has none
 }
 

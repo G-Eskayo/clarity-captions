@@ -5,6 +5,7 @@ import StoreKit
 import SwiftUI
 import UIKit
 import Translation
+import Speech
 
 /// Live translation (#53): the one-time purchase (StoreKit 2), on or off, the language it goes into, Apple's
 /// on-device Translation (picked in #159), and the translated text for each caption line. Settings, the Into list and
@@ -26,6 +27,11 @@ final class TranslationCenter: ObservableObject {
     @Published private(set) var translations = CaptionTranslations()
     /// Handed to `.translationTask`; a new value starts a new session, nil stops it.
     @Published private(set) var configuration: TranslationSession.Configuration?
+    /// #245, the owner's rule: everything a translation language needs is set up up front, in Settings. Into's own
+    /// speech model (the split captions it in her half) downloads here, with real progress, never when a feature starts.
+    @Published private(set) var intoSpeech: CaptionLanguageSwitch.Phase = .ready
+    /// The Into language whose speech model is being checked or downloaded now.
+    private var intoSpeechFor: Locale?
     /// #60 face to face, the second direction: her words (the language she reads) into the other person's language.
     @Published private(set) var reverseTranslations = CaptionTranslations()
     @Published private(set) var reverseConfiguration: TranslationSession.Configuration?
@@ -48,7 +54,15 @@ final class TranslationCenter: ObservableObject {
         #if DEBUG
         if let id = DemoMode.translate { isOn = true; target = Locale(identifier: id) }
         #endif
+        ear.targetChanged(target)
+        ear.onCheck = { [weak self] in self?.earCheck() }
     }
+
+    /// #233: the translation spoken into her headphones, from the same session and the same finished words.
+    private let ear = EarCenter.shared
+
+    /// One-way captions only: face to face has its own two-way screen.
+    private var earActive: Bool { isActive && !faceToFace }
 
     /// Whether captions are translated right now: bought, on, and somewhere to translate into.
     var isActive: Bool {
@@ -64,7 +78,7 @@ final class TranslationCenter: ObservableObject {
     func start() async {
         #if DEBUG
         if DemoMode.translate != nil || DemoMode.translationOwned { purchase.entitlementChanged(owned: true); refreshConfiguration(); return }
-        if DemoMode.fakeStore { price = "$1.99"; purchase.entitlementChanged(owned: DemoMode.fakeStoreOwned); refreshConfiguration(); return }
+        if DemoMode.fakeStore { price = "$4.99"; purchase.entitlementChanged(owned: DemoMode.fakeStoreOwned); refreshConfiguration(); return }
         #endif
         if updates == nil {
             updates = Task { [weak self] in
@@ -153,15 +167,49 @@ final class TranslationCenter: ObservableObject {
     func setOn(_ on: Bool) {
         isOn = on
         store.translationOn = on
-        if !on { translations.reset() }
+        if !on { translations.reset(); ear.stopAll() }
         refreshConfiguration()
+        if on { setUpIntoSpeech() }
     }
 
     func setTarget(_ locale: Locale) {
         target = locale
         store.translationTarget = locale
         translations.reset()
+        ear.targetChanged(locale)
         refreshConfiguration()
+        intoSpeech = .ready
+        setUpIntoSpeech()
+    }
+
+    /// #245: makes sure Into's speech model is on the device, downloading it with progress when it isn't. Runs when
+    /// translation is turned on, Into changes, or Settings opens with translation on (a failed download tries again
+    /// there). Its language pack comes through Apple's own sheet, from the session `refreshConfiguration` sets up. A
+    /// language Apple's speech engine doesn't have stays as it is: one-way translation into it still works, it just
+    /// can't be a half of the split.
+    func setUpIntoSpeech() {
+        guard purchase.isOwned, isOn, let target, intoSpeechFor != target else { return }
+        #if DEBUG
+        if DemoMode.isOn { return }
+        #endif
+        // A download for an Into she has since changed carries on unwatched; its end changes nothing on screen.
+        intoSpeechFor = target
+        Task { [weak self] in
+            defer { if self?.intoSpeechFor == target { self?.intoSpeechFor = nil } }
+            guard let locale = await SpeechTranscriber.supportedLocale(equivalentTo: target),
+                  !(await SpeechModelInstaller.isInstalled(locale: locale)) else { return }
+            guard let self, self.intoSpeechFor == target else { return }
+            intoSpeech = .downloading(locale, progress: 0)
+            let outcome = await SpeechDownload.language(locale).run { [weak self] p in
+                Task { @MainActor in
+                    guard let self, self.intoSpeechFor == target,
+                          case .downloading(let l, let shown) = self.intoSpeech else { return }
+                    self.intoSpeech = .downloading(l, progress: max(shown, min(p, 1)))
+                }
+            }
+            guard self.intoSpeechFor == target else { return }
+            if case .failed(let why) = outcome { intoSpeech = .failed(locale, why) } else { intoSpeech = .ready }
+        }
     }
 
     /// The caption language changed (#37): translate from the new one.
@@ -248,6 +296,9 @@ final class TranslationCenter: ObservableObject {
 
     private func demoFill(_ lines: [CaptionLine]) {
         guard isOn, purchase.isOwned, !faceToFace || faceToFacePair != nil else { return }
+        for phrase in ear.take(from: lines, active: earActive) {
+            ear.speak(phrase, translation: DemoMode.englishLine(for: phrase.text) ?? phrase.text)
+        }
         for work in translations.take(from: lines) {
             translations.finished(lineID: work.lineID, source: work.text,
                                   translation: DemoMode.englishLine(for: work.text) ?? DemoMode.faceToFaceTranslation(of: work.text) ?? work.text)
@@ -265,6 +316,14 @@ final class TranslationCenter: ObservableObject {
 
     private var latest: [CaptionLine] = []
 
+    /// Words held still long enough to be spoken early (#233): look again now.
+    private func earCheck() {
+        #if DEBUG && targetEnvironment(simulator)
+        if usesDemoTranslator { demoFill(latest); return }
+        #endif
+        wake?.yield()
+    }
+
     /// Runs inside `.translationTask`: makes sure the language pack is there (Apple's own sheet, the one system
     /// pop-up Seal allows, #159), then translates each finished line as it lands, until the session is replaced.
     func run(_ session: TranslationSession) async {
@@ -279,6 +338,14 @@ final class TranslationCenter: ObservableObject {
         continuation.yield()
         for await _ in stream {
             if Task.isCancelled { return }
+            // #233 first: the voice is the part where every millisecond shows.
+            for phrase in ear.take(from: latest, active: earActive) {
+                do {
+                    ear.speak(phrase, translation: try await session.translate(phrase.text).targetText)
+                } catch {
+                    if Task.isCancelled { return }
+                }
+            }
             for work in translations.take(from: latest) {
                 do {
                     let response = try await session.translate(work.text)

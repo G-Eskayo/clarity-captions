@@ -3,7 +3,7 @@ import Foundation
 import os
 
 /// The one place the iPhone app makes a captioning engine (ADR 0025). Seal's own model for the caption language
-/// (Parakeet for English, the zipformer for Hebrew, #220) unless the developer flag says Apple, the model is missing,
+/// (Parakeet where it won, #234; the zipformer for Hebrew, #220) unless the developer flag says Apple, the model is missing,
 /// memory is short, or it fell back twice in the last day (EngineFallbackPolicy).
 enum CaptionEngineFactory {
     static var speakerModelURL: URL? { Bundle.main.url(forResource: "Sortformer_v2.1", withExtension: "mlmodelc") }
@@ -21,7 +21,8 @@ enum CaptionEngineFactory {
         case .hebrewZipformer: hebrewModelURL
         }
     }
-    /// The caption language she chose (#37). English runs Parakeet, Hebrew the zipformer, the rest Apple's engine.
+    /// The caption language she chose (#37). It picks the engine (#234, #220): Parakeet where it won, Hebrew the zipformer,
+    /// Apple's engine elsewhere.
     static var captionLocale: Locale { CaptionLanguageCenter.engineLocale }
     /// Only an Xcode (debug) build has the developer panel, so only it honours the panel's engine pick (owner, PR #155).
     #if DEBUG
@@ -60,8 +61,9 @@ enum CaptionEngineFactory {
 
     static func selection(now: Date = Date()) -> EngineSelection { plan(now: now).selection }
 
-    /// One-way captions in the caption language, or (#208, one half of the split picked) in `locale`.
-    static func make(micMode: MicMode, locale: Locale? = nil) throws -> TranscriptionEngine {
+    /// One-way captions in the caption language, or (#208, one half of the split picked) in `locale`. #245: the split
+    /// passes `.mustBeOnDevice`; its languages are set up in Settings, and it never downloads.
+    static func make(micMode: MicMode, locale: Locale? = nil, speechModel: SpeechModelPolicy = .downloadIfNeeded) throws -> TranscriptionEngine {
         guard let speakerModel = speakerModelURL else {
             throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc"))
         }
@@ -73,7 +75,8 @@ enum CaptionEngineFactory {
         source = DemoMode.audioFile.map { FileAudioSource(url: $0) }
         #endif
         let engine = TranscriptionEngine(locale: plan.locale, micMode: micMode, diarizerModelURL: speakerModel,
-                                         recognizer: recognizer, startReason: selection.reason, audioSource: source)
+                                         recognizer: recognizer, startReason: selection.reason, audioSource: source,
+                                         speechModel: speechModel)
         engine.onFallback = { _ in
             var history = EngineFallbackHistory()
             history.record(Date(), now: Date())
@@ -81,9 +84,10 @@ enum CaptionEngineFactory {
         return engine
     }
 
-    /// #60 face to face: one engine per half, each in its half's language (ADR 0025 picks the recognizer per language:
-    /// Parakeet for English, the zipformer for Hebrew, Apple's engine for the rest). Since #208 each half's language is the one its list picked.
-    /// No engine loaded ahead is used: it was made for one-way captions.
+    /// #60 face to face: one engine per half, each in its half's language, picked per language the same way as one-way
+    /// captions (ADR 0025, #234, #220: Parakeet where it won, the zipformer for Hebrew, Apple's engine for the rest). Since #208
+    /// each half's language is the one its list picked. No engine loaded ahead is used: it was made for one-way captions.
+    /// #245: never downloads a speech model.
     static func makeFaceToFace(micMode: MicMode, ownerLocale: Locale, partnerLocale: Locale) throws -> TranscriptionEngine {
         guard let speakerModel = speakerModelURL else {
             throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc"))
@@ -91,7 +95,8 @@ enum CaptionEngineFactory {
         func recognizer(_ locale: Locale) -> SpeechRecognizerSetup { Self.recognizer(for: plan(for: locale)) }
         let setup = FaceToFaceSetup(ownerLocale: ownerLocale, ownerRecognizer: recognizer(ownerLocale),
                                     partnerLocale: partnerLocale, partnerRecognizer: recognizer(partnerLocale))
-        return TranscriptionEngine(locale: partnerLocale, micMode: micMode, diarizerModelURL: speakerModel, faceToFace: setup)
+        return TranscriptionEngine(locale: partnerLocale, micMode: micMode, diarizerModelURL: speakerModel, faceToFace: setup,
+                                   speechModel: .mustBeOnDevice)
     }
 
     /// First run: Core ML compiles Parakeet for this phone once (35 s on a Mac), so it happens here and not behind

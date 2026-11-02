@@ -6,6 +6,7 @@ import SwiftUI
 /// `-MarvinScene <scene> -MarvinScreenshot <png> -MarvinAppearance light|dark`, the app opens on that page with a demo
 /// conversation, snapshots its own window and quits. Captioning never starts, the look isn't saved, and saved
 /// conversations go to a throwaway folder. Scenes: veil, newquestion, settings, saved, conversation, credits.
+/// With `settings`, `-MarvinSettingsSection <id>` (translation, language, about...) scrolls Settings to that section.
 @MainActor
 enum MarvinScene {
     static var scene: String? { UserDefaults.standard.string(forKey: "MarvinScene") }

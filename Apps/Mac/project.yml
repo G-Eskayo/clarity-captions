@@ -30,6 +30,9 @@ targets:
       - path: ../Spike/Sources/SavedConversationsView.swift
       - path: ../Spike/Sources/SystemTextSizeCategory+DynamicTypeSize.swift
       - path: ../Spike/Sources/AboutCreditsView.swift
+      # #209: Settings' caption language and translation rows (#171), and the language list's download line.
+      - path: ../Spike/Sources/LanguageSettings.swift
+      - path: ../Spike/Sources/CaptionLanguagePage.swift
       # #178: Stop becomes the iPhone's small X with the iPhone's shrink animation, the same control.
       - path: ../Spike/Sources/MorphingControl.swift
       - path: ../Spike/Resources/Fonts

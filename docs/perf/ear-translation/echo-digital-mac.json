@@ -1,0 +1,519 @@
+{
+  "date" : "2026-10-30T08:38:49Z",
+  "device" : "Mac mini (gils-mac-mini.local)",
+  "os" : "macOS Version 26.5.1 (Build 25F80)",
+  "results" : {
+    "de" : [
+      {
+        "captionedBySourceEngine" : "Vo Isteban Hof?",
+        "captionedByTargetEngine" : "Wo ist der Bahnhof?",
+        "realSpeechSimilarity" : 0,
+        "source" : "Where is the train station?",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "Wo ist der Bahnhof?",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Couldn't be a bitter die rech nung haben?",
+        "captionedByTargetEngine" : "Können wir bitte die Rechnung haben?",
+        "realSpeechSimilarity" : 0,
+        "source" : "Can we get the bill, please?",
+        "sourceEngineSimilarity" : 0.2222222222222222,
+        "spoken" : "Können wir bitte die Rechnung haben?",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "And Schuligung, Ich habe iren namen nicht verstanden.",
+        "captionedByTargetEngine" : "Entschuldigung, ich habe Ihren Namen nicht verstanden.",
+        "realSpeechSimilarity" : 0,
+        "source" : "I'm sorry, I didn't catch your name.",
+        "sourceEngineSimilarity" : 0.625,
+        "spoken" : "Entschuldigung, ich habe Ihren Namen nicht verstanden.",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Das moseum, infinite, nalgen, um, nein, ure.",
+        "captionedByTargetEngine" : "Das Museum öffnet morgen um 9:00 Uhr.",
+        "realSpeechSimilarity" : 0.14285714285714285,
+        "source" : "The museum opens at nine tomorrow morning.",
+        "sourceEngineSimilarity" : 0.2857142857142857,
+        "spoken" : "Das Museum öffnet morgen um neun Uhr.",
+        "targetEngineSimilarity" : 0.75
+      },
+      {
+        "captionedBySourceEngine" : "Maine torta kom neste vochet zubesuch.",
+        "captionedByTargetEngine" : "Meine Tochter kommt nächste Woche zu Besuch",
+        "realSpeechSimilarity" : 0,
+        "source" : "My daughter is coming to visit next week.",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "Meine Tochter kommt nächste Woche zu Besuch.",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Is Deezer Platz Frei?",
+        "captionedByTargetEngine" : "Ist dieser Platz frei?",
+        "realSpeechSimilarity" : 0,
+        "source" : "Is this seat taken?",
+        "sourceEngineSimilarity" : 0.5,
+        "spoken" : "Ist dieser Platz frei?",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "We have einen tisch wer fier um acht or reserviet.",
+        "captionedByTargetEngine" : "Wir haben einen Tisch für vier um 8:00 Uhr reserviert.",
+        "realSpeechSimilarity" : 0,
+        "source" : "We booked a table for four at eight o'clock.",
+        "sourceEngineSimilarity" : 0.4,
+        "spoken" : "Wir haben einen Tisch für vier um acht Uhr reserviert.",
+        "targetEngineSimilarity" : 0.8181818181818182
+      },
+      {
+        "captionedBySourceEngine" : "The Langadalat is zufus.hin.",
+        "captionedByTargetEngine" : "Wie lange dauert es zu Fuß dorthin?",
+        "realSpeechSimilarity" : 0,
+        "source" : "How long does it take to walk there?",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "Wie lange dauert es zu Fuß dorthin?",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Haven si, it was onen nusse?",
+        "captionedByTargetEngine" : "Haben Sie etwas ohne Nüsse",
+        "realSpeechSimilarity" : 0,
+        "source" : "Do you have anything without nuts in it?",
+        "sourceEngineSimilarity" : 0.16666666666666666,
+        "spoken" : "Haben Sie etwas ohne Nüsse?",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Feel and dunk, das wa werklich hil freich.",
+        "captionedByTargetEngine" : "Vielen Dank, das war wirklich hilfreich",
+        "realSpeechSimilarity" : 0,
+        "source" : "Thank you so much, that was really helpful.",
+        "sourceEngineSimilarity" : 0.125,
+        "spoken" : "Vielen Dank, das war wirklich hilfreich.",
+        "targetEngineSimilarity" : 1
+      }
+    ],
+    "es" : [
+      {
+        "captionedBySourceEngine" : "Dunde esta estación de green.",
+        "captionedByTargetEngine" : "Dónde está la estación de tren",
+        "realSpeechSimilarity" : 0,
+        "source" : "Where is the train station?",
+        "sourceEngineSimilarity" : 0.6,
+        "spoken" : "¿Dónde está la estación de tren?",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Nos gré la cuenta, por favor.",
+        "captionedByTargetEngine" : "Nos trae la cuenta por favor",
+        "realSpeechSimilarity" : 0,
+        "source" : "Can we get the bill, please?",
+        "sourceEngineSimilarity" : 0.8333333333333334,
+        "spoken" : "¿Nos trae la cuenta, por favor?",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Better than me, no intendido si nombre.",
+        "captionedByTargetEngine" : "Perdone, no he entendido su nombre.",
+        "realSpeechSimilarity" : 0,
+        "source" : "I'm sorry, I didn't catch your name.",
+        "sourceEngineSimilarity" : 0.2857142857142857,
+        "spoken" : "Perdone, no he entendido su nombre.",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "El mu se labre mañana las nueve.",
+        "captionedByTargetEngine" : "El museo abre mañana a las nueve",
+        "realSpeechSimilarity" : 0,
+        "source" : "The museum opens at nine tomorrow morning.",
+        "sourceEngineSimilarity" : 0.5714285714285714,
+        "spoken" : "El museo abre mañana a las nueve.",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Mi habien habisitar nos la semana que viene.",
+        "captionedByTargetEngine" : "Mi hija viene a visitarnos la semana que viene",
+        "realSpeechSimilarity" : 0,
+        "source" : "My daughter is coming to visit next week.",
+        "sourceEngineSimilarity" : 0.625,
+        "spoken" : "Mi hija viene a visitarnos la semana que viene.",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Is there a good pados taciento?",
+        "captionedByTargetEngine" : "Está ocupado este asiento",
+        "realSpeechSimilarity" : 0,
+        "source" : "Is this seat taken?",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "¿Está ocupado este asiento?",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : ", para cuatro alaso.",
+        "captionedByTargetEngine" : "Reservamos una mesa para cuatro a las ocho.",
+        "realSpeechSimilarity" : 0.1,
+        "source" : "We booked a table for four at eight o'clock.",
+        "sourceEngineSimilarity" : 0.6666666666666666,
+        "spoken" : "Reservamos una mesa para cuatro a las ocho.",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Cuento sitar lan yegadandendo?",
+        "captionedByTargetEngine" : "Cuánto se tarda en llegar andando",
+        "realSpeechSimilarity" : 0,
+        "source" : "How long does it take to walk there?",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "¿Cuánto se tarda en llegar andando?",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "The en elgos influter secos?",
+        "captionedByTargetEngine" : "Tiene algo sin frutos secos",
+        "realSpeechSimilarity" : 0,
+        "source" : "Do you have anything without nuts in it?",
+        "sourceEngineSimilarity" : 0.2,
+        "spoken" : "¿Tiene algo sin frutos secos?",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Mutissimas gracias, mera yudadamuto.",
+        "captionedByTargetEngine" : "Muchísimas gracias y me ha ayudado mucho",
+        "realSpeechSimilarity" : 0,
+        "source" : "Thank you so much, that was really helpful.",
+        "sourceEngineSimilarity" : 0.25,
+        "spoken" : "Muchísimas gracias, me ha ayudado mucho.",
+        "targetEngineSimilarity" : 0.8571428571428571
+      }
+    ],
+    "fr" : [
+      {
+        "captionedBySourceEngine" : "We la guard.",
+        "captionedByTargetEngine" : "Où est la gare ?",
+        "realSpeechSimilarity" : 0,
+        "source" : "Where is the train station?",
+        "sourceEngineSimilarity" : 0.3333333333333333,
+        "spoken" : "Où est la gare ?",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Ladition, si vous plait.",
+        "captionedByTargetEngine" : "L'addition, s'il vous plaît ?",
+        "realSpeechSimilarity" : 0,
+        "source" : "Can we get the bill, please?",
+        "sourceEngineSimilarity" : 0.5,
+        "spoken" : "L'addition, s'il vous plaît ?",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Desolet, Je ne tais compris vetre nom.",
+        "captionedByTargetEngine" : "Désolé, je n'ai pas compris votre nom",
+        "realSpeechSimilarity" : 0,
+        "source" : "I'm sorry, I didn't catch your name.",
+        "sourceEngineSimilarity" : 0.42857142857142855,
+        "spoken" : "Désolé, je n'ai pas compris votre nom.",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Le muse ouvre de man, le nouvre.",
+        "captionedByTargetEngine" : "Le musée ouvre demain à 9h.",
+        "realSpeechSimilarity" : 0,
+        "source" : "The museum opens at nine tomorrow morning.",
+        "sourceEngineSimilarity" : 0.42857142857142855,
+        "spoken" : "Le musée ouvre demain à neuf heures.",
+        "targetEngineSimilarity" : 0.8333333333333334
+      },
+      {
+        "captionedBySourceEngine" : "Ma fivien, rendre visit, la semain prochen.",
+        "captionedByTargetEngine" : "Ma fille vient nous rendre visite la semaine prochaine.",
+        "realSpeechSimilarity" : 0,
+        "source" : "My daughter is coming to visit next week.",
+        "sourceEngineSimilarity" : 0.42857142857142855,
+        "spoken" : "Ma fille vient nous rendre visite la semaine prochaine.",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "C'est place, c'est pris?",
+        "captionedByTargetEngine" : "Cette place est prise",
+        "realSpeechSimilarity" : 0,
+        "source" : "Is this seat taken?",
+        "sourceEngineSimilarity" : 0.5,
+        "spoken" : "Cette place est prise ?",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Nous avons reservé, un table, pour que traventeur.",
+        "captionedByTargetEngine" : "Nous avons réservé une table pour quatre à 20h.",
+        "realSpeechSimilarity" : 0.2,
+        "source" : "We booked a table for four at eight o'clock.",
+        "sourceEngineSimilarity" : 0.625,
+        "spoken" : "Nous avons réservé une table pour quatre à vingt heures.",
+        "targetEngineSimilarity" : 0.8888888888888888
+      },
+      {
+        "captionedBySourceEngine" : "Conbien de temfaux il pouri aller appier.",
+        "captionedByTargetEngine" : "Combien de temps faut il pour y aller à pied ?",
+        "realSpeechSimilarity" : 0,
+        "source" : "How long does it take to walk there?",
+        "sourceEngineSimilarity" : 0.42857142857142855,
+        "spoken" : "Combien de temps faut-il pour y aller à pied ?",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Ave vous quelle que chose sans fruis a cup.",
+        "captionedByTargetEngine" : "Avez-vous quelque chose sans fruits à coque ?",
+        "realSpeechSimilarity" : 0,
+        "source" : "Do you have anything without nuts in it?",
+        "sourceEngineSimilarity" : 0.4444444444444444,
+        "spoken" : "Avez-vous quelque chose sans fruits à coque ?",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Merci beaucoup, c'est mavre mon idée.",
+        "captionedByTargetEngine" : "Merci beaucoup, ça m'a vraiment aidé",
+        "realSpeechSimilarity" : 0,
+        "source" : "Thank you so much, that was really helpful.",
+        "sourceEngineSimilarity" : 0.2857142857142857,
+        "spoken" : "Merci beaucoup, ça m'a vraiment aidé.",
+        "targetEngineSimilarity" : 1
+      }
+    ],
+    "he" : [
+      {
+        "captionedBySourceEngine" : "Efuta kanatarakivit.",
+        "realSpeechSimilarity" : 0,
+        "source" : "Where is the train station?",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "איפה תחנת הרכבת?"
+      },
+      {
+        "captionedBySourceEngine" : "If Charlotte Cabelita Heshbon, Bivakasha.",
+        "realSpeechSimilarity" : 0,
+        "source" : "Can we get the bill, please?",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "אפשר לקבל את החשבון, בבקשה?"
+      },
+      {
+        "captionedBySourceEngine" : "Sligha, local at the shem shelach.",
+        "realSpeechSimilarity" : 0,
+        "source" : "I'm sorry, I didn't catch your name.",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "סליחה, לא קלטתי את השם שלך."
+      },
+      {
+        "captionedBySourceEngine" : "Hamu, they only, if tahmahal, betesha, baboker.",
+        "realSpeechSimilarity" : 0,
+        "source" : "The museum opens at nine tomorrow morning.",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "המוזיאון נפתח מחר בתשע בבוקר."
+      },
+      {
+        "captionedBySourceEngine" : "Habachalibale, vakirba, shevu, aba.",
+        "realSpeechSimilarity" : 0,
+        "source" : "My daughter is coming to visit next week.",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "הבת שלי באה לבקר בשבוע הבא."
+      },
+      {
+        "captionedBySourceEngine" : "Hamakuma zetafus.",
+        "realSpeechSimilarity" : 0,
+        "source" : "Is this seat taken?",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "המקום הזה תפוס?"
+      },
+      {
+        "captionedBySourceEngine" : "Has Manushul Hanler be Abishmona.",
+        "realSpeechSimilarity" : 0,
+        "source" : "We booked a table for four at eight o'clock.",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "הזמנו שולחן לארבעה בשמונה."
+      },
+      {
+        "captionedBySourceEngine" : "Come, man, look here, leche, le chamberegel.",
+        "realSpeechSimilarity" : 0,
+        "source" : "How long does it take to walk there?",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "כמה זמן לוקח ללכת לשם ברגל?"
+      },
+      {
+        "captionedBySourceEngine" : "Yes, lachhema shehubliye gozim.",
+        "realSpeechSimilarity" : 0,
+        "source" : "Do you have anything without nuts in it?",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "יש לכם משהו בלי אגוזים?"
+      },
+      {
+        "captionedBySourceEngine" : "So, daraba, zemma mash eser.",
+        "realSpeechSimilarity" : 0,
+        "source" : "Thank you so much, that was really helpful.",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "תודה רבה, זה ממש עזר."
+      }
+    ],
+    "it" : [
+      {
+        "captionedBySourceEngine" : "Duvela statione de traini.",
+        "captionedByTargetEngine" : "Dov'è la stazione dei treni",
+        "realSpeechSimilarity" : 0,
+        "source" : "Where is the train station?",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "Dov'è la stazione dei treni?",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Chiport telgunto, per febore.",
+        "captionedByTargetEngine" : "Ci porta il conto per favore.",
+        "realSpeechSimilarity" : 0,
+        "source" : "Can we get the bill, please?",
+        "sourceEngineSimilarity" : 0.25,
+        "spoken" : "Ci porta il conto, per favore?",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Miskusi, no no capito is sunome.",
+        "captionedByTargetEngine" : "Mi scusi, non ho capito il suo nome.",
+        "realSpeechSimilarity" : 0,
+        "source" : "I'm sorry, I didn't catch your name.",
+        "sourceEngineSimilarity" : 0.16666666666666666,
+        "spoken" : "Mi scusi, non ho capito il suo nome.",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Il muzai vapre do mania le nove.",
+        "captionedByTargetEngine" : "Il museo apre domani alle nove",
+        "realSpeechSimilarity" : 0,
+        "source" : "The museum opens at nine tomorrow morning.",
+        "sourceEngineSimilarity" : 0.2857142857142857,
+        "spoken" : "Il museo apre domani alle nove.",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Mi afilia, vienna trovarchi, la cetimana prosima.",
+        "captionedByTargetEngine" : "Mia figlia viene a trovarci la settimana prossima.",
+        "realSpeechSimilarity" : 0,
+        "source" : "My daughter is coming to visit next week.",
+        "sourceEngineSimilarity" : 0.14285714285714285,
+        "spoken" : "Mia figlia viene a trovarci la settimana prossima.",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Eli verloquisto pasto.",
+        "captionedByTargetEngine" : "È libero questo posto",
+        "realSpeechSimilarity" : 0,
+        "source" : "Is this seat taken?",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "È libero questo posto?",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Habiamo pre notato, tabolo, per quattro, ale opto.",
+        "captionedByTargetEngine" : "Abbiamo prenotato un tavolo per quattro alle otto",
+        "realSpeechSimilarity" : 0,
+        "source" : "We booked a table for four at eight o'clock.",
+        "sourceEngineSimilarity" : 0.25,
+        "spoken" : "Abbiamo prenotato un tavolo per quattro alle otto.",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Cuanto chivolia piedi.",
+        "captionedByTargetEngine" : "Quanto ci vuole a piedi",
+        "realSpeechSimilarity" : 0,
+        "source" : "How long does it take to walk there?",
+        "sourceEngineSimilarity" : 0.3333333333333333,
+        "spoken" : "Quanto ci vuole a piedi?",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Aqual cause a sense of frutasica.",
+        "captionedByTargetEngine" : "Ha qualcosa senza frutta secca.",
+        "realSpeechSimilarity" : 0,
+        "source" : "Do you have anything without nuts in it?",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "Ha qualcosa senza frutta secca?",
+        "targetEngineSimilarity" : 1
+      },
+      {
+        "captionedBySourceEngine" : "Grace mile, mi estato molto utile.",
+        "captionedByTargetEngine" : "Grazie mille, mi è stato molto utile",
+        "realSpeechSimilarity" : 0,
+        "source" : "Thank you so much, that was really helpful.",
+        "sourceEngineSimilarity" : 0.5,
+        "spoken" : "Grazie mille, mi è stato molto utile.",
+        "targetEngineSimilarity" : 1
+      }
+    ],
+    "ja" : [
+      {
+        "captionedBySourceEngine" : "Ikiva, dokodeska.",
+        "realSpeechSimilarity" : 0,
+        "source" : "Where is the train station?",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "駅はどこですか？"
+      },
+      {
+        "captionedBySourceEngine" : "Okay, okay, okay, okay.",
+        "realSpeechSimilarity" : 0,
+        "source" : "Can we get the bill, please?",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "お会計をお願いできますか？"
+      },
+      {
+        "captionedBySourceEngine" : "Sumi Maseng, una mayo, kitore masen desta.",
+        "realSpeechSimilarity" : 0,
+        "source" : "I'm sorry, I didn't catch your name.",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "すみません、お名前を聞き取れませんでした。"
+      },
+      {
+        "captionedBySourceEngine" : "How could it come back? Hirakimas?",
+        "realSpeechSimilarity" : 0,
+        "source" : "The museum opens at nine tomorrow morning.",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "博物館は明日の朝九時に開きます。"
+      },
+      {
+        "captionedBySourceEngine" : "Musumega, naishula sobinikimas.",
+        "realSpeechSimilarity" : 0,
+        "source" : "My daughter is coming to visit next week.",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "娘が来週遊びに来ます。"
+      },
+      {
+        "captionedBySourceEngine" : "Kono sequiva, te masca?",
+        "realSpeechSimilarity" : 0,
+        "source" : "Is this seat taken?",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "この席は空いていますか？"
+      },
+      {
+        "captionedBySourceEngine" : ", yongi, yo yak shimasta.",
+        "realSpeechSimilarity" : 0,
+        "source" : "We booked a table for four at eight o'clock.",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "八時に四人で予約しました。"
+      },
+      {
+        "captionedBySourceEngine" : "I don't, don't know, could I, kakari masca?",
+        "realSpeechSimilarity" : 0,
+        "source" : "How long does it take to walk there?",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "歩いてどのくらいかかりますか？"
+      },
+      {
+        "captionedBySourceEngine" : "That's to the height, dengai, monobari, masca.",
+        "realSpeechSimilarity" : 0,
+        "source" : "Do you have anything without nuts in it?",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "ナッツが入っていないものはありますか？"
+      },
+      {
+        "captionedBySourceEngine" : "Ponto, ni, arigato, go zaimas, Totemo, tascari, masta.",
+        "realSpeechSimilarity" : 0,
+        "source" : "Thank you so much, that was really helpful.",
+        "sourceEngineSimilarity" : 0,
+        "spoken" : "本当にありがとうございます、とても助かりました。"
+      }
+    ]
+  }
+}

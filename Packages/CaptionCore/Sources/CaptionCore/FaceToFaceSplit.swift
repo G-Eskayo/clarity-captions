@@ -67,6 +67,10 @@ public struct FaceToFaceSplit: Equatable, Sendable {
 
     public var control: Control { isPaused ? .start : .stop }
 
+    /// #245: a way out beside Start while paused. Paused after a failure, Start alone could fail again and again, and
+    /// the split had no other way out.
+    public var offersLeaveBesideStart: Bool { control == .start }
+
     /// A language tapped in a half's list. True when captions must start, or restart in the new languages: a new
     /// language, or any tap while paused. The same language again while captioning only closes the list.
     @discardableResult

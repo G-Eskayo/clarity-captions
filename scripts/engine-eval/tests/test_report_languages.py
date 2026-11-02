@@ -141,3 +141,23 @@ def test_report_says_when_apple_locales_give_identical_text(tmp_path):
     (res / "x.jsonl").write_text("\n".join(json.dumps(x) for x in lines) + "\n")
     write_language_report(shards, res, tmp_path / "o.md")
     assert "Apple's 2 Spanish locales gave identical text on 2 of 3 clips" in (tmp_path / "o.md").read_text()
+
+
+def test_italian_and_portuguese_are_named_and_scored_for_234(tmp_path):
+    from edacc_eval.report import write_language_report
+    shards, res = tmp_path / "shards", tmp_path / "results"
+    res.mkdir()
+    write_lang(shards, "it", [man(f"it{i}", "Buongiorno a tutti", "it", f"it-{i}") for i in range(3)])
+    write_lang(shards, "pt", [man(f"pt{i}", "Bom dia a todos", "pt", f"pt-{i}") for i in range(3)])
+    lines = []
+    for i in range(3):
+        lines += [r(f"it{i}", "apple-speechanalyzer", "buongiorno a tutti", model="SpeechTranscriber it-IT"),
+                  r(f"it{i}", "parakeet-fluidaudio", "buon giorno a tutti", model="parakeet-ultra-coreml"),
+                  r(f"pt{i}", "apple-speechanalyzer", "bom dia todos", model="SpeechTranscriber pt-BR"),
+                  r(f"pt{i}", "parakeet-fluidaudio", "Bom dia a todos.", model="parakeet-ultra-coreml")]
+    (res / "x.jsonl").write_text("\n".join(json.dumps(x) for x in lines) + "\n")
+    result = write_language_report(shards, res, tmp_path / "o.md")
+    md = (tmp_path / "o.md").read_text()
+    assert result["it"].verdict.verdict == "Apple" and result["pt"].verdict.verdict == "Parakeet"
+    assert "## Italian" in md and "## Portuguese" in md and "| Portuguese | Parakeet |" in md
+    assert "Spanish, French and German\"" not in md  # the header names the languages actually in the report

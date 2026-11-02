@@ -23,6 +23,8 @@ struct SettingsPage: View {
     var onChooseCaptionLanguage: (() -> Void)?
     var onTranslation: ((Bool) -> Void)?
     var onChooseTranslationTarget: (() -> Void)?
+    /// #233: Speak it in my ear, on or off.
+    var onEar: ((Bool) -> Void)?
     /// The translation purchase (#53): StoreKit is wired with the feature; the mock-up only shows the two states.
     var onBuyTranslation: (() -> Void)?
     var onRestorePurchases: (() -> Void)?
@@ -43,8 +45,12 @@ struct SettingsPage: View {
                         // Translation is a one-time purchase (owner, #171): bought or not, it keeps this one place at the
                         // top, with the same shape, so buying it changes what's in the space, never the layout. It sits
                         // above the sample so the sample and the buttons that change it stay together (owner, #171).
+                        // The Mac hides Translate captions and Caption language until #213 wires them there (owner, #230):
+                        // until then their rows would show but do nothing when clicked.
+                        #if !os(macOS)
                         section("Translate captions", first: true, note: language.translationOwned ? translationNote : translationOfferNote) { translationRows }
                             .id("translation")
+                        #endif
                         preview
                             .overlay(alignment: .top) { Rectangle().fill(rule).frame(height: 1) }
                         section("Colors", first: true) { colorsRow }
@@ -54,11 +60,13 @@ struct SettingsPage: View {
                         section("Stop when it's quiet") { idleStopRow }.id("idleStop")
                         if beta.isOn { testVersionSection.id("betaFeedback") }
                         if showsTourReplay { section("How to use Seal") { tourRow }.id("tour") }
+                        #if !os(macOS)
                         section("Caption language", note: String(localized: "Seal captions the language people are speaking. Change it when you're somewhere they speak another language.")) {
                             captionLanguageRow
                             CaptionLanguageDownloadLine(style: style, phase: language.captionDownload)
                         }
                         .id("language")
+                        #endif
                         section("About") { aboutRows }.id("about")
                     }
                     .padding(.horizontal, 20)
@@ -188,6 +196,10 @@ struct SettingsPage: View {
     }
 
     @ViewBuilder private var translationRows: some View {
+        // #245: Face to face sent her here: fewer than two languages are ready for the split. Said in one line, first.
+        if let reason = language.setupReason {
+            Text(verbatim: reason).font(scaled(15, .bold)).accessibilityAddTraits(.isStaticText)
+        }
         if language.translationOwned { ownedTranslationRows } else { translationOfferRows }
         if let message = language.purchaseMessage {
             Text(verbatim: message).font(scaled(13, .semibold)).foregroundStyle(muted)
@@ -240,6 +252,16 @@ struct SettingsPage: View {
                             label: String(localized: "Translate from, ")) { onChooseCaptionLanguage?() }
             languagePairRow(String(localized: "Into"), language.target.map(LanguageSettingsState.name) ?? String(localized: "Choose a language"),
                             label: String(localized: "Translate into, ")) { onChooseTranslationTarget?() }
+            // #245: Into's speech model, set up here so the split never downloads.
+            CaptionLanguageDownloadLine(style: style, phase: language.intoSpeech)
+            // #233's ear rows are iPhone and iPad only: the Mac target has no EarViews.swift, and hides this section (#209).
+            #if !os(macOS)
+            if language.earOffered {
+                EarSettingsRows(style: style, state: language.ear, target: language.target.map(LanguageSettingsState.name) ?? "",
+                                font: { scaled($0, $1) }, muted: muted, softFill: softFill) { onEar?($0) }
+                    .padding(.top, 4)
+            }
+            #endif
             if let p = language.downloadProgress {
                 VStack(alignment: .leading, spacing: 6) {
                     ProgressView(value: p).tint(style.gear.color)

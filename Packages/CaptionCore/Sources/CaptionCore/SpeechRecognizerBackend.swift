@@ -75,20 +75,37 @@ final class AppleSpeechBackend: SpeechRecognizerBackend, @unchecked Sendable {
     private var format: AVAudioFormat?
     private var builder: AsyncStream<AnalyzerInput>.Continuation?
     private var started = false
+    private let model: SpeechModelPolicy
+    private let isInstalled: @Sendable (Locale) async -> Bool
+    private let install: @Sendable (Locale, @escaping @Sendable (Double) -> Void) async throws -> Void
 
-    init(locale: Locale) { self.locale = locale }
+    init(locale: Locale, model: SpeechModelPolicy = .downloadIfNeeded,
+         isInstalled: @escaping @Sendable (Locale) async -> Bool = { await SpeechModelInstaller.isInstalled(locale: $0) },
+         install: @escaping @Sendable (Locale, @escaping @Sendable (Double) -> Void) async throws -> Void
+            = { try await SpeechModelInstaller.install(locale: $0, onProgress: $1) }) {
+        self.locale = locale
+        self.model = model
+        self.isInstalled = isInstalled
+        self.install = install
+    }
 
     var analyzerFormat: AVAudioFormat? { lock.withLock { format } }
 
     func prepare() async throws {
+        switch model {
+        case .downloadIfNeeded:
+            // The one-time, system-provisioned model fetch noted in CONTEXT.md "On-device only".
+            try await install(locale) { _ in }
+        case .mustBeOnDevice:
+            // #245: the split never downloads (it hid a download in the start, and Stop waited for it).
+            guard await isInstalled(locale) else { throw TranscriptionError.speechModelNotOnDevice }
+        }
         let transcriber = SpeechTranscriber(
             locale: locale,
             transcriptionOptions: [],
             reportingOptions: [.volatileResults, .fastResults],
             attributeOptions: [.audioTimeRange]
         )
-        // The one-time, system-provisioned model fetch noted in CONTEXT.md "On-device only".
-        try await SpeechModelInstaller.install(locale: locale) { _ in }
         guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else {
             throw TranscriptionError.noCompatibleAudioFormat
         }

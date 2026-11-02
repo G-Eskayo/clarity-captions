@@ -15,19 +15,37 @@ public enum CaptionEngineChoice: String, CaseIterable, Sendable {
     }
 }
 
-/// Seal's own model for a caption language (ADR 0025, #220): Parakeet Ultra for English, the ivrit.ai streaming
-/// zipformer for Hebrew (owner, 2026-10-30: Hebrew moves off Apple's engine, which made about four times the errors on
-/// conversation, #217). Every other language runs Apple's engine. One table, so each new win is one line.
+/// Seal's own model for a caption language (ADR 0025, #220): Parakeet Ultra wherever it won (CaptionEngineRouting), the
+/// ivrit.ai streaming zipformer for Hebrew (owner, 2026-10-30: Hebrew moves off Apple's engine, which made about four
+/// times the errors on conversation, #217). Every other language runs Apple's engine.
 public enum SealModel: String, Sendable, Equatable {
     case parakeetUltra
     case hebrewZipformer
 
     public static func forLanguage(_ locale: Locale) -> SealModel? {
-        switch locale.language.languageCode {
-        case .english?: .parakeetUltra
-        case .hebrew?: .hebrewZipformer
-        default: nil
-        }
+        if locale.language.languageCode == .hebrew { return .hebrewZipformer }
+        return CaptionEngineRouting.parakeetWins(locale) ? .parakeetUltra : nil
+    }
+}
+
+/// Which caption languages run on Parakeet (ADR 0029 decision 2): every language where Parakeet Ultra matched or beat
+/// Apple's best locale on FLEURS (#158, #234; docs/perf/language-accuracy-comparison.md), and English (#145). Every
+/// other language runs Apple's engine in that language. Parakeet takes no language setting (it hears the language),
+/// so the table is by language, and every region of a won language goes to it. Each new win is one line here. Since #234
+/// that is every language both engines caption; Apple keeps Japanese, Korean, Chinese and Cantonese, which Parakeet
+/// doesn't cover.
+public enum CaptionEngineRouting {
+    public static let parakeetLanguages: Set<String> = [
+        "en",  // #145, EdAcc: 13.8% vs 17.2%
+        "es",  // #158, FLEURS: 2.8% vs 4.0%
+        "fr",  // #158, FLEURS: 4.5% vs 7.5%
+        "de",  // #158, FLEURS: 4.4% vs 7.2%
+        "it",  // #234, FLEURS: 2.2% vs 3.6%
+        "pt",  // #234, FLEURS (Brazilian): 3.9% vs 5.3%
+    ]
+
+    public static func parakeetWins(_ locale: Locale) -> Bool {
+        locale.language.languageCode.map { parakeetLanguages.contains($0.identifier) } ?? false
     }
 }
 
@@ -145,9 +163,9 @@ public struct SilentEngineWatchdog: Sendable {
     }
 }
 
-/// Which recognizer a session runs on, and in which language (#37 with ADR 0025). The engine is always made for the
-/// caption language she chose: Parakeet is English only, so another language runs Apple's engine in that language,
-/// and Apple's fallback from Parakeet keeps her English variety.
+/// Which recognizer a session runs on, and in which language (#37 with ADR 0025, #234). The engine is always made for
+/// the caption language she chose: a language Parakeet won runs Parakeet (CaptionEngineRouting), any other runs Apple's
+/// engine in that language, and Apple's fallback from Parakeet keeps her language and region.
 public struct CaptionEnginePlan: Sendable, Equatable {
     public let selection: EngineSelection
     public let locale: Locale

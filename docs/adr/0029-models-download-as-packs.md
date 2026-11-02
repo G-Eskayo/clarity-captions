@@ -36,7 +36,8 @@ and [[0025]] decisions 3 and 7 (models bundled, GitHub-hosted) for App Store and
 2. **Seal picks the best engine for each caption language**, from three groups, and nobody picks it in Settings
    ([[0013]]):
    - **Parakeet** for the languages it covers once each is measured to match or beat Apple (#158's rule, [[0026]]
-     §3). Today English, Spanish, French and German.
+     §3). Today English, Spanish, French, German, Italian and Portuguese (#234 measured the last two: every
+     language both engines caption).
    - **Apple's built-in engines** (SpeechTranscriber, else DictationTranscriber; 0 MB to Seal) where Parakeet doesn't
      reach, hasn't been measured yet, or loses.
    - **Seal's own packs** where neither is good enough (Apple has nothing, or the better of the two is above 15%
@@ -71,13 +72,14 @@ and [[0025]] decisions 3 and 7 (models bundled, GitHub-hosted) for App Store and
 ## Consequences
 
 - The base drops from 765 MB to about 26 MB, then 267 MB once speaker labels land. A phone in a Parakeet language
-  (English, Spanish, French, German today) ends at 765 MB, now with the best engine for all four. A phone whose
-  language Apple does best (Japanese, Korean, Chinese, and Hebrew on Apple's dictation engine) ends at 267 MB.
+  (English, Spanish, French, German, Italian, Portuguese today) ends at 765 MB, now with the best engine for all six. A
+  phone whose language Apple does best (Japanese, Korean, Chinese, and Hebrew on Apple's dictation engine) ends at 267 MB.
   Bilingual use costs nothing extra within Parakeet's languages: one pack covers all of them.
-- Spanish, French and German captions switch from Apple's engine to Parakeet: about a third fewer word errors (E19).
+- Spanish, French and German captions switch from Apple's engine to Parakeet: about a third fewer word errors (E19);
+  Italian and Portuguese too, about a quarter to two fifths fewer (#234, evidence `2026-10-30-parakeet-beats-apple-in-italian-and-portuguese`).
   `CaptionEngineFactory` and `EngineFallbackPolicy` stop assuming "Parakeet is English only".
-- The other 21 Parakeet languages stay on Apple's engine until each is measured. Every win is a one-line change to
-  the table.
+- Parakeet's other 19 languages have no Apple engine to compare with and aren't in Seal's caption list yet (#234).
+  Every win is a one-line change to the table.
 - The Parakeet cases don't shrink. The levers (4-bit at 350 MB, 2-bit under #203) are accuracy choices for the owner.
 - A new app extension target (StoreDownloaderExtension) and an App Group, plus pack packaging (`ba-package`) and
   upload in the release steps. Packs go through App Review.

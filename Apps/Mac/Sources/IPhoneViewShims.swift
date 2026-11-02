@@ -42,7 +42,12 @@ enum DemoMode {
     static let select = false
     static let veilCleared = false
     static let settingsPush: String? = nil
-    static let settingsSection: String? = nil
+    /// Screenshots only (#209): `-MarvinSettingsSection language` opens Settings scrolled to that section.
+    static var settingsSection: String? { UserDefaults.standard.string(forKey: "MarvinSettingsSection") }
+    static let opensSettings = false
+    static let asksLanguage = false
+    static let translate: String? = nil
+    static let fakeStore = false
 }
 
 /// Beta feedback (ADR 0023) is iPhone-only for now, so Settings' "Test version" section never shows on the Mac.
