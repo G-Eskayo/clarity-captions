@@ -202,3 +202,54 @@ def test_spanish_double_accepted_spellings_meet():
     assert normalize("el período", "es") == normalize("el periodo", "es")
     assert normalize("los períodos", "es") == normalize("los periodos", "es")
     assert normalize("está", "es") != normalize("esta", "es")  # real accent errors still count
+
+
+# --- Italian and Portuguese (#234) -----------------------------------------------------------------------------
+
+@pytest.mark.parametrize("lang", ["it", "pt"])
+def test_italian_and_portuguese_share_the_158_rules(lang):
+    assert normalize("", lang) == "" and normalize(None, lang) == ""
+    assert normalize("<noise> [Musica] (detto) ciao", lang) == "detto ciao"
+    assert normalize("800 000", lang) == normalize("800.000", lang) == normalize("800000", lang)
+
+
+def test_italian_numbers_decimals_percent_and_currency():
+    assert normalize("Nel 1990 c'erano 21 città", "it") == "nel millenovecentonovanta c erano ventuno città"
+    assert normalize("3,5%", "it") == "tre virgola cinque per cento"
+    assert normalize("10 €", "it") == normalize("€10", "it") == "dieci euro"
+
+
+def test_italian_elision_and_accents():
+    # "l'uomo" splits like French elision; "perché" keeps its accent, so "perche" is an error.
+    assert normalize("L'uomo, perché?", "it") == "l uomo perché"
+    assert normalize("perché", "it") != normalize("perche", "it")
+
+
+def test_italian_and_portuguese_ordinals_with_a_marker():
+    assert normalize("il 1º posto", "it") == "il primo posto"
+    assert normalize("la 2ª volta", "it") == "la seconda volta"
+    assert normalize("o 1º lugar", "pt") == "o primeiro lugar"
+    assert normalize("a 2ª vez", "pt") == "a segunda vez"
+
+
+def test_portuguese_is_brazilian_numbers():
+    # FLEURS Portuguese is pt_br: "dezesseis", not Portugal's "dezasseis".
+    assert normalize("16 pessoas", "pt") == "dezesseis pessoas"
+    assert normalize("2,5%", "pt") == "dois vírgula cinco por cento"
+    assert normalize("US$ 5", "pt").split()[-1] == "dólares"
+
+
+def test_portuguese_hyphenated_clitics_split_on_both_sides():
+    assert normalize("Disse-lhe que sim.", "pt") == "disse lhe que sim"
+
+
+@pytest.mark.parametrize("lang", ["it", "pt"])
+def test_hesitations_dropped(lang):
+    assert normalize("ehm mm hmm sì", lang) == "sì"
+
+
+def test_portuguese_spellings_brazil_accepts_both_ways_are_one_word():
+    # Seen on pt shard 1 (#234): only Apple wrote the other form, so merging them can only help Apple.
+    assert normalize("óptico", "pt") == normalize("ótico", "pt")
+    assert normalize("Singapura", "pt") == normalize("Cingapura", "pt")
+    assert normalize("esta", "pt") != normalize("está", "pt")  # real accent errors still count

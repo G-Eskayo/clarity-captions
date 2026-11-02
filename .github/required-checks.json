@@ -73,7 +73,9 @@
         "site/*",
         "site-src/*",
         "scripts/*",
-        "docs/research/evidence/*"
+        "docs/research/evidence/*",
+        "Apps/Spike/StoreKit/*",
+        "Apps/Spike/Sources/TranslationCenter.swift"
       ],
       "command": [
         "bash",

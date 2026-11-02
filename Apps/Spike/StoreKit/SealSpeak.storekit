@@ -5,8 +5,8 @@
   ],
   "products" : [
     {
-      "displayPrice" : "1.99",
-      "familyShareable" : true,
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
       "internalID" : "6754000001",
       "localizations" : [
         {

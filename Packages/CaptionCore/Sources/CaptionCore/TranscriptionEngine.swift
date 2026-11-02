@@ -65,6 +65,16 @@ public enum MicMode: String, CaseIterable, Sendable {
 public enum TranscriptionError: Error {
     case noCompatibleAudioFormat
     case converterUnavailable
+    /// #245: the split's language has no speech model on the device, and the split never downloads one.
+    case speechModelNotOnDevice
+}
+
+/// #245: whether an engine may fetch Apple's speech model when it starts. One-way captions may (the caption language's
+/// model downloads at first run, #37, so it's there already); the face-to-face split may not: its languages are set
+/// up in Settings first, and a download hidden in the start hung Stop on the owner's iPad.
+public enum SpeechModelPolicy: Sendable, Equatable {
+    case downloadIfNeeded
+    case mustBeOnDevice
 }
 
 /// Which recognizer a TranscriptionEngine starts with (ADR 0025). The app picks it with EngineFallbackPolicy.
@@ -83,6 +93,8 @@ public final class TranscriptionEngine {
     private let locale: Locale
     private let micMode: MicMode
     private let setup: SpeechRecognizerSetup
+    /// #245: the split's engines never download a speech model.
+    private let speechModel: SpeechModelPolicy
     private let diarizer: LiveDiarizer
     private let soundLabeler = SoundLabeler()
     private var soundLabelerStream: AsyncStream<SoundLabelKind>?
@@ -145,16 +157,17 @@ public final class TranscriptionEngine {
     /// lives, so there is no accidental network path (ADR 0014). The same goes for Parakeet's folder.
     public init(locale: Locale = Locale(identifier: "en-US"), micMode: MicMode = .standard, diarizerModelURL: URL,
                 recognizer: SpeechRecognizerSetup = .apple, startReason: FallbackReason? = nil, audioSource: AudioSource? = nil,
-                faceToFace: FaceToFaceSetup? = nil) {
+                faceToFace: FaceToFaceSetup? = nil, speechModel: SpeechModelPolicy = .downloadIfNeeded) {
         self.fallbackReason = startReason
         self.locale = locale
         self.micMode = micMode
         self.source = audioSource ?? MicAudioSource(micMode: micMode)
         self.setup = recognizer
+        self.speechModel = speechModel
         self.diarizer = LiveDiarizer(modelURL: diarizerModelURL)
         self.faceToFace = faceToFace.map { FaceToFaceRouting(setup: $0) { setup, locale in
             switch setup {
-            case .apple: return AppleSpeechBackend(locale: locale)
+            case .apple: return AppleSpeechBackend(locale: locale, model: speechModel)
             case .parakeet(let url): return ParakeetBackend(modelURL: url)
             }
         } }
@@ -188,7 +201,7 @@ public final class TranscriptionEngine {
 
     private func makeBackend() -> SpeechRecognizerBackend {
         switch setup {
-        case .apple: return AppleSpeechBackend(locale: locale)
+        case .apple: return AppleSpeechBackend(locale: locale, model: speechModel)
         case .parakeet(let url):
             let backend = ParakeetBackend(modelURL: url)
             backend.onDecode = { [weak self] seconds in
@@ -222,7 +235,7 @@ public final class TranscriptionEngine {
                 await made.cancel()
                 fallbackDetail = String(describing: error)
                 recordFallback(.loadFailed)
-                made = AppleSpeechBackend(locale: locale)
+                made = AppleSpeechBackend(locale: locale, model: speechModel)
                 try await made.prepare()
             }
             backend = made
@@ -346,7 +359,7 @@ public final class TranscriptionEngine {
         guard let old, let inFormat else { return }
         recordFallback(reason)
         await old.finish()
-        let apple = AppleSpeechBackend(locale: locale)
+        let apple = AppleSpeechBackend(locale: locale, model: speechModel)
         do {
             try await apple.prepare()
             guard let format = apple.analyzerFormat, let converter = AVAudioConverter(from: inFormat, to: format) else {

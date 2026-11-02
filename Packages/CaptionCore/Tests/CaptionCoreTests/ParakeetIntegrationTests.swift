@@ -10,14 +10,14 @@ final class ParakeetIntegrationTests: XCTestCase {
             .deletingLastPathComponent().deletingLastPathComponent()
     }
 
-    private func speech(_ text: String, name: String) throws -> URL {
+    private func speech(_ text: String, name: String, voice: String = "Samantha") throws -> URL {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("parakeet-it-\(UUID())")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
         let url = dir.appendingPathComponent("\(name).wav")
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/bin/say")
-        p.arguments = ["-v", "Samantha", "-o", url.path, "--data-format=LEF32@16000", text]
+        p.arguments = ["-v", voice, "-o", url.path, "--data-format=LEF32@16000", text]
         try p.run(); p.waitUntilExit()
         XCTAssertEqual(p.terminationStatus, 0)
         return url
@@ -107,6 +107,61 @@ final class ParakeetIntegrationTests: XCTestCase {
         XCTAssertTrue(finals.contains { $0.engine == "parakeet-ultra-pal6" }, "Parakeet's words before the switch were kept as final")
         let after = finals.filter { $0.engine == "apple-speechanalyzer" }.map(\.text).joined(separator: " ").lowercased()
         XCTAssertTrue(after.contains("lemons") || after.contains("punch"), "Apple captioned the rest: \(after)")
+    }
+
+    // MARK: #234: a language Parakeet won, end to end
+
+    /// The engine the app would make for a caption language (CaptionEngineFactory.make, without the app target).
+    private func engine(for id: String) -> TranscriptionEngine {
+        let plan = CaptionEnginePlan.make(captionLanguage: Locale(identifier: id), choice: .parakeet, now: Date(),
+                                          recentFallbacks: [], availableMemory: .max, modelPresent: true)
+        let models = repo.appendingPathComponent("Apps/Spike/Resources/Models")
+        let recognizer: SpeechRecognizerSetup = plan.selection.engine == .parakeet
+            ? .parakeet(modelURL: models.appendingPathComponent("ParakeetUltra")) : .apple
+        return TranscriptionEngine(locale: plan.locale, diarizerModelURL: models.appendingPathComponent("Sortformer_v2.1.mlmodelc"),
+                                   recognizer: recognizer, startReason: plan.selection.reason)
+    }
+
+    func testSpanishCaptionsRunOnParakeetAndComeOutSpanish() async throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["CAPTION_PARAKEET"] == "1", "opt-in")
+        let said = "El tren sale de la estación a las ocho de la mañana. Mi hermana vive en una casa pequeña cerca "
+            + "del río. Los niños juegan en el parque cuando hace buen tiempo. Mañana vamos a comer con nuestros abuelos."
+        let audio = try speech(said, name: "es", voice: "Eddy (Spanish (Spain))")
+        let engine = engine(for: "es-ES")
+        var finals: [String] = []
+        for try await u in try await engine.startReplaying(fileURL: audio) where u.isFinal { finals.append(u.text) }
+        XCTAssertEqual(engine.engineName, "parakeet-ultra-pal6")
+        XCTAssertNil(engine.fallbackReason)
+        let got = Self.words(finals.joined(separator: " ")), want = Self.words(said)
+        let errors = editDistance(got, want)
+        print("PARAKEET-IT es finals: \(finals.joined(separator: " | "))")
+        print(String(format: "PARAKEET-IT es word errors %d of %d (%.1f%%)", errors, want.count,
+                     100 * Double(errors) / Double(want.count)))
+        XCTAssertLessThanOrEqual(Double(errors) / Double(want.count), 0.15)
+    }
+
+    func testAMemoryWarningInSpanishFallsBackToAppleInSpanish() async throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["CAPTION_PARAKEET"] == "1", "opt-in")
+        let said = "El tren sale de la estación a las ocho de la mañana. Mi hermana vive en una casa pequeña cerca "
+            + "del río. Los niños juegan en el parque cuando hace buen tiempo. Mañana vamos a comer con nuestros abuelos. "
+            + "El zumo de limón es muy bueno para la garganta."
+        let audio = try speech(said, name: "es-switch", voice: "Eddy (Spanish (Spain))")
+        let engine = engine(for: "es-ES")
+        var finals: [(engine: String, text: String)] = []
+        let started = Date()
+        var fired = false
+        for try await u in try await engine.startReplaying(fileURL: audio) {
+            if u.isFinal { finals.append((u.engine, u.text)) }
+            if !fired, Date().timeIntervalSince(started) > 6 { fired = true; engine.handle(.memoryWarning) }
+        }
+        print("PARAKEET-IT es switch: " + finals.map { "[\($0.engine)] \($0.text)" }.joined(separator: " "))
+        XCTAssertEqual(engine.fallbackReason, .memoryWarning)
+        XCTAssertEqual(engine.engineName, "apple-speechanalyzer")
+        XCTAssertTrue(finals.contains { $0.engine == "parakeet-ultra-pal6" })
+        let after = finals.filter { $0.engine == "apple-speechanalyzer" }.map(\.text).joined(separator: " ").lowercased()
+        // Apple's engine was made in Spanish, not English: Spanish words come out, not an English guess at them.
+        XCTAssertTrue(after.contains("limón") || after.contains("garganta") || after.contains("abuelos"),
+                      "Apple captioned the rest in Spanish: \(after)")
     }
 
     private final class Counter: @unchecked Sendable {

@@ -15,6 +15,27 @@ public enum CaptionEngineChoice: String, CaseIterable, Sendable {
     }
 }
 
+/// Which caption languages run on Parakeet (ADR 0029 decision 2): every language where Parakeet Ultra matched or beat
+/// Apple's best locale on FLEURS (#158, #234; docs/perf/language-accuracy-comparison.md), and English (#145). Every
+/// other language runs Apple's engine in that language. Parakeet takes no language setting (it hears the language),
+/// so the table is by language, and every region of a won language goes to it. Each new win is one line here. Since #234
+/// that is every language both engines caption; Apple keeps Japanese, Korean, Chinese and Cantonese, which Parakeet
+/// doesn't cover.
+public enum CaptionEngineRouting {
+    public static let parakeetLanguages: Set<String> = [
+        "en",  // #145, EdAcc: 13.8% vs 17.2%
+        "es",  // #158, FLEURS: 2.8% vs 4.0%
+        "fr",  // #158, FLEURS: 4.5% vs 7.5%
+        "de",  // #158, FLEURS: 4.4% vs 7.2%
+        "it",  // #234, FLEURS: 2.2% vs 3.6%
+        "pt",  // #234, FLEURS (Brazilian): 3.9% vs 5.3%
+    ]
+
+    public static func parakeetWins(_ locale: Locale) -> Bool {
+        locale.language.languageCode.map { parakeetLanguages.contains($0.identifier) } ?? false
+    }
+}
+
 /// Why a session runs on Apple's engine when Parakeet was asked for. Goes in diagnostics and the beta report.
 public enum FallbackReason: String, Sendable, Equatable {
     case modelMissing, loadFailed, lowMemory, locale, repeatedFallbacks, noWordsFromSpeech, memoryWarning, thermalCritical
@@ -56,7 +77,7 @@ public enum EngineFallbackPolicy {
                               locale: Locale, modelPresent: Bool) -> EngineSelection {
         guard choice == .parakeet else { return EngineSelection(engine: .apple, reason: nil) }
         if !modelPresent { return EngineSelection(engine: .apple, reason: .modelMissing) }
-        if locale.language.languageCode != .english { return EngineSelection(engine: .apple, reason: .locale) }
+        if !CaptionEngineRouting.parakeetWins(locale) { return EngineSelection(engine: .apple, reason: .locale) }
         let inWindow = recentFallbacks.filter { $0 <= now && now.timeIntervalSince($0) <= pinWindow }
         if inWindow.count >= 2 { return EngineSelection(engine: .apple, reason: .repeatedFallbacks) }
         if availableMemory < memoryFloor { return EngineSelection(engine: .apple, reason: .lowMemory) }
@@ -129,9 +150,9 @@ public struct SilentEngineWatchdog: Sendable {
     }
 }
 
-/// Which recognizer a session runs on, and in which language (#37 with ADR 0025). The engine is always made for the
-/// caption language she chose: Parakeet is English only, so another language runs Apple's engine in that language,
-/// and Apple's fallback from Parakeet keeps her English variety.
+/// Which recognizer a session runs on, and in which language (#37 with ADR 0025, #234). The engine is always made for
+/// the caption language she chose: a language Parakeet won runs Parakeet (CaptionEngineRouting), any other runs Apple's
+/// engine in that language, and Apple's fallback from Parakeet keeps her language and region.
 public struct CaptionEnginePlan: Sendable, Equatable {
     public let selection: EngineSelection
     public let locale: Locale

@@ -7,7 +7,7 @@ import os
 enum CaptionEngineFactory {
     static var speakerModelURL: URL? { Bundle.main.url(forResource: "Sortformer_v2.1", withExtension: "mlmodelc") }
     static var parakeetModelURL: URL? { Bundle.main.url(forResource: "ParakeetUltra", withExtension: nil) }
-    /// The caption language she chose (#37). Parakeet is English only, so another language runs Apple's engine in it.
+    /// The caption language she chose (#37). It picks the engine (#234): Parakeet where it won, Apple's engine elsewhere.
     static var captionLocale: Locale { CaptionLanguageCenter.engineLocale }
     /// Only an Xcode (debug) build has the developer panel, so only it honours the panel's engine pick (owner, PR #155).
     #if DEBUG
@@ -26,8 +26,9 @@ enum CaptionEngineFactory {
 
     static func selection(now: Date = Date()) -> EngineSelection { plan(now: now).selection }
 
-    /// One-way captions in the caption language, or (#208, one half of the split picked) in `locale`.
-    static func make(micMode: MicMode, locale: Locale? = nil) throws -> TranscriptionEngine {
+    /// One-way captions in the caption language, or (#208, one half of the split picked) in `locale`. #245: the split
+    /// passes `.mustBeOnDevice`; its languages are set up in Settings, and it never downloads.
+    static func make(micMode: MicMode, locale: Locale? = nil, speechModel: SpeechModelPolicy = .downloadIfNeeded) throws -> TranscriptionEngine {
         guard let speakerModel = speakerModelURL else {
             throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc"))
         }
@@ -36,7 +37,7 @@ enum CaptionEngineFactory {
         let recognizer: SpeechRecognizerSetup = selection.engine == .parakeet
             ? parakeetModelURL.map { .parakeet(modelURL: $0) } ?? .apple : .apple
         let engine = TranscriptionEngine(locale: plan.locale, micMode: micMode, diarizerModelURL: speakerModel,
-                                         recognizer: recognizer, startReason: selection.reason)
+                                         recognizer: recognizer, startReason: selection.reason, speechModel: speechModel)
         engine.onFallback = { _ in
             var history = EngineFallbackHistory()
             history.record(Date(), now: Date())
@@ -44,9 +45,9 @@ enum CaptionEngineFactory {
         return engine
     }
 
-    /// #60 face to face: one engine per half, each in its half's language (ADR 0025 picks the recognizer per language:
-    /// Parakeet for English, Apple's engine for the rest). Since #208 each half's language is the one its list picked.
-    /// No engine loaded ahead is used: it was made for one-way captions.
+    /// #60 face to face: one engine per half, each in its half's language, picked per language the same way as one-way
+    /// captions (#234, CaptionEngineRouting: Parakeet where it won, Apple's engine for the rest). Since #208 each half's language is the one its list picked.
+    /// No engine loaded ahead is used: it was made for one-way captions. #245: never downloads a speech model.
     static func makeFaceToFace(micMode: MicMode, ownerLocale: Locale, partnerLocale: Locale) throws -> TranscriptionEngine {
         guard let speakerModel = speakerModelURL else {
             throw SpeakerModelError.modelMissing(URL(fileURLWithPath: "Sortformer_v2.1.mlmodelc"))
@@ -56,7 +57,8 @@ enum CaptionEngineFactory {
         }
         let setup = FaceToFaceSetup(ownerLocale: ownerLocale, ownerRecognizer: recognizer(ownerLocale),
                                     partnerLocale: partnerLocale, partnerRecognizer: recognizer(partnerLocale))
-        return TranscriptionEngine(locale: partnerLocale, micMode: micMode, diarizerModelURL: speakerModel, faceToFace: setup)
+        return TranscriptionEngine(locale: partnerLocale, micMode: micMode, diarizerModelURL: speakerModel, faceToFace: setup,
+                                   speechModel: .mustBeOnDevice)
     }
 
     /// First run: Core ML compiles Parakeet for this phone once (35 s on a Mac), so it happens here and not behind

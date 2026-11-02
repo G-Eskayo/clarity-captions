@@ -1,0 +1,48 @@
+/// Hand-written translations of `SampleLines.english` (not Apple's output), for when the Translation pair isn't
+/// installed: on this Mac after E22's packs were removed, and on the iPhone simulator, which can't translate. They
+/// stand in for the translator's answer so the voice and the echo can be measured. Translation time itself comes
+/// from E22 (51-59 ms median per caption line, this Mac).
+public enum ReferenceTranslations {
+    public static let lines: [String: [String]] = [
+        "es": ["¿Dónde está la estación de tren?", "¿Nos trae la cuenta, por favor?", "Perdone, no he entendido su nombre.",
+               "El museo abre mañana a las nueve.", "Mi hija viene a visitarnos la semana que viene.", "¿Está ocupado este asiento?",
+               "Reservamos una mesa para cuatro a las ocho.", "¿Cuánto se tarda en llegar andando?",
+               "¿Tiene algo sin frutos secos?", "Muchísimas gracias, me ha ayudado mucho."],
+        "fr": ["Où est la gare ?", "L'addition, s'il vous plaît ?", "Désolé, je n'ai pas compris votre nom.",
+               "Le musée ouvre demain à neuf heures.", "Ma fille vient nous rendre visite la semaine prochaine.", "Cette place est prise ?",
+               "Nous avons réservé une table pour quatre à vingt heures.", "Combien de temps faut-il pour y aller à pied ?",
+               "Avez-vous quelque chose sans fruits à coque ?", "Merci beaucoup, ça m'a vraiment aidé."],
+        "de": ["Wo ist der Bahnhof?", "Können wir bitte die Rechnung haben?", "Entschuldigung, ich habe Ihren Namen nicht verstanden.",
+               "Das Museum öffnet morgen um neun Uhr.", "Meine Tochter kommt nächste Woche zu Besuch.", "Ist dieser Platz frei?",
+               "Wir haben einen Tisch für vier um acht Uhr reserviert.", "Wie lange dauert es zu Fuß dorthin?",
+               "Haben Sie etwas ohne Nüsse?", "Vielen Dank, das war wirklich hilfreich."],
+        "it": ["Dov'è la stazione dei treni?", "Ci porta il conto, per favore?", "Mi scusi, non ho capito il suo nome.",
+               "Il museo apre domani alle nove.", "Mia figlia viene a trovarci la settimana prossima.", "È libero questo posto?",
+               "Abbiamo prenotato un tavolo per quattro alle otto.", "Quanto ci vuole a piedi?",
+               "Ha qualcosa senza frutta secca?", "Grazie mille, mi è stato molto utile."],
+        "pt": ["Onde fica a estação de trem?", "Pode trazer a conta, por favor?", "Desculpe, não entendi o seu nome.",
+               "O museu abre amanhã às nove.", "Minha filha vem nos visitar na semana que vem.", "Este lugar está ocupado?",
+               "Reservamos uma mesa para quatro às oito.", "Quanto tempo leva para ir a pé?",
+               "Você tem algo sem nozes?", "Muito obrigado, ajudou muito."],
+        "he": ["איפה תחנת הרכבת?", "אפשר לקבל את החשבון, בבקשה?", "סליחה, לא קלטתי את השם שלך.",
+               "המוזיאון נפתח מחר בתשע בבוקר.", "הבת שלי באה לבקר בשבוע הבא.", "המקום הזה תפוס?",
+               "הזמנו שולחן לארבעה בשמונה.", "כמה זמן לוקח ללכת לשם ברגל?",
+               "יש לכם משהו בלי אגוזים?", "תודה רבה, זה ממש עזר."],
+        "ar": ["أين محطة القطار؟", "هل يمكننا الحصول على الفاتورة من فضلك؟", "آسف، لم أسمع اسمك جيدًا.",
+               "يفتح المتحف غدًا في التاسعة صباحًا.", "ابنتي قادمة لزيارتنا الأسبوع المقبل.", "هل هذا المقعد محجوز؟",
+               "حجزنا طاولة لأربعة أشخاص في الثامنة.", "كم يستغرق الوصول إلى هناك سيرًا على الأقدام؟",
+               "هل لديكم شيء خالٍ من المكسرات؟", "شكرًا جزيلًا، لقد كان ذلك مفيدًا حقًا."],
+        "ru": ["Где находится вокзал?", "Принесите, пожалуйста, счёт.", "Извините, я не расслышал ваше имя.",
+               "Музей открывается завтра в девять утра.", "Моя дочь приедет в гости на следующей неделе.", "Это место занято?",
+               "Мы забронировали столик на четверых на восемь часов.", "Сколько времени идти туда пешком?",
+               "У вас есть что-нибудь без орехов?", "Большое спасибо, это очень помогло."],
+        "ja": ["駅はどこですか？", "お会計をお願いできますか？", "すみません、お名前を聞き取れませんでした。",
+               "博物館は明日の朝九時に開きます。", "娘が来週遊びに来ます。", "この席は空いていますか？",
+               "八時に四人で予約しました。", "歩いてどのくらいかかりますか？",
+               "ナッツが入っていないものはありますか？", "本当にありがとうございます、とても助かりました。"],
+        "zh": ["火车站在哪里？", "请给我们结账好吗？", "不好意思，我没听清您的名字。",
+               "博物馆明天早上九点开门。", "我女儿下周要来看我们。", "这个座位有人吗？",
+               "我们订了八点四个人的桌子。", "走路过去要多久？",
+               "有不含坚果的东西吗？", "非常感谢，真的很有帮助。"],
+    ]
+}

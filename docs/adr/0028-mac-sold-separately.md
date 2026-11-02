@@ -15,7 +15,7 @@ record for TestFlight. Apple joins platforms into one Universal Purchase when th
 ## Decision
 
 1. **iPhone and iPad stay one purchase**: the existing record, `com.gileskayo.captions`, $4.99 one-time, with Live
-   Translation as one $1.99 in-app purchase covering both.
+   Translation as one $4.99 in-app purchase covering iPhone, iPad and iPhone Duo (see "2026-10-30" below).
 2. **The Mac is a separate app**: bundle ID `com.gileskayo.captions.mac`, its own App Store Connect record, $4.99
    one-time, with its own $1.99 Live Translation in-app purchase. Buying on one doesn't unlock the other.
 3. **No macOS version is ever submitted from the iPhone/iPad record.** The macOS builds already uploaded there stay
@@ -28,3 +28,15 @@ record for TestFlight. Apple joins platforms into one Universal Purchase when th
   (they live in the app's own container).
 - Two App Store listings, two sets of screenshots and two review submissions.
 - The site shows two prices: iPhone and iPad together, and Mac (#177).
+
+## 2026-10-30: Live Translation is $4.99 on iPhone, iPad and Duo
+
+The owner set the iOS Live Translation purchase at **$4.99** (#228), replacing the lower price planned above. The iPad and iPhone Duo get the
+face-to-face split, and every portable device is getting translation through headphones, so the iPhone costs the same.
+The product ID stays `com.gileskayo.captions.translation`. The Mac's own Live Translation purchase stays **$1.99**,
+covering room and calls (#176). So: one iOS purchase at $4.99 and one Mac purchase at $1.99.
+
+Family Sharing is **off** for the iOS purchase: each person buys their own. Apple lets it be turned on later but never
+back off. `scripts/check-site.mjs` holds both prices (`PRICES`), fails a page that names any other price or says $1.99
+for anything but the Mac, and checks `Apps/Spike/StoreKit/SealSpeak.storekit` and the app's debug fake store against
+them. The app shows StoreKit's `displayPrice`; no source or string file hard-codes a price.

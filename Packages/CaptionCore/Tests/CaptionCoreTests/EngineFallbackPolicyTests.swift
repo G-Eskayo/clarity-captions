@@ -50,9 +50,19 @@ final class EngineFallbackPolicyTests: XCTestCase {
         XCTAssertEqual(choose(memory: 400 * 1_048_576).engine, .parakeet, "the floor itself is enough")
     }
 
-    func testNonEnglishLocalesUseApple() {
-        XCTAssertEqual(choose(locale: Locale(identifier: "fr-FR")), EngineSelection(engine: .apple, reason: .locale))
+    func testLanguagesParakeetWonUseItAndTheRestUseApple() {
+        // #234: the caption language picks the engine (ADR 0029). Parakeet where it beat Apple on FLEURS, Apple elsewhere.
+        XCTAssertEqual(choose(locale: Locale(identifier: "fr-FR")), EngineSelection(engine: .parakeet, reason: nil))
         XCTAssertEqual(choose(locale: Locale(identifier: "en-GB")).engine, .parakeet)
+        XCTAssertEqual(choose(locale: Locale(identifier: "ja-JP")), EngineSelection(engine: .apple, reason: .locale))
+    }
+
+    func testAWonLanguageStillFallsBackLikeEnglish() {
+        let es = Locale(identifier: "es-MX")
+        XCTAssertEqual(choose(locale: es, modelPresent: false), EngineSelection(engine: .apple, reason: .modelMissing))
+        XCTAssertEqual(choose(memory: 1, locale: es), EngineSelection(engine: .apple, reason: .lowMemory))
+        XCTAssertEqual(choose(fallbacks: [now.addingTimeInterval(-60), now.addingTimeInterval(-30)], locale: es),
+                       EngineSelection(engine: .apple, reason: .repeatedFallbacks))
     }
 
     func testTwoFallbacksInADayPinAppleForTwentyFourHours() {
