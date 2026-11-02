@@ -445,20 +445,6 @@
     </div>
   </section>
 
-  <section class="band scene" id="ipad-screen" aria-labelledby="ipad-screen-h">
-    <div class="wrap scene-grid">
-      <div>
-        <h2 id="ipad-screen-h">{{index.four-times-the-screen}}</h2>
-        <p class="intro">{{index.f-ipad-screen-intro}}</p>
-      </div>
-      <figure class="to-scale" data-grow aria-label="{{index.an-iphone-12-screen}}">
-        <div class="ts-phone" aria-hidden="true" data-app><p>Dinner is almost ready.</p></div>
-        <div class="ts-pad" aria-hidden="true" data-app><p>Dinner is almost ready.</p></div>
-        <figcaption><span>{{index.iphone-12}}</span><span>{{index.11-inch-ipad}}</span></figcaption>
-      </figure>
-    </div>
-  </section>
-
   <section class="band" id="easy" aria-labelledby="easy-h">
     <div class="wrap">
       <h2 id="easy-h">{{index.made-to-be-easy}}</h2>
@@ -620,6 +606,26 @@
       </div>
     </div>
   </div>
+
+  <!-- Why the big screens get face to face (#258, owner 2026-11-02): the screen-size picture lives here, as the reason
+       translation is one-way on iPhone and two-way on iPad and the open Duo (Decision on #171; FaceToFace.minimumShortSide). -->
+  <section class="band scene" id="ipad-screen" aria-labelledby="ipad-screen-h">
+    <div class="wrap scene-grid">
+      <div>
+        <h2 id="ipad-screen-h">{{index.four-times-the-screen}}</h2>
+        <p class="intro">{{index.f-ipad-screen-intro}}</p>
+        <ul class="why-split">
+          <li><b>{{index.f-why-iphone-h}}</b> {{index.f-why-iphone}}</li>
+          <li><b>{{index.f-why-big-h}}</b> {{index.f-why-big}}</li>
+        </ul>
+      </div>
+      <figure class="to-scale" data-grow aria-label="{{index.an-iphone-12-screen}}">
+        <div class="ts-phone" aria-hidden="true" data-app><p>Dinner is almost ready.</p></div>
+        <div class="ts-pad" aria-hidden="true" data-app><p>Dinner is almost ready.</p></div>
+        <figcaption><span>{{index.iphone-12}}</span><span>{{index.11-inch-ipad}}</span></figcaption>
+      </figure>
+    </div>
+  </section>
 
   <!-- iPhone Duo (#258). Measured from Xcode's iPhone Duo simulator profile (iPhone19,4): folded, the outer screen is
        466 x 678 pt with tight corners on the hinge (left) side; open, the inner screen is 669 x 951 pt, and folds in half

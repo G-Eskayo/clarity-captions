@@ -194,7 +194,7 @@ try {
       const sw = await dp.evaluate(() => document.documentElement.scrollWidth)
       ok(sw <= w, `${tag}: ${want} has no sideways scroll (scrollWidth ${sw})`)
     }
-    for (const [id, want] of [['how', 'captions'], ['ipad-screen', 'captions'], ['ipad-languages', 'translation'], ['mac-ring', 'calls']]) {
+    for (const [id, want] of [['how', 'captions'], ['ipad-screen', 'translation'], ['ipad-languages', 'translation'], ['mac-ring', 'calls']]) {
       await dp.goto(BASE + '#' + id); await wait(dp, 300)
       ok((await shown()) === want, `${tag}: an old link into #${id} opens ${want} (${await shown()})`)
     }

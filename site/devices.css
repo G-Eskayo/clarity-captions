@@ -304,3 +304,8 @@ html.motion .ear.in .ear-out { opacity: 1; transform: none; }
 .price-note + .when { margin-top: 1.5rem; }
 .gummy.gummy-soon small { font-weight: 600; font-size: .85rem; }
 @media (max-width: 40rem) { .devtable td.soon { padding: .5rem .65rem; } }
+
+/* Translation: why the iPhone and the big screens do it differently, beside the to-scale picture. */
+.why-split { list-style: none; padding: 0; margin: 1.25rem 0 0; display: grid; gap: .9rem; max-width: 32rem; }
+.why-split li { padding-inline-start: 1rem; border-inline-start: 3px solid var(--teal); color: var(--muted); }
+.why-split b { display: block; color: var(--text); }
