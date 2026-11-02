@@ -48,6 +48,8 @@ enum DemoMode {
     static let asksLanguage = false
     static let translate: String? = nil
     static let fakeStore = false
+    /// #252: the swap button's proposed places are iPhone screenshots only; the Mac never draws them.
+    static let swap: String? = nil
 }
 
 /// Beta feedback (ADR 0023) is iPhone-only for now, so Settings' "Test version" section never shows on the Mac.
