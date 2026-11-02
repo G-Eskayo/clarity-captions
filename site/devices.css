@@ -191,6 +191,8 @@ table.data tr:not(.cap) > * { border-bottom: 0; }
 .devtable tbody th a { color: var(--accent); }
 .devtable td.yes::before { content: '✓ '; color: var(--teal); font-weight: 800; }
 .devtable td.soon, .devtable td.no { color: var(--muted); }
+/* Dashed means not on the App Store yet (owner, 2026-11-02): chips, buttons and these cells alike. */
+.devtable td.soon { outline: 2px dashed var(--muted); outline-offset: -5px; border-radius: 12px; }
 .devtable tr.need td, .devtable tr.need th { color: var(--muted); font-size: .9rem; border-bottom: 0; }
 .get { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1.25rem; margin-top: 1.75rem; }
 .get .soon-note { margin: 0; max-width: 24rem; }
@@ -250,3 +252,5 @@ html.motion .ear.in .ear-out { opacity: 1; transform: none; }
 /* The to-scale pair is 307 px wide; on the narrowest phones the gap between them gives way. */
 @media (max-width: 22rem) { .to-scale, .to-scale figcaption { column-gap: 1rem; } }
 .price-note + .when { margin-top: 1.5rem; }
+.gummy.gummy-soon small { font-weight: 600; font-size: .85rem; }
+@media (max-width: 40rem) { .devtable td.soon { padding: .5rem .65rem; } }

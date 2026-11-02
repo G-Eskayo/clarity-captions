@@ -266,7 +266,10 @@
       <div>
         <h1>{{index.follow-the-conversation-at-2}}</h1>
         <p class="lede">{{index.seal-speak-shows-what-2}}</p>
-        <a class="gummy" href="https://apps.apple.com/us/app/seal-speak/id6821561495">{{index.f-download}}</a>
+        <div class="get">
+          <a class="gummy" href="https://apps.apple.com/us/app/seal-speak/id6821561495">{{index.f-download}}</a>
+          <span class="gummy gummy-soon" aria-disabled="true">{{index.f-mac-download}}</span>
+        </div>
         <span class="soon-note">{{index.f-cap-for}}</span>
         <ul class="works-on" aria-label="{{index.f-works-on}}"><li class="yes">{{index.f-dev-iphone}}</li><li class="yes">{{index.f-dev-ipad}}</li><li class="yes">{{index.f-dev-duo}}</li><li class="soon">{{index.f-dev-mac}} <small>{{index.f-in-testing}}</small></li></ul>
         <ul class="facts" aria-label="{{index.at-a-glance}}">
@@ -591,9 +594,9 @@
       <div>
         <h1>{{index.f-tr-h1}}</h1>
         <p class="lede">{{index.f-tr-lede}}</p>
-        <ul class="works-on" aria-label="{{index.f-works-on}}"><li class="yes">{{index.f-dev-iphone}}</li><li class="yes">{{index.f-dev-ipad}}</li><li class="yes">{{index.f-dev-duo}}</li><li class="soon">{{index.f-dev-mac}} <small>{{index.f-planned}}</small></li></ul>
+        <ul class="works-on" aria-label="{{index.f-works-on}}"><li class="soon">{{index.f-dev-iphone}} <small>{{index.f-coming-lower}}</small></li><li class="soon">{{index.f-dev-ipad}} <small>{{index.f-coming-lower}}</small></li><li class="soon">{{index.f-dev-duo}} <small>{{index.f-coming-lower}}</small></li><li class="soon">{{index.f-dev-mac}} <small>{{index.f-coming-lower}}</small></li></ul>
         <div class="get">
-          <a class="gummy" href="https://apps.apple.com/us/app/seal-speak/id6821561495">{{index.f-tr-download}}</a>
+          <span class="gummy gummy-soon" aria-disabled="true">{{index.f-tr-download}} <small>{{index.f-coming-lower}}</small></span>
         </div>
         <p class="price-note">{{index.f-tr-price}}</p>
       </div>
@@ -737,7 +740,7 @@
         <p class="lede">{{index.a-small-window-that}} {{index.f-calls-mac-only}}</p>
         <ul class="works-on" aria-label="{{index.f-works-on}}"><li class="no">{{index.f-dev-iphone}} <small>{{index.f-no}}</small></li><li class="no">{{index.f-dev-ipad}} <small>{{index.f-no}}</small></li><li class="no">{{index.f-dev-duo}} <small>{{index.f-no}}</small></li><li class="soon">{{index.f-dev-mac}} <small>{{index.f-in-testing}}</small></li></ul>
         <div class="get">
-          <span class="gummy gummy-soon" aria-disabled="true">{{index.f-calls-download}}</span>
+          <span class="gummy gummy-soon" aria-disabled="true">{{index.f-mac-download}}</span>
         </div>
         <p class="price-note">{{index.f-calls-note}}</p>
         <ol class="when" aria-label="{{index.where-the-mac-app}}">
@@ -842,16 +845,19 @@
         <thead><tr><td></td><th scope="col">{{index.f-dev-iphone}}</th><th scope="col">{{index.f-dev-ipad}}</th><th scope="col">{{index.f-dev-duo}}</th><th scope="col">{{index.f-dev-mac}}</th></tr></thead>
         <tbody>
           <tr data-row="captions"><th scope="row"><a href="#panel-captions">{{index.f-captions}}</a></th><td class="yes" data-dev="{{index.f-dev-iphone}}">{{index.f-t-cap-iphone}}</td><td class="yes" data-dev="{{index.f-dev-ipad}}">{{index.f-t-cap-ipad}}</td><td class="yes" data-dev="{{index.f-dev-duo}}">{{index.f-t-cap-duo}}</td><td class="soon" data-dev="{{index.f-dev-mac}}">{{index.f-t-cap-mac}}</td></tr>
-          <tr data-row="translation"><th scope="row"><a href="#panel-translation">{{index.f-translation}}</a></th><td class="yes" data-dev="{{index.f-dev-iphone}}">{{index.f-t-tr-iphone}}</td><td class="yes" data-dev="{{index.f-dev-ipad}}">{{index.f-t-tr-ipad}}</td><td class="yes" data-dev="{{index.f-dev-duo}}">{{index.f-t-tr-duo}}</td><td class="soon" data-dev="{{index.f-dev-mac}}">{{index.f-t-tr-mac}}</td></tr>
+          <tr data-row="translation"><th scope="row"><a href="#panel-translation">{{index.f-translation}}</a></th><td class="soon" data-dev="{{index.f-dev-iphone}}">{{index.f-t-tr-iphone}}</td><td class="soon" data-dev="{{index.f-dev-ipad}}">{{index.f-t-tr-ipad}}</td><td class="soon" data-dev="{{index.f-dev-duo}}">{{index.f-t-tr-duo}}</td><td class="soon" data-dev="{{index.f-dev-mac}}">{{index.f-t-tr-mac}}</td></tr>
           <tr data-row="calls"><th scope="row"><a href="#panel-calls">{{index.f-calls}}</a></th><td class="no" data-dev="{{index.f-dev-iphone}}">{{index.f-t-calls-iphone}}</td><td class="no" data-dev="{{index.f-dev-ipad}}">{{index.f-t-calls-ipad}}</td><td class="no" data-dev="{{index.f-dev-duo}}">{{index.f-t-calls-duo}}</td><td class="soon" data-dev="{{index.f-dev-mac}}">{{index.f-t-calls-mac}}</td></tr>
           <tr class="need"><th scope="row">{{index.f-you-need}}</th><td data-dev="{{index.f-dev-iphone}}">{{index.f-t-need-iphone}}</td><td data-dev="{{index.f-dev-ipad}}">{{index.f-t-need-ipad}}</td><td data-dev="{{index.f-dev-duo}}">{{index.f-t-need-duo}}</td><td data-dev="{{index.f-dev-mac}}">{{index.f-t-need-mac}}</td></tr>
         </tbody>
       </table>
       <div class="get">
         <a class="gummy" href="https://apps.apple.com/us/app/seal-speak/id6821561495">{{index.f-download}}</a>
-        <p class="soon-note">{{index.f-mac-soon}}</p>
+        <span class="gummy gummy-soon" aria-disabled="true">{{index.f-mac-download}}</span>
       </div>
+      <p class="price-note">{{index.f-mac-soon}}</p>
       <p class="price-note">{{index.f-prices}}</p>
+      <p class="price-note">{{index.f-dashed}}</p>
+      <p class="price-note">{{index.f-android}}</p>
     </div>
   </section>
 

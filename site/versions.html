@@ -181,10 +181,10 @@
         <h3 id="v1-1-0">1.1.0 <span class="badge">Coming next</span></h3>
         <ul>
           <li>Seal Speak runs on iPad, with the captions using the whole screen, and on iPhone Duo, folded or open.</li>
-          <li>A new engine makes English captions: Parakeet Ultra instead of Apple's speech recognition. In our tests it makes fewer mistakes and the words show up sooner. The story is <a href="#engine">below</a>.</li>
-          <li>Captions in more languages. Pick from the languages Apple's speech recognition offers on your device. English uses Parakeet. The others use Apple's engine for now.</li>
-          <li>Live Translation: the captions translated into your language as people talk, on your device with Apple's translation. An optional add-on, bought once: $4.99 on iPhone, iPad and iPhone Duo. Captions stay part of the app.</li>
-          <li>Face to face, on iPad and on iPhone Duo when it's open: lay it flat between you, each half picks its language, and both people read the whole conversation.</li>
+          <li>A new engine makes the captions in English, Spanish, French, German, Italian and Portuguese: Parakeet Ultra instead of Apple's speech recognition. In our tests it makes fewer mistakes and the words show up sooner. The story is <a href="#engine">below</a>.</li>
+          <li>Captions in more languages: pick from the ones your device's speech recognition offers. English, Spanish, French, German, Italian and Portuguese run on Parakeet. Japanese, Korean and Chinese run on Apple's engine.</li>
+          <li>Live Translation, coming (still in testing): the captions translated into your language as people talk, on your device with Apple's translation, and spoken into your headphones if you want. An optional add-on, bought once: $4.99 on iPhone, iPad and iPhone Duo. Captions stay part of the app.</li>
+          <li>Face to face, part of Live Translation, on iPad and on iPhone Duo when it's open: lay it flat between you, each half picks its language, and both people read the whole conversation.</li>
           <li>It still works with no internet, and nothing leaves your device.</li>
           <li>The app gets bigger: the new caption model is about 498 MB.</li>
         </ul>
@@ -261,7 +261,7 @@
           <li>It is fast to show words (median 0.25 s), and it runs on the phone with no internet.</li>
         </ul>
         <p><strong>If it does not work out on an iPhone,</strong> the fallback is Parakeet Ultra 4-bit: smaller (350 MB), about a point less accurate, still better than Apple.</p>
-        <p class="note">These tests ran on a Mac with one set of recordings. 1.1.0 uses Parakeet Ultra 6-bit for English captions. Captions can still contain mistakes with any engine.</p>
+        <p class="note">These tests ran on a Mac with one set of recordings. 1.1.0 uses Parakeet Ultra 6-bit for captions in English, Spanish, French, German, Italian and Portuguese. Captions can still contain mistakes with any engine.</p>
       </div>
 
       <p class="intro" style="margin-top:2rem">The full results, including every accent we tested, are in the <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/engine-accuracy-comparison.md">engine accuracy report</a> on GitHub. The research note behind the size test is <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/research/evidence-log.md">evidence log E12</a>.</p>
@@ -290,7 +290,7 @@
         </table>
       </div>
       <div class="prose" style="margin-top:1.5rem">
-        <p>Parakeet made 30 to 40% fewer mistakes in every language, and the ranges do not overlap. That is why these languages move to Parakeet next.</p>
+        <p>Parakeet made 30 to 40% fewer mistakes in every language, and the ranges do not overlap. That is why 1.1.0 uses it for them, and for Italian and Portuguese, where it also won.</p>
       </div>
       <p class="note src">These recordings are people reading sentences in quiet rooms, not conversations, so every engine scores much better here than in real life. The ranking is the useful part. Measured on a Mac, not an iPhone. Source: <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/language-accuracy-comparison.md">language accuracy report</a> (FLEURS test sets, CC BY 4.0).</p>
     </div>
@@ -380,9 +380,12 @@
         <ul>
           <li>A smaller caption engine. The English model is 498&nbsp;MB today. The goal is a fraction of that with no more mistakes.</li>
           <li>Hebrew captions, from an open Hebrew model that made less than a third of the mistakes Apple's Hebrew dictation did.</li>
-          <li>Parakeet for Spanish, French, German, Italian and Portuguese captions, instead of Apple's engine.</li>
         </ul>
         <p class="note">Planned, not built yet. No date. The numbers below are from a Mac.</p>
+      </div>
+      <div class="card release" id="android">
+        <h3>Later <span class="badge">Planned</span></h3>
+        <p>Seal Speak on Android, with the same speed and the same experience as on iPhone, and as close to the same look as Android allows. No date yet.</p>
       </div>
     </div>
   </section>

@@ -254,20 +254,23 @@
 <main id="main">
   <div class="wrap">
     <div class="devices" role="tablist" aria-label="Choose a feature" data-features hidden>
-      <button role="tab" data-tab="captions" id="tab-captions" aria-controls="panel-captions" aria-selected="true">Live captioning</button>
+      <button role="tab" data-tab="captions" id="tab-captions" aria-controls="panel-captions" aria-selected="true">Captions</button>
       <button role="tab" data-tab="translation" id="tab-translation" aria-controls="panel-translation" aria-selected="false" tabindex="-1">Translation</button>
-      <button role="tab" data-tab="calls" id="tab-calls" aria-controls="panel-calls" aria-selected="false" tabindex="-1">Calls & meetings</button>
+      <button role="tab" data-tab="calls" id="tab-calls" aria-controls="panel-calls" aria-selected="false" tabindex="-1">Calls</button>
     </div>
   </div>
 
   <div data-feature="captions" id="panel-captions" role="tabpanel" aria-labelledby="tab-captions">
   <div class="wrap">
-    <p class="device-name">Live captioning</p>
+    <p class="device-name">Captions</p>
     <div class="hero">
       <div>
         <h1>Follow the conversation at the table.</h1>
         <p class="lede">Seal Speak shows what the people around you are saying, as they say it, in large clear text. It all happens on your iPhone, so it works with no internet.</p>
-        <a class="gummy" href="https://apps.apple.com/us/app/seal-speak/id6821561495">Download for iPhone and iPad</a>
+        <div class="get">
+          <a class="gummy" href="https://apps.apple.com/us/app/seal-speak/id6821561495">Download for iPhone and iPad</a>
+          <span class="gummy gummy-soon" aria-disabled="true">Mac app: coming</span>
+        </div>
         <span class="soon-note">For iPhone 12 or newer, iPhone Duo, and iPad with an A14 chip or newer, on iOS or iPadOS 26 or later.</span>
         <ul class="works-on" aria-label="Works on"><li class="yes">iPhone</li><li class="yes">iPad</li><li class="yes">iPhone Duo</li><li class="soon">Mac <small>in testing</small></li></ul>
         <ul class="facts" aria-label="At a glance">
@@ -516,12 +519,12 @@
       <div class="stats">
         <p class="stat"><span class="stat-n" data-count="31">31</span><span class="stat-l">hours of real conversations, from 122 people with accents from all over the world</span></p>
         <p class="stat"><span class="stat-n" data-count="20%">20%</span><span class="stat-l">fewer mistakes in English with the caption engine coming in 1.1</span></p>
-        <p class="stat"><span class="stat-n" data-count="0.25 s">0.25 s</span><span class="stat-l">for a word to show, against 0.67 s today (median, on a Mac)</span></p>
+        <p class="stat"><span class="stat-n" data-count="0.25 s">0.25 s</span><span class="stat-l">for a word to show, against 0.67 s in 1.0 (median, on a Mac)</span></p>
       </div>
       <div class="results">
         <div class="card">
           <h3>Fewer mistakes in conversation</h3>
-          <p>Seal Speak 1.0 used Apple's speech recognition. We tested it against three other engines, and Parakeet Ultra made the fewest mistakes. Since 1.1, English captions use it.</p>
+          <p>Seal Speak 1.0 used Apple's speech recognition. We tested it against three other engines, and Parakeet Ultra made the fewest mistakes. Since 1.1, it makes the captions in English, Spanish, French, German, Italian and Portuguese.</p>
           <div class="tablewrap">
             <table class="data results-t" style="--cols:2" data-bars data-better="lower">
               <caption class="sr-only">Mistakes in every 100 words, English conversations</caption>
@@ -535,7 +538,7 @@
         </div>
         <div class="card">
           <h3>Other languages too</h3>
-          <p>Since 1.1 you can pick other caption languages. English uses Parakeet. The others still use Apple's speech recognition. We measured Parakeet in Spanish, French and German first, and it made 30 to 40% fewer mistakes than Apple, so those are next.</p>
+          <p>Since 1.1 you can pick other caption languages. Before moving a language to Parakeet, we measured it. In Spanish, French and German, Parakeet made 30 to 40% fewer mistakes than Apple. So English, Spanish, French, German, Italian and Portuguese run on Parakeet. Japanese, Korean and Chinese stay on Apple's speech recognition, because Parakeet doesn't cover them.</p>
           <div class="tablewrap">
             <table class="data results-t" style="--cols:2" data-bars data-better="lower">
               <caption class="sr-only">Mistakes in every 100 words, by language</caption>
@@ -592,11 +595,11 @@
       <div>
         <h1>Read the conversation in your language.</h1>
         <p class="lede">Seal Speak translates the captions as people talk. It's done on your device with Apple's translation, so once a language is downloaded it works with no internet.</p>
-        <ul class="works-on" aria-label="Works on"><li class="yes">iPhone</li><li class="yes">iPad</li><li class="yes">iPhone Duo</li><li class="soon">Mac <small>planned</small></li></ul>
+        <ul class="works-on" aria-label="Works on"><li class="soon">iPhone <small>coming</small></li><li class="soon">iPad <small>coming</small></li><li class="soon">iPhone Duo <small>coming</small></li><li class="soon">Mac <small>coming</small></li></ul>
         <div class="get">
-          <a class="gummy" href="https://apps.apple.com/us/app/seal-speak/id6821561495">Get Live Translation on iPhone and iPad</a>
+          <span class="gummy gummy-soon" aria-disabled="true">Get Live Translation <small>coming</small></span>
         </div>
-        <p class="price-note">Download Seal Speak, then add Live Translation in the app: $4.99, once, on iPhone, iPad and iPhone Duo. Captions stay part of the app. The Mac app gets its own button once it's out.</p>
+        <p class="price-note">Live Translation is still in testing, so its button isn't live yet. Once it is, you add it inside Seal Speak: $4.99, once, on iPhone, iPad and iPhone Duo. That buys more than on the Mac: the translation spoken in your ear, and face to face on iPad and iPhone Duo. Captions stay part of the app.</p>
       </div>
       <div class="duo-wrap" data-duo>
         <div class="duo" data-open role="img" aria-label="An iPhone Duo. Folded, it shows the conversation in one language, like an iPhone. Opened flat, it splits in two: each half has its own language, and both people read along.">
@@ -651,7 +654,7 @@
       <div>
         <p class="soon-badge">Coming</p>
         <h2 id="ear-h">Translation in your ear.</h2>
-        <p class="intro">Next, Seal Speak can speak the translation into your headphones, any brand, so you can listen instead of read. On iPhone, iPad and iPhone Duo. It isn't in 1.1.0.</p>
+        <p class="intro">Seal Speak speaks the translation into your headphones, any brand, so you can listen instead of read. On iPhone, iPad and iPhone Duo, not the Mac. It's part of Live Translation, which is still in testing.</p>
       </div>
       <figure class="ear" data-grow aria-label="Someone speaks Spanish. Seal Speak translates it on the device and speaks it in English into a pair of headphones.">
         <p class="ear-in" aria-hidden="true" data-app>¿Qué tal el viaje?</p>
@@ -731,7 +734,7 @@
 
   <div data-feature="calls" id="panel-calls" role="tabpanel" aria-labelledby="tab-calls">
   <div class="wrap">
-    <p class="device-name">Calls & meetings</p>
+    <p class="device-name">Calls</p>
     <div class="hero">
       <div>
         <h1>Captions for your calls.</h1>
@@ -842,17 +845,20 @@
         <caption class="sr-only">Which device does what</caption>
         <thead><tr><td></td><th scope="col">iPhone</th><th scope="col">iPad</th><th scope="col">iPhone Duo</th><th scope="col">Mac</th></tr></thead>
         <tbody>
-          <tr data-row="captions"><th scope="row"><a href="#panel-captions">Live captioning</a></th><td class="yes" data-dev="iPhone">Yes</td><td class="yes" data-dev="iPad">Yes, full screen</td><td class="yes" data-dev="iPhone Duo">Yes, folded or open</td><td class="soon" data-dev="Mac">In testing</td></tr>
-          <tr data-row="translation"><th scope="row"><a href="#panel-translation">Translation</a></th><td class="yes" data-dev="iPhone">Translated captions</td><td class="yes" data-dev="iPad">Translated captions and face to face</td><td class="yes" data-dev="iPhone Duo">Translated captions, and face to face when open</td><td class="soon" data-dev="Mac">Planned</td></tr>
-          <tr data-row="calls"><th scope="row"><a href="#panel-calls">Calls & meetings</a></th><td class="no" data-dev="iPhone">No</td><td class="no" data-dev="iPad">No</td><td class="no" data-dev="iPhone Duo">No</td><td class="soon" data-dev="Mac">In testing</td></tr>
+          <tr data-row="captions"><th scope="row"><a href="#panel-captions">Captions</a></th><td class="yes" data-dev="iPhone">Yes</td><td class="yes" data-dev="iPad">Yes, full screen</td><td class="yes" data-dev="iPhone Duo">Yes, folded or open</td><td class="soon" data-dev="Mac">In testing</td></tr>
+          <tr data-row="translation"><th scope="row"><a href="#panel-translation">Translation</a></th><td class="soon" data-dev="iPhone">Translated captions, and spoken in your ear</td><td class="soon" data-dev="iPad">Translated captions, in your ear, and face to face</td><td class="soon" data-dev="iPhone Duo">Translated captions, in your ear, and face to face when open</td><td class="soon" data-dev="Mac">Translated captions, in the room and on calls</td></tr>
+          <tr data-row="calls"><th scope="row"><a href="#panel-calls">Calls</a></th><td class="no" data-dev="iPhone">No</td><td class="no" data-dev="iPad">No</td><td class="no" data-dev="iPhone Duo">No</td><td class="soon" data-dev="Mac">In testing</td></tr>
           <tr class="need"><th scope="row">You need</th><td data-dev="iPhone">iPhone 12 or newer, iOS 26</td><td data-dev="iPad">A14 chip or newer, iPadOS 26</td><td data-dev="iPhone Duo">iOS 26</td><td data-dev="Mac">Apple silicon (M1 or later), macOS 26</td></tr>
         </tbody>
       </table>
       <div class="get">
         <a class="gummy" href="https://apps.apple.com/us/app/seal-speak/id6821561495">Download for iPhone and iPad</a>
-        <p class="soon-note">The Mac app will be its own App Store app. Its button goes here once it's out.</p>
+        <span class="gummy gummy-soon" aria-disabled="true">Mac app: coming</span>
       </div>
-      <p class="price-note">$4.99 once, no subscription. Live Translation is an optional add-on: $4.99, once, on iPhone, iPad and iPhone Duo.</p>
+      <p class="price-note">The Mac app is a separate app and a separate purchase. Buying Seal Speak on iPhone doesn't get it for you on the Mac. It's still in testing, so its button isn't live yet.</p>
+      <p class="price-note">Seal Speak is $4.99, once, on iPhone and iPad, with no subscription. The Mac app is $4.99, once, on its own, coming. Live Translation is an add-on, coming: $4.99 on iPhone, iPad and iPhone Duo, and $1.99 on the Mac. Why the difference: on iPhone, iPad and iPhone Duo it also speaks the translation in your ear, and does face to face on iPad and iPhone Duo. On the Mac it's translated captions, in the room and on calls.</p>
+      <p class="price-note">Dashed means it isn't on the App Store yet.</p>
+      <p class="price-note">Android: planned, no date yet. The goal is the same speed and the same experience as on iPhone.</p>
     </div>
   </section>
 
