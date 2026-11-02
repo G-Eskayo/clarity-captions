@@ -227,16 +227,15 @@ try {
         const s = document.querySelector('[data-duo-stage]'), r = s.getBoundingClientRect()
         const shown = [...document.querySelectorAll('.duo-steps li')].map((li) => +getComputedStyle(li).opacity)
         return { state: s.dataset.state, onScreen: r.top >= -1 && r.bottom <= innerHeight + 1, step: shown.indexOf(Math.max(...shown)) + 1, sw: document.documentElement.scrollWidth,
-          offer: +getComputedStyle(document.querySelector('.duo-right .ds-f2f')).opacity }
+          lit: +getComputedStyle(document.querySelector('.duo-base .duo-pic')).opacity }
       })
     }
     const seen = []
-    for (const p of [0, 0.42, 0.6, 1, 0.42, 0]) seen.push(await duoAt(p))
+    for (const p of [0, 0.3, 0.6, 1, 0.3, 0]) seen.push(await duoAt(p))
     ok(seen.map((x) => x.state).join() === 'folded,opening,open,split,opening,folded', `${tag}: the Duo unfolds as you scroll down and folds back up (${seen.map((x) => x.state)})`)
     ok(seen.every((x) => x.onScreen), `${tag}: the Duo stays on screen while it plays`)
     ok(seen.map((x) => x.step).join() === '1,2,2,3,2,1', `${tag}: the step's words follow the Duo (${seen.map((x) => x.step)})`)
-    const midOffer = (await duoAt(0.42)).offer; await duoAt(0.6); await wait(dp, 400); const openOffer = (await duoAt(0.6)).offer // its fade is .3 s
-    ok(midOffer === 0 && openOffer === 1, `${tag}: Face to face is offered only once the Duo is open (${midOffer}, ${openOffer})`)
+    ok(seen[1].lit === 0 && seen[2].lit === 1 && seen[3].lit === 1, `${tag}: the inner screen (the app's own screenshot) lights only once the Duo is open and upright (${seen.map((x) => x.lit)})`)
     ok(seen.every((x) => x.sw <= w), `${tag}: the Duo never makes the page scroll sideways (${seen.map((x) => x.sw)})`)
     // The iPad's translation results grow as bars, the best translator marked in each row.
     await dp.goto(BASE + '#translation'); await scrollThrough(dp); await wait(dp, 800)

@@ -622,9 +622,12 @@
     </div>
   </div>
 
-  <!-- iPhone Duo (#258): folded it's an iPhone with translated captions; opened, the app offers Face to face, and the
-       split turns one half to each person (FaceToFaceView, #60, #199, #216, #245). Scrolling unfolds it; scrolling back
-       folds it. With Reduce Motion or no JavaScript the two states show as two still pictures. -->
+  <!-- iPhone Duo (#258). Measured from Xcode's iPhone Duo simulator profile (iPhone19,4): folded, the outer screen is
+       466 x 678 pt with tight corners on the hinge (left) side; open, the inner screen is 669 x 951 pt, and folds in half
+       across its long side, so it opens like a book into a landscape 951 x 669 and turns upright to its own portrait.
+       The screens are real app screenshots: the outer one from the Duo simulator, the inner ones from the iPad Air 11-inch
+       simulator, cropped to the Duo's shape, because the Duo simulator can't be unfolded from the command line.
+       Scrolling unfolds it; scrolling back folds it. Reduce Motion or no JavaScript: two still pictures. -->
   <section class="band scene duo-section" id="face-to-face" aria-labelledby="f2f-h" data-duo>
     <div class="wrap duo-words">
       <h2 id="f2f-h">Talk across the table, in two languages.</h2>
@@ -635,26 +638,28 @@
         <div>
           <ol class="duo-steps">
             <li data-step="1"><b>Folded: one language, like an iPhone</b> The other person's words show up translated into yours, with what they said in small type underneath.</li>
-            <li data-step="2"><b>Opening:</b> The screen is big enough for two now, so a Face to face button shows up at the top.</li>
+            <li data-step="2"><b>Opening:</b> It opens like a book. Stood up, the inside screen is big enough for two, so a Face to face button shows up at the top.</li>
             <li data-step="3"><b>Open: face to face, a language for each half</b> Tap it and the screen splits. Your half faces you, theirs is turned to face them. Each half picks its language and shows the whole conversation.</li>
           </ol>
         </div>
         <div class="duo-stage" data-duo-stage role="img" aria-label="An iPhone Duo. Folded, it shows translated captions like an iPhone. Opened, Seal Speak offers Face to face, and the screen splits in two: one half turned to face each person, each in its own language." hidden>
-          <div class="duo-body" aria-hidden="true" data-app>
-            <div class="duo-leaf duo-left"><div class="duo-clip"><div class="duo-inner"><div class="ds ds-one" data-app><div class="ds-top"><span class="ds-status"><i></i>Listening</span><span class="ds-f2f">[ Face to face ]</span></div><div class="ds-lines"><p class="ds-line"><b>Speaker 1</b><span class="ds-mark">Translated from Spanish</span>How was the drive?<small>¿Qué tal el viaje?</small></p><p class="ds-line"><b>Speaker 1</b><span class="ds-mark">Translated from Spanish</span>Good. Dinner is almost ready.<small>Qué bien. La cena está casi lista.</small></p></div></div><div class="ds ds-split" data-app><div class="ds-half them"><p class="ds-lang">Español</p><p class="ds-line">¿Qué tal el viaje?</p><p class="ds-line"><span class="ds-mark">Traducido del inglés</span>Largo, pero los niños durmieron todo el camino.<small>Long, but the kids slept the whole way.</small></p><p class="ds-say">Listening</p></div><div class="ds-mid"></div><div class="ds-half you"><p class="ds-lang">English</p><p class="ds-line"><span class="ds-mark">Translated from Spanish</span>How was the drive?<small>¿Qué tal el viaje?</small></p><p class="ds-line">Long, but the kids slept the whole way.</p><p class="ds-say">Listening</p><span class="ds-stop">Stop</span></div></div></div></div></div>
-            <div class="duo-leaf duo-right">
-              <div class="duo-face duo-front"><div class="duo-clip"><div class="duo-inner"><div class="ds ds-one" data-app><div class="ds-top"><span class="ds-status"><i></i>Listening</span><span class="ds-f2f">[ Face to face ]</span></div><div class="ds-lines"><p class="ds-line"><b>Speaker 1</b><span class="ds-mark">Translated from Spanish</span>How was the drive?<small>¿Qué tal el viaje?</small></p><p class="ds-line"><b>Speaker 1</b><span class="ds-mark">Translated from Spanish</span>Good. Dinner is almost ready.<small>Qué bien. La cena está casi lista.</small></p></div></div><div class="ds ds-split" data-app><div class="ds-half them"><p class="ds-lang">Español</p><p class="ds-line">¿Qué tal el viaje?</p><p class="ds-line"><span class="ds-mark">Traducido del inglés</span>Largo, pero los niños durmieron todo el camino.<small>Long, but the kids slept the whole way.</small></p><p class="ds-say">Listening</p></div><div class="ds-mid"></div><div class="ds-half you"><p class="ds-lang">English</p><p class="ds-line"><span class="ds-mark">Translated from Spanish</span>How was the drive?<small>¿Qué tal el viaje?</small></p><p class="ds-line">Long, but the kids slept the whole way.</p><p class="ds-say">Listening</p><span class="ds-stop">Stop</span></div></div></div></div></div>
-              <div class="duo-face duo-back"><div class="ds ds-one ds-outer" data-app><div class="ds-top"><span class="ds-status"><i></i>Listening</span></div><div class="ds-lines"><p class="ds-line"><b>Speaker 1</b><span class="ds-mark">Translated from Spanish</span>How was the drive?<small>¿Qué tal el viaje?</small></p><p class="ds-line"><b>Speaker 1</b><span class="ds-mark">Translated from Spanish</span>Good. Dinner is almost ready.<small>Qué bien. La cena está casi lista.</small></p></div></div></div>
+          <div class="duo-rot">
+            <div class="duo-body" aria-hidden="true" data-app>
+              <div class="duo-half duo-cover">
+                <div class="duo-face duo-front"><div class="duo-clip"><div class="duo-scr"><div class="duo-pic"><img class="duo-img-open" src="assets/duo/inner-face-to-face-offered.jpg" alt=""><img class="duo-img-split" src="assets/duo/inner-split.jpg" alt=""><span class="duo-tap"></span></div></div></div></div>
+                <div class="duo-face duo-back"><img class="duo-outer" src="assets/duo/outer-captions.jpg" alt=""></div>
+              </div>
+              <div class="duo-half duo-base"><div class="duo-clip"><div class="duo-scr"><div class="duo-pic"><img class="duo-img-open" src="assets/duo/inner-face-to-face-offered.jpg" alt=""><img class="duo-img-split" src="assets/duo/inner-split.jpg" alt=""><span class="duo-tap"></span></div></div></div></div>
             </div>
           </div>
         </div>
         <div class="duo-stills" data-duo-stills>
           <figure class="duo-still" aria-label="Folded: one language, like an iPhone">
-            <div class="duo duo-phone" aria-hidden="true" data-app><div class="ds ds-one ds-outer" data-app><div class="ds-top"><span class="ds-status"><i></i>Listening</span></div><div class="ds-lines"><p class="ds-line"><b>Speaker 1</b><span class="ds-mark">Translated from Spanish</span>How was the drive?<small>¿Qué tal el viaje?</small></p><p class="ds-line"><b>Speaker 1</b><span class="ds-mark">Translated from Spanish</span>Good. Dinner is almost ready.<small>Qué bien. La cena está casi lista.</small></p></div></div></div>
+            <div class="duo-fold-still" aria-hidden="true" data-app><img class="duo-outer" src="assets/duo/outer-captions.jpg" alt=""></div>
             <figcaption>Folded: one language, like an iPhone</figcaption>
           </figure>
           <figure class="duo-still" aria-label="Open: face to face, a language for each half">
-            <div class="duo duo-open" aria-hidden="true" data-app><div class="duo-inner is-split"><div class="ds ds-split" data-app><div class="ds-half them"><p class="ds-lang">Español</p><p class="ds-line">¿Qué tal el viaje?</p><p class="ds-line"><span class="ds-mark">Traducido del inglés</span>Largo, pero los niños durmieron todo el camino.<small>Long, but the kids slept the whole way.</small></p><p class="ds-say">Listening</p></div><div class="ds-mid"></div><div class="ds-half you"><p class="ds-lang">English</p><p class="ds-line"><span class="ds-mark">Translated from Spanish</span>How was the drive?<small>¿Qué tal el viaje?</small></p><p class="ds-line">Long, but the kids slept the whole way.</p><p class="ds-say">Listening</p><span class="ds-stop">Stop</span></div></div></div></div>
+            <div class="duo-open-still" aria-hidden="true" data-app><img src="assets/duo/inner-split.jpg" alt=""></div>
             <figcaption>Open: face to face, a language for each half</figcaption>
           </figure>
         </div>

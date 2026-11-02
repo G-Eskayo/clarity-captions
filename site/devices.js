@@ -134,24 +134,27 @@ function mac(win) {
   })
 }
 
-// iPhone Duo (#258), what the app does (FaceToFaceView, FaceToFace.offersSplit): folded, the outer screen is an iPhone
-// with translated captions, the translation over what was said. Opened, the screen is big enough for two, so the top
-// row offers [ Face to face ]; tapping it splits the screen, the other person's half turned to face them.
-// Scrolling through the section plays that in order and scrolling back plays it backwards: duoFrame turns how far
-// through the section you are (0 to 1) into the fold, the split and which step's words show.
+// iPhone Duo (#258), measured from Xcode's iPhone Duo simulator profile, showing the app's real screens (see
+// devices.css): folded, the outer screen shows translated captions. It opens like a book, hinge on the left, into a
+// landscape inner screen, then turns upright to the inner screen's portrait. There the app offers [ Face to face ]
+// (FaceToFace.offersSplit: big enough for two); a touch on it, and the split, one half turned to each person.
+// Scrolling plays that in order and scrolling back plays it backwards: duoFrame turns how far through the section you
+// are (0 to 1) into the fold, the turn, the inner screen lighting, the touch, the split and which step's words show.
 const clamp = (x) => Math.min(1, Math.max(0, x))
 const ease = (t) => t * t * (3 - 2 * t)
 export function duoFrame(p) {
-  const fold = 1 - ease(clamp((p - 0.2) / 0.35)) // folded until 0.2, open by 0.55
-  const press = clamp(1 - Math.abs(p - 0.64) / 0.04) // Face to face dips as it's tapped
-  const split = ease(clamp((p - 0.68) / 0.14)) // the split fades in by 0.82
+  const fold = 1 - ease(clamp((p - 0.18) / 0.24)) // folded until 0.18, open flat by 0.42
+  const turn = ease(clamp((p - 0.42) / 0.12)) // then upright by 0.54
+  const lit = ease(clamp((p - 0.5) / 0.08)) // the inner screen comes on as it stands up; dark while it opens
+  const press = clamp(1 - Math.abs(p - 0.64) / 0.04) // a touch on Face to face
+  const split = ease(clamp((p - 0.68) / 0.14)) // the split by 0.82
   const steps = [
-    1 - ease(clamp((p - 0.2) / 0.08)),
-    ease(clamp((p - 0.28) / 0.06)) * (1 - ease(clamp((p - 0.6) / 0.06))),
+    1 - ease(clamp((p - 0.2) / 0.06)),
+    ease(clamp((p - 0.26) / 0.06)) * (1 - ease(clamp((p - 0.6) / 0.06))),
     ease(clamp((p - 0.66) / 0.06))
   ]
-  const state = fold > 0.999 ? 'folded' : fold > 0.001 ? 'opening' : split < 0.001 ? 'open' : split < 0.999 ? 'splitting' : 'split'
-  return { fold, press, split, steps, state }
+  const state = fold > 0.999 ? 'folded' : fold > 0.001 ? 'opening' : turn < 0.999 ? 'turning' : split < 0.001 ? 'open' : split < 0.999 ? 'splitting' : 'split'
+  return { fold, turn, lit, press, split, steps, state }
 }
 
 function duoScroll(section) {
@@ -170,7 +173,8 @@ function duoScroll(section) {
     stage.style.setProperty('--lo', f.fold > 0.97 ? '0' : '1') // folded flat, the inside is hidden under the outside
     stage.style.setProperty('--split', f.split.toFixed(4))
     stage.style.setProperty('--press', f.press.toFixed(4))
-    stage.style.setProperty('--offer', f.fold < 0.01 ? '1' : '0')
+    stage.style.setProperty('--r', f.turn.toFixed(4))
+    stage.style.setProperty('--lit', f.lit.toFixed(4))
     stage.dataset.state = f.state
     steps.forEach((li, i) => li.style.setProperty('--o', f.steps[i].toFixed(3)))
   }
