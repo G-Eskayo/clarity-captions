@@ -14,7 +14,7 @@ import { fileURLToPath } from 'url'
 import { THEMES, SCRIPT, LETTERING, SAVED_EXAMPLE } from '../site/seal-data.js'
 import { chunksOf, blocksFor, lip, transcriptOf, previewOf, savedTitle, autoplay } from '../site/demo.js'
 import { barFractions, winners, countFrame, SAMPLE_STEPS } from '../site/motion.js'
-import { FEATURES, OLD_TABS, featureFor, lineFor, TABLE_TALK } from '../site/devices.js'
+import { FEATURES, OLD_TABS, featureFor, lineFor, TABLE_TALK, duoFrame } from '../site/devices.js'
 import { languages, outPath, urlOf, alternatesFor } from './build-site.mjs'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -301,6 +301,20 @@ check(featureFor('#iphone', owner) === 'captions' && featureFor('#ipad', owner) 
 check(featureFor('#faq', owner) === null, 'featureFor: a shared part keeps the feature you are on')
 for (const d of FEATURES) check(new RegExp(`data-feature="${d}"`).test(html) && new RegExp(`data-tab="${d}"`).test(html), `${f} has a tab and a part for ${d}`)
 check(Object.values(OLD_TABS).every((t) => FEATURES.includes(t)), 'OLD_TABS: every old device tab lands on a feature')
+// The iPhone Duo scroll (#258): folded at the top, open, then split at the end, the same frames backwards, and one
+// step's words showing at a time at each end.
+{
+  const at = (p) => duoFrame(p)
+  check(at(0).state === 'folded' && at(0).fold === 1 && at(0).split === 0, 'duoFrame: starts folded, not split')
+  check(at(0.375).state === 'opening' && Math.abs(at(0.375).fold - 0.5) < 0.01, `duoFrame: halfway open at 0.375 (fold ${at(0.375).fold})`)
+  check(at(0.6).state === 'open' && at(0.6).split === 0, 'duoFrame: open, with Face to face offered, before the split')
+  check(at(1).state === 'split' && at(1).fold === 0 && at(1).split === 1, 'duoFrame: ends open and split')
+  check(at(0).steps.join() === '1,0,0' && at(1).steps.join() === '0,0,1' && at(0.45).steps[1] === 1, 'duoFrame: one step at a time')
+  const ps = [...Array(101).keys()].map((i) => i / 100), folds = ps.map((p) => at(p).fold), splits = ps.map((p) => at(p).split)
+  check(folds.every((v, i) => i === 0 || v <= folds[i - 1]) && splits.every((v, i) => i === 0 || v >= splits[i - 1]), 'duoFrame: unfolds and splits steadily, never back and forth')
+  check(ps.every((p) => at(p).split === 0 || at(p).fold === 0), 'duoFrame: the split only shows on the opened Duo, as in the app')
+}
+check(/data-duo-stills/.test(html) && /class="duo duo-phone"/.test(html) && /class="duo duo-open"/.test(html), `${f}: the Duo has its two still pictures for Reduce Motion`)
 // Every old per-device section id (#184) is still an anchor on the page, so links into it keep working.
 for (const id of ['ipad-screen', 'ipad-languages', 'ipad-tested', 'ipad-faq', 'mac-apps', 'mac-room', 'mac-ring', 'mac-tested', 'mac-faq', 'how', 'faq', 'private', 'easy', 'why', 'tested', 'story'])
   check(new RegExp(`\\sid="${id}"`).test(html), `${f}: the old anchor #${id} has no target`)

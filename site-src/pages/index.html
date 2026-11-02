@@ -600,33 +600,6 @@
         </div>
         <p class="price-note">{{index.f-tr-price}}</p>
       </div>
-      <div class="duo-wrap" data-duo>
-        <div class="duo" data-open role="img" aria-label="{{index.f-duo-aria}}">
-          <div class="duo-screen" aria-hidden="true" data-app>
-            <div class="t-half them" data-duo-half="them">
-              <div class="t-head">Español</div>
-              <p class="t-line">¿Qué tal el viaje?</p>
-              <p class="t-line tr" data-mark="Traducido del inglés">Largo, pero los niños durmieron todo el camino.</p>
-            </div>
-            <div class="t-half you" data-duo-half="you">
-              <div class="t-head">English</div>
-              <p class="t-line tr" data-mark="Translated from Spanish">How was the drive?</p>
-              <p class="t-line">Long, but the kids slept the whole way.</p>
-            </div>
-          </div>
-        </div>
-        <p class="duo-state"><b data-duo-label="open">{{index.f-duo-open}}</b><b data-duo-label="folded">{{index.f-duo-folded}}</b></p>
-        <button class="flip" data-fold data-open-label="{{index.f-duo-open-it}}" aria-pressed="true" hidden>{{index.f-duo-fold-it}}</button>
-      </div>
-    </div>
-  </div>
-
-  <section class="band scene" id="face-to-face" aria-labelledby="f2f-h">
-    <div class="wrap scene-grid">
-      <div>
-        <h2 id="f2f-h">{{index.talk-across-the-table}}</h2>
-        <p class="intro">{{index.f-f2f-intro}}</p>
-      </div>
       <div class="tablet-wrap" data-tablet>
         <div class="tablet" role="img" aria-label="{{index.an-ipad-lying-flat}}">
           <div class="t-screen" aria-hidden="true" data-app>
@@ -644,6 +617,46 @@
         </div>
         <button class="flip" data-flip data-other="{{index.see-your-side}}" aria-pressed="false" hidden>{{index.see-their-side}}</button>
         <p class="tablet-hint">{{index.a-made-up-conversation}}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- iPhone Duo (#258): folded it's an iPhone with translated captions; opened, the app offers Face to face, and the
+       split turns one half to each person (FaceToFaceView, #60, #199, #216, #245). Scrolling unfolds it; scrolling back
+       folds it. With Reduce Motion or no JavaScript the two states show as two still pictures. -->
+  <section class="band scene duo-section" id="face-to-face" aria-labelledby="f2f-h" data-duo>
+    <div class="wrap duo-words">
+      <h2 id="f2f-h">{{index.talk-across-the-table}}</h2>
+      <p class="intro">{{index.f-f2f-intro}}</p>
+    </div>
+    <div class="duo-track">
+      <div class="wrap duo-sticky">
+        <div>
+          <ol class="duo-steps">
+            <li data-step="1"><b>{{index.f-duo-folded}}</b> {{index.f-duo-step1}}</li>
+            <li data-step="2"><b>{{index.f-duo-opening}}</b> {{index.f-duo-step2}}</li>
+            <li data-step="3"><b>{{index.f-duo-open}}</b> {{index.f-duo-step3}}</li>
+          </ol>
+        </div>
+        <div class="duo-stage" data-duo-stage role="img" aria-label="{{index.f-duo-aria}}" hidden>
+          <div class="duo-body" aria-hidden="true" data-app>
+            <div class="duo-leaf duo-left"><div class="duo-clip"><div class="duo-inner"><div class="ds ds-one" data-app><div class="ds-top"><span class="ds-status"><i></i>Listening</span><span class="ds-f2f">[ Face to face ]</span></div><div class="ds-lines"><p class="ds-line"><b>Speaker 1</b><span class="ds-mark">Translated from Spanish</span>How was the drive?<small>¿Qué tal el viaje?</small></p><p class="ds-line"><b>Speaker 1</b><span class="ds-mark">Translated from Spanish</span>Good. Dinner is almost ready.<small>Qué bien. La cena está casi lista.</small></p></div></div><div class="ds ds-split" data-app><div class="ds-half them"><p class="ds-lang">Español</p><p class="ds-line">¿Qué tal el viaje?</p><p class="ds-line"><span class="ds-mark">Traducido del inglés</span>Largo, pero los niños durmieron todo el camino.<small>Long, but the kids slept the whole way.</small></p><p class="ds-say">Listening</p></div><div class="ds-mid"></div><div class="ds-half you"><p class="ds-lang">English</p><p class="ds-line"><span class="ds-mark">Translated from Spanish</span>How was the drive?<small>¿Qué tal el viaje?</small></p><p class="ds-line">Long, but the kids slept the whole way.</p><p class="ds-say">Listening</p><span class="ds-stop">Stop</span></div></div></div></div></div>
+            <div class="duo-leaf duo-right">
+              <div class="duo-face duo-front"><div class="duo-clip"><div class="duo-inner"><div class="ds ds-one" data-app><div class="ds-top"><span class="ds-status"><i></i>Listening</span><span class="ds-f2f">[ Face to face ]</span></div><div class="ds-lines"><p class="ds-line"><b>Speaker 1</b><span class="ds-mark">Translated from Spanish</span>How was the drive?<small>¿Qué tal el viaje?</small></p><p class="ds-line"><b>Speaker 1</b><span class="ds-mark">Translated from Spanish</span>Good. Dinner is almost ready.<small>Qué bien. La cena está casi lista.</small></p></div></div><div class="ds ds-split" data-app><div class="ds-half them"><p class="ds-lang">Español</p><p class="ds-line">¿Qué tal el viaje?</p><p class="ds-line"><span class="ds-mark">Traducido del inglés</span>Largo, pero los niños durmieron todo el camino.<small>Long, but the kids slept the whole way.</small></p><p class="ds-say">Listening</p></div><div class="ds-mid"></div><div class="ds-half you"><p class="ds-lang">English</p><p class="ds-line"><span class="ds-mark">Translated from Spanish</span>How was the drive?<small>¿Qué tal el viaje?</small></p><p class="ds-line">Long, but the kids slept the whole way.</p><p class="ds-say">Listening</p><span class="ds-stop">Stop</span></div></div></div></div></div>
+              <div class="duo-face duo-back"><div class="ds ds-one ds-outer" data-app><div class="ds-top"><span class="ds-status"><i></i>Listening</span></div><div class="ds-lines"><p class="ds-line"><b>Speaker 1</b><span class="ds-mark">Translated from Spanish</span>How was the drive?<small>¿Qué tal el viaje?</small></p><p class="ds-line"><b>Speaker 1</b><span class="ds-mark">Translated from Spanish</span>Good. Dinner is almost ready.<small>Qué bien. La cena está casi lista.</small></p></div></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="duo-stills" data-duo-stills>
+          <figure class="duo-still" aria-label="{{index.f-duo-folded}}">
+            <div class="duo duo-phone" aria-hidden="true" data-app><div class="ds ds-one ds-outer" data-app><div class="ds-top"><span class="ds-status"><i></i>Listening</span></div><div class="ds-lines"><p class="ds-line"><b>Speaker 1</b><span class="ds-mark">Translated from Spanish</span>How was the drive?<small>¿Qué tal el viaje?</small></p><p class="ds-line"><b>Speaker 1</b><span class="ds-mark">Translated from Spanish</span>Good. Dinner is almost ready.<small>Qué bien. La cena está casi lista.</small></p></div></div></div>
+            <figcaption>{{index.f-duo-folded}}</figcaption>
+          </figure>
+          <figure class="duo-still" aria-label="{{index.f-duo-open}}">
+            <div class="duo duo-open" aria-hidden="true" data-app><div class="duo-inner is-split"><div class="ds ds-split" data-app><div class="ds-half them"><p class="ds-lang">Español</p><p class="ds-line">¿Qué tal el viaje?</p><p class="ds-line"><span class="ds-mark">Traducido del inglés</span>Largo, pero los niños durmieron todo el camino.<small>Long, but the kids slept the whole way.</small></p><p class="ds-say">Listening</p></div><div class="ds-mid"></div><div class="ds-half you"><p class="ds-lang">English</p><p class="ds-line"><span class="ds-mark">Translated from Spanish</span>How was the drive?<small>¿Qué tal el viaje?</small></p><p class="ds-line">Long, but the kids slept the whole way.</p><p class="ds-say">Listening</p><span class="ds-stop">Stop</span></div></div></div></div>
+            <figcaption>{{index.f-duo-open}}</figcaption>
+          </figure>
+        </div>
       </div>
     </div>
   </section>

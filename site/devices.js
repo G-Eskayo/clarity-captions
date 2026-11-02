@@ -134,25 +134,51 @@ function mac(win) {
   })
 }
 
-// iPhone Duo: folded it reads like an iPhone, one language; opened flat it's face to face. It folds and opens on its
-// own while in view, until someone presses the button; a still page shows it open and leaves the button.
-function duo(wrap) {
-  const el = wrap.querySelector('.duo'), btn = wrap.querySelector('[data-fold]')
-  const labels = { fold: btn.textContent, open: btn.dataset.openLabel }
-  const set = (open) => {
-    el.toggleAttribute('data-open', open)
-    btn.textContent = open ? labels.fold : labels.open
-    btn.setAttribute('aria-pressed', String(open))
+// iPhone Duo (#258), what the app does (FaceToFaceView, FaceToFace.offersSplit): folded, the outer screen is an iPhone
+// with translated captions, the translation over what was said. Opened, the screen is big enough for two, so the top
+// row offers [ Face to face ]; tapping it splits the screen, the other person's half turned to face them.
+// Scrolling through the section plays that in order and scrolling back plays it backwards: duoFrame turns how far
+// through the section you are (0 to 1) into the fold, the split and which step's words show.
+const clamp = (x) => Math.min(1, Math.max(0, x))
+const ease = (t) => t * t * (3 - 2 * t)
+export function duoFrame(p) {
+  const fold = 1 - ease(clamp((p - 0.2) / 0.35)) // folded until 0.2, open by 0.55
+  const press = clamp(1 - Math.abs(p - 0.64) / 0.04) // Face to face dips as it's tapped
+  const split = ease(clamp((p - 0.68) / 0.14)) // the split fades in by 0.82
+  const steps = [
+    1 - ease(clamp((p - 0.2) / 0.08)),
+    ease(clamp((p - 0.28) / 0.06)) * (1 - ease(clamp((p - 0.6) / 0.06))),
+    ease(clamp((p - 0.66) / 0.06))
+  ]
+  const state = fold > 0.999 ? 'folded' : fold > 0.001 ? 'opening' : split < 0.001 ? 'open' : split < 0.999 ? 'splitting' : 'split'
+  return { fold, press, split, steps, state }
+}
+
+function duoScroll(section) {
+  if (still) return // Reduce Motion or no observers: the two still pictures stay
+  const track = section.querySelector('.duo-track'), stage = section.querySelector('[data-duo-stage]')
+  const steps = [...section.querySelectorAll('.duo-steps li')]
+  stage.hidden = false
+  section.querySelector('[data-duo-stills]').hidden = true
+  section.classList.add('is-scrolling')
+  let queued = false
+  const update = () => {
+    queued = false
+    const r = track.getBoundingClientRect(), range = r.height - innerHeight
+    const f = duoFrame(range > 0 ? clamp(-r.top / range) : 0)
+    stage.style.setProperty('--f', f.fold.toFixed(4))
+    stage.style.setProperty('--lo', f.fold > 0.97 ? '0' : '1') // folded flat, the inside is hidden under the outside
+    stage.style.setProperty('--split', f.split.toFixed(4))
+    stage.style.setProperty('--press', f.press.toFixed(4))
+    stage.style.setProperty('--offer', f.fold < 0.01 ? '1' : '0')
+    stage.dataset.state = f.state
+    steps.forEach((li, i) => li.style.setProperty('--o', f.steps[i].toFixed(3)))
   }
-  let timer = null, auto = !still
-  btn.hidden = false
-  btn.addEventListener('click', () => { auto = false; clearInterval(timer); timer = null; set(!el.hasAttribute('data-open')) })
-  if (!auto) return
-  set(false)
-  new IntersectionObserver(([e]) => {
-    if (e.isIntersecting && auto && !timer) timer = setInterval(() => set(!el.hasAttribute('data-open')), 3200)
-    if (!e.isIntersecting && timer) { clearInterval(timer); timer = null }
-  }, { threshold: 0.5 }).observe(el)
+  const queue = () => { if (!queued) { queued = true; requestAnimationFrame(update) } }
+  addEventListener('scroll', queue, { passive: true })
+  addEventListener('resize', queue)
+  document.addEventListener('feature', queue)
+  update()
 }
 
 // A picture that draws itself once it comes into view (bars grow, the iPad grows to scale, lines arrive).
@@ -180,6 +206,6 @@ if (typeof document !== 'undefined') {
   document.querySelectorAll('[data-grow]').forEach(grow)
   const s = document.querySelector('[data-story]'); if (s) story(s)
   const t = document.querySelector('[data-tablet]'); if (t) tablet(t)
-  const d = document.querySelector('[data-duo]'); if (d) duo(d)
+  const d = document.querySelector('[data-duo]'); if (d) duoScroll(d)
   const m = document.querySelector('[data-mac]'); if (m) mac(m)
 }

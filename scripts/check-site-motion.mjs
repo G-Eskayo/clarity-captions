@@ -28,7 +28,7 @@ async function scrollThrough(p, step = 350, pause = 120) {
 }
 // Anything that is meant to be read but still invisible, or still moved off its place.
 const hiddenText = (p) => p.evaluate(() => [...document.querySelectorAll('main h2, main h3, main p, main li, main .card, main td, main figure')]
-  .filter((e) => e.getClientRects().length && !e.closest('[hidden]') && !e.closest('.phone, .tablet, .duo')) // the demo phone has its own screens; the iPad's and Duo's top halves are upside down on purpose
+  .filter((e) => e.getClientRects().length && !e.closest('[hidden]') && !e.closest('.phone, .tablet, .duo, .duo-stage, .duo-steps')) // the demo phone has its own screens; the iPad's and Duo's top halves are upside down on purpose; the Duo's steps take turns as you scroll
   .filter((e) => { for (let n = e; n && n !== document.body; n = n.parentElement) { const s = getComputedStyle(n); if (+s.opacity < 0.99 || (s.transform !== 'none' && s.transform !== 'matrix(1, 0, 0, 1, 0, 0)' && !n.closest('.phone'))) return true } return false })
   .map((e) => e.tagName + ':' + (e.textContent || '').trim().slice(0, 40)))
 
@@ -218,10 +218,26 @@ try {
     await dp.goto(BASE + '#calls'); await dp.locator('[data-mac]').scrollIntoViewIfNeeded(); await wait(dp, 7500)
     const pop = await dp.$$eval('[data-pop-lines] .pop-line', (ls) => ls.map((l) => l.textContent))
     ok(pop.length === 3 && pop[2] === 'Speaker 2Hi Grandpa! We miss you.', `${tag}: the Mac window captions the call, newest three lines (${pop.join(' | ')})`)
-    // The iPhone Duo folds and opens by itself; the button takes over.
-    await dp.goto(BASE + '#translation'); await dp.locator('[data-duo]').scrollIntoViewIfNeeded()
-    const opened = []; for (let n = 0; n < 4; n++) { opened.push(await dp.$eval('.duo', (e) => e.hasAttribute('data-open'))); await wait(dp, 1700) }
-    ok(opened.includes(true) && opened.includes(false), `${tag}: the Duo folds and opens on its own (${opened})`)
+    // The iPhone Duo (#258) follows the scroll: folded, opening, open with Face to face offered, split; and back.
+    await dp.goto(BASE + '#translation'); await wait(dp, 300)
+    const duoAt = async (p) => {
+      await dp.evaluate((p) => { const t = document.querySelector('.duo-track'); scrollTo({ top: t.getBoundingClientRect().top + scrollY + p * (t.offsetHeight - innerHeight), behavior: 'instant' }) }, p)
+      await wait(dp, 250)
+      return dp.evaluate(() => {
+        const s = document.querySelector('[data-duo-stage]'), r = s.getBoundingClientRect()
+        const shown = [...document.querySelectorAll('.duo-steps li')].map((li) => +getComputedStyle(li).opacity)
+        return { state: s.dataset.state, onScreen: r.top >= -1 && r.bottom <= innerHeight + 1, step: shown.indexOf(Math.max(...shown)) + 1, sw: document.documentElement.scrollWidth,
+          offer: +getComputedStyle(document.querySelector('.duo-right .ds-f2f')).opacity }
+      })
+    }
+    const seen = []
+    for (const p of [0, 0.42, 0.6, 1, 0.42, 0]) seen.push(await duoAt(p))
+    ok(seen.map((x) => x.state).join() === 'folded,opening,open,split,opening,folded', `${tag}: the Duo unfolds as you scroll down and folds back up (${seen.map((x) => x.state)})`)
+    ok(seen.every((x) => x.onScreen), `${tag}: the Duo stays on screen while it plays`)
+    ok(seen.map((x) => x.step).join() === '1,2,2,3,2,1', `${tag}: the step's words follow the Duo (${seen.map((x) => x.step)})`)
+    await duoAt(0.42); const midOffer = (await duoAt(0.42)).offer; const openOffer = (await duoAt(0.6)).offer
+    ok(midOffer === 0 && openOffer === 1, `${tag}: Face to face is offered only once the Duo is open (${midOffer}, ${openOffer})`)
+    ok(seen.every((x) => x.sw <= w), `${tag}: the Duo never makes the page scroll sideways (${seen.map((x) => x.sw)})`)
     // The iPad's translation results grow as bars, the best translator marked in each row.
     await dp.goto(BASE + '#translation'); await scrollThrough(dp); await wait(dp, 800)
     await checkBars(dp, `${tag} iPad`, 18, 6)
@@ -249,7 +265,8 @@ try {
   await rp.goto(BASE + '#translation'); await wait(rp, 300)
   ok(await rp.$$eval('[data-half="you"] .t-line', (l) => l.length) === 4, 'reduced motion: the iPad conversation shows whole at once')
   ok(await rp.$eval('.tablet', (e) => !e.hasAttribute('data-turned')), 'reduced motion: the iPad does not turn by itself')
-  ok(await rp.$eval('.duo', (e) => e.hasAttribute('data-open')), 'reduced motion: the Duo stays open, still')
+  ok(await rp.$eval('[data-duo-stage]', (e) => e.hidden) && await rp.$eval('[data-duo-stills]', (e) => !e.hidden && e.getClientRects().length > 0), 'reduced motion: the Duo shows as two still pictures, no scroll animation')
+  ok(await rp.$eval('.duo-section', (e) => !e.classList.contains('is-scrolling')), 'reduced motion: the Duo section is not stretched for scrolling')
   await rm.close()
 
   // ── No JavaScript: every word and number shows ───────────────────────────────
