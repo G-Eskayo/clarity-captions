@@ -18,9 +18,9 @@ const current = (page) => page.$$eval('.version-nav a[aria-current="page"]', (as
 for (const scheme of ['light', 'dark']) for (const width of [390, 1280]) {
   const page = await browser.newPage({ viewport: { width, height: 900 }, colorScheme: scheme })
   await page.goto(base)
-  check(JSON.stringify(await visible(page)) === '["v1-0"]', `${scheme} ${width}: default shows only 1.0`)
-  check(JSON.stringify(await current(page)) === '["1.0"]', `${scheme} ${width}: 1.0 marked current`)
-  for (const v of ['1.1', '1.0']) {
+  check(JSON.stringify(await visible(page)) === '["v1-1"]', `${scheme} ${width}: default shows only 1.1`)
+  check(JSON.stringify(await current(page)) === '["1.1"]', `${scheme} ${width}: 1.1 marked current`)
+  for (const v of ['1.2', '1.1', '1.0']) {
     await page.click(`.version-nav a:text-is("${v}")`)
     const id = 'v' + v.replace(/\./g, '-')
     check(JSON.stringify(await visible(page)) === JSON.stringify([id]), `${scheme} ${width}: click ${v} shows only it`)
@@ -32,6 +32,8 @@ for (const scheme of ['light', 'dark']) for (const width of [390, 1280]) {
   }
   await page.goBack()
   check(JSON.stringify(await visible(page)) === '["v1-1"]', `${scheme} ${width}: back button returns to 1.1`)
+  await page.goto(base + '#science'); await page.waitForTimeout(1500)
+  check(JSON.stringify(await visible(page)) === '["v1-2"]', `${scheme} ${width}: #science opens 1.2`)
   await page.goto(base + '#v1-0'); await page.screenshot({ path: `${out}/versions-1.0-${scheme}-${width}.png` })
   await page.goto(base + '#engine'); await page.waitForTimeout(1500)
   check(JSON.stringify(await visible(page)) === '["v1-1"]', `${scheme} ${width}: #engine opens 1.1`)
@@ -50,7 +52,7 @@ for (const scheme of ['light', 'dark']) for (const width of [390, 1280]) {
 }
 const nojs = await browser.newPage({ javaScriptEnabled: false })
 await nojs.goto(base)
-check((await visible(nojs)).length === 2, 'no JavaScript: both versions show')
+check((await visible(nojs)).length === 3, 'no JavaScript: every version shows')
 await browser.close()
 console.log(fails.length ? "versions check: FAIL\n" + fails.join("\n") : "versions check: ok")
 if (fails.length) process.exitCode = 1

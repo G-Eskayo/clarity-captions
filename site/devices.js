@@ -1,12 +1,17 @@
-// Device tabs (#184): iPhone, iPad and Mac each have their own hero and "what it does"; the rest of the page is shared.
-// The address follows the tab (#ipad, #mac), and a link to anything inside a device's part opens that device.
-export const DEVICES = ['iphone', 'ipad', 'mac']
+// Feature tabs (#235): Live captioning, Translation, and Calls & meetings each have their own part of the page; the
+// device list, privacy and questions underneath are shared. The pills used to be devices (#184), so the old addresses
+// still land: #iphone opens captions, #ipad translation, #mac calls, and the old section ids are anchors in their new homes.
+// The address follows the tab (#translation, #calls), and a link to anything inside a feature's part opens that feature.
+export const FEATURES = ['captions', 'translation', 'calls']
+export const OLD_TABS = { iphone: 'captions', ipad: 'translation', mac: 'calls' }
 
-/** Which device a hash belongs to: a device's own name, or the device whose part holds that id. null = shared, keep. */
-export function deviceFor(hash, ownerOf) {
+/** Which feature a hash belongs to: a feature's own name, an old device tab, or the feature whose part holds that id.
+ *  null = a shared part, keep the feature you're on. */
+export function featureFor(hash, ownerOf) {
   const id = decodeURIComponent((hash || '').replace(/^#/, ''))
-  if (!id) return DEVICES[0]
-  if (DEVICES.includes(id)) return id
+  if (!id) return FEATURES[0]
+  if (FEATURES.includes(id)) return id
+  if (OLD_TABS[id]) return OLD_TABS[id]
   return ownerOf(id)
 }
 
@@ -34,14 +39,14 @@ export const CALL_TALK = [
 const still = typeof window === 'undefined' || matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)
 
 function tabs() {
-  const list = document.querySelector('[data-devices]')
-  const panels = [...document.querySelectorAll('[data-device]')]
+  const list = document.querySelector('[data-features]')
+  const panels = [...document.querySelectorAll('[data-feature]')]
   if (!list || !panels.length) return
   const buttons = [...list.querySelectorAll('[role="tab"]')]
-  const ownerOf = (id) => document.getElementById(id)?.closest('[data-device]')?.dataset.device || null
+  const ownerOf = (id) => document.getElementById(id)?.closest('[data-feature]')?.dataset.feature || null
   const show = (dev, { push = false, focus = false } = {}) => {
     for (const p of panels) {
-      const was = p.hasAttribute('data-off'), off = p.dataset.device !== dev
+      const was = p.hasAttribute('data-off'), off = p.dataset.feature !== dev
       p.toggleAttribute('data-off', off)
       if (was && !off) { p.classList.remove('enter'); void p.offsetWidth; p.classList.add('enter') } // the same fade as a version
     }
@@ -50,8 +55,8 @@ function tabs() {
       b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1
       if (on && focus) b.focus()
     }
-    if (push) history.replaceState(null, '', dev === DEVICES[0] ? location.pathname : '#' + dev)
-    document.dispatchEvent(new CustomEvent('device', { detail: dev }))
+    if (push) history.replaceState(null, '', dev === FEATURES[0] ? location.pathname : '#' + dev)
+    document.dispatchEvent(new CustomEvent('feature', { detail: dev }))
   }
   list.hidden = false
   document.documentElement.classList.add('tabs-on')
@@ -63,17 +68,14 @@ function tabs() {
     if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); show(buttons[e.key === 'Home' ? 0 : buttons.length - 1].dataset.tab, { push: true, focus: true }) }
   })
   const fromHash = () => {
-    const dev = deviceFor(location.hash, ownerOf)
-    if (dev) show(dev)
+    const id = decodeURIComponent(location.hash.slice(1))
+    // A shared part (#faq) keeps the feature you're on, or the first one on a fresh load.
+    const dev = featureFor(location.hash, ownerOf) || buttons.find((b) => b.getAttribute('aria-selected') === 'true')?.dataset.tab || FEATURES[0]
+    show(dev)
+    // An old device address (#ipad) becomes the feature's own (#translation), at the top of the page.
+    if (OLD_TABS[id]) history.replaceState(null, '', dev === FEATURES[0] ? location.pathname : '#' + dev)
   }
   addEventListener('hashchange', fromHash)
-  // Every device has its own questions: the header's Questions goes to the ones on the page you're on.
-  document.querySelector('header.top a[href="#faq"]')?.addEventListener('click', (e) => {
-    const faq = document.querySelector('[data-device]:not([data-off]) [data-faq]')
-    if (!faq) return
-    e.preventDefault()
-    faq.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'start' })
-  })
   fromHash()
 }
 
@@ -132,6 +134,27 @@ function mac(win) {
   })
 }
 
+// iPhone Duo: folded it reads like an iPhone, one language; opened flat it's face to face. It folds and opens on its
+// own while in view, until someone presses the button; a still page shows it open and leaves the button.
+function duo(wrap) {
+  const el = wrap.querySelector('.duo'), btn = wrap.querySelector('[data-fold]')
+  const labels = { fold: btn.textContent, open: btn.dataset.openLabel }
+  const set = (open) => {
+    el.toggleAttribute('data-open', open)
+    btn.textContent = open ? labels.fold : labels.open
+    btn.setAttribute('aria-pressed', String(open))
+  }
+  let timer = null, auto = !still
+  btn.hidden = false
+  btn.addEventListener('click', () => { auto = false; clearInterval(timer); timer = null; set(!el.hasAttribute('data-open')) })
+  if (!auto) return
+  set(false)
+  new IntersectionObserver(([e]) => {
+    if (e.isIntersecting && auto && !timer) timer = setInterval(() => set(!el.hasAttribute('data-open')), 3200)
+    if (!e.isIntersecting && timer) { clearInterval(timer); timer = null }
+  }, { threshold: 0.5 }).observe(el)
+}
+
 // A picture that draws itself once it comes into view (bars grow, the iPad grows to scale, lines arrive).
 function grow(el) {
   if (still) { el.classList.add('in'); return }
@@ -157,5 +180,6 @@ if (typeof document !== 'undefined') {
   document.querySelectorAll('[data-grow]').forEach(grow)
   const s = document.querySelector('[data-story]'); if (s) story(s)
   const t = document.querySelector('[data-tablet]'); if (t) tablet(t)
+  const d = document.querySelector('[data-duo]'); if (d) duo(d)
   const m = document.querySelector('[data-mac]'); if (m) mac(m)
 }

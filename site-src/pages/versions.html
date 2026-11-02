@@ -125,9 +125,10 @@
   <div class="wrap page-head">
     <h1>{{index.versions}}</h1>
     <p class="lede">{{versions.what-changed-in-each-2}}</p>
-    <nav class="version-nav" id="releases" aria-label="{{versions.choose-a-version}}" data-default="v1-0">
+    <nav class="version-nav" id="releases" aria-label="{{versions.choose-a-version}}" data-default="v1-1">
       <a href="#v1-0">1.0</a>
       <a href="#v1-1">1.1</a>
+      <a href="#v1-2">1.2</a>
     </nav>
   </div>
 
@@ -176,15 +177,17 @@
     <div class="wrap">
       <h2 id="v11-h">{{versions.version-1-1}}</h2>
       <div class="card release">
-        <h3 id="v1-1-0">{{versions.1-1-0-planned}}</h3>
+        <h3 id="v1-1-0">{{versions.v11-h}}</h3>
         <ul>
+          <li>{{versions.v11-ipad}}</li>
           <li>{{versions.a-new-engine-makes}}</li>
-          <li>{{versions.captions-in-more-languages}}</li>
-          <li>{{versions.live-translation-of-the}}</li>
+          <li>{{versions.v11-languages}}</li>
+          <li>{{versions.v11-translation}}</li>
+          <li>{{versions.v11-face}}</li>
           <li>{{versions.it-still-works-with}}</li>
           <li>{{versions.the-app-gets-bigger}}</li>
         </ul>
-        <p class="note">{{versions.planned-not-built-yet}}</p>
+        <p class="note">{{versions.v11-note}}</p>
       </div>
     </div>
   </section>
@@ -363,6 +366,51 @@
       </div>
       <p class="note src">{{versions.sentences-from-flores-200}}</p>
     </div>
+  </section>
+  </div>
+
+  <div class="version" id="v1-2">
+  <section class="band" aria-labelledby="v12-h">
+    <div class="wrap">
+      <h2 id="v12-h">{{versions.v12-title}}</h2>
+      <div class="card release">
+        <h3 id="v1-2-0">{{versions.v12-h}}</h3>
+        <p>{{versions.v12-lede}}</p>
+        <ul>
+          <li>{{versions.v12-smaller}}</li>
+          <li>{{versions.v12-hebrew}}</li>
+          <li>{{versions.v12-european}}</li>
+        </ul>
+        <p class="note">{{versions.v12-note}}</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="science" aria-labelledby="sci-h">
+    <div class="wrap"><div class="prose">
+      <h2 id="sci-h">{{versions.v12-sci-h}}</h2>
+      <h3>{{versions.v12-accent-h}}</h3>
+      <p>{{versions.v12-accent}}</p>
+      <h3>{{versions.v12-bits-h}}</h3>
+      <p>{{versions.v12-bits}}</p>
+      <div class="tablewrap">
+        <table class="data">
+          <caption class="sr-only">{{versions.v12-bits-caption}}</caption>
+          <thead><tr><th scope="col">{{versions.build}}</th><th class="n" scope="col">{{versions.on-disk}}</th><th class="n" scope="col">{{versions.v12-cer}}</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">{{versions.v12-full}}</th><td class="n">267.1 MB</td><td class="n">2.4%</td></tr>
+            <tr><th scope="row">{{versions.v12-4bit}}</th><td class="n">38.6 MB</td><td class="n">2.4%</td></tr>
+            <tr><th scope="row">{{versions.v12-3bit}}</th><td class="n">30.4 MB</td><td class="n">2.6%</td></tr>
+            <tr><th scope="row">{{versions.v12-2bit}}</th><td class="n">22.3 MB</td><td class="n">34.7%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note src">{{versions.v12-bits-src}}</p>
+      <p>{{versions.v12-english-bits}}</p>
+      <h3>{{versions.v12-hebrew-h}}</h3>
+      <p>{{versions.v12-hebrew-results}}</p>
+      <p class="note src">{{versions.v12-hebrew-src}}</p>
+    </div></div>
   </section>
   </div>
 </main>

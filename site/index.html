@@ -242,6 +242,7 @@
     <img src="assets/favicon.svg" alt="" width="40" height="40">
     <span class="name">Seal Speak</span>
     <nav aria-label="On this page">
+      <a href="#devices">Devices</a>
       <a href="#private">Privacy</a>
       <a href="#faq">Questions</a>
       <a href="versions.html">Versions</a>
@@ -252,22 +253,23 @@
 
 <main id="main">
   <div class="wrap">
-    <div class="devices" role="tablist" aria-label="Choose your device" data-devices hidden>
-      <button role="tab" data-tab="iphone" id="tab-iphone" aria-controls="panel-iphone" aria-selected="true">iPhone</button>
-      <button role="tab" data-tab="ipad" id="tab-ipad" aria-controls="panel-ipad" aria-selected="false" tabindex="-1">iPad</button>
-      <button role="tab" data-tab="mac" id="tab-mac" aria-controls="panel-mac" aria-selected="false" tabindex="-1">Mac</button>
+    <div class="devices" role="tablist" aria-label="Choose a feature" data-features hidden>
+      <button role="tab" data-tab="captions" id="tab-captions" aria-controls="panel-captions" aria-selected="true">Live captioning</button>
+      <button role="tab" data-tab="translation" id="tab-translation" aria-controls="panel-translation" aria-selected="false" tabindex="-1">Translation</button>
+      <button role="tab" data-tab="calls" id="tab-calls" aria-controls="panel-calls" aria-selected="false" tabindex="-1">Calls & meetings</button>
     </div>
   </div>
 
-  <div data-device="iphone" id="panel-iphone" role="tabpanel" aria-labelledby="tab-iphone">
+  <div data-feature="captions" id="panel-captions" role="tabpanel" aria-labelledby="tab-captions">
   <div class="wrap">
-    <p class="device-name">iPhone</p>
+    <p class="device-name">Live captioning</p>
     <div class="hero">
       <div>
         <h1>Follow the conversation at the table.</h1>
         <p class="lede">Seal Speak shows what the people around you are saying, as they say it, in large clear text. It all happens on your iPhone, so it works with no internet.</p>
-        <a class="gummy" href="https://apps.apple.com/us/app/seal-speak/id6821561495">Download on the App Store</a>
-        <span class="soon-note">For iPhone 12 or newer with iOS 26 or later. English captions for now.</span>
+        <a class="gummy" href="https://apps.apple.com/us/app/seal-speak/id6821561495">Download for iPhone and iPad</a>
+        <span class="soon-note">For iPhone 12 or newer, iPhone Duo, and iPad with an A14 chip or newer, on iOS or iPadOS 26 or later.</span>
+        <ul class="works-on" aria-label="Works on"><li class="yes">iPhone</li><li class="yes">iPad</li><li class="yes">iPhone Duo</li><li class="soon">Mac <small>in testing</small></li></ul>
         <ul class="facts" aria-label="At a glance">
           <li>Made on your phone</li>
           <li>Works with no internet</li>
@@ -441,22 +443,17 @@
     </div>
   </section>
 
-  <section class="band" id="private" aria-labelledby="private-h">
-    <div class="wrap">
-      <h2 id="private-h">Nothing leaves your device.</h2>
-      <figure class="private" data-grow aria-label="Voices go into the device and come out as words on its screen. The path to the internet is crossed out.">
-        <span class="pv voice" aria-hidden="true"><svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M10 20v8M18 14v20M26 8v32M34 16v16M42 21v6"/></svg></span>
-        <span class="pv arrow" aria-hidden="true"></span>
-        <span class="pv device" aria-hidden="true"><svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><rect x="13" y="4" width="22" height="40" rx="5"/><path d="M19 16h10M19 22h10M19 28h6"/></svg></span>
-        <span class="pv arrow" aria-hidden="true"></span>
-        <span class="pv words" aria-hidden="true">Aa</span>
-        <span class="pv cloud" aria-hidden="true"><svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M14 36h22a8 8 0 0 0 0-16 12 12 0 0 0-23-2A9 9 0 0 0 14 36z"/><path class="x" d="M6 6l36 36"/></svg></span>
+  <section class="band scene" id="ipad-screen" aria-labelledby="ipad-screen-h">
+    <div class="wrap scene-grid">
+      <div>
+        <h2 id="ipad-screen-h">Four times the screen.</h2>
+        <p class="intro">On iPad the captions use the whole screen. Same words, same number of lines, letters about two and a half times taller. Readable from across a table.</p>
+      </div>
+      <figure class="to-scale" data-grow aria-label="An iPhone 12 screen and an 11-inch iPad screen drawn to the same scale, each showing the same caption. The iPad's is about four times the area, with letters about two and a half times taller.">
+        <div class="ts-phone" aria-hidden="true" data-app><p>Dinner is almost ready.</p></div>
+        <div class="ts-pad" aria-hidden="true" data-app><p>Dinner is almost ready.</p></div>
+        <figcaption><span>iPhone 12</span><span>11-inch iPad</span></figcaption>
       </figure>
-      <ul class="pv-facts">
-        <li><b>Never recorded</b>The sound is turned into words, then gone.</li>
-        <li><b>No internet</b>Works in airplane mode after a one-time setup.</li>
-        <li><b>No account</b>No ads, no tracking. <a href="privacy.html">Privacy policy</a></li>
-      </ul>
     </div>
   </section>
 
@@ -524,11 +521,11 @@
       <div class="results">
         <div class="card">
           <h3>Fewer mistakes in conversation</h3>
-          <p>Seal Speak 1.0 uses Apple's speech recognition. We tested it against three other engines, and Parakeet Ultra made the fewest mistakes. It comes in 1.1.</p>
+          <p>Seal Speak 1.0 used Apple's speech recognition. We tested it against three other engines, and Parakeet Ultra made the fewest mistakes. Since 1.1, English captions use it.</p>
           <div class="tablewrap">
             <table class="data results-t" style="--cols:2" data-bars data-better="lower">
               <caption class="sr-only">Mistakes in every 100 words, English conversations</caption>
-              <thead><tr><th scope="col" class="rowhead">Mistakes in every 100 words</th><th class="n" scope="col" data-bar-col>Today: Apple</th><th class="n" scope="col" data-bar-col>In 1.1: Parakeet</th></tr></thead>
+              <thead><tr><th scope="col" class="rowhead">Mistakes in every 100 words</th><th class="n" scope="col" data-bar-col>1.0: Apple</th><th class="n" scope="col" data-bar-col>1.1: Parakeet</th></tr></thead>
               <tbody>
                 <tr><th scope="row">English conversation</th><td class="n">17.2</td><td class="n">13.8</td></tr>
               </tbody>
@@ -538,7 +535,7 @@
         </div>
         <div class="card">
           <h3>Other languages too</h3>
-          <p>Captions are English only today. Before offering more languages, we measured them. In Spanish, French and German, Parakeet made 30 to 40% fewer mistakes than Apple.</p>
+          <p>Since 1.1 you can pick other caption languages. English uses Parakeet. The others still use Apple's speech recognition. We measured Parakeet in Spanish, French and German first, and it made 30 to 40% fewer mistakes than Apple, so those are next.</p>
           <div class="tablewrap">
             <table class="data results-t" style="--cols:2" data-bars data-better="lower">
               <caption class="sr-only">Mistakes in every 100 words, by language</caption>
@@ -586,37 +583,47 @@
     </div>
   </section>
 
-  <section class="band" id="faq" data-faq aria-labelledby="faq-h">
-    <div class="wrap">
-      <h2 id="faq-h">Questions</h2>
-      <div class="faq">
-        <h3>Which devices does it work on?</h3>
-        <p>iPhone 12 or newer with iOS 26 or later, and iPad with an A14 chip or newer on iPadOS 26 or later. The Mac version is in testing.</p>
-        <h3>Does it record or upload conversations?</h3>
-        <p>No. Sound is turned into text on your device and the audio is never kept. Nothing is sent anywhere, and after a one-time setup it needs no internet at all. Text is kept only if you tap [&nbsp;Save&nbsp;].</p>
-        <h3>How long are saved conversations kept?</h3>
-        <p>30 days, then they're deleted on their own. They aren't backed up to iCloud. Open one from the list icon and tap [&nbsp;Delete&nbsp;] to remove it sooner.</p>
-        <h3>What if I forget to stop it?</h3>
-        <p>Seal stops by itself after 5 minutes with no one talking. In Settings you can change that to 15 or 30 minutes, or never.</p>
-      </div>
-      <p class="intro" style="margin-top:2rem">More answers on the <a href="support.html">support page</a>.</p>
-    </div>
-  </section>
-
   </div>
 
-  <div data-device="ipad" id="panel-ipad" role="tabpanel" aria-labelledby="tab-ipad">
+  <div data-feature="translation" id="panel-translation" role="tabpanel" aria-labelledby="tab-translation">
   <div class="wrap">
-    <p class="device-name">iPad</p>
+    <p class="device-name">Translation</p>
     <div class="hero">
       <div>
-        <h1>Talk across the table, in two languages.</h1>
-        <p class="lede">Lay the iPad flat between you. Each of you reads the conversation in your own language.</p>
-        <ol class="when" aria-label="Where iPad is">
-          <li class="done"><b>Today</b>Runs in the iPhone layout</li>
-          <li><b>1.0.1</b>The whole screen</li>
-          <li><b>Planned</b>Two languages, split screen</li>
-        </ol>
+        <h1>Read the conversation in your language.</h1>
+        <p class="lede">Seal Speak translates the captions as people talk. It's done on your device with Apple's translation, so once a language is downloaded it works with no internet.</p>
+        <ul class="works-on" aria-label="Works on"><li class="yes">iPhone</li><li class="yes">iPad</li><li class="yes">iPhone Duo</li><li class="soon">Mac <small>planned</small></li></ul>
+        <div class="get">
+          <a class="gummy" href="https://apps.apple.com/us/app/seal-speak/id6821561495">Get Live Translation on iPhone and iPad</a>
+        </div>
+        <p class="price-note">Download Seal Speak, then add Live Translation in the app: $4.99, once, on iPhone, iPad and iPhone Duo. Captions stay part of the app. The Mac app gets its own button once it's out.</p>
+      </div>
+      <div class="duo-wrap" data-duo>
+        <div class="duo" data-open role="img" aria-label="An iPhone Duo. Folded, it shows the conversation in one language, like an iPhone. Opened flat, it splits in two: each half has its own language, and both people read along.">
+          <div class="duo-screen" aria-hidden="true" data-app>
+            <div class="t-half them" data-duo-half="them">
+              <div class="t-head">Español</div>
+              <p class="t-line">¿Qué tal el viaje?</p>
+              <p class="t-line tr" data-mark="Traducido del inglés">Largo, pero los niños durmieron todo el camino.</p>
+            </div>
+            <div class="t-half you" data-duo-half="you">
+              <div class="t-head">English</div>
+              <p class="t-line tr" data-mark="Translated from Spanish">How was the drive?</p>
+              <p class="t-line">Long, but the kids slept the whole way.</p>
+            </div>
+          </div>
+        </div>
+        <p class="duo-state"><b data-duo-label="open">Open: face to face, a language for each half</b><b data-duo-label="folded">Folded: one language, like an iPhone</b></p>
+        <button class="flip" data-fold data-open-label="Open it" aria-pressed="true" hidden>Fold it</button>
+      </div>
+    </div>
+  </div>
+
+  <section class="band scene" id="face-to-face" aria-labelledby="f2f-h">
+    <div class="wrap scene-grid">
+      <div>
+        <h2 id="f2f-h">Talk across the table, in two languages.</h2>
+        <p class="intro">Lay an iPad, or an iPhone Duo opened flat, between you. Each half picks its language and shows the whole conversation. The other person's words are marked as translated.</p>
       </div>
       <div class="tablet-wrap" data-tablet>
         <div class="tablet" role="img" aria-label="An iPad lying flat, split in two. The bottom half, facing you, shows the conversation in English. The top half is upside down, facing the other person, and shows it in Spanish. Lines from the other person are marked as translated.">
@@ -637,18 +644,25 @@
         <p class="tablet-hint">A made-up conversation. The top half is upside down because it faces them.</p>
       </div>
     </div>
-  </div>
+  </section>
 
-  <section class="band scene" id="ipad-screen" aria-labelledby="ipad-screen-h">
+  <section class="band scene" id="ear" aria-labelledby="ear-h">
     <div class="wrap scene-grid">
       <div>
-        <h2 id="ipad-screen-h">Four times the screen.</h2>
-        <p class="intro">Same words, same number of lines, letters about two and a half times taller. Readable from across a table.</p>
+        <p class="soon-badge">Coming</p>
+        <h2 id="ear-h">Translation in your ear.</h2>
+        <p class="intro">Next, Seal Speak can speak the translation into your headphones, any brand, so you can listen instead of read. On iPhone, iPad and iPhone Duo. It isn't in 1.1.0.</p>
       </div>
-      <figure class="to-scale" data-grow aria-label="An iPhone 12 screen and an 11-inch iPad screen drawn to the same scale, each showing the same caption. The iPad's is about four times the area, with letters about two and a half times taller.">
-        <div class="ts-phone" aria-hidden="true" data-app><p>Dinner is almost ready.</p></div>
-        <div class="ts-pad" aria-hidden="true" data-app><p>Dinner is almost ready.</p></div>
-        <figcaption><span>iPhone 12</span><span>11-inch iPad</span></figcaption>
+      <figure class="ear" data-grow aria-label="Someone speaks Spanish. Seal Speak translates it on the device and speaks it in English into a pair of headphones.">
+        <p class="ear-in" aria-hidden="true" data-app>¿Qué tal el viaje?</p>
+        <span class="pv arrow" aria-hidden="true"></span>
+        <span class="ear-seal" aria-hidden="true"><img src="assets/favicon.svg" alt="" width="44" height="44"></span>
+        <span class="pv arrow" aria-hidden="true"></span>
+        <span class="ear-phones" aria-hidden="true">
+          <svg viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 40V32a22 22 0 0 1 44 0v8"/><rect x="6" y="38" width="12" height="18" rx="5"/><rect x="46" y="38" width="12" height="18" rx="5"/></svg>
+          <i class="wave"></i><i class="wave"></i>
+        </span>
+        <p class="ear-out" aria-hidden="true" data-app>“How was the drive?”</p>
       </figure>
     </div>
   </section>
@@ -683,7 +697,7 @@
             <li style="--v:0.565"><span class="lang">Spanish</span><span class="track"><span class="fill"></span></span><span class="val">0.863</span></li>
             <li class="low" style="--v:0.285"><span class="lang">Hindi</span><span class="track"><span class="fill"></span></span><span class="val">0.807</span></li>
         </ul>
-        <p class="src">The line marks 0.86, where Spanish, French and German sit. Apple's translation beat two other engines in those three. Hindi needs a closer look; which languages 1.1 offers isn't decided. Written sentences, on a Mac. <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/translation-languages-results.md">Every result</a>.</p>
+        <p class="src">The line marks 0.86, where Spanish, French and German sit. Apple's translation beat two other engines in those three. Hindi scored lowest. These are the languages Apple offered on our Mac. The ones you can pick come from Apple's translation on your device, and newer iOS versions add more. Written sentences, on a Mac. <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/translation-languages-results.md">Every result</a>.</p>
       </figure>
     </div>
   </section>
@@ -713,32 +727,20 @@
     </div>
   </section>
 
-  <section class="band" id="ipad-faq" data-faq aria-labelledby="ipad-faq-h">
-    <div class="wrap">
-      <h2 id="ipad-faq-h">Questions</h2>
-      <div class="faq">
-        <h3>Which iPads does it work on?</h3>
-        <p>Any iPad with an A14 chip or newer, on iPadOS 26 or later.</p>
-        <h3>Does translation need the internet?</h3>
-        <p>Only once per language, to download it: 154 to 291&nbsp;MB, from Apple. After that it translates with no connection, and nothing leaves the iPad.</p>
-        <h3>When does the split screen come?</h3>
-        <p>It's planned, with no date yet. Captions in more languages and translating the captions come first, in 1.1.</p>
-        <h3>Can I use it on iPad today?</h3>
-        <p>Yes. Seal Speak 1.0 runs on iPad in the iPhone-sized layout, with everything the iPhone app does.</p>
-        <p class="more">More answers on the <a href="support.html">support page</a>.</p>
-      </div>
-    </div>
-  </section>
-
   </div>
 
-  <div data-device="mac" id="panel-mac" role="tabpanel" aria-labelledby="tab-mac">
+  <div data-feature="calls" id="panel-calls" role="tabpanel" aria-labelledby="tab-calls">
   <div class="wrap">
-    <p class="device-name">Mac</p>
+    <p class="device-name">Calls & meetings</p>
     <div class="hero">
       <div>
         <h1>Captions for your calls.</h1>
-        <p class="lede">A small window that stays on top of your call. &#8984;H hides it.</p>
+        <p class="lede">A small window that stays on top of your call. &#8984;H hides it. Calls are a Mac feature, in the Mac app.</p>
+        <ul class="works-on" aria-label="Works on"><li class="no">iPhone <small>no</small></li><li class="no">iPad <small>no</small></li><li class="no">iPhone Duo <small>no</small></li><li class="soon">Mac <small>in testing</small></li></ul>
+        <div class="get">
+          <span class="gummy gummy-soon" aria-disabled="true">Mac app: coming</span>
+        </div>
+        <p class="price-note">Calls are captioned only in the Mac app. It's in testing and not on the App Store yet, so there's nothing to download today. The button goes live with it.</p>
         <ol class="when" aria-label="Where the Mac app is">
           <li class="done"><b>In testing</b>Not on the App Store yet</li>
           <li><b>Needs</b>Apple silicon (M1 or later), macOS 26</li>
@@ -829,24 +831,73 @@
     </div>
   </section>
 
-  <section class="band" id="mac-faq" data-faq aria-labelledby="mac-faq-h">
+  </div>
+
+  <!-- shared -->
+  <section class="band" id="devices" aria-labelledby="devices-h">
     <div class="wrap">
-      <h2 id="mac-faq-h">Questions</h2>
-      <div class="faq">
-        <h3>Does it record my calls?</h3>
-        <p>No. The call's sound is turned into text on your Mac and isn't kept. The words are kept only if you choose [&nbsp;Save transcript&nbsp;] when the call ends.</p>
-        <h3>Do the people on the call see it?</h3>
-        <p>No. Seal Speak doesn't join the call. It only listens to the sound your Mac plays.</p>
-        <h3>Does it work with headphones?</h3>
-        <p>It's built to. With headphones that have a microphone, it captions you and the call; with headphones that don't, the call alone. That part is still being tested.</p>
-        <h3>When can I get it?</h3>
-        <p>It's in testing now, with no date yet. It needs a Mac with Apple silicon (M1 or later) on macOS 26 or later. It won't run on Intel Macs.</p>
-        <p class="more">More answers on the <a href="support.html">support page</a>.</p>
+      <h2 id="devices-h">Which device does what</h2>
+      <p class="intro">One app for iPhone, iPad and iPhone Duo. The Mac gets its own app.</p>
+      <table class="devtable">
+        <caption class="sr-only">Which device does what</caption>
+        <thead><tr><td></td><th scope="col">iPhone</th><th scope="col">iPad</th><th scope="col">iPhone Duo</th><th scope="col">Mac</th></tr></thead>
+        <tbody>
+          <tr data-row="captions"><th scope="row"><a href="#panel-captions">Live captioning</a></th><td class="yes" data-dev="iPhone">Yes</td><td class="yes" data-dev="iPad">Yes, full screen</td><td class="yes" data-dev="iPhone Duo">Yes, folded or open</td><td class="soon" data-dev="Mac">In testing</td></tr>
+          <tr data-row="translation"><th scope="row"><a href="#panel-translation">Translation</a></th><td class="yes" data-dev="iPhone">Translated captions</td><td class="yes" data-dev="iPad">Translated captions and face to face</td><td class="yes" data-dev="iPhone Duo">Translated captions, and face to face when open</td><td class="soon" data-dev="Mac">Planned</td></tr>
+          <tr data-row="calls"><th scope="row"><a href="#panel-calls">Calls & meetings</a></th><td class="no" data-dev="iPhone">No</td><td class="no" data-dev="iPad">No</td><td class="no" data-dev="iPhone Duo">No</td><td class="soon" data-dev="Mac">In testing</td></tr>
+          <tr class="need"><th scope="row">You need</th><td data-dev="iPhone">iPhone 12 or newer, iOS 26</td><td data-dev="iPad">A14 chip or newer, iPadOS 26</td><td data-dev="iPhone Duo">iOS 26</td><td data-dev="Mac">Apple silicon (M1 or later), macOS 26</td></tr>
+        </tbody>
+      </table>
+      <div class="get">
+        <a class="gummy" href="https://apps.apple.com/us/app/seal-speak/id6821561495">Download for iPhone and iPad</a>
+        <p class="soon-note">The Mac app will be its own App Store app. Its button goes here once it's out.</p>
       </div>
+      <p class="price-note">$4.99 once, no subscription. Live Translation is an optional add-on: $4.99, once, on iPhone, iPad and iPhone Duo.</p>
     </div>
   </section>
 
-  </div>
+  <section class="band" id="private" aria-labelledby="private-h">
+    <div class="wrap">
+      <h2 id="private-h">Nothing leaves your device.</h2>
+      <figure class="private" data-grow aria-label="Voices go into the device and come out as words on its screen. The path to the internet is crossed out.">
+        <span class="pv voice" aria-hidden="true"><svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M10 20v8M18 14v20M26 8v32M34 16v16M42 21v6"/></svg></span>
+        <span class="pv arrow" aria-hidden="true"></span>
+        <span class="pv device" aria-hidden="true"><svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><rect x="13" y="4" width="22" height="40" rx="5"/><path d="M19 16h10M19 22h10M19 28h6"/></svg></span>
+        <span class="pv arrow" aria-hidden="true"></span>
+        <span class="pv words" aria-hidden="true">Aa</span>
+        <span class="pv cloud" aria-hidden="true"><svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M14 36h22a8 8 0 0 0 0-16 12 12 0 0 0-23-2A9 9 0 0 0 14 36z"/><path class="x" d="M6 6l36 36"/></svg></span>
+      </figure>
+      <ul class="pv-facts">
+        <li><b>Never recorded</b>The sound is turned into words, then gone.</li>
+        <li><b>No internet</b>Works in airplane mode after a one-time setup.</li>
+        <li><b>No account</b>No ads, no tracking. <a href="privacy.html">Privacy policy</a></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="band" id="faq" data-faq aria-labelledby="faq-h">
+    <span id="ipad-faq"></span><span id="mac-faq"></span>
+    <div class="wrap">
+      <h2 id="faq-h">Questions</h2>
+      <div class="faq">
+        <h3>Which devices does it work on?</h3>
+        <p>iPhone 12 or newer and iPhone Duo, on iOS 26 or later, and iPad with an A14 chip or newer on iPadOS 26 or later. The Mac app is in testing. The <a href="#devices">device list</a> shows what each one does.</p>
+        <h3>Does it record or upload conversations?</h3>
+        <p>No. Sound is turned into text on your device and the audio is never kept. Nothing is sent anywhere, and after a one-time setup it needs no internet at all. Text is kept only if you tap [&nbsp;Save&nbsp;].</p>
+        <h3>Does translation need the internet?</h3>
+        <p>Only once per language, to download it from Apple: 154 to 291&nbsp;MB. After that it translates with no connection, and nothing leaves your device.</p>
+        <h3>Is Live Translation shared with my family?</h3>
+        <p>No. Each person buys their own, once.</p>
+        <h3>How long are saved conversations kept?</h3>
+        <p>30 days, then they're deleted on their own. They aren't backed up to iCloud. Open one from the list icon and tap [&nbsp;Delete&nbsp;] to remove it sooner.</p>
+        <h3>What if I forget to stop it?</h3>
+        <p>Seal stops by itself after 5 minutes with no one talking. In Settings you can change that to 15 or 30 minutes, or never.</p>
+        <h3>When can I get the Mac app?</h3>
+        <p>It's in testing now, with no date yet. It needs a Mac with Apple silicon (M1 or later) on macOS 26 or later. It won't run on Intel Macs.</p>
+      </div>
+      <p class="intro" style="margin-top:2rem">More answers on the <a href="support.html">support page</a>.</p>
+    </div>
+  </section>
 
 </main>
 

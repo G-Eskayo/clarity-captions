@@ -1,12 +1,12 @@
-/* ── device tabs (#184): iPhone, iPad, Mac; each swaps the top of the page. The sliding pill is motion.js's. ── */
+/* ── feature tabs (#235; device tabs in #184): Live captioning, Translation, Calls & meetings. The sliding pill is motion.js's. ── */
 .devices { display: flex; gap: .5rem; margin: .25rem auto 0; flex-wrap: wrap; }
 .devices [role="tab"], .devices a { font: inherit; font-weight: 800; letter-spacing: .02em; border-radius: 999px; padding: .45rem 1.3rem;
   border: 2px solid var(--accent); color: var(--accent); background: transparent; text-decoration: none; cursor: pointer; }
 .devices [aria-selected="true"] { background: var(--accent); color: var(--bg); }
 .devices { flex-wrap: nowrap; }
 .devices [role="tab"]:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
-html.tabs-on [data-device][data-off] { display: none; }
-/* Without JavaScript every device shows, one after the other, each with its name on top. */
+html.tabs-on [data-feature][data-off] { display: none; }
+/* Without JavaScript every feature shows, one after the other, each with its name on top. */
 .device-name { font-size: .95rem; font-weight: 800; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; margin: 2rem 0 0; }
 html.tabs-on .device-name { display: none; }
 
@@ -171,3 +171,82 @@ table.data tr:not(.cap) > * { border-bottom: 0; }
 .checks li.no::before { content: ''; border: 2px dashed var(--muted); box-sizing: border-box; }
 
 @media (prefers-reduced-motion: reduce) { .tablet { transition: none; } .t-line.new, .pop-line.new { animation: none; } }
+
+/* ── each feature says which devices it works on (#235) ── */
+.works-on { list-style: none; padding: 0; margin: 1.25rem 0 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+.works-on li { border-radius: 999px; padding: .3rem .85rem; font-size: .9rem; font-weight: 700; border: 2px solid var(--teal); }
+.works-on li.yes::before { content: '✓ '; color: var(--teal); }
+.works-on li.soon { border-style: dashed; border-color: var(--muted); color: var(--muted); }
+.works-on li.no { border-color: var(--rule); color: var(--muted); }
+.works-on small { font-weight: 400; }
+.price-note { margin: 1rem 0 0; font-size: .95rem; color: var(--muted); max-width: 32rem; }
+.soon-badge { display: inline-block; margin: 0 0 .5rem; border-radius: 999px; padding: .15rem .7rem; font-size: .8rem; font-weight: 800;
+  letter-spacing: .04em; text-transform: uppercase; border: 2px dashed var(--muted); color: var(--muted); }
+
+/* ── the device list: features down, devices across; on a phone each feature is a card ── */
+.devtable { border-collapse: separate; border-spacing: 0; width: 100%; max-width: 60rem; font-size: .95rem; }
+.devtable th, .devtable td { text-align: start; padding: .7rem .8rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.devtable thead th { font-weight: 800; }
+.devtable tbody th { font-weight: 800; white-space: nowrap; }
+.devtable tbody th a { color: var(--accent); }
+.devtable td.yes::before { content: '✓ '; color: var(--teal); font-weight: 800; }
+.devtable td.soon, .devtable td.no { color: var(--muted); }
+.devtable tr.need td, .devtable tr.need th { color: var(--muted); font-size: .9rem; border-bottom: 0; }
+.get { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1.25rem; margin-top: 1.75rem; }
+.get .soon-note { margin: 0; max-width: 24rem; }
+@media (max-width: 40rem) {
+  .devtable thead { display: none; }
+  .devtable, .devtable tbody, .devtable tr { display: block; }
+  .devtable tr { background: var(--card); border-radius: 18px; padding: .8rem 1rem; margin-bottom: .8rem;
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem .9rem; }
+  .devtable tbody th { grid-column: 1 / -1; padding: 0; border: 0; }
+  .devtable td { padding: 0; border: 0; }
+  .devtable td::after { content: attr(data-dev); display: block; order: -1; font-size: .78rem; font-weight: 800; color: var(--muted); }
+  .devtable td { display: flex; flex-direction: column-reverse; align-items: flex-start; }
+  .devtable td.yes::before { content: none; }
+  .devtable td.yes { color: var(--text); }
+}
+
+/* ── iPhone Duo: folded it's a phone; open it's nearly square, split for two people ── */
+.duo-wrap { display: grid; justify-items: center; gap: .8rem; }
+.duo { width: 168px; height: 340px; border-radius: 30px; background: #141419; padding: 10px; position: relative;
+  box-shadow: 0 18px 40px rgba(0,0,0,.25); transition: width .8s cubic-bezier(.5, 0, .2, 1); }
+.duo[data-open] { width: min(320px, 82vw); }
+.duo::after { content: ''; position: absolute; top: 10px; bottom: 10px; inset-inline-start: 50%; width: 0; border-inline-start: 2px dashed #3A3A42;
+  opacity: 0; transition: opacity .4s; }
+.duo[data-open]::after { opacity: .7; }
+.duo-screen { height: 100%; border-radius: 22px; overflow: hidden; display: grid; grid-template-rows: 0fr 1fr; background: #FBF6EA; color: #141419;
+  transition: grid-template-rows .8s cubic-bezier(.5, 0, .2, 1); }
+.duo[data-open] .duo-screen { grid-template-rows: 1fr 1fr; }
+.duo .t-half { min-height: 0; font-size: 14px; }
+.duo:not([data-open]) .t-half.them { padding-block: 0; border: 0; }
+.duo-state { margin: 0; font-size: .9rem; color: var(--muted); text-align: center; }
+.duo-state b { font-weight: 700; }
+.duo[data-open] ~ .duo-state [data-duo-label="folded"], .duo:not([data-open]) ~ .duo-state [data-duo-label="open"] { display: none; }
+@media (prefers-reduced-motion: reduce) { .duo, .duo-screen, .duo::after { transition: none; } }
+
+/* ── translation in your ear: speech in, the translation spoken into any headphones ── */
+.ear { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: .8rem; }
+.ear-in, .ear-out { margin: 0; background: #FBF6EA; color: #141419; border-radius: 16px; padding: .55rem .9rem; font-weight: 600; }
+.ear-seal { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 20px; background: var(--card); }
+.ear-phones { position: relative; display: grid; place-items: center; width: 84px; height: 84px; color: var(--accent); }
+.ear-phones .wave { position: absolute; inset: 6px; border-radius: 50%; border: 2px solid var(--teal); opacity: 0; }
+html.motion .ear.in .ear-phones .wave { animation: ear-wave 2.4s ease-out infinite; }
+html.motion .ear.in .ear-phones .wave + .wave { animation-delay: 1.2s; }
+@keyframes ear-wave { 0% { opacity: .7; transform: scale(.7); } 100% { opacity: 0; transform: scale(1.25); } }
+html.motion .ear .ear-out { opacity: 0; transform: translateY(6px); transition: opacity .5s 1s, transform .5s 1s; }
+html.motion .ear.in .ear-out { opacity: 1; transform: none; }
+
+/* Three feature names don't fit one line on a phone: smaller pills, and they may wrap (the pill follows offsetTop). */
+@media (max-width: 34rem) {
+  .devices { flex-wrap: wrap; gap: .4rem; }
+  .devices [role="tab"] { padding: .4rem .9rem; font-size: .95rem; }
+}
+
+/* A download that isn't out yet: the same pill, dashed and not a link. */
+.gummy.gummy-soon { background: transparent; color: var(--muted); box-shadow: none; border: 2px dashed var(--muted); cursor: default; }
+.hero .get { margin-top: 1.25rem; }
+
+/* The to-scale pair is 307 px wide; on the narrowest phones the gap between them gives way. */
+@media (max-width: 22rem) { .to-scale, .to-scale figcaption { column-gap: 1rem; } }
+.price-note + .when { margin-top: 1.5rem; }

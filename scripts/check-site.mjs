@@ -14,7 +14,7 @@ import { fileURLToPath } from 'url'
 import { THEMES, SCRIPT, LETTERING, SAVED_EXAMPLE } from '../site/seal-data.js'
 import { chunksOf, blocksFor, lip, transcriptOf, previewOf, savedTitle, autoplay } from '../site/demo.js'
 import { barFractions, winners, countFrame, SAMPLE_STEPS } from '../site/motion.js'
-import { DEVICES, deviceFor, lineFor, TABLE_TALK } from '../site/devices.js'
+import { FEATURES, OLD_TABS, featureFor, lineFor, TABLE_TALK } from '../site/devices.js'
 import { languages, outPath, urlOf, alternatesFor } from './build-site.mjs'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -293,22 +293,29 @@ homeTables.forEach((want, i) => check(want.every(Boolean) && JSON.stringify(show
 const lat = (row) => engines.split('## Live latency')[1]?.split('\n').find((l) => l.startsWith(row))?.split('|')[3].trim()
 for (const t of [lat('| parakeet-fluidaudio (ultra-pal6) |'), lat('| apple-speechanalyzer')]) check(t && visible(tested).includes(home.code === 'en' ? t : t.split(' ')[0]), `${f} #tested: latency ${t} missing`)
 
-// 8. device tabs (#184)
-const owner = (id) => ({ how: 'iphone', 'ipad-how': 'ipad', 'mac-how': 'mac' })[id] || null
-check(deviceFor('', owner) === 'iphone' && deviceFor('#mac', owner) === 'mac' && deviceFor('#ipad', owner) === 'ipad', 'deviceFor: no hash is iPhone; a device name opens it')
-check(deviceFor('#mac-how', owner) === 'mac' && deviceFor('#how', owner) === 'iphone', 'deviceFor: a link inside a device opens that device')
-check(deviceFor('#faq', owner) === null, 'deviceFor: a shared part keeps the device you are on')
-for (const d of DEVICES) check(new RegExp(`data-device="${d}"`).test(html) && new RegExp(`data-tab="${d}"`).test(html), `${f} has a tab and a part for ${d}`)
+// 8. feature tabs (#235, were device tabs in #184): the pills are features; old device addresses still land
+const owner = (id) => ({ how: 'captions', 'translation-languages': 'translation', 'mac-ring': 'calls' })[id] || null
+check(featureFor('', owner) === 'captions' && featureFor('#calls', owner) === 'calls' && featureFor('#translation', owner) === 'translation', 'featureFor: no hash is captions; a feature name opens it')
+check(featureFor('#mac-ring', owner) === 'calls' && featureFor('#how', owner) === 'captions', 'featureFor: a link inside a feature opens that feature')
+check(featureFor('#iphone', owner) === 'captions' && featureFor('#ipad', owner) === 'translation' && featureFor('#mac', owner) === 'calls', 'featureFor: the old device tabs open a feature')
+check(featureFor('#faq', owner) === null, 'featureFor: a shared part keeps the feature you are on')
+for (const d of FEATURES) check(new RegExp(`data-feature="${d}"`).test(html) && new RegExp(`data-tab="${d}"`).test(html), `${f} has a tab and a part for ${d}`)
+check(Object.values(OLD_TABS).every((t) => FEATURES.includes(t)), 'OLD_TABS: every old device tab lands on a feature')
+// Every old per-device section id (#184) is still an anchor on the page, so links into it keep working.
+for (const id of ['ipad-screen', 'ipad-languages', 'ipad-tested', 'ipad-faq', 'mac-apps', 'mac-room', 'mac-ring', 'mac-tested', 'mac-faq', 'how', 'faq', 'private', 'easy', 'why', 'tested', 'story'])
+  check(new RegExp(`\\sid="${id}"`).test(html), `${f}: the old anchor #${id} has no target`)
 for (const l of TABLE_TALK) {
   const you = lineFor('you', l), them = lineFor('them', l)
   check(you.text === l.en && them.text === l.es, `lineFor: each half reads its own language ("${l.en}")`)
   check(you.translated === (l.side === 'them') && them.translated === (l.side === 'you'), `lineFor: only the other side's words are marked translated ("${l.en}")`)
 }
-// The iPad and Mac parts say where they are (Today, 1.0.1, Planned, In testing) before anything else.
-for (const d of ['ipad', 'mac']) {
-  const part = html.match(new RegExp(`<div data-device="${d}"[\\s\\S]*?<ol class="when"[\\s\\S]*?<\\/ol>`))?.[0] || ''
-  check(/<li class="done">/.test(part) && STATUS[home.code]?.test(part), `${f} ${d}: the hero says where ${d} is`)
+// Each feature says which devices it works on, and the device list has a row for each feature.
+for (const d of FEATURES) {
+  const part = html.match(new RegExp(`<div data-feature="${d}"[\\s\\S]*?(?=<div data-feature=|<!-- shared -->)`))?.[0] || ''
+  check(/<ul class="works-on"/.test(part), `${f} ${d}: says which devices it works on`)
 }
+const deviceList = html.match(/<section[^>]*id="devices"[\s\S]*?<\/section>/)?.[0] || ''
+check((deviceList.match(/<tr data-row=/g) || []).length === FEATURES.length, `${f} #devices: one row per feature`)
 // The iPad's 19 translation scores are the measured ones, and each bar is as long as its score.
 const langRows = readFileSync(path.join(ROOT, 'docs', 'perf', 'translation-languages-results.md'), 'utf-8').split('\n').filter((l) => /^\| [A-Z]/.test(l) && !l.startsWith('| Language'))
 const measuredComet = langRows.map((l) => l.split('|')[5].trim()).sort()
@@ -326,12 +333,12 @@ const ipadWant = ['en-es', 'en-fr', 'en-de'].flatMap((pr) => [
 const ipadPart = html.match(/<section class="band" id="ipad-tested"[\s\S]*?<\/section>/)?.[0] || ''
 const ipadShown = [...ipadPart.matchAll(/<td class="n">([^<]*)<\/td>/g)].map((m) => m[1])
 check(ipadWant.every(Boolean) && JSON.stringify(ipadShown) === JSON.stringify(ipadWant), `${f} iPad translation table shows ${JSON.stringify(ipadShown)}, the reports say ${JSON.stringify(ipadWant)}`)
-// Each device has its own questions, and only the iPhone part has the general sections.
-for (const d of ['iphone', 'ipad', 'mac']) {
-  const part = html.match(new RegExp(`<div data-device="${d}"[\\s\\S]*?(?=<div data-device=|<\\/main>)`))?.[0] || ''
-  check((part.match(/data-faq/g) || []).length === 1, `${f} ${d}: has its own questions, once`)
-  for (const id of ['story', 'private', 'easy', 'why', 'tested']) check((d === 'iphone') === part.includes(`id="${id}"`), `${f}: #${id} belongs to the iPhone part only (${d})`)
-}
+// The caption sections live in the captions part; privacy, the device list and questions are shared, once.
+const capPart = html.match(/<div data-feature="captions"[\s\S]*?(?=<div data-feature=)/)?.[0] || ''
+for (const id of ['story', 'how', 'easy', 'why', 'tested']) check(capPart.includes(`id="${id}"`), `${f}: #${id} belongs to the captions part`)
+const shared = html.split('<!-- shared -->')[1] || ''
+for (const id of ['devices', 'private', 'faq']) check(shared.includes(`id="${id}"`) && !/data-feature=/.test(shared), `${f}: #${id} is shared, after the feature parts`)
+check((html.match(/data-faq/g) || []).length === 1, `${f}: one set of questions`)
 }
 
 // 10. The app's prices (#228): the StoreKit file sells Live Translation at the iOS price, not shared with family (the
