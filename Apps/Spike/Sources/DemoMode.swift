@@ -43,6 +43,10 @@ import Foundation
 ///                     headphones taken as connected (the simulator's only output is its speaker) except `noheadphones`.
 ///                     `mark` holds the newest spoken line part-way said; `speak` really speaks it. With
 ///                     -ClarityDemoTranslate sr: a language with no voice (Serbian).
+///   -ClarityDemoFaceToFaceStopAfter <step>   the same flow, then Stop tapped at that moment (#245: it always leaves)
+///   -ClarityDemoFaceToFaceHung   the split's engines never finish starting or stopping (#245, the owner's iPad)
+///   -ClarityDemoFaceToFaceReady one   only one language is ready: Face to face opens Settings' setup (#245)
+///   -ClarityDemoIntoSpeechProgress 0.4   Into's speech model mid-download in Settings (#245)
 ///   -ClarityDemoDeveloperPanel  opens the developer panel (mic mode, Engine picker, #150): simctl can't do the 1.5 s hold
 /// It feeds the same CaptionStream the real engine feeds, so what you see is the real caption view: speaker colours,
 /// names, line breaks and sound labels. No microphone, speech model or network is involved.
@@ -101,16 +105,29 @@ enum DemoMode {
     static var translationOwned: Bool { flag("-ClarityDemoTranslationOwned") }
     /// `-ClarityDemoEar <variant>`: Live Translation in your ear (#233), on, in one of its states.
     static var ear: String? { value(after: "-ClarityDemoEar") }
+    /// `-ClarityDemoIntoSpeechProgress 0.4` (#245): Into's speech model mid-download in Settings.
+    static var intoSpeechProgress: Double? { value(after: "-ClarityDemoIntoSpeechProgress").flatMap(Double.init) }
     /// `-ClarityDemoFaceToFace` (#208): opens the split and taps through it the way two people would, through the real
     /// split state, voice matching and NaturalLanguage: her half picks English, the other half Español, they talk,
     /// she opens her list and keeps English, captions stop on their own, and Start carries on. Only the engines'
     /// words (`faceToFaceScript`) and the translations are stand-ins: the simulator can't caption or translate.
-    static var faceToFace: Bool { flag("-ClarityDemoFaceToFace") || faceToFaceUntil != nil }
+    static var faceToFace: Bool { flag("-ClarityDemoFaceToFace") || faceToFaceUntil != nil || faceToFaceStopAfter != nil }
     /// `-ClarityDemoFaceToFaceUntil <step>`: the same flow, held once `step` has played out, for still screenshots.
     static var faceToFaceUntil: FaceToFaceStep? { value(after: "-ClarityDemoFaceToFaceUntil").flatMap(FaceToFaceStep.init(rawValue:)) }
     enum FaceToFaceStep: String, CaseIterable { case choose, one, both, repick, paused, resumed }
-    /// Stand-ins for the iPad's downloaded translation languages (the simulator has none): the owner's example on #199.
-    static let faceToFaceDownloaded = ["en-US", "fr-FR", "es-ES"].map(Locale.init(identifier:))
+    /// `-ClarityDemoFaceToFaceStopAfter <step>` (#245): the flow up to `step`, then Stop, held on what's left.
+    static var faceToFaceStopAfter: FaceToFaceStep? {
+        value(after: "-ClarityDemoFaceToFaceStopAfter").flatMap(FaceToFaceStep.init(rawValue:))
+    }
+    /// `-ClarityDemoFaceToFaceHung` (#245): the owner's iPad, where a start sat in a download and Stop waited for it.
+    static var faceToFaceHung: Bool { flag("-ClarityDemoFaceToFaceHung") }
+    /// Stand-ins for the iPad's ready languages (the simulator has none): the owner's example on #199, every pair
+    /// downloaded. `-ClarityDemoFaceToFaceReady one`: only English is ready, so Face to face opens the setup.
+    static var faceToFaceReady: FaceToFaceReadyLanguages {
+        let all = ["en-US", "fr-FR", "es-ES"].map(Locale.init(identifier:))
+        let speech = value(after: "-ClarityDemoFaceToFaceReady") == "one" ? [all[0]] : all
+        return FaceToFaceReadyLanguages(candidates: all, speechInstalled: speech, pairInstalled: { _, _ in true })
+    }
     /// `-ClarityDemoFakeStore`: the translation purchase without the App Store (#53), for recordings of the flow on a
     /// simulator run from the command line, where StoreKit's test file doesn't apply. Bought state is remembered.
     static var fakeStore: Bool { flag("-ClarityDemoFakeStore") }
@@ -302,14 +319,19 @@ extension CaptionModel {
         let until = DemoMode.faceToFaceUntil
         func pause(_ seconds: Double) async { try? await Task.sleep(for: .seconds(seconds)) }
         func reached(_ step: DemoMode.FaceToFaceStep) async -> Bool {
-            await splitTask?.value
-            await demoSplitPlayer?.value
+            await splitQueue.drained()
+            if !DemoMode.faceToFaceHung { await demoSplitPlayer?.value }
+            if step == DemoMode.faceToFaceStopAfter {
+                performInSplit(.stop)
+                await splitQueue.drained()
+                return true
+            }
             return step == until
         }
         let english = Locale(identifier: "en-US"), spanish = Locale(identifier: "es-ES")
         await pause(1.5)
         startFaceToFace()
-        if await reached(.choose) { return }
+        if await reached(.choose) || !faceToFace { return }
         await pause(2.5)
         pickFaceToFace(english, for: .owner)
         if await reached(.one) { return }
@@ -334,6 +356,7 @@ extension CaptionModel {
     /// at a time, until its voice is matched; after that only its own language's engine hears it (the router's rule).
     func runSplitDemo(_ captions: FaceToFaceSplit.Captions) {
         demoSetState(.preparing)
+        if DemoMode.faceToFaceHung { return }   // the start never returns
         demoSetState(.listening)
         let round = demoSplitRound
         demoSplitRound += 1
@@ -372,6 +395,8 @@ extension CaptionModel {
     }
 
     /// Stand-in for Stop reaching the engines: the player ends and the controller's state change follows.
+    /// With `-ClarityDemoFaceToFaceHung` the start never returns; like CaptionSessionController (#245), a stop while
+    /// still starting leaves it behind at once.
     func demoStopSplit() {
         demoSplitPlayer?.cancel()
         demoSplitPlayer = nil
