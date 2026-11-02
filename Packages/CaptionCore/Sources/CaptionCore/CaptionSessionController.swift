@@ -29,6 +29,8 @@ extension TranscriptionEngine: CaptioningEngine {}
 ///   limits) can never pile up.
 /// - A start that fails, or a session that errors, always releases the engine before reporting the failure.
 /// - Stop always gets back to `idle`, even if the engine leaves its sound-label or level stream open (#89).
+/// - Stop while the engine is still starting returns at once (#245): a start can sit in a speech download for minutes.
+///   That start is abandoned: its engine is stopped when it returns, and it never changes the state again.
 @MainActor
 public final class CaptionSessionController {
     public private(set) var state: CaptionState = .idle {
@@ -49,6 +51,8 @@ public final class CaptionSessionController {
     private var idleClock = IdleStopClock(setting: .never)
     /// Set when the idle stop ends the session, so it ends as `.pausedQuiet` rather than `.idle`.
     private var quietStopMinutes: Int?
+    /// Bumped when a session is abandoned mid-start (#245), so the run it belonged to knows it was left behind.
+    private var session = 0
 
     /// - Parameters:
     ///   - now: the clock for the idle stop; injected so tests don't wait.
@@ -100,6 +104,16 @@ public final class CaptionSessionController {
     public func stopAndWait() async {
         guard let engine, let task else { return }
         stopRequested = true
+        if state == .preparing {
+            // #245: the start may never return (a speech download, a model that won't load). Leave it behind now; its
+            // run stops the engine once the start returns, and touches nothing else.
+            session += 1
+            self.task = nil
+            self.engine = nil
+            state = endedState
+            Task { await engine.stop() }
+            return
+        }
         await engine.stop()
         await task.value
     }
@@ -111,9 +125,12 @@ public final class CaptionSessionController {
     }
 
     private func run(_ engine: CaptioningEngine) async {
-        defer { task = nil; self.engine = nil; idleClock.end() }
+        let mine = session
+        var abandoned: Bool { mine != session }
+        defer { if !abandoned { task = nil; self.engine = nil; idleClock.end() } }
         do {
             let updates = try await engine.start()
+            if abandoned { await engine.stop(); return }
             onStartup(engine.startupReport)
             if stopRequested { await engine.stop(); state = .idle; return }
             idleClock = IdleStopClock(setting: idleStopSetting())
@@ -145,6 +162,7 @@ public final class CaptionSessionController {
             state = endedState
         } catch {
             await engine.stop()
+            if abandoned { return }
             state = stopRequested ? endedState : .failed(FailureReason.plainLanguage(for: error))
         }
     }

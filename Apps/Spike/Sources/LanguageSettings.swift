@@ -13,6 +13,10 @@ struct LanguageSettingsState: Equatable {
     var target: Locale?
     /// The caption language's own download (#37), while one runs or after one failed.
     var captionDownload: CaptionLanguageSwitch.Phase = .ready
+    /// #245: Into's own speech model, downloading or failed (it's set up here, never when a feature starts).
+    var intoSpeech: CaptionLanguageSwitch.Phase = .ready
+    /// #245: Face to face opened Settings because fewer than two languages are ready; the one line saying so.
+    var setupReason: String?
     /// The translation language pack for this pair: nil when it's on the device, else 0...1 while it downloads. Apple's
     /// download sheet reports no progress, so a real download shows `translationPreparing` instead (demo screens only).
     var downloadProgress: Double?
@@ -45,6 +49,7 @@ struct LanguageSettingsState: Equatable {
         state.translationPrice = translation.price
         state.translationPreparing = translation.preparing
         state.unsupportedPair = translation.unsupportedPair
+        state.intoSpeech = translation.intoSpeech
         state.purchaseBusy = [.buying, .restoring].contains(translation.purchase.activity)
         state.purchaseMessage = translation.purchase.message
         state.earOffered = EarCenter.offered
@@ -52,6 +57,7 @@ struct LanguageSettingsState: Equatable {
         #if DEBUG
         if let id = DemoMode.language { state.followsDevice = id == preferred.first }
         if let p = DemoMode.translateProgress { state.downloadProgress = p }
+        if let p = DemoMode.intoSpeechProgress, let target = state.target { state.intoSpeech = .downloading(target, progress: p) }
         #endif
         return state
     }
