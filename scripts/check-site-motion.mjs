@@ -235,7 +235,7 @@ try {
     ok(seen.map((x) => x.state).join() === 'folded,opening,open,split,opening,folded', `${tag}: the Duo unfolds as you scroll down and folds back up (${seen.map((x) => x.state)})`)
     ok(seen.every((x) => x.onScreen), `${tag}: the Duo stays on screen while it plays`)
     ok(seen.map((x) => x.step).join() === '1,2,2,3,2,1', `${tag}: the step's words follow the Duo (${seen.map((x) => x.step)})`)
-    await duoAt(0.42); const midOffer = (await duoAt(0.42)).offer; const openOffer = (await duoAt(0.6)).offer
+    const midOffer = (await duoAt(0.42)).offer; await duoAt(0.6); await wait(dp, 400); const openOffer = (await duoAt(0.6)).offer // its fade is .3 s
     ok(midOffer === 0 && openOffer === 1, `${tag}: Face to face is offered only once the Duo is open (${midOffer}, ${openOffer})`)
     ok(seen.every((x) => x.sw <= w), `${tag}: the Duo never makes the page scroll sideways (${seen.map((x) => x.sw)})`)
     // The iPad's translation results grow as bars, the best translator marked in each row.
