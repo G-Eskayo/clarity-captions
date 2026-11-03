@@ -366,7 +366,11 @@ html.motion .ear.in .ear-out { opacity: 1; transform: none; }
 .gummy.gummy-soon small { font-weight: 600; font-size: .85rem; }
 @media (max-width: 40rem) { .devtable td.soon { padding: .5rem .65rem; } }
 
-/* Translation: why face to face is only on iPad and the Duo, a supporting note under the feature, beside the to-scale picture. */
-section.band.why-band { padding-top: 0; padding-bottom: 3rem; border-top: 0; }
-.why-band h3 { margin: 0 0 .5rem; font-size: 1.15rem; }
-.why-band .intro { margin: 0; }
+/* Translation, face to face: the moments it's for, beside the to-scale picture and the reason it lives on the big screens. */
+.why-split { list-style: none; padding: 0; margin: 1.25rem 0 0; display: grid; gap: .9rem; max-width: 32rem; }
+.why-split li { padding-inline-start: 1rem; border-inline-start: 3px solid var(--teal); color: var(--muted); }
+.why-split b { display: block; color: var(--text); }
+.to-scale-wrap { display: grid; justify-items: center; gap: 1rem; }
+.to-scale-why { margin: .5rem 0 0; max-width: 24rem; color: var(--muted); font-size: .95rem; }
+.to-scale-why b { display: block; color: var(--text); font-size: 1.05rem; }
+.to-scale-wrap .price-note { margin: 0; max-width: 24rem; }

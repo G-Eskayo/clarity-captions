@@ -607,6 +607,32 @@
     </div>
   </div>
 
+  <!-- Face to face, sold through what it's for (#258, owner 2026-11-03), in the look of the earlier screen-size block:
+       translation is on every device; face to face is the extra on iPad and an open Duo, because each person needs a
+       half they can read across a table (FaceToFace.minimumShortSide; iPhone one-way for the owner, Decision on #171). -->
+  <section class="band scene" id="ipad-screen" aria-labelledby="ipad-screen-h">
+    <div class="wrap scene-grid">
+      <div>
+        <h2 id="ipad-screen-h">{{index.f-f2f-h}}</h2>
+        <p class="intro">{{index.f-f2f-lead}}</p>
+        <ul class="why-split">
+          <li><b>{{index.f-use-1-h}}</b> {{index.f-use-1}}</li>
+          <li><b>{{index.f-use-2-h}}</b> {{index.f-use-2}}</li>
+          <li><b>{{index.f-use-3-h}}</b> {{index.f-use-3}}</li>
+        </ul>
+      </div>
+      <div class="to-scale-wrap">
+        <figure class="to-scale" data-grow aria-label="{{index.an-iphone-12-screen}}">
+          <div class="ts-phone" aria-hidden="true" data-app><p>Dinner is almost ready.</p></div>
+          <div class="ts-pad" aria-hidden="true" data-app><p>Dinner is almost ready.</p></div>
+          <figcaption><span>{{index.iphone-12}}</span><span>{{index.11-inch-ipad}}</span></figcaption>
+        </figure>
+        <p class="to-scale-why"><b>{{index.four-times-the-screen}}</b> {{index.f-ipad-screen-intro}}</p>
+        <p class="price-note">{{index.f-why-iphone}}</p>
+      </div>
+    </div>
+  </section>
+
   <!-- iPhone Duo (#258). Measured from Xcode's iPhone Duo simulator profile (iPhone19,4): folded, the outer screen is
        466 x 678 pt with tight corners on the hinge (left) side; open, the inner screen is 669 x 951 pt, and folds in half
        across its long side, so it opens like a book into a landscape 951 x 669 and turns upright to its own portrait.
@@ -652,23 +678,6 @@
           </figure>
         </div>
       </div>
-    </div>
-  </section>
-
-  <!-- Why face to face is only on iPad and the open Duo (#258, owner 2026-11-03): a supporting fact under the feature,
-       not its headline. The rule is FaceToFace.minimumShortSide; iPhone stays one-way for the owner (Decision on #171). -->
-  <section class="band scene why-band" id="ipad-screen" aria-labelledby="ipad-screen-h">
-    <div class="wrap scene-grid">
-      <div>
-        <h3 id="ipad-screen-h">{{index.f-why-h}}</h3>
-        <p class="intro">{{index.f-ipad-screen-intro}}</p>
-        <p class="price-note">{{index.f-why-iphone}}</p>
-      </div>
-      <figure class="to-scale" data-grow aria-label="{{index.an-iphone-12-screen}}">
-        <div class="ts-phone" aria-hidden="true" data-app><p>Dinner is almost ready.</p></div>
-        <div class="ts-pad" aria-hidden="true" data-app><p>Dinner is almost ready.</p></div>
-        <figcaption><span>{{index.iphone-12}}</span><span>{{index.11-inch-ipad}}</span></figcaption>
-      </figure>
     </div>
   </section>
 
