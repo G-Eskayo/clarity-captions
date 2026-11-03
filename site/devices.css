@@ -12,17 +12,26 @@ html.tabs-on .device-name { display: none; }
 
 /* ── iPad lying flat, seen from above: the top half faces the other person ── */
 .tablet-wrap { display: grid; justify-items: center; gap: .9rem; }
-.tablet { width: min(340px, 86vw); aspect-ratio: 3 / 4; border-radius: 30px; background: #141419; padding: 14px; box-shadow: 0 18px 40px rgba(0,0,0,.25);
+/* The iPad Air 11-inch, 820 x 1180 pt, the screen the app's face to face was captured on (#258 parity). */
+.tablet { width: min(340px, 86vw); aspect-ratio: 848 / 1208; border-radius: 30px; background: #141419; padding: 14px; box-shadow: 0 18px 40px rgba(0,0,0,.25);
   transition: transform .9s cubic-bezier(.5, 0, .2, 1); }
 .tablet[data-turned] { transform: rotate(180deg); }
-.tablet .t-screen { height: 100%; border-radius: 18px; overflow: hidden; display: grid; grid-template-rows: 1fr 1fr; background: #FBF6EA; color: #141419; }
-.t-half { padding: 12px 16px; display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; overflow: hidden; font-size: 15px; line-height: 1.3; }
-.t-half.them { transform: rotate(180deg); border-bottom: 2px dashed #D9CBB0; }
-.t-head { font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #6B5545; margin-bottom: auto; }
-.t-line { margin: 0; }
-.t-line.tr { color: #0E5A56; }
-.t-line.tr::before { content: attr(data-mark); display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .04em; color: #1F7A70; }
-.t-line.new { animation: t-in .45s ease-out; }
+.tablet .t-screen { position: relative; height: 100%; border-radius: 18px; overflow: hidden; background: #FAF5E6; color: #141419; }
+.t-still { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* The live iPad screen: the Duo's portrait screen, laid out for the iPad's 820 x 1180 pt and its bigger captions. */
+.dx.dx-port.dx-pad { width: 820px; height: 1180px; }
+.dx-pad .dx-mid { top: 589px; inset-inline-start: 282px; width: 256px; }
+.dx-pad .dx-half { width: 820px; }
+.dx-pad .dx-half.you { top: 592px; height: 588px; }
+.dx-pad .dx-half.them { height: 589px; }
+.dx-pad .dx-label1, .dx-pad .dx-label2 { width: 820px; }
+.dx-pad .dx-half .dx-caps { width: 740px; }
+.dx-pad .dx-half.you .dx-caps { height: 400px; }
+.dx-pad .dx-half.them .dx-caps { height: 440px; }
+.dx-pad .dx-tx, .dx-pad .dx-vol, .dx-pad .dx-own { font-size: 35px; line-height: 61px; }
+.dx-pad .dx-tx { padding-inline-start: 44px; }
+.dx-pad .dx-mark { top: 20px; }
+.dx-pad .dx-clock { font: 600 13px/1 -apple-system, system-ui, sans-serif; color: #000; white-space: pre; }
 @keyframes t-in { from { opacity: 0; transform: translateY(6px); } }
 .tablet-hint { font-size: .9rem; color: var(--muted); text-align: center; max-width: 24rem; margin: 0; }
 .flip { font: inherit; font-weight: 800; border-radius: 999px; padding: .45rem 1.2rem; border: 2px solid var(--accent); color: var(--accent); background: transparent; cursor: pointer; }
@@ -40,16 +49,20 @@ html.tabs-on .device-name { display: none; }
 .pop { position: absolute; inset-inline-end: 0; bottom: 0; width: min(62%, 270px); border-radius: 16px; background: #FBF6EA; color: #141419; padding: 10px 14px 12px;
   box-shadow: 0 14px 30px rgba(0,0,0,.35); font-size: 14px; }
 @media (max-width: 34rem) { .pop { width: 74%; font-size: 13px; } .mac { padding-bottom: 120px; } }
-.pop-top { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; color: #4A4A4A; margin-bottom: 6px; }
-.pop-top .dot { width: 7px; height: 7px; border-radius: 50%; background: #1F7A44; }
+/* As the Mac app draws it (PR #178): gear, a red light and "Captioning your call", the list; OpenDyslexic captions; a red ✕. */
+.pop-top { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: #4A4A4A; margin-bottom: 6px; }
+.pop-icon { width: 15px; height: 15px; color: #14514B; flex: none; }
+.pop-title { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; }
+.pop-top .dot { width: 6px; height: 6px; border-radius: 50%; background: #CC1F1F; }
 html.motion .pop-top .dot { animation: pop-pulse 1.6s ease-in-out infinite; }
 @keyframes pop-pulse { 50% { opacity: .35; } }
 .pop-lines { min-height: 128px; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; overflow: hidden; }
-.pop-line { margin: 0; line-height: 1.3; }
-.pop-line b { display: block; font-size: 10.5px; color: #0E5A56; }
+.pop-line { margin: 0; line-height: 1.45; font-family: 'OpenDyslexic', system-ui, sans-serif; }
+.pop-line b { display: block; font: 700 10.5px/1.3 system-ui, sans-serif; color: #0E5A56; }
 .pop-line.s2 b { color: #7A3A0C; }
 .pop-line.new { animation: t-in .45s ease-out; }
-.pop-stop { margin-top: 8px; border-radius: 999px; background: #141419; color: #FBF6EA; text-align: center; font-weight: 800; padding: 5px 0; font-size: 13px; }
+.pop-stop { margin: 8px auto 0; width: 34px; height: 34px; border-radius: 50%; background: #CC1F1F; display: grid; place-items: center; box-shadow: 0 2px 0 #8E1515; }
+.pop-stop svg { width: 13px; height: 13px; }
 
 /* ── where a device is: a short line of steps, the first one reached ── */
 .when { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 0; counter-reset: w; }
@@ -133,11 +146,13 @@ html.motion .story3 li { opacity: .45; transition: opacity .4s, transform .4s; }
 html.motion .story3 li.on { opacity: 1; transform: translateY(-4px); }
 .story3 p { margin: .5rem 0 0; font-weight: 800; text-align: center; }
 .mini { background: #FBF6EA; color: #141419; border-radius: 14px; padding: .8rem .9rem; min-height: 5.5rem; display: grid; gap: .5rem; align-content: start; box-shadow: 0 8px 20px rgba(0,0,0,.12); font-size: .9rem; }
-.mini .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #1F7A44; margin-inline-end: .35rem; vertical-align: middle; }
+.mini .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #CC1F1F; margin-inline-end: .35rem; vertical-align: middle; }
+.mini .sub { font-size: .78rem; line-height: 1.35; color: #4A4A4A; }
 .mini .btns { display: flex; gap: .4rem; flex-wrap: wrap; }
-.mini i { font-style: normal; font-size: .8rem; font-weight: 700; border-radius: 999px; padding: .2rem .6rem; background: #141419; color: #FBF6EA; }
-.mini i + i { background: transparent; color: #141419; border: 1.5px solid #141419; }
-.mini .ln { font-size: 1rem; }
+/* The app's call buttons: a dark one and a light grey one, both pill-shaped (PR #178). */
+.mini i { font-style: normal; font-size: .8rem; font-weight: 700; border-radius: 999px; padding: .25rem .7rem; background: #141419; color: #FBF6EA; box-shadow: 0 2px 0 #565659; }
+.mini i + i { background: #E8E2D6; color: #141419; box-shadow: 0 2px 0 #B9B2A4; }
+.mini .ln { font: 1rem/1.4 'OpenDyslexic', system-ui, sans-serif; }
 
 /* Privacy: voices in, words out, nothing to the internet */
 .private { margin: 1.5rem 0 0; display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; }
@@ -182,6 +197,12 @@ table.data tr:not(.cap) > * { border-bottom: 0; }
 .price-note { margin: 1rem 0 0; font-size: .95rem; color: var(--muted); max-width: 32rem; }
 .soon-badge { display: inline-block; margin: 0 0 .5rem; border-radius: 999px; padding: .15rem .7rem; font-size: .8rem; font-weight: 800;
   letter-spacing: .04em; text-transform: uppercase; border: 2px dashed var(--muted); color: var(--muted); }
+/* "Coming in 1.1": what isn't in App Store 1.0 yet (owner, 2026-11-03). Same dashed pill, small enough to sit in a heading. */
+.in-11 { display: inline-block; vertical-align: middle; margin-inline-start: .35rem; border-radius: 999px; padding: .1rem .6rem;
+  font-size: .72rem; line-height: 1.4; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap;
+  border: 2px dashed var(--muted); color: var(--muted); }
+.in-11-lead { margin: 0 0 .6rem; }
+.in-11-lead .in-11 { margin-inline-start: 0; }
 
 /* ── the device list: features down, devices across; on a phone each feature is a card ── */
 .devtable { border-collapse: separate; border-spacing: 0; width: 100%; max-width: 60rem; font-size: .95rem; }

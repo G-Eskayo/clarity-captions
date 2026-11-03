@@ -14,7 +14,7 @@ import { fileURLToPath } from 'url'
 import { THEMES, SCRIPT, LETTERING, SAVED_EXAMPLE } from '../site/seal-data.js'
 import { chunksOf, blocksFor, lip, transcriptOf, previewOf, savedTitle, autoplay } from '../site/demo.js'
 import { barFractions, winners, countFrame, SAMPLE_STEPS } from '../site/motion.js'
-import { FEATURES, OLD_TABS, featureFor, lineFor, TABLE_TALK, duoFrame, duoBlocks, duoChunks, DUO_TALK, DUO_CAPTIONS } from '../site/devices.js'
+import { FEATURES, OLD_TABS, featureFor, duoFrame, duoBlocks, duoChunks, DUO_TALK, DUO_CAPTIONS } from '../site/devices.js'
 import { languages, outPath, urlOf, alternatesFor } from './build-site.mjs'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -22,6 +22,7 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const SITE = process.env.SITE_DIR || path.join(ROOT, 'site')
 const failures = []
 const check = (ok, msg) => { if (!ok) failures.push(msg) }
+export const RELEASE_11_ONLY = ['ipad-full-screen', 'duo', 'parakeet', 'caption-languages', 'live-translation', 'face-to-face', 'in-your-ear']
 
 const LANGS = languages()
 const built = LANGS.flatMap((lang) => lang.pages.map((page) => ({ lang, page, file: outPath(lang.code, page) })))
@@ -345,11 +346,9 @@ check(!/class="ds[ "-]/.test(html), `${f}: no drawn app screens in the Duo`)
 // Every old per-device section id (#184) is still an anchor on the page, so links into it keep working.
 for (const id of ['ipad-screen', 'ipad-languages', 'ipad-tested', 'ipad-faq', 'mac-apps', 'mac-room', 'mac-ring', 'mac-tested', 'mac-faq', 'how', 'faq', 'private', 'easy', 'why', 'tested', 'story'])
   check(new RegExp(`\\sid="${id}"`).test(html), `${f}: the old anchor #${id} has no target`)
-for (const l of TABLE_TALK) {
-  const you = lineFor('you', l), them = lineFor('them', l)
-  check(you.text === l.en && them.text === l.es, `lineFor: each half reads its own language ("${l.en}")`)
-  check(you.translated === (l.side === 'them') && them.translated === (l.side === 'you'), `lineFor: only the other side's words are marked translated ("${l.en}")`)
-}
+// The iPad's face to face is the app's own (#258 parity): its still is the simulator's screenshot, and the live screen
+// plays the same split as the Duo.
+check(html.includes('assets/ipad/face-to-face.jpg') && html.includes('data-dx="pad"'), `${f}: the iPad shows the app's face to face, still and live`)
 // Each feature says which devices it works on, and the device list has a row for each feature.
 for (const d of FEATURES) {
   const part = html.match(new RegExp(`<div data-feature="${d}"[\\s\\S]*?(?=<div data-feature=|<!-- shared -->)`))?.[0] || ''
@@ -380,6 +379,16 @@ for (const id of ['story', 'how', 'easy', 'why', 'tested']) check(capPart.includ
 const shared = html.split('<!-- shared -->')[1] || ''
 for (const id of ['devices', 'private', 'faq']) check(shared.includes(`id="${id}"`) && !/data-feature=/.test(shared), `${f}: #${id} is shared, after the feature parts`)
 check((html.match(/data-faq/g) || []).length === 1, `${f}: one set of questions`)
+// "Coming in 1.1" (owner, 2026-11-03): the site went live while the App Store had 1.0, so everything 1.0 lacks wears
+// the label. RELEASE_11_ONLY is what App Store build 1.0 (5), commit bc3b6623, does not have: it is iPhone-only
+// (TARGETED_DEVICE_FAMILY 1), English captions from Apple's engine, no TranslationCenter, FaceToFaceView,
+// CaptionLanguageCenter, EarCenter, Parakeet or StoreKit. Each label names one of these, and each one is labelled.
+const labels = [...html.matchAll(/<[a-z]+[^>]*data-in="1\.1"[^>]*>/g)].map((m) => m[0])
+for (const tag of labels) {
+  const feat = tag.match(/data-feat="([^"]+)"/)?.[1]
+  check(RELEASE_11_ONLY.includes(feat), `${f}: a "Coming in 1.1" label names ${feat || 'no feature'}, which isn't on the 1.1-only list`)
+}
+for (const feat of RELEASE_11_ONLY) check(labels.some((t) => t.includes(`data-feat="${feat}"`)), `${f}: ${feat} isn't in App Store 1.0 but has no "Coming in 1.1" label`)
 }
 
 // 10. The app's prices (#228): the StoreKit file sells Live Translation at the iOS price, not shared with family (the

@@ -15,20 +15,6 @@ export function featureFor(hash, ownerOf) {
   return ownerOf(id)
 }
 
-// Split-screen translation on iPad: each side sees the whole conversation in its own language; the other side's
-// words are marked as translated. side 'you' speaks English, 'them' speaks Spanish.
-export const TABLE_TALK = [
-  { side: 'them', en: 'How was the drive?', es: '¿Qué tal el viaje?' },
-  { side: 'you', en: 'Long, but the kids slept the whole way.', es: 'Largo, pero los niños durmieron todo el camino.' },
-  { side: 'them', en: 'Good. Dinner is almost ready.', es: 'Qué bien. La cena está casi lista.' },
-  { side: 'you', en: 'It smells wonderful.', es: 'Huele delicioso.' }
-]
-/** What one half shows for one spoken line: its reader's language, and whether it is a translation. */
-export function lineFor(half, line) {
-  const own = half === line.side
-  return { text: half === 'you' ? line.en : line.es, translated: !own }
-}
-
 export const CALL_TALK = [
   { s: 1, text: 'Can you see us? We just sat down.' },
   { s: 2, text: 'Yes! Your captions are coming through.' },
@@ -94,21 +80,11 @@ function player(root, steps, render, { every = 1700, done } = {}) {
   }, { threshold: 0.5 }).observe(root)
 }
 
+// The iPad's face to face (#258 parity): the app's own split, live like the Duo's, the ticket-counter conversation
+// filling both halves. With Reduce Motion it stays the simulator's still. The button turns the iPad round to show
+// the other person's side; after the first pass it turns once on its own.
 function tablet(wrap) {
-  const pad = wrap.querySelector('.tablet'), btn = wrap.querySelector('[data-flip]')
-  const halves = { you: wrap.querySelector('[data-half="you"]'), them: wrap.querySelector('[data-half="them"]') }
-  for (const h of Object.values(halves)) h.querySelectorAll('.t-line').forEach((l) => l.remove())
-  const render = (line, animate) => {
-    for (const [half, el] of Object.entries(halves)) {
-      const { text, translated } = lineFor(half, line)
-      const p = document.createElement('p')
-      p.className = 't-line' + (translated ? ' tr' : '') + (animate ? ' new' : '')
-      if (translated) p.dataset.mark = half === 'you' ? 'Translated from Spanish' : 'Traducido del inglés'
-      p.textContent = text
-      el.append(p)
-    }
-  }
-  // The page holds both labels, in its own language.
+  const pad = wrap.querySelector('.tablet'), btn = wrap.querySelector('[data-flip]'), host = wrap.querySelector('[data-dx="pad"]')
   const labels = { theirs: btn.textContent, yours: btn.dataset.other || '↻ See your side' }
   const turn = (on) => {
     pad.toggleAttribute('data-turned', on)
@@ -117,8 +93,19 @@ function tablet(wrap) {
   }
   btn.hidden = false
   btn.addEventListener('click', () => turn(!pad.hasAttribute('data-turned')))
-  // At the end it turns once on its own, so you see what the other person reads.
-  player(pad, TABLE_TALK, render, { done: () => { if (btn.getAttribute('aria-pressed') !== 'true') turn(true) } })
+  if (still || !host) return
+  host.innerHTML = DUO_SCREENS.pad()
+  for (const h of host.querySelectorAll('[data-half]')) h.toggleAttribute('data-picked', true)
+  host.hidden = false
+  wrap.querySelector('.t-still').hidden = true
+  const fit = () => { const w = host.parentElement.getBoundingClientRect().width; if (w) host.style.setProperty('--k', (w / 820).toFixed(5)) }
+  fit(); addEventListener('resize', fit); document.addEventListener('feature', fit)
+  const caps = (who) => host.querySelector(`[data-half="${who}"] [data-caps]`)
+  const talk = duoPlayer(DUO_TALK, (done, partial, fresh) => {
+    for (const who of ['you', 'them']) caps(who).innerHTML = duoBlocks(DUO_TALK, done, partial, who).map((b) => blockHTML(b, false, fresh)).join('')
+  }, { onEnd: () => { if (btn.getAttribute('aria-pressed') !== 'true') turn(true) } })
+  talk.reset()
+  new IntersectionObserver(([e]) => { fit(); if (e.isIntersecting) talk.start(); else talk.stop() }, { threshold: 0.4 }).observe(pad)
 }
 
 function mac(win) {
@@ -222,17 +209,20 @@ const DUO_SCREENS = {
   land: () => icon('gear', 25, 25) + `<span class="dx-status" ${at(0, 29, 'width:866px')}>Listening</span>` +
     `<span class="dx-f2f" ${at(615, 30)}>[ Face to face ]</span>` + icon('list', 816, 25) +
     statusBar(872, 30, 882, 56) + capsBox(16, 70, 820, 470) + stopButton(794, 560) + homeBar(353, 653, 245),
-  port: () => {
-    // With the line centred, the two halves are the same size, so their lists mirror each other exactly.
-    const half = (who, lang, first = 120) => `<div class="dx-half ${who}" data-half="${who}">` +
-      `<span class="dx-label1" data-when="list">Tap your language to start</span><span class="dx-label1" data-when="picked">Listening</span>` +
-      `<span class="dx-label2" data-when="picked">${lang}</span>` +
-      ['English', 'Español', 'Français'].map((l, i) => `<span class="dx-pick" data-when="list" ${at(0, first + i * 64)}>[ ${l} ]</span>`).join('') +
-      `<div class="dx-caps" data-caps data-when="picked"></div>` + (who === 'you' ? stopButton(597, 359) : '') + '</div>'
-    return half('them', 'Español') + '<span class="dx-mid"></span>' + half('you', 'English') +
-      statusBar(540, 39, 600, 27) + homeBar(215, 937, 238) +
-      `<span class="dx-touch you" ${at(334, 610)}></span><span class="dx-touch them" ${at(334, 277)}></span>`
-  }
+  // With the line centred, the two halves are the same size, so their lists mirror each other exactly.
+  port: () => dxHalf('them', 'Español') + '<span class="dx-mid"></span>' + dxHalf('you', 'English', [597, 359]) +
+    statusBar(540, 39, 600, 27) + homeBar(215, 937, 238) +
+    `<span class="dx-touch you" ${at(334, 610)}></span><span class="dx-touch them" ${at(334, 277)}></span>`,
+  // The iPad's face to face (iPad Air 11-inch, 820 x 1180 pt), both halves already talking.
+  pad: () => dxHalf('them', 'Español') + '<span class="dx-mid"></span>' + dxHalf('you', 'English', [746, 487]) +
+    `<span class="dx-clock" ${at(28, 14)}>9:41 AM   Mon Nov 2</span>` // no home bar: the iPad simulator shows none here
+}
+function dxHalf(who, lang, stopAt = null, first = 120) {
+  return `<div class="dx-half ${who}" data-half="${who}">` +
+    `<span class="dx-label1" data-when="list">Tap your language to start</span><span class="dx-label1" data-when="picked">Listening</span>` +
+    `<span class="dx-label2" data-when="picked">${lang}</span>` +
+    ['English', 'Español', 'Français'].map((l, i) => `<span class="dx-pick" data-when="list" ${at(0, first + i * 64)}>[ ${l} ]</span>`).join('') +
+    `<div class="dx-caps" data-caps data-when="picked"></div>` + (stopAt ? stopButton(...stopAt) : '') + '</div>'
 }
 
 function blockHTML(b, labels, fresh) {
@@ -244,11 +234,12 @@ function blockHTML(b, labels, fresh) {
 }
 
 // A script played a few words at a time, like the app; it loops while the Duo is in view.
-function duoPlayer(script, render, { from = 0 } = {}) {
-  let done = from, partial = null, fresh = -1, timer = null, on = false
+function duoPlayer(script, render, { from = 0, onEnd = null } = {}) {
+  let done = from, partial = null, fresh = -1, timer = null, on = false, ended = false
   const draw = () => { render(done, partial, fresh); fresh = -1 } // a finished line fades in once, not on every redraw
   const next = () => {
     if (!on) return
+    if (done >= script.length && !ended) { ended = true; onEnd?.() }
     if (done >= script.length) { timer = setTimeout(() => { done = 0; partial = null; fresh = -1; draw(); timer = setTimeout(next, DUO_LINE_MS) }, DUO_HOLD_MS); return }
     const l = script[done]
     if (l.sound) { fresh = done; done++; partial = null; draw(); timer = setTimeout(next, DUO_LINE_MS); return }
