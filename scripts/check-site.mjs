@@ -23,6 +23,9 @@ const SITE = process.env.SITE_DIR || path.join(ROOT, 'site')
 const failures = []
 const check = (ok, msg) => { if (!ok) failures.push(msg) }
 export const RELEASE_11_ONLY = ['ipad-full-screen', 'duo', 'parakeet', 'caption-languages', 'live-translation', 'face-to-face', 'in-your-ear']
+// New caption languages ship as a batch (owner, 2026-11-03), so an upcoming release names no single language: it says
+// "more caption languages". The measurements below the release cards may still name the language they measured.
+export const SINGLE_LANGUAGE = /\b(Hebrew|Arabic|Spanish|French|German|Italian|Portuguese|Japanese|Korean|Chinese|Hindi|Russian)\b/
 
 const LANGS = languages()
 const built = LANGS.flatMap((lang) => lang.pages.map((page) => ({ lang, page, file: outPath(lang.code, page) })))
@@ -144,6 +147,23 @@ check(BANNED_BY_LANG.he[0][0].test('האפליקציה מראה מי מדבר') 
 check(BANNED_BY_LANG.he[4][0].test('הורדה בחינם') && !BANNED_BY_LANG.he[4][0].test('$4.99 פעם אחת'), 'BANNED he[4] self-test')
 check(BANNED_BY_LANG.he[3][0].test('משפרת את השמיעה') && !BANNED_BY_LANG.he[3][0].test('לאמא שלי, שכבדת שמיעה'), 'BANNED he[3] self-test')
 check(NOT_YET.he.test('Seal מציגה כתוביות בעברית') && !NOT_YET.he.test('עדיין אין כתוביות בעברית'), 'NOT_YET he self-test')
+// A Hebrew string is Hebrew throughout (#264): no English sentence glued to a Hebrew one, as index.f-cap-for once was
+// ("For iPhone 12 or newer, … Full-screen iPad and iPhone Duo: האפליקציה…"). Product names and code are fine; an English
+// function word inside a string that also has Hebrew is the tell. Citations keep their English titles.
+export const MIXED_ENGLISH = /(^|[^A-Za-z])(and|the|or|for|on|in|of|to|with|is|it|are|you|your|from|at|no|once|runs|newer|later)(?=[^A-Za-z]|$)/i
+const HEBREW = /[֐-׿]/
+for (const lang of LANGS.filter((l) => l.code === 'he')) {
+  const strings = JSON.parse(readFileSync(path.join(ROOT, 'site-src', 'lang', 'he.json'), 'utf-8'))
+  for (const [k, v] of Object.entries(strings)) {
+    if (typeof v !== 'string' || k.startsWith('index.source-') || !HEBREW.test(v)) continue
+    // The app's own English labels, marked <bdi lang="en">, are quoted on purpose (the app is in English).
+    const m = v.replace(/<bdi lang="en">[\s\S]*?<\/bdi>/g, ' ').replace(/<[^>]+>|&[a-z]+;/g, ' ').match(MIXED_ENGLISH)
+    check(!m, `he.json ${k}: mixes an English sentence into the Hebrew ("${m?.[2]}"); translate it`)
+  }
+  // The "Coming in 1.1" pills on the Hebrew page are Hebrew too.
+  for (const k of ['index.f-in-11', 'index.f-in-11-lower']) check(HEBREW.test(strings[k] || ''), `he.json ${k}: the 1.1 pill isn't in Hebrew`)
+}
+check(MIXED_ENGLISH.test('For iPhone 12 or newer. האפליקציה') && !MIXED_ENGLISH.test('iPhone 12 ומעלה עם iOS 26 ואילך') && !MIXED_ENGLISH.test('ב-iPad במסך מלא ו-iPhone Duo'), 'MIXED_ENGLISH self-test')
 // The banned patterns must catch real claims and spare honest disclaimers.
 check(BANNED[0][0].test('Seal shows who is speaking') && !BANNED[0][0].test("It doesn't know who anyone is"), 'BANNED[0] self-test')
 check(BANNED[4][0].test('Free for everyone') && !BANNED[4][0].test('freedom'), 'BANNED[4] self-test')
@@ -446,6 +466,16 @@ const styleOf = (f) => f.endsWith('.css') ? read(f) : [...read(f).matchAll(/<sty
 for (const f of [...pages, ...readdirSync(SITE).filter((p) => p.endsWith('.css'))]) {
   for (const r of physicalRules(styleOf(f))) check(false, `${f}: physical left/right, use a logical property: ${r}`)
 }
+
+// Upcoming releases name no single caption language (see SINGLE_LANGUAGE).
+for (const f of pages.filter((p) => p.endsWith('versions.html'))) {
+  for (const [, id] of read(f).matchAll(/<div class="version" id="(v1-[2-9])"/g)) {
+    const cards = read(f).split(`id="${id}"`)[1]?.split(/id="science"|<div class="version"/)[0] || ''
+    const m = visible(cards).match(SINGLE_LANGUAGE)
+    check(!m, `${f} ${id}: an upcoming release names one language ("${m?.[0]}"); say "more caption languages"`)
+  }
+}
+check(SINGLE_LANGUAGE.test('Hebrew captions') && !SINGLE_LANGUAGE.test('More caption languages'), 'SINGLE_LANGUAGE self-test')
 
 if (failures.length) {
   console.error(`site check: ${failures.length} problem(s)\n- ${failures.join('\n- ')}`)
