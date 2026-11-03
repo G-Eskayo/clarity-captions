@@ -646,9 +646,11 @@
   <!-- iPhone Duo (#258). Measured from Xcode's iPhone Duo simulator profile (iPhone19,4): folded, the outer screen is
        466 x 678 pt with tight corners on the hinge (left) side; open, the inner screen is 669 x 951 pt, and folds in half
        across its long side, so it opens like a book into a landscape 951 x 669 and turns upright to its own portrait.
-       Every screen is the app on the iPhone Duo simulator, unfolded by hand in DeviceHub (2026-11-02): folded captions on
-       the outer screen; open flat in landscape with [ Face to face ]; upright, each half picking its language; the split.
-       Scrolling plays that in order; scrolling back plays it backwards. Reduce Motion or no JavaScript: two stills. -->
+       The screens are live HTML like the site's other demos (devices.js builds them), traced from the app on the iPhone
+       Duo simulator unfolded by hand in DeviceHub (2026-11-02): captions typing in on the outer screen; open flat in
+       landscape with [ Face to face ]; upright, each half picking its language; the split, both halves talking.
+       Scrolling plays that in order; scrolling back plays it backwards. Reduce Motion or no JavaScript: two stills,
+       the simulator's own screenshots. -->
   <section class="band scene duo-section" id="face-to-face" aria-labelledby="f2f-h" data-duo>
     <div class="wrap duo-words">
       <h2 id="f2f-h">לדבר משני צדי השולחן, בשתי שפות.</h2>
@@ -667,10 +669,10 @@
           <div class="duo-rot">
             <div class="duo-body" aria-hidden="true" data-app lang="en" dir="ltr">
               <div class="duo-half duo-cover">
-                <div class="duo-face duo-front"><div class="duo-clip"><div class="duo-scr"><img class="duo-img-land" src="../assets/duo/inner-open-landscape.jpg" alt=""><span class="duo-tap"></span><div class="duo-pic"><img class="duo-img-choose" src="../assets/duo/inner-choose-languages.jpg" alt=""><img class="duo-img-split" src="../assets/duo/inner-split.jpg" alt=""></div></div></div></div>
-                <div class="duo-face duo-back"><img class="duo-outer" src="../assets/duo/outer-captions.jpg" alt=""></div>
+                <div class="duo-face duo-front"><div class="duo-clip"><div class="duo-scr"><div class="duo-land"><div class="dx dx-land" data-dx="land"></div></div><span class="duo-tap"></span><div class="duo-pic"><div class="dx dx-port" data-dx="port"></div></div></div></div></div>
+                <div class="duo-face duo-back"><div class="duo-outer"><div class="dx dx-outer" data-dx="outer"></div></div></div>
               </div>
-              <div class="duo-half duo-base"><div class="duo-clip"><div class="duo-scr"><img class="duo-img-land" src="../assets/duo/inner-open-landscape.jpg" alt=""><span class="duo-tap"></span><div class="duo-pic"><img class="duo-img-choose" src="../assets/duo/inner-choose-languages.jpg" alt=""><img class="duo-img-split" src="../assets/duo/inner-split.jpg" alt=""></div></div></div></div>
+              <div class="duo-half duo-base"><div class="duo-clip"><div class="duo-scr"><div class="duo-land"><div class="dx dx-land" data-dx="land"></div></div><span class="duo-tap"></span><div class="duo-pic"><div class="dx dx-port" data-dx="port"></div></div></div></div></div>
             </div>
           </div>
         </div>

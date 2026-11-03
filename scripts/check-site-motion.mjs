@@ -227,8 +227,12 @@ try {
         const s = document.querySelector('[data-duo-stage]'), r = s.getBoundingClientRect()
         const shown = [...document.querySelectorAll('.duo-steps li')].map((li) => +getComputedStyle(li).opacity)
         return { state: s.dataset.state, onScreen: r.top >= -1 && r.bottom <= innerHeight + 1, step: shown.indexOf(Math.max(...shown)) + 1, sw: document.documentElement.scrollWidth,
-          land: +getComputedStyle(document.querySelector('.duo-base .duo-img-land')).opacity,
-          lit: +getComputedStyle(document.querySelector('.duo-base .duo-pic')).opacity }
+          land: +getComputedStyle(document.querySelector('.duo-base .duo-land')).opacity,
+          lit: +getComputedStyle(document.querySelector('.duo-base .duo-pic')).opacity,
+          lines: document.querySelector('.duo-back [data-dx="outer"] [data-caps]').textContent,
+          you: document.querySelector('.duo-base [data-half="you"]').hasAttribute('data-picked'),
+          them: document.querySelector('.duo-base [data-half="them"]').hasAttribute('data-picked'),
+          talk: document.querySelector('.duo-base [data-half="you"] [data-caps]').textContent }
       })
     }
     const seen = []
@@ -237,7 +241,13 @@ try {
     ok(seen.every((x) => x.onScreen), `${tag}: the Duo stays on screen while it plays`)
     ok(seen.map((x) => x.step).join() === '1,2,2,3,3,2,2,1', `${tag}: the step's words follow the Duo (${seen.map((x) => x.step)})`)
     ok(seen[1].land === 0 && seen[1].lit === 0 && seen[2].land === 1 && seen[3].lit === 1 && seen[4].lit === 1,
-      `${tag}: the inner screen (the app's own screens from the Duo simulator) lights only once the Duo is open: landscape, then upright (${seen.map((x) => `${x.land}/${x.lit}`)})`)
+      `${tag}: the inner screen lights only once the Duo is open: landscape, then upright (${seen.map((x) => `${x.land}/${x.lit}`)})`)
+    ok(!seen[3].them && seen[4].you && seen[4].them && !seen[5].you && !seen[5].them,`${tag}: each half picks its language on the way down, and goes back to its list on the way up`)
+    // The screens are live, like the other demos: the captions move on their own while the Duo is in view.
+    await duoAt(0.05); const before = (await duoAt(0.05)).lines; await wait(dp, 2500); const after = (await duoAt(0.05)).lines
+    ok(before && after && before !== after, `${tag}: the folded screen's captions type in live`)
+    await duoAt(1); await wait(dp, 3000); const t1 = (await duoAt(1)).talk; await wait(dp, 2000); const t2 = (await duoAt(1)).talk
+    ok(t1 && t2 && t1 !== t2, `${tag}: the split's two halves fill with the conversation`)
     ok(seen.every((x) => x.sw <= w), `${tag}: the Duo never makes the page scroll sideways (${seen.map((x) => x.sw)})`)
     // The iPad's translation results grow as bars, the best translator marked in each row.
     await dp.goto(BASE + '#translation'); await scrollThrough(dp); await wait(dp, 800)

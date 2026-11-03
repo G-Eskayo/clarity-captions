@@ -14,7 +14,7 @@ import { fileURLToPath } from 'url'
 import { THEMES, SCRIPT, LETTERING, SAVED_EXAMPLE } from '../site/seal-data.js'
 import { chunksOf, blocksFor, lip, transcriptOf, previewOf, savedTitle, autoplay } from '../site/demo.js'
 import { barFractions, winners, countFrame, SAMPLE_STEPS } from '../site/motion.js'
-import { FEATURES, OLD_TABS, featureFor, lineFor, TABLE_TALK, duoFrame } from '../site/devices.js'
+import { FEATURES, OLD_TABS, featureFor, lineFor, TABLE_TALK, duoFrame, duoBlocks, duoChunks, DUO_TALK, DUO_CAPTIONS } from '../site/devices.js'
 import { languages, outPath, urlOf, alternatesFor } from './build-site.mjs'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -317,10 +317,21 @@ check(Object.values(OLD_TABS).every((t) => FEATURES.includes(t)), 'OLD_TABS: eve
   const ps = [...Array(101).keys()].map((i) => i / 100), folds = ps.map((p) => at(p).fold), splits = ps.map((p) => at(p).split)
   check(folds.every((v, i) => i === 0 || v <= folds[i - 1]) && splits.every((v, i) => i === 0 || v >= splits[i - 1]), 'duoFrame: unfolds and splits steadily, never back and forth')
   check(ps.every((p) => at(p).split === 0 || at(p).fold === 0), 'duoFrame: the split only shows on the opened Duo, as in the app')
+  check(at(0.69).pickYou === 0 && at(0.72).pickYou === 1 && at(0.72).pickThem === 0 && at(0.8).pickThem === 1, 'duoFrame: your half picks English, then theirs picks Español, before the split')
 }
 check(/data-duo-stills/.test(html) && /class="duo-fold-still"/.test(html) && /class="duo-open-still"/.test(html), `${f}: the Duo has its two still pictures for Reduce Motion`)
-// The Duo's screens are the app's real screenshots, not drawings.
-for (const img of ['outer-captions.jpg', 'inner-open-landscape.jpg', 'inner-choose-languages.jpg', 'inner-split.jpg']) check(html.includes(`assets/duo/${img}`), `${f}: the Duo shows the app's screenshot ${img}`)
+// Reduce Motion's two stills are the simulator's own screenshots; the moving Duo's screens are live, like the other demos.
+for (const img of ['outer-captions.jpg', 'inner-split.jpg']) check(html.includes(`assets/duo/${img}`), `${f}: the Duo's still shows the app's screenshot ${img}`)
+for (const dx of ['outer', 'land', 'port']) check(html.includes(`data-dx="${dx}"`), `${f}: the Duo has its live ${dx} screen`)
+// The live Duo plays the app's own demo lines: what each half shows follows the app's rules.
+{
+  const you = duoBlocks(DUO_TALK, 3, { i: 3, text: 'Do I buy' }, 'you'), them = duoBlocks(DUO_TALK, 3, { i: 3, text: 'Do I buy' }, 'them')
+  check(you[0].tr && !you[1].tr && you[2].tr && you[3].vol, 'duoBlocks: your half shows your own words as said and theirs translated')
+  check(!them[0].tr && them[1].tr && !them[2].tr && them[3].vol && them[3].said === 'Do I buy', 'duoBlocks: their half mirrors it; a line still being said stays as said')
+  const one = duoBlocks(DUO_CAPTIONS, DUO_CAPTIONS.length, null)
+  check(one.at(-1).vol && one.at(-1).said.startsWith('Bueno') && one[0].tr === 'Is it on? Say something so we can see.', 'duoBlocks: one-way, finished lines are translated; the unfinished one stays as said')
+  check(JSON.stringify(duoChunks('one two three four five six seven')) === JSON.stringify(chunksOf('one two three four five six seven')), 'duoChunks: the same 3 words at a time as the demo')
+}
 check(!/class="ds[ "-]/.test(html), `${f}: no drawn app screens in the Duo`)
 // Every old per-device section id (#184) is still an anchor on the page, so links into it keep working.
 for (const id of ['ipad-screen', 'ipad-languages', 'ipad-tested', 'ipad-faq', 'mac-apps', 'mac-room', 'mac-ring', 'mac-tested', 'mac-faq', 'how', 'faq', 'private', 'easy', 'why', 'tested', 'story'])
