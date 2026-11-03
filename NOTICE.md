@@ -28,6 +28,23 @@ You are free to:
 Under the following terms:
 - Attribution — You must give appropriate credit, provide a link to the license, and indicate if changes were made.
 
+## Hebrew speech model (ivrit.ai zipformer)
+
+**License:** [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
+
+**Creator:** Yakov Kolani ([thewh1teagle/zipformer2-66m-streaming-he](https://huggingface.co/thewh1teagle/zipformer2-66m-streaming-he)),
+published by ivrit.ai ([ivrit-ai/zipformer2-66m-streaming-he](https://huggingface.co/ivrit-ai/zipformer2-66m-streaming-he)),
+fine-tuned from icefall's English streaming Zipformer on ivrit.ai Hebrew audio
+
+**Title:** zipformer2-66m-streaming-he speech-recognition model
+
+**Changes:** For Seal Speak, the ONNX export (revision `ee769a2`) was converted to Core ML, and the encoder's linear and
+1-D convolution weights were compressed to 4 bits (k-means palettization, per grouped channel, group 16); the input
+convolutions, decoder and joiner are 16-bit floats. Nothing else was changed. The model is bundled in the application,
+with a `NOTICE.txt` beside it.
+
+**Text of License:** as for Parakeet Ultra above (Creative Commons Attribution 4.0 International).
+
 ## Sortformer
 
 **License:** [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)

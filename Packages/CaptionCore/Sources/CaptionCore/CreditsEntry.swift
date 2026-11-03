@@ -25,5 +25,6 @@ public struct CreditsEntry: Identifiable, Equatable, Sendable {
     /// Bundled works credited only in the full license texts (NOTICE.md), not on the page: the mock-up lists five.
     /// NeMo Text Processing comes in through FluidAudio; whether it gets its own line is a Decision on the PR.
     /// Parakeet Ultra (ADR 0025, build 7) is credited in full there; a line on the page waits for the owner (#150).
-    public static let coveredByFullLicenseTexts: Set<String> = ["nemotextprocessing", "parakeetultra"]
+    /// The Hebrew engine (#220) likewise, until the owner adds engine lines to the page.
+    public static let coveredByFullLicenseTexts: Set<String> = ["nemotextprocessing", "parakeetultra", "hebrewzipformer"]
 }

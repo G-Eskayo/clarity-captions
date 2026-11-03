@@ -62,4 +62,21 @@ final class ThirdPartyNoticeTests: XCTestCase {
         XCTAssertTrue(notices.contains("## Parakeet Ultra"))
         XCTAssertTrue(notices.contains("compressed to 6 bits"), "NOTICE.md notes the change")
     }
+
+    func testTheHebrewEngineIsCreditedWithTheChangeNoted() throws {
+        // CC BY 4.0 (#220): credit the author and ivrit.ai, link the licence, and say what Seal changed.
+        let notice = try XCTUnwrap(ThirdPartyNotice.all.first { $0.id == "hebrewzipformer" })
+        XCTAssertEqual(notice.licenseName, "CC BY 4.0")
+        XCTAssertEqual(notice.licenseURL.absoluteString, "https://creativecommons.org/licenses/by/4.0/")
+        XCTAssertEqual(notice.sourceURL?.absoluteString, "https://huggingface.co/ivrit-ai/zipformer2-66m-streaming-he")
+        for credit in ["Yakov Kolani", "ivrit.ai", "Core ML", "4 bits"] {
+            XCTAssertTrue(notice.note.contains(credit), credit)
+        }
+        XCTAssertTrue(CreditsEntry.coveredByFullLicenseTexts.contains("hebrewzipformer"))
+        let repo = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let notices = try String(contentsOf: repo.appendingPathComponent("NOTICE.md"), encoding: .utf8)
+        XCTAssertTrue(notices.contains("## Hebrew speech model (ivrit.ai zipformer)"))
+        XCTAssertTrue(notices.contains("compressed to 4 bits"), "NOTICE.md notes the change")
+    }
 }

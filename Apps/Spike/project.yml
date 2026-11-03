@@ -47,6 +47,17 @@ targets:
       # iPhone check C2 runs both engines on the same audio (ADR 0025).
       - path: Resources/latency-fixture.wav
         buildPhase: resources
+    # Hebrew's engine (#220): SEAL_ASR_MODEL=hebrew scripts/fetch-asr-models.sh. Copied in when it has been fetched, not a required
+    # resource like Parakeet, until its release asset is published (a Decision on the PR): a build without it still
+    # captions every other language, and Hebrew is then not offered.
+    postBuildScripts:
+      - name: Copy the Hebrew engine if fetched (#220)
+        basedOnDependencyAnalysis: false
+        script: |
+          SRC="$SRCROOT/Resources/Models/HebrewZipformer"
+          DST="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/HebrewZipformer"
+          rm -rf "$DST"
+          if [ -f "$SRC/tokens.txt" ]; then cp -R "$SRC" "$DST"; else echo "note: Hebrew engine not fetched; Hebrew captions are off in this build"; fi
     dependencies:
       - package: CaptionCore
       - package: CaptionCore
