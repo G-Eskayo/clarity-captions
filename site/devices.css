@@ -241,13 +241,14 @@ table.data tr:not(.cap) > * { border-bottom: 0; }
 .duo-body::before { content: ''; position: absolute; inset: 0; border-radius: calc(69 * var(--s)); box-shadow: 0 30px 60px -20px rgba(0,0,0,.35);
   transform-origin: 100% 50%; transform: translateZ(-2px) scaleX(calc(1 - var(--f, 0) * .5)); }
 .duo-half { position: absolute; top: 0; width: 50%; height: 100%; transform-style: preserve-3d; }
-.duo-base { inset-inline-start: 50%; background: #0E1A19; box-shadow: inset 0 0 0 2px #2C3B3A; opacity: var(--lo, 1);
+/* No ring on the open halves: the real Duo's inner screen has no line down the hinge, so nothing may draw one there. */
+.duo-base { inset-inline-start: 50%; background: #0E1A19; opacity: var(--lo, 1);
   border-start-end-radius: calc(69 * var(--s)); border-end-end-radius: calc(69 * var(--s)); }
-.duo-cover { inset-inline-start: 0; transform-origin: 100% 50%; transform: rotateY(calc(var(--f, 0) * 180deg)) translateZ(-1px); }
-.duo-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; background: #0E1A19; box-shadow: inset 0 0 0 2px #2C3B3A; }
+.duo-cover { inset-inline-start: 0; transform-origin: 100% 50%; transform: rotateY(calc(var(--f, 0) * 180deg)) translateZ(calc(var(--f, 0) * -1px)); } /* flat when open, so the two halves line up exactly */
+.duo-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; background: #0E1A19; }
 .duo-front { border-start-start-radius: calc(69 * var(--s)); border-end-start-radius: calc(69 * var(--s)); }
 /* The outside of the cover, seen when folded: hinge on the left, so tight corners there. */
-.duo-back { transform: rotateY(180deg); border-radius: calc(17.5 * var(--s)) calc(73 * var(--s)) calc(73 * var(--s)) calc(17.5 * var(--s)); }
+.duo-back { transform: rotateY(180deg); box-shadow: inset 0 0 0 2px #2C3B3A; border-radius: calc(17.5 * var(--s)) calc(73 * var(--s)) calc(73 * var(--s)) calc(17.5 * var(--s)); }
 .duo-outer { position: absolute; inset-inline-start: calc(9.5 * var(--s)); top: calc(14 * var(--s)); width: calc(466 * var(--s)); height: calc(678 * var(--s));
   border-radius: calc(8 * var(--s)) calc(59 * var(--s)) calc(59 * var(--s)) calc(8 * var(--s)); object-fit: cover; display: block; overflow: hidden; }
 /* The inner screen, split by the hinge: each half shows its half of one 951 x 669 screen. */
@@ -257,6 +258,10 @@ table.data tr:not(.cap) > * { border-bottom: 0; }
 .duo-scr { position: absolute; top: 0; width: calc(951 * var(--s)); height: calc(669 * var(--s)); }
 .duo-cover .duo-scr { inset-inline-start: 0; }
 .duo-base .duo-scr { inset-inline-start: calc(-475.5 * var(--s)); }
+/* Once it's flat open, one whole Duo and one whole screen take over from the two halves, so there is no line at the
+   hinge: the real Duo's inner screen is one piece, and the only line on it is Seal Speak's own, in the middle. */
+.duo-whole { position: absolute; inset: 0; border-radius: calc(69 * var(--s)); background: #0E1A19; opacity: var(--whole, 0); transform: translateZ(2px); }
+.duo-whole .duo-scr { inset-inline-start: calc(14 * var(--s)); top: calc(18.5 * var(--s)); border-radius: calc(55 * var(--s)); overflow: hidden; background: #050707; }
 /* Open flat: the landscape screen (951 x 669, [ Face to face ] in its top row), lit once the Duo is open. */
 .duo-land { position: absolute; inset: 0; opacity: var(--land, 0); }
 /* Upright: the portrait screen, turned a quarter inside the landscape body so it stands up when the Duo does. */
@@ -301,16 +306,18 @@ table.data tr:not(.cap) > * { border-bottom: 0; }
 .dx-new { animation: dx-in .45s ease-out; }
 @keyframes dx-in { from { opacity: 0; } }
 /* Face to face: two halves, the top one turned to face the other person; a short line between, well short of the edges. */
-.dx-mid { top: 497px; inset-inline-start: 207px; width: 255px; height: 3px; border-radius: 2px; background: #989D95; }
+/* Centred on the screen (951 / 2 = 475.5) both ways, as Gil asked (2026-11-03); the simulator drew it 22 pt lower,
+   centred in the safe area. It's the only line on the inner screen. */
+.dx-mid { top: 474px; inset-inline-start: 207px; width: 255px; height: 3px; border-radius: 2px; background: #989D95; }
 .dx-half { inset-inline-start: 0; width: 669px; }
-.dx-half.you { top: 500px; height: 451px; }
-.dx-half.them { top: 0; height: 497px; transform: rotate(180deg); }
+.dx-half.you { top: 477px; height: 474px; }
+.dx-half.them { top: 0; height: 474px; transform: rotate(180deg); }
 .dx-label1, .dx-label2, .dx-pick { inset-inline-start: 0; width: 669px; text-align: center; color: #56625F; font-weight: 600; transition: opacity .3s; }
 .dx-label1 { top: 16px; font-size: 13px; }
 .dx-label2 { top: 47px; font-size: 15px; }
 .dx-pick { font: 600 26px/1 ui-monospace, 'SF Mono', Menlo, monospace; white-space: pre; }
 .dx-half .dx-caps { inset-inline-start: 40px; width: 572px; top: 70px; transition: opacity .3s; }
-.dx-half.you .dx-caps { height: 262px; }
+.dx-half.you .dx-caps { height: 285px; }
 .dx-half.them .dx-caps { height: 330px; }
 .dx-half [data-when="picked"] { opacity: 0; }
 .dx-half[data-picked] [data-when="picked"] { opacity: 1; }
@@ -359,7 +366,7 @@ html.motion .ear.in .ear-out { opacity: 1; transform: none; }
 .gummy.gummy-soon small { font-weight: 600; font-size: .85rem; }
 @media (max-width: 40rem) { .devtable td.soon { padding: .5rem .65rem; } }
 
-/* Translation: why the iPhone and the big screens do it differently, beside the to-scale picture. */
-.why-split { list-style: none; padding: 0; margin: 1.25rem 0 0; display: grid; gap: .9rem; max-width: 32rem; }
-.why-split li { padding-inline-start: 1rem; border-inline-start: 3px solid var(--teal); color: var(--muted); }
-.why-split b { display: block; color: var(--text); }
+/* Translation: why face to face is only on iPad and the Duo, a supporting note under the feature, beside the to-scale picture. */
+section.band.why-band { padding-top: 0; padding-bottom: 3rem; border-top: 0; }
+.why-band h3 { margin: 0 0 .5rem; font-size: 1.15rem; }
+.why-band .intro { margin: 0; }

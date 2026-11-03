@@ -607,26 +607,6 @@
     </div>
   </div>
 
-  <!-- Why the big screens get face to face (#258, owner 2026-11-02): the screen-size picture lives here, as the reason
-       translation is one-way on iPhone and two-way on iPad and the open Duo (Decision on #171; FaceToFace.minimumShortSide). -->
-  <section class="band scene" id="ipad-screen" aria-labelledby="ipad-screen-h">
-    <div class="wrap scene-grid">
-      <div>
-        <h2 id="ipad-screen-h">{{index.four-times-the-screen}}</h2>
-        <p class="intro">{{index.f-ipad-screen-intro}}</p>
-        <ul class="why-split">
-          <li><b>{{index.f-why-iphone-h}}</b> {{index.f-why-iphone}}</li>
-          <li><b>{{index.f-why-big-h}}</b> {{index.f-why-big}}</li>
-        </ul>
-      </div>
-      <figure class="to-scale" data-grow aria-label="{{index.an-iphone-12-screen}}">
-        <div class="ts-phone" aria-hidden="true" data-app><p>Dinner is almost ready.</p></div>
-        <div class="ts-pad" aria-hidden="true" data-app><p>Dinner is almost ready.</p></div>
-        <figcaption><span>{{index.iphone-12}}</span><span>{{index.11-inch-ipad}}</span></figcaption>
-      </figure>
-    </div>
-  </section>
-
   <!-- iPhone Duo (#258). Measured from Xcode's iPhone Duo simulator profile (iPhone19,4): folded, the outer screen is
        466 x 678 pt with tight corners on the hinge (left) side; open, the inner screen is 669 x 951 pt, and folds in half
        across its long side, so it opens like a book into a landscape 951 x 669 and turns upright to its own portrait.
@@ -657,6 +637,7 @@
                 <div class="duo-face duo-back"><div class="duo-outer"><div class="dx dx-outer" data-dx="outer"></div></div></div>
               </div>
               <div class="duo-half duo-base"><div class="duo-clip"><div class="duo-scr"><div class="duo-land"><div class="dx dx-land" data-dx="land"></div></div><span class="duo-tap"></span><div class="duo-pic"><div class="dx dx-port" data-dx="port"></div></div></div></div></div>
+              <div class="duo-whole"><div class="duo-scr"><div class="duo-land"><div class="dx dx-land" data-dx="land"></div></div><span class="duo-tap"></span><div class="duo-pic"><div class="dx dx-port" data-dx="port"></div></div></div></div>
             </div>
           </div>
         </div>
@@ -671,6 +652,23 @@
           </figure>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- Why face to face is only on iPad and the open Duo (#258, owner 2026-11-03): a supporting fact under the feature,
+       not its headline. The rule is FaceToFace.minimumShortSide; iPhone stays one-way for the owner (Decision on #171). -->
+  <section class="band scene why-band" id="ipad-screen" aria-labelledby="ipad-screen-h">
+    <div class="wrap scene-grid">
+      <div>
+        <h3 id="ipad-screen-h">{{index.f-why-h}}</h3>
+        <p class="intro">{{index.f-ipad-screen-intro}}</p>
+        <p class="price-note">{{index.f-why-iphone}}</p>
+      </div>
+      <figure class="to-scale" data-grow aria-label="{{index.an-iphone-12-screen}}">
+        <div class="ts-phone" aria-hidden="true" data-app><p>Dinner is almost ready.</p></div>
+        <div class="ts-pad" aria-hidden="true" data-app><p>Dinner is almost ready.</p></div>
+        <figcaption><span>{{index.iphone-12}}</span><span>{{index.11-inch-ipad}}</span></figcaption>
+      </figure>
     </div>
   </section>
 

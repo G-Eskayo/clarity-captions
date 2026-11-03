@@ -223,15 +223,15 @@ const DUO_SCREENS = {
     `<span class="dx-f2f" ${at(615, 30)}>[ Face to face ]</span>` + icon('list', 816, 25) +
     statusBar(872, 30, 882, 56) + capsBox(16, 70, 820, 470) + stopButton(794, 560) + homeBar(353, 653, 245),
   port: () => {
-    // The list sits a little further from the middle in their (taller) half, as on the simulator.
-    const half = (who, lang, first = who === 'them' ? 138 : 103) => `<div class="dx-half ${who}" data-half="${who}">` +
+    // With the line centred, the two halves are the same size, so their lists mirror each other exactly.
+    const half = (who, lang, first = 120) => `<div class="dx-half ${who}" data-half="${who}">` +
       `<span class="dx-label1" data-when="list">Tap your language to start</span><span class="dx-label1" data-when="picked">Listening</span>` +
       `<span class="dx-label2" data-when="picked">${lang}</span>` +
       ['English', 'Español', 'Français'].map((l, i) => `<span class="dx-pick" data-when="list" ${at(0, first + i * 64)}>[ ${l} ]</span>`).join('') +
-      `<div class="dx-caps" data-caps data-when="picked"></div>` + (who === 'you' ? stopButton(597, 336) : '') + '</div>'
+      `<div class="dx-caps" data-caps data-when="picked"></div>` + (who === 'you' ? stopButton(597, 359) : '') + '</div>'
     return half('them', 'Español') + '<span class="dx-mid"></span>' + half('you', 'English') +
       statusBar(540, 39, 600, 27) + homeBar(215, 937, 238) +
-      `<span class="dx-touch you" ${at(334, 631)}></span><span class="dx-touch them" ${at(334, 285)}></span>`
+      `<span class="dx-touch you" ${at(334, 610)}></span><span class="dx-touch them" ${at(334, 277)}></span>`
   }
 }
 
@@ -323,6 +323,7 @@ function duoScroll(section) {
     const f = duoFrame(range > 0 ? clamp(-r.top / range) : 0)
     stage.style.setProperty('--f', f.fold.toFixed(4))
     stage.style.setProperty('--lo', f.fold > 0.97 ? '0' : '1') // folded flat, the inside is hidden under the outside
+    stage.style.setProperty('--whole', f.fold === 0 ? '1' : '0') // flat open: one whole screen, no line at the hinge
     stage.style.setProperty('--split', f.split.toFixed(4))
     stage.style.setProperty('--press', f.press.toFixed(4))
     stage.style.setProperty('--r', f.turn.toFixed(4))

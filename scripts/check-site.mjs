@@ -333,6 +333,15 @@ for (const dx of ['outer', 'land', 'port']) check(html.includes(`data-dx="${dx}"
   check(JSON.stringify(duoChunks('one two three four five six seven')) === JSON.stringify(chunksOf('one two three four five six seven')), 'duoChunks: the same 3 words at a time as the demo')
 }
 check(!/class="ds[ "-]/.test(html), `${f}: no drawn app screens in the Duo`)
+// Gil, 2026-11-03: Seal Speak's dividing line sits exactly in the middle of the Duo's 951 pt inner screen, and the
+// device art draws no line of its own at the hinge (the real inner screen is one piece).
+{
+  const css = readFileSync(path.join(SITE, 'devices.css'), 'utf-8')
+  const mid = css.match(/\.dx-mid \{ top: ([\d.]+)px;[^}]*height: ([\d.]+)px/)
+  check(mid && +mid[1] + +mid[2] / 2 === 951 / 2, `devices.css: the face-to-face line is centred on the Duo's inner screen (${mid?.[1]} + ${mid?.[2]}/2 vs 475.5)`)
+  for (const sel of ['.duo-base', '.duo-face']) check(!new RegExp(`\\${sel} \\{[^}]*inset 0 0 0`).test(css), `devices.css: ${sel} draws no ring, so nothing shows at the hinge`)
+  check(/class="duo-whole"/.test(html), `${f}: the open Duo shows one whole screen, not two halves with a seam`)
+}
 // Every old per-device section id (#184) is still an anchor on the page, so links into it keep working.
 for (const id of ['ipad-screen', 'ipad-languages', 'ipad-tested', 'ipad-faq', 'mac-apps', 'mac-room', 'mac-ring', 'mac-tested', 'mac-faq', 'how', 'faq', 'private', 'easy', 'why', 'tested', 'story'])
   check(new RegExp(`\\sid="${id}"`).test(html), `${f}: the old anchor #${id} has no target`)
