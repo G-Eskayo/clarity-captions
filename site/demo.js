@@ -385,6 +385,9 @@ export function init(root, { reducedMotion = false, storage = null, now = () => 
     rows.replaceChildren()
     $('[data-saved-empty]').hidden = savedList.length > 0
     search.parentElement.hidden = savedList.length === 0
+    // [ Delete all ] under the list, as the app has it; it asks in place (#258 parity with main).
+    $('[data-delall-wrap]').hidden = savedList.length === 0
+    askDeleteAll(false)
     for (const c of shown) {
       const b = document.createElement('button')
       b.className = 'd-row'
@@ -397,6 +400,13 @@ export function init(root, { reducedMotion = false, storage = null, now = () => 
       b.addEventListener('click', () => openSaved(c.id))
       rows.append(b)
     }
+  }
+
+  function askDeleteAll(on) {
+    $('[data-delall]').hidden = on
+    $('[data-delall-q]').hidden = !on
+    // The app's own words: "Delete all %lld conversations?", the number as is.
+    if (on) $('[data-delall-title]').textContent = `Delete all ${savedList.length} conversations?`
   }
 
   function openSaved(id) {
@@ -478,6 +488,10 @@ export function init(root, { reducedMotion = false, storage = null, now = () => 
     if (i >= 0) savedList.splice(i, 1)
     go('saved')
   })
+
+  $('[data-delall]').addEventListener('click', () => { askDeleteAll(true); $('[data-delall-no]').focus() })
+  $('[data-delall-no]').addEventListener('click', () => { askDeleteAll(false); $('[data-delall]').focus() })
+  $('[data-delall-yes]').addEventListener('click', () => { savedList.splice(0); drawSaved(); $('[data-saved-back]').focus() })
 
   copyBtn.addEventListener('pointerdown', (e) => e.preventDefault())
   copyBtn.addEventListener('click', doCopy)
