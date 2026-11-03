@@ -75,9 +75,10 @@
   .d-gear { width: 44px; height: 44px; border: 0; background: none; padding: 9px; color: var(--d-gear); cursor: pointer; }
   .d-gear svg { width: 100%; height: 100%; }
   .d-status { text-align: center; font-weight: 600; font-size: 15px; }
-  .d-status .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--d-text); margin-inline-end: 7px; vertical-align: middle; }
+  /* The app's status has no dot at rest; the light is red and only on while captions run (#258 parity, main ea6ade3). */
+  .d-status .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #CC1F1F; margin-inline-end: 7px; vertical-align: middle; }
   .phone[data-state="running"] .d-status .dot { animation: pulse 1.6s ease-in-out infinite; }
-  .phone[data-state="idle"] .d-status .dot { opacity: .35; }
+  .phone:not([data-state="running"]) .d-status .dot { display: none; }
   @keyframes pulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
   @media (prefers-reduced-motion: reduce) { .phone[data-state="running"] .d-status .dot { animation: none; } }
   .d-status-sub { display: block; font-weight: 400; font-size: 13px; opacity: .75; }
@@ -90,12 +91,13 @@
   .d-vol { opacity: .55; }
   .d-sound { font-style: italic; opacity: .8; }
   .d-empty { margin: auto 0; text-align: center; font: 600 15px/1.4 system-ui, sans-serif; opacity: .6; }
-  .d-btn { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); height: 54px; padding: 0 30px; border: 0; border-radius: 27px;
+  .d-btn { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); width: calc(100% - 40px); height: 54px; padding: 0 20px; border: 0; border-radius: 27px;
            background: var(--d-text); color: var(--d-bg); box-shadow: 0 3px 0 var(--d-lip); font: 800 18px/1 -apple-system, 'SF Pro Rounded', sans-serif;
            letter-spacing: .04em; white-space: nowrap; cursor: pointer; }
   .d-btn:active { transform: translateX(-50%) scaleX(1.06) scaleY(.9) translateY(2px); box-shadow: 0 1px 0 var(--d-lip); }
-  .d-stop { position: absolute; inset-inline-end: 22px; bottom: 26px; width: 54px; height: 54px; border: 0; border-radius: 50%; background: var(--d-text);
-            color: var(--d-bg); box-shadow: 0 3px 0 var(--d-lip); cursor: pointer; display: grid; place-items: center; }
+  /* The app's stop: a red circle with a white ✕ in every theme. */
+  .d-stop { position: absolute; inset-inline-end: 22px; bottom: 26px; width: 54px; height: 54px; border: 0; border-radius: 50%; background: #CC1F1F;
+            color: #fff; box-shadow: 0 3px 0 #8E1515; cursor: pointer; display: grid; place-items: center; }
   .d-stop:active { transform: scaleX(1.06) scaleY(.9) translateY(2px); box-shadow: 0 1px 0 var(--d-lip); }
   .d-stop svg { width: 20px; height: 20px; }
   @media (prefers-reduced-motion: reduce) { .d-btn:active, .d-stop:active { transform: translateX(-50%); } .d-stop:active { transform: none; } }
@@ -129,13 +131,24 @@
   .d-page { position: absolute; inset: 0; background: var(--d-bg); overflow-y: auto; font: 15px/1.4 system-ui, sans-serif; display: flex; flex-direction: column; }
   .d-page-title { text-align: center; font: 800 17px/1.2 system-ui, sans-serif; }
   .d-body { padding: 4px 20px 24px; }
-  .d-settings h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; opacity: .7; margin: 18px 0 8px; }
+  /* Settings as the app lays it out: one upper-case heading over the preview, the rest sentence case; named colour
+     tiles with a tick; two big size buttons; letterings as a list with a tick (#258 parity with main). */
+  .d-settings h3 { font: 700 15px/1.3 system-ui, sans-serif; opacity: .7; margin: 20px 0 10px; padding-top: 14px; border-top: 1px solid color-mix(in srgb, var(--d-text) 12%, transparent); }
+  .d-settings h3#d-preview-h { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
   .d-settings .row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .d-settings [aria-labelledby="d-colors"] { flex-wrap: nowrap; justify-content: space-between; gap: 4px; padding-bottom: 18px; }
+  .d-settings [aria-labelledby="d-size"] { flex-wrap: nowrap; gap: 12px; }
+  .d-settings [aria-labelledby="d-size"] .chip { flex: 1; height: 50px; border-radius: 14px; font: 800 20px/1 system-ui, sans-serif; }
+  .d-settings [aria-labelledby="d-lettering"] { flex-direction: column; flex-wrap: nowrap; gap: 0; }
+  .d-settings [aria-labelledby="d-lettering"] .chip { background: none; border: 0; border-radius: 0; padding: 10px 28px 10px 0; text-align: start; font-size: 17px; position: relative; }
+  .d-settings [aria-labelledby="d-lettering"] .chip[aria-pressed="true"]::after { content: '✓'; position: absolute; inset-inline-end: 2px; color: var(--d-gear); font: 800 18px/1 system-ui; }
   .d-note { margin: 8px 0 0; font-size: 13px; opacity: .75; }
   .d-preview { padding: 6px 0 4px; font-family: var(--d-font); font-size: var(--d-size); line-height: 1.4; }
   .d-preview .d-spk { color: var(--d-s1); }
-  .swatch { width: 38px; height: 38px; border-radius: 50%; cursor: pointer; font: 700 15px/1 system-ui; border: 2px solid transparent; }
-  .swatch[aria-pressed="true"] { border-color: var(--d-gear); box-shadow: 0 0 0 2px var(--d-bg) inset; }
+  .swatch { position: relative; width: 38px; height: 38px; border-radius: 10px; cursor: pointer; font: 700 14px/1 system-ui; border: 0; box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+  .swatch::after { content: attr(aria-label); position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%); white-space: nowrap;
+                   font: 500 9.5px/1 system-ui; color: var(--d-text); }
+  .swatch[aria-pressed="true"]::before { content: '✓'; position: absolute; top: calc(100% + 15px); left: 50%; transform: translateX(-50%); color: var(--d-gear); font: 800 12px/1 system-ui; }
   .chip { border: 2px solid transparent; background: color-mix(in srgb, var(--d-text) 8%, transparent); color: var(--d-text); border-radius: 999px;
           padding: 8px 14px; font: 600 14px/1 system-ui; cursor: pointer; }
   .chip small { font: 700 11px/1 system-ui; opacity: .7; }
@@ -241,6 +254,7 @@
     <img src="assets/favicon.svg" alt="" width="40" height="40">
     <span class="name">{{index.seal-speak}}</span>
     <nav aria-label="{{index.on-this-page}}">
+      <a href="#devices">{{index.f-devices-nav}}</a>
       <a href="#private">{{index.privacy}}</a>
       <a href="#faq">{{index.questions}}</a>
       <a href="versions.html">{{index.versions}}</a>
@@ -251,22 +265,26 @@
 
 <main id="main">
   <div class="wrap">
-    <div class="devices" role="tablist" aria-label="{{index.choose-your-device}}" data-devices hidden>
-      <button role="tab" data-tab="iphone" id="tab-iphone" aria-controls="panel-iphone" aria-selected="true">{{index.iphone}}</button>
-      <button role="tab" data-tab="ipad" id="tab-ipad" aria-controls="panel-ipad" aria-selected="false" tabindex="-1">{{index.ipad}}</button>
-      <button role="tab" data-tab="mac" id="tab-mac" aria-controls="panel-mac" aria-selected="false" tabindex="-1">{{index.mac}}</button>
+    <div class="devices" role="tablist" aria-label="{{index.f-pills}}" data-features hidden>
+      <button role="tab" data-tab="captions" id="tab-captions" aria-controls="panel-captions" aria-selected="true">{{index.f-captions}}</button>
+      <button role="tab" data-tab="translation" id="tab-translation" aria-controls="panel-translation" aria-selected="false" tabindex="-1">{{index.f-translation}}</button>
+      <button role="tab" data-tab="calls" id="tab-calls" aria-controls="panel-calls" aria-selected="false" tabindex="-1">{{index.f-calls}}</button>
     </div>
   </div>
 
-  <div data-device="iphone" id="panel-iphone" role="tabpanel" aria-labelledby="tab-iphone">
+  <div data-feature="captions" id="panel-captions" role="tabpanel" aria-labelledby="tab-captions">
   <div class="wrap">
-    <p class="device-name">{{index.iphone}}</p>
+    <p class="device-name">{{index.f-captions}}</p>
     <div class="hero">
       <div>
         <h1>{{index.follow-the-conversation-at-2}}</h1>
         <p class="lede">{{index.seal-speak-shows-what-2}}</p>
-        <a class="gummy" href="https://apps.apple.com/us/app/seal-speak/id6821561495">{{index.download-on-the-app}}</a>
-        <span class="soon-note">{{index.for-iphone-12-or}}</span>
+        <div class="get">
+          <a class="gummy" href="https://apps.apple.com/us/app/seal-speak/id6821561495">{{index.f-download}}</a>
+          <span class="gummy gummy-soon" aria-disabled="true">{{index.f-mac-download}}</span>
+        </div>
+        <span class="soon-note">{{index.f-cap-for}} <span class="in-11" data-in="1.1" data-feat="ipad-full-screen">{{index.f-in-11}}</span></span>
+        <ul class="works-on" aria-label="{{index.f-works-on}}"><li class="yes">{{index.f-dev-iphone}}</li><li class="yes">{{index.f-dev-ipad}}</li><li class="soon">{{index.f-dev-duo}} <small data-in="1.1" data-feat="duo">{{index.f-in-11-lower}}</small></li><li class="soon">{{index.f-dev-mac}} <small>{{index.f-in-testing}}</small></li></ul>
         <ul class="facts" aria-label="{{index.at-a-glance}}">
           <li>{{index.made-on-your-phone}}</li>
           <li>{{index.works-with-no-internet}}</li>
@@ -440,25 +458,6 @@
     </div>
   </section>
 
-  <section class="band" id="private" aria-labelledby="private-h">
-    <div class="wrap">
-      <h2 id="private-h">{{index.nothing-leaves-your-device}}</h2>
-      <figure class="private" data-grow aria-label="{{index.voices-go-into-the}}">
-        <span class="pv voice" aria-hidden="true"><svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M10 20v8M18 14v20M26 8v32M34 16v16M42 21v6"/></svg></span>
-        <span class="pv arrow" aria-hidden="true"></span>
-        <span class="pv device" aria-hidden="true"><svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><rect x="13" y="4" width="22" height="40" rx="5"/><path d="M19 16h10M19 22h10M19 28h6"/></svg></span>
-        <span class="pv arrow" aria-hidden="true"></span>
-        <span class="pv words" aria-hidden="true">{{index.aa}}</span>
-        <span class="pv cloud" aria-hidden="true"><svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M14 36h22a8 8 0 0 0 0-16 12 12 0 0 0-23-2A9 9 0 0 0 14 36z"/><path class="x" d="M6 6l36 36"/></svg></span>
-      </figure>
-      <ul class="pv-facts">
-        <li>{{index.never-recorded-the-sound}}</li>
-        <li>{{index.no-internet-works-in}}</li>
-        <li>{{index.no-account-no-ads}}</li>
-      </ul>
-    </div>
-  </section>
-
   <section class="band" id="easy" aria-labelledby="easy-h">
     <div class="wrap">
       <h2 id="easy-h">{{index.made-to-be-easy}}</h2>
@@ -522,7 +521,7 @@
       </div>
       <div class="results">
         <div class="card">
-          <h3>{{index.fewer-mistakes-in-conversation}}</h3>
+          <h3>{{index.fewer-mistakes-in-conversation}} <span class="in-11" data-in="1.1" data-feat="parakeet">{{index.f-in-11}}</span></h3>
           <p>{{index.seal-speak-1-0}}</p>
           <div class="tablewrap">
             <table class="data results-t" style="--cols:2" data-bars data-better="lower">
@@ -536,7 +535,7 @@
           <p class="src">{{index.lower-is-better-17}}</p>
         </div>
         <div class="card">
-          <h3>{{index.other-languages-too}}</h3>
+          <h3>{{index.other-languages-too}} <span class="in-11" data-in="1.1" data-feat="caption-languages">{{index.f-in-11}}</span></h3>
           <p>{{index.captions-are-english-only}}</p>
           <div class="tablewrap">
             <table class="data results-t" style="--cols:2" data-bars data-better="lower">
@@ -585,51 +584,29 @@
     </div>
   </section>
 
-  <section class="band" id="faq" data-faq aria-labelledby="faq-h">
-    <div class="wrap">
-      <h2 id="faq-h">{{index.questions}}</h2>
-      <div class="faq">
-        <h3>{{index.which-devices-does-it}}</h3>
-        <p>{{index.iphone-12-or-newer}}</p>
-        <h3>{{index.does-it-record-or}}</h3>
-        <p>{{index.no-sound-is-turned}}</p>
-        <h3>{{index.how-long-are-saved}}</h3>
-        <p>{{index.30-days-then-they}}</p>
-        <h3>{{index.what-if-i-forget}}</h3>
-        <p>{{index.seal-stops-by-itself}}</p>
-      </div>
-      <p class="intro" style="margin-top:2rem">{{index.more-answers-on-the}}</p>
-    </div>
-  </section>
-
   </div>
 
-  <div data-device="ipad" id="panel-ipad" role="tabpanel" aria-labelledby="tab-ipad">
+  <div data-feature="translation" id="panel-translation" role="tabpanel" aria-labelledby="tab-translation">
   <div class="wrap">
-    <p class="device-name">{{index.ipad}}</p>
+    <p class="device-name">{{index.f-translation}}</p>
     <div class="hero">
       <div>
-        <h1>{{index.talk-across-the-table}}</h1>
-        <p class="lede">{{index.lay-the-ipad-flat}}</p>
-        <ol class="when" aria-label="{{index.where-ipad-is}}">
-          <li class="done">{{index.today-runs-in-the}}</li>
-          <li>{{index.1-0-1-the}}</li>
-          <li>{{index.planned-two-languages-split}}</li>
-        </ol>
+        <p class="in-11-lead"><span class="in-11" data-in="1.1" data-feat="live-translation">{{index.f-in-11}}</span></p>
+        <h1>{{index.f-tr-h1}}</h1>
+        <p class="lede">{{index.f-tr-lede}}</p>
+        <ul class="works-on" aria-label="{{index.f-works-on}}"><li class="soon">{{index.f-dev-iphone}} <small data-in="1.1" data-feat="live-translation">{{index.f-in-11-lower}}</small></li><li class="soon">{{index.f-dev-ipad}} <small data-in="1.1" data-feat="live-translation">{{index.f-in-11-lower}}</small></li><li class="soon">{{index.f-dev-duo}} <small data-in="1.1" data-feat="live-translation">{{index.f-in-11-lower}}</small></li><li class="soon">{{index.f-dev-mac}} <small>{{index.f-coming-lower}}</small></li></ul>
+        <div class="get">
+          <span class="gummy gummy-soon" aria-disabled="true">{{index.f-tr-download}} <small data-in="1.1" data-feat="live-translation">{{index.f-in-11-lower}}</small></span>
+        </div>
+        <p class="price-note">{{index.f-tr-price}}</p>
       </div>
       <div class="tablet-wrap" data-tablet>
         <div class="tablet" role="img" aria-label="{{index.an-ipad-lying-flat}}">
+          <!-- The app's own face to face on the iPad Air 11-inch simulator (main): a still with Reduce Motion or no
+               script; otherwise devices.js puts the live screen over it, drawn in points like the Duo's (#258 parity). -->
           <div class="t-screen" aria-hidden="true" data-app>
-            <div class="t-half them" data-half="them">
-              <div class="t-head">Español</div>
-              <p class="t-line tr" data-mark="Traducido del inglés">Largo, pero los niños durmieron todo el camino.</p>
-              <p class="t-line">Qué bien. La cena está casi lista.</p>
-            </div>
-            <div class="t-half you" data-half="you">
-              <div class="t-head">English</div>
-              <p class="t-line">Long, but the kids slept the whole way.</p>
-              <p class="t-line tr" data-mark="Translated from Spanish">Good. Dinner is almost ready.</p>
-            </div>
+            <img class="t-still" src="assets/ipad/face-to-face.jpg" alt="" width="600" height="863">
+            <div class="dx dx-port dx-pad" data-dx="pad" hidden></div>
           </div>
         </div>
         <button class="flip" data-flip data-other="{{index.see-your-side}}" aria-pressed="false" hidden>{{index.see-their-side}}</button>
@@ -638,22 +615,106 @@
     </div>
   </div>
 
+  <!-- Face to face, sold through what it's for (#258, owner 2026-11-03), in the look of the earlier screen-size block:
+       translation is on every device; face to face is the extra on iPad and an open Duo, because each person needs a
+       half they can read across a table (FaceToFace.minimumShortSide; iPhone one-way for the owner, Decision on #171). -->
   <section class="band scene" id="ipad-screen" aria-labelledby="ipad-screen-h">
     <div class="wrap scene-grid">
       <div>
-        <h2 id="ipad-screen-h">{{index.four-times-the-screen}}</h2>
-        <p class="intro">{{index.same-words-same-number}}</p>
+        <p class="in-11-lead"><span class="in-11" data-in="1.1" data-feat="face-to-face">{{index.f-in-11}}</span></p>
+        <h2 id="ipad-screen-h">{{index.f-f2f-h}}</h2>
+        <p class="intro">{{index.f-f2f-lead}}</p>
+        <ul class="why-split">
+          <li><b>{{index.f-use-1-h}}</b> {{index.f-use-1}}</li>
+          <li><b>{{index.f-use-2-h}}</b> {{index.f-use-2}}</li>
+          <li><b>{{index.f-use-3-h}}</b> {{index.f-use-3}}</li>
+        </ul>
       </div>
-      <figure class="to-scale" data-grow aria-label="{{index.an-iphone-12-screen}}">
-        <div class="ts-phone" aria-hidden="true" data-app><p>Dinner is almost ready.</p></div>
-        <div class="ts-pad" aria-hidden="true" data-app><p>Dinner is almost ready.</p></div>
-        <figcaption><span>{{index.iphone-12}}</span><span>{{index.11-inch-ipad}}</span></figcaption>
+      <div class="to-scale-wrap">
+        <figure class="to-scale" data-grow aria-label="{{index.an-iphone-12-screen}}">
+          <div class="ts-phone" aria-hidden="true" data-app><p>Dinner is almost ready.</p></div>
+          <div class="ts-pad" aria-hidden="true" data-app><p>Dinner is almost ready.</p></div>
+          <figcaption><span>{{index.iphone-12}}</span><span>{{index.11-inch-ipad}}</span></figcaption>
+        </figure>
+        <p class="to-scale-why"><b>{{index.four-times-the-screen}}</b> {{index.f-ipad-screen-intro}}</p>
+        <p class="price-note">{{index.f-why-iphone}}</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- iPhone Duo (#258). Measured from Xcode's iPhone Duo simulator profile (iPhone19,4): folded, the outer screen is
+       466 x 678 pt with tight corners on the hinge (left) side; open, the inner screen is 669 x 951 pt, and folds in half
+       across its long side, so it opens like a book into a landscape 951 x 669 and turns upright to its own portrait.
+       The screens are live HTML like the site's other demos (devices.js builds them), traced from the app on the iPhone
+       Duo simulator unfolded by hand in DeviceHub (2026-11-02): captions typing in on the outer screen; open flat in
+       landscape with [ Face to face ]; upright, each half picking its language; the split, both halves talking.
+       Scrolling plays that in order; scrolling back plays it backwards. Reduce Motion or no JavaScript: two stills,
+       the simulator's own screenshots. -->
+  <section class="band scene duo-section" id="face-to-face" aria-labelledby="f2f-h" data-duo>
+    <div class="wrap duo-words">
+      <p class="in-11-lead"><span class="in-11" data-in="1.1" data-feat="duo">{{index.f-in-11}}</span></p>
+      <h2 id="f2f-h">{{index.talk-across-the-table}}</h2>
+      <p class="intro">{{index.f-f2f-intro}}</p>
+    </div>
+    <div class="duo-track">
+      <div class="wrap duo-sticky">
+        <div>
+          <ol class="duo-steps">
+            <li data-step="1"><b>{{index.f-duo-folded}}</b> {{index.f-duo-step1}}</li>
+            <li data-step="2"><b>{{index.f-duo-opening}}</b> {{index.f-duo-step2}}</li>
+            <li data-step="3"><b>{{index.f-duo-open}}</b> {{index.f-duo-step3}}</li>
+          </ol>
+        </div>
+        <div class="duo-stage" data-duo-stage role="img" aria-label="{{index.f-duo-aria}}" hidden>
+          <div class="duo-rot">
+            <div class="duo-body" aria-hidden="true" data-app>
+              <div class="duo-half duo-cover">
+                <div class="duo-face duo-front"><div class="duo-clip"><div class="duo-scr"><div class="duo-land"><div class="dx dx-land" data-dx="land"></div></div><span class="duo-tap"></span><div class="duo-pic"><div class="dx dx-port" data-dx="port"></div></div></div></div></div>
+                <div class="duo-face duo-back"><div class="duo-outer"><div class="dx dx-outer" data-dx="outer"></div></div></div>
+              </div>
+              <div class="duo-half duo-base"><div class="duo-clip"><div class="duo-scr"><div class="duo-land"><div class="dx dx-land" data-dx="land"></div></div><span class="duo-tap"></span><div class="duo-pic"><div class="dx dx-port" data-dx="port"></div></div></div></div></div>
+              <div class="duo-whole"><div class="duo-scr"><div class="duo-land"><div class="dx dx-land" data-dx="land"></div></div><span class="duo-tap"></span><div class="duo-pic"><div class="dx dx-port" data-dx="port"></div></div></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="duo-stills" data-duo-stills>
+          <figure class="duo-still" aria-label="{{index.f-duo-folded}}">
+            <div class="duo-fold-still" aria-hidden="true" data-app><img class="duo-outer" src="assets/duo/outer-captions.jpg" alt=""></div>
+            <figcaption>{{index.f-duo-folded}}</figcaption>
+          </figure>
+          <figure class="duo-still" aria-label="{{index.f-duo-open}}">
+            <div class="duo-open-still" aria-hidden="true" data-app><img src="assets/duo/inner-split.jpg" alt=""></div>
+            <figcaption>{{index.f-duo-open}}</figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band scene" id="ear" aria-labelledby="ear-h">
+    <div class="wrap scene-grid">
+      <div>
+        <p class="in-11-lead"><span class="in-11" data-in="1.1" data-feat="in-your-ear">{{index.f-in-11}}</span></p>
+        <h2 id="ear-h">{{index.f-ear-h}}</h2>
+        <p class="intro">{{index.f-ear-intro}}</p>
+      </div>
+      <figure class="ear" data-grow aria-label="{{index.f-ear-aria}}">
+        <p class="ear-in" aria-hidden="true" data-app>¿Qué tal el viaje?</p>
+        <span class="pv arrow" aria-hidden="true"></span>
+        <span class="ear-seal" aria-hidden="true"><img src="assets/favicon.svg" alt="" width="44" height="44"></span>
+        <span class="pv arrow" aria-hidden="true"></span>
+        <span class="ear-phones" aria-hidden="true">
+          <svg viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 40V32a22 22 0 0 1 44 0v8"/><rect x="6" y="38" width="12" height="18" rx="5"/><rect x="46" y="38" width="12" height="18" rx="5"/></svg>
+          <i class="wave"></i><i class="wave"></i>
+        </span>
+        <p class="ear-out" aria-hidden="true" data-app>“How was the drive?”</p>
       </figure>
     </div>
   </section>
 
   <section class="band scene" id="ipad-languages" aria-labelledby="ipad-languages-h">
     <div class="wrap">
+      <p class="in-11-lead"><span class="in-11" data-in="1.1" data-feat="live-translation">{{index.f-in-11}}</span></p>
       <h2 id="ipad-languages-h">{{index.19-languages-as-fast}}</h2>
       <div class="stats">
         <p class="stat"><span class="stat-n" data-count="{{index.70-ms}}">{{index.70-ms}}</span><span class="stat-l">{{index.or-less-to-translate}}</span></p>
@@ -682,7 +743,7 @@
             <li style="--v:0.565"><span class="lang">{{index.spanish}}</span><span class="track"><span class="fill"></span></span><span class="val">0.863</span></li>
             <li class="low" style="--v:0.285"><span class="lang">{{index.hindi}}</span><span class="track"><span class="fill"></span></span><span class="val">0.807</span></li>
         </ul>
-        <p class="src">{{index.the-line-marks-0}}</p>
+        <p class="src">{{index.f-tr-langs-src}}</p>
       </figure>
     </div>
   </section>
@@ -712,32 +773,20 @@
     </div>
   </section>
 
-  <section class="band" id="ipad-faq" data-faq aria-labelledby="ipad-faq-h">
-    <div class="wrap">
-      <h2 id="ipad-faq-h">{{index.questions}}</h2>
-      <div class="faq">
-        <h3>{{index.which-ipads-does-it}}</h3>
-        <p>{{index.any-ipad-with-an}}</p>
-        <h3>{{index.does-translation-need-the}}</h3>
-        <p>{{index.only-once-per-language}}</p>
-        <h3>{{index.when-does-the-split}}</h3>
-        <p>{{index.it-s-planned-with}}</p>
-        <h3>{{index.can-i-use-it}}</h3>
-        <p>{{index.yes-seal-speak-1}}</p>
-        <p class="more">{{index.more-answers-on-the}}</p>
-      </div>
-    </div>
-  </section>
-
   </div>
 
-  <div data-device="mac" id="panel-mac" role="tabpanel" aria-labelledby="tab-mac">
+  <div data-feature="calls" id="panel-calls" role="tabpanel" aria-labelledby="tab-calls">
   <div class="wrap">
-    <p class="device-name">{{index.mac}}</p>
+    <p class="device-name">{{index.f-calls}}</p>
     <div class="hero">
       <div>
         <h1>{{index.captions-for-your-calls}}</h1>
-        <p class="lede">{{index.a-small-window-that}}</p>
+        <p class="lede">{{index.a-small-window-that}} {{index.f-calls-mac-only}}</p>
+        <ul class="works-on" aria-label="{{index.f-works-on}}"><li class="no">{{index.f-dev-iphone}} <small>{{index.f-no}}</small></li><li class="no">{{index.f-dev-ipad}} <small>{{index.f-no}}</small></li><li class="no">{{index.f-dev-duo}} <small>{{index.f-no}}</small></li><li class="soon">{{index.f-dev-mac}} <small>{{index.f-in-testing}}</small></li></ul>
+        <div class="get">
+          <span class="gummy gummy-soon" aria-disabled="true">{{index.f-mac-download}}</span>
+        </div>
+        <p class="price-note">{{index.f-calls-note}}</p>
         <ol class="when" aria-label="{{index.where-the-mac-app}}">
           <li class="done">{{index.in-testing-not-on}}</li>
           <li>{{index.needs-apple-silicon-m1}}</li>
@@ -747,12 +796,12 @@
         <div class="mac" data-mac role="img" aria-label="{{index.a-video-call-window}}">
           <div class="mac-call" aria-hidden="true"><div class="mac-tile"></div><div class="mac-self"></div></div>
           <div class="pop" aria-hidden="true" data-app>
-            <div class="pop-top"><span class="dot"></span>Captioning your call</div>
+            <div class="pop-top"><svg class="pop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span class="pop-title"><span class="dot"></span>Captioning your call</span><svg class="pop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.2" fill="currentColor" stroke="none"/></svg></div>
             <div class="pop-lines" data-pop-lines>
               <p class="pop-line s1"><b>Speaker 1</b>Grandpa wants to say hi to everyone.</p>
               <p class="pop-line s2"><b>Speaker 2</b>Hi Grandpa! We miss you.</p>
             </div>
-            <div class="pop-stop">Stop</div>
+            <div class="pop-stop"><svg viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg></div>
           </div>
         </div>
         <p class="tablet-hint">{{index.a-made-up-call}}</p>
@@ -796,9 +845,9 @@
     <div class="wrap">
       <h2 id="mac-ring-h">{{index.a-call-rings-seal}}</h2>
       <ol class="story3" data-story aria-label="{{index.when-a-call-rings}}">
-        <li class="on"><div class="mini" data-app><b>You're getting a call</b><span class="btns"><i>Caption call</i><i>Not now</i></span></div><p>{{index.it-rings}}</p></li>
-        <li><div class="mini" data-app><b><span class="dot"></span>Captioning your FaceTime call</b><span class="ln">Hi! Can you read me okay?</span></div><p>{{index.it-captions}}</p></li>
-        <li><div class="mini" data-app><b>Call ended</b><span class="btns"><i>Save transcript</i><i>Don't save</i></span></div><p>{{index.you-choose}}</p></li>
+        <li class="on"><div class="mini" data-app><b>You're getting a call</b><span class="sub">Pause this conversation and caption the call?</span><span class="btns"><i>Caption call</i><i>Not now</i></span></div><p>{{index.it-rings}}</p></li>
+        <li><div class="mini" data-app><b><span class="dot"></span>Captioning your call</b><span class="ln">Hi! Can you read me okay on the computer?</span><span class="sub">Your conversation is paused. It comes back when the call ends.</span></div><p>{{index.it-captions}}</p></li>
+        <li><div class="mini" data-app><b>The call ended</b><span class="sub">Save this call's transcript, or go back to your conversation where it left off.</span><span class="btns"><i>Save transcript</i><i>Return</i></span></div><p>{{index.you-choose}}</p></li>
       </ol>
       <p class="src">{{index.facetime-and-iphone-calls}}</p>
     </div>
@@ -828,24 +877,76 @@
     </div>
   </section>
 
-  <section class="band" id="mac-faq" data-faq aria-labelledby="mac-faq-h">
+  </div>
+
+  <!-- shared -->
+  <section class="band" id="devices" aria-labelledby="devices-h">
     <div class="wrap">
-      <h2 id="mac-faq-h">{{index.questions}}</h2>
-      <div class="faq">
-        <h3>{{index.does-it-record-my}}</h3>
-        <p>{{index.no-the-call-s}}</p>
-        <h3>{{index.do-the-people-on}}</h3>
-        <p>{{index.no-seal-speak-doesn}}</p>
-        <h3>{{index.does-it-work-with}}</h3>
-        <p>{{index.it-s-built-to}}</p>
-        <h3>{{index.when-can-i-get}}</h3>
-        <p>{{index.it-s-in-testing}}</p>
-        <p class="more">{{index.more-answers-on-the}}</p>
+      <h2 id="devices-h">{{index.f-dev-h}}</h2>
+      <p class="intro">{{index.f-dev-intro}}</p>
+      <table class="devtable">
+        <caption class="sr-only">{{index.f-dev-h}}</caption>
+        <thead><tr><td></td><th scope="col">{{index.f-dev-iphone}}</th><th scope="col">{{index.f-dev-ipad}}</th><th scope="col">{{index.f-dev-duo}}</th><th scope="col">{{index.f-dev-mac}}</th></tr></thead>
+        <tbody>
+          <tr data-row="captions"><th scope="row"><a href="#panel-captions">{{index.f-captions}}</a></th><td class="yes" data-dev="{{index.f-dev-iphone}}">{{index.f-t-cap-iphone}}</td><td class="yes" data-dev="{{index.f-dev-ipad}}">{{index.f-t-cap-ipad}} <span class="in-11" data-in="1.1" data-feat="ipad-full-screen">{{index.f-in-11}}</span></td><td class="soon" data-dev="{{index.f-dev-duo}}">{{index.f-t-cap-duo}} <span class="in-11" data-in="1.1" data-feat="duo">{{index.f-in-11}}</span></td><td class="soon" data-dev="{{index.f-dev-mac}}">{{index.f-t-cap-mac}}</td></tr>
+          <tr data-row="translation"><th scope="row"><a href="#panel-translation">{{index.f-translation}}</a> <span class="in-11" data-in="1.1" data-feat="live-translation">{{index.f-in-11}}</span></th><td class="soon" data-dev="{{index.f-dev-iphone}}">{{index.f-t-tr-iphone}}</td><td class="soon" data-dev="{{index.f-dev-ipad}}">{{index.f-t-tr-ipad}}</td><td class="soon" data-dev="{{index.f-dev-duo}}">{{index.f-t-tr-duo}}</td><td class="soon" data-dev="{{index.f-dev-mac}}">{{index.f-t-tr-mac}}</td></tr>
+          <tr data-row="calls"><th scope="row"><a href="#panel-calls">{{index.f-calls}}</a></th><td class="no" data-dev="{{index.f-dev-iphone}}">{{index.f-t-calls-iphone}}</td><td class="no" data-dev="{{index.f-dev-ipad}}">{{index.f-t-calls-ipad}}</td><td class="no" data-dev="{{index.f-dev-duo}}">{{index.f-t-calls-duo}}</td><td class="soon" data-dev="{{index.f-dev-mac}}">{{index.f-t-calls-mac}}</td></tr>
+          <tr class="need"><th scope="row">{{index.f-you-need}}</th><td data-dev="{{index.f-dev-iphone}}">{{index.f-t-need-iphone}}</td><td data-dev="{{index.f-dev-ipad}}">{{index.f-t-need-ipad}}</td><td data-dev="{{index.f-dev-duo}}">{{index.f-t-need-duo}}</td><td data-dev="{{index.f-dev-mac}}">{{index.f-t-need-mac}}</td></tr>
+        </tbody>
+      </table>
+      <div class="get">
+        <a class="gummy" href="https://apps.apple.com/us/app/seal-speak/id6821561495">{{index.f-download}}</a>
+        <span class="gummy gummy-soon" aria-disabled="true">{{index.f-mac-download}}</span>
       </div>
+      <p class="price-note">{{index.f-mac-soon}}</p>
+      <p class="price-note">{{index.f-prices}}</p>
+      <p class="price-note">{{index.f-dashed}}</p>
+      <p class="price-note">{{index.f-android}}</p>
     </div>
   </section>
 
-  </div>
+  <section class="band" id="private" aria-labelledby="private-h">
+    <div class="wrap">
+      <h2 id="private-h">{{index.nothing-leaves-your-device}}</h2>
+      <figure class="private" data-grow aria-label="{{index.voices-go-into-the}}">
+        <span class="pv voice" aria-hidden="true"><svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M10 20v8M18 14v20M26 8v32M34 16v16M42 21v6"/></svg></span>
+        <span class="pv arrow" aria-hidden="true"></span>
+        <span class="pv device" aria-hidden="true"><svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><rect x="13" y="4" width="22" height="40" rx="5"/><path d="M19 16h10M19 22h10M19 28h6"/></svg></span>
+        <span class="pv arrow" aria-hidden="true"></span>
+        <span class="pv words" aria-hidden="true">{{index.aa}}</span>
+        <span class="pv cloud" aria-hidden="true"><svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M14 36h22a8 8 0 0 0 0-16 12 12 0 0 0-23-2A9 9 0 0 0 14 36z"/><path class="x" d="M6 6l36 36"/></svg></span>
+      </figure>
+      <ul class="pv-facts">
+        <li>{{index.never-recorded-the-sound}}</li>
+        <li>{{index.no-internet-works-in}}</li>
+        <li>{{index.no-account-no-ads}}</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="band" id="faq" data-faq aria-labelledby="faq-h">
+    <span id="ipad-faq"></span><span id="mac-faq"></span>
+    <div class="wrap">
+      <h2 id="faq-h">{{index.questions}}</h2>
+      <div class="faq">
+        <h3>{{index.which-devices-does-it}}</h3>
+        <p>{{index.iphone-12-or-newer}}</p>
+        <h3>{{index.does-it-record-or}}</h3>
+        <p>{{index.no-sound-is-turned}}</p>
+        <h3>{{index.does-translation-need-the}} <span class="in-11" data-in="1.1" data-feat="live-translation">{{index.f-in-11}}</span></h3>
+        <p>{{index.f-faq-tr-net}}</p>
+        <h3>{{index.f-faq-family-q}} <span class="in-11" data-in="1.1" data-feat="live-translation">{{index.f-in-11}}</span></h3>
+        <p>{{index.f-faq-family-a}}</p>
+        <h3>{{index.how-long-are-saved}}</h3>
+        <p>{{index.30-days-then-they}}</p>
+        <h3>{{index.what-if-i-forget}}</h3>
+        <p>{{index.seal-stops-by-itself}}</p>
+        <h3>{{index.f-faq-mac-q}}</h3>
+        <p>{{index.it-s-in-testing}}</p>
+      </div>
+      <p class="intro" style="margin-top:2rem">{{index.more-answers-on-the}}</p>
+    </div>
+  </section>
 
 </main>
 

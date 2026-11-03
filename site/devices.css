@@ -1,28 +1,37 @@
-/* ── device tabs (#184): iPhone, iPad, Mac; each swaps the top of the page. The sliding pill is motion.js's. ── */
+/* ── feature tabs (#235; device tabs in #184): Live captioning, Translation, Calls & meetings. The sliding pill is motion.js's. ── */
 .devices { display: flex; gap: .5rem; margin: .25rem auto 0; flex-wrap: wrap; }
 .devices [role="tab"], .devices a { font: inherit; font-weight: 800; letter-spacing: .02em; border-radius: 999px; padding: .45rem 1.3rem;
   border: 2px solid var(--accent); color: var(--accent); background: transparent; text-decoration: none; cursor: pointer; }
 .devices [aria-selected="true"] { background: var(--accent); color: var(--bg); }
 .devices { flex-wrap: nowrap; }
 .devices [role="tab"]:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
-html.tabs-on [data-device][data-off] { display: none; }
-/* Without JavaScript every device shows, one after the other, each with its name on top. */
+html.tabs-on [data-feature][data-off] { display: none; }
+/* Without JavaScript every feature shows, one after the other, each with its name on top. */
 .device-name { font-size: .95rem; font-weight: 800; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; margin: 2rem 0 0; }
 html.tabs-on .device-name { display: none; }
 
 /* ── iPad lying flat, seen from above: the top half faces the other person ── */
 .tablet-wrap { display: grid; justify-items: center; gap: .9rem; }
-.tablet { width: min(340px, 86vw); aspect-ratio: 3 / 4; border-radius: 30px; background: #141419; padding: 14px; box-shadow: 0 18px 40px rgba(0,0,0,.25);
+/* The iPad Air 11-inch, 820 x 1180 pt, the screen the app's face to face was captured on (#258 parity). */
+.tablet { width: min(340px, 86vw); aspect-ratio: 848 / 1208; border-radius: 30px; background: #141419; padding: 14px; box-shadow: 0 18px 40px rgba(0,0,0,.25);
   transition: transform .9s cubic-bezier(.5, 0, .2, 1); }
 .tablet[data-turned] { transform: rotate(180deg); }
-.tablet .t-screen { height: 100%; border-radius: 18px; overflow: hidden; display: grid; grid-template-rows: 1fr 1fr; background: #FBF6EA; color: #141419; }
-.t-half { padding: 12px 16px; display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; overflow: hidden; font-size: 15px; line-height: 1.3; }
-.t-half.them { transform: rotate(180deg); border-bottom: 2px dashed #D9CBB0; }
-.t-head { font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #6B5545; margin-bottom: auto; }
-.t-line { margin: 0; }
-.t-line.tr { color: #0E5A56; }
-.t-line.tr::before { content: attr(data-mark); display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .04em; color: #1F7A70; }
-.t-line.new { animation: t-in .45s ease-out; }
+.tablet .t-screen { position: relative; height: 100%; border-radius: 18px; overflow: hidden; background: #FAF5E6; color: #141419; }
+.t-still { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* The live iPad screen: the Duo's portrait screen, laid out for the iPad's 820 x 1180 pt and its bigger captions. */
+.dx.dx-port.dx-pad { width: 820px; height: 1180px; }
+.dx-pad .dx-mid { top: 589px; inset-inline-start: 282px; width: 256px; }
+.dx-pad .dx-half { width: 820px; }
+.dx-pad .dx-half.you { top: 592px; height: 588px; }
+.dx-pad .dx-half.them { height: 589px; }
+.dx-pad .dx-label1, .dx-pad .dx-label2 { width: 820px; }
+.dx-pad .dx-half .dx-caps { width: 740px; }
+.dx-pad .dx-half.you .dx-caps { height: 400px; }
+.dx-pad .dx-half.them .dx-caps { height: 440px; }
+.dx-pad .dx-tx, .dx-pad .dx-vol, .dx-pad .dx-own { font-size: 35px; line-height: 61px; }
+.dx-pad .dx-tx { padding-inline-start: 44px; }
+.dx-pad .dx-mark { top: 20px; }
+.dx-pad .dx-clock { font: 600 13px/1 -apple-system, system-ui, sans-serif; color: #000; white-space: pre; }
 @keyframes t-in { from { opacity: 0; transform: translateY(6px); } }
 .tablet-hint { font-size: .9rem; color: var(--muted); text-align: center; max-width: 24rem; margin: 0; }
 .flip { font: inherit; font-weight: 800; border-radius: 999px; padding: .45rem 1.2rem; border: 2px solid var(--accent); color: var(--accent); background: transparent; cursor: pointer; }
@@ -40,16 +49,20 @@ html.tabs-on .device-name { display: none; }
 .pop { position: absolute; inset-inline-end: 0; bottom: 0; width: min(62%, 270px); border-radius: 16px; background: #FBF6EA; color: #141419; padding: 10px 14px 12px;
   box-shadow: 0 14px 30px rgba(0,0,0,.35); font-size: 14px; }
 @media (max-width: 34rem) { .pop { width: 74%; font-size: 13px; } .mac { padding-bottom: 120px; } }
-.pop-top { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; color: #4A4A4A; margin-bottom: 6px; }
-.pop-top .dot { width: 7px; height: 7px; border-radius: 50%; background: #1F7A44; }
+/* As the Mac app draws it (PR #178): gear, a red light and "Captioning your call", the list; OpenDyslexic captions; a red ✕. */
+.pop-top { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: #4A4A4A; margin-bottom: 6px; }
+.pop-icon { width: 15px; height: 15px; color: #14514B; flex: none; }
+.pop-title { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; }
+.pop-top .dot { width: 6px; height: 6px; border-radius: 50%; background: #CC1F1F; }
 html.motion .pop-top .dot { animation: pop-pulse 1.6s ease-in-out infinite; }
 @keyframes pop-pulse { 50% { opacity: .35; } }
 .pop-lines { min-height: 128px; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; overflow: hidden; }
-.pop-line { margin: 0; line-height: 1.3; }
-.pop-line b { display: block; font-size: 10.5px; color: #0E5A56; }
+.pop-line { margin: 0; line-height: 1.45; font-family: 'OpenDyslexic', system-ui, sans-serif; }
+.pop-line b { display: block; font: 700 10.5px/1.3 system-ui, sans-serif; color: #0E5A56; }
 .pop-line.s2 b { color: #7A3A0C; }
 .pop-line.new { animation: t-in .45s ease-out; }
-.pop-stop { margin-top: 8px; border-radius: 999px; background: #141419; color: #FBF6EA; text-align: center; font-weight: 800; padding: 5px 0; font-size: 13px; }
+.pop-stop { margin: 8px auto 0; width: 34px; height: 34px; border-radius: 50%; background: #CC1F1F; display: grid; place-items: center; box-shadow: 0 2px 0 #8E1515; }
+.pop-stop svg { width: 13px; height: 13px; }
 
 /* ── where a device is: a short line of steps, the first one reached ── */
 .when { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 0; counter-reset: w; }
@@ -133,11 +146,13 @@ html.motion .story3 li { opacity: .45; transition: opacity .4s, transform .4s; }
 html.motion .story3 li.on { opacity: 1; transform: translateY(-4px); }
 .story3 p { margin: .5rem 0 0; font-weight: 800; text-align: center; }
 .mini { background: #FBF6EA; color: #141419; border-radius: 14px; padding: .8rem .9rem; min-height: 5.5rem; display: grid; gap: .5rem; align-content: start; box-shadow: 0 8px 20px rgba(0,0,0,.12); font-size: .9rem; }
-.mini .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #1F7A44; margin-inline-end: .35rem; vertical-align: middle; }
+.mini .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #CC1F1F; margin-inline-end: .35rem; vertical-align: middle; }
+.mini .sub { font-size: .78rem; line-height: 1.35; color: #4A4A4A; }
 .mini .btns { display: flex; gap: .4rem; flex-wrap: wrap; }
-.mini i { font-style: normal; font-size: .8rem; font-weight: 700; border-radius: 999px; padding: .2rem .6rem; background: #141419; color: #FBF6EA; }
-.mini i + i { background: transparent; color: #141419; border: 1.5px solid #141419; }
-.mini .ln { font-size: 1rem; }
+/* The app's call buttons: a dark one and a light grey one, both pill-shaped (PR #178). */
+.mini i { font-style: normal; font-size: .8rem; font-weight: 700; border-radius: 999px; padding: .25rem .7rem; background: #141419; color: #FBF6EA; box-shadow: 0 2px 0 #565659; }
+.mini i + i { background: #E8E2D6; color: #141419; box-shadow: 0 2px 0 #B9B2A4; }
+.mini .ln { font: 1rem/1.4 'OpenDyslexic', system-ui, sans-serif; }
 
 /* Privacy: voices in, words out, nothing to the internet */
 .private { margin: 1.5rem 0 0; display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; }
@@ -171,3 +186,212 @@ table.data tr:not(.cap) > * { border-bottom: 0; }
 .checks li.no::before { content: ''; border: 2px dashed var(--muted); box-sizing: border-box; }
 
 @media (prefers-reduced-motion: reduce) { .tablet { transition: none; } .t-line.new, .pop-line.new { animation: none; } }
+
+/* ── each feature says which devices it works on (#235) ── */
+.works-on { list-style: none; padding: 0; margin: 1.25rem 0 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+.works-on li { border-radius: 999px; padding: .3rem .85rem; font-size: .9rem; font-weight: 700; border: 2px solid var(--teal); }
+.works-on li.yes::before { content: '✓ '; color: var(--teal); }
+.works-on li.soon { border-style: dashed; border-color: var(--muted); color: var(--muted); }
+.works-on li.no { border-color: var(--rule); color: var(--muted); }
+.works-on small { font-weight: 400; }
+.price-note { margin: 1rem 0 0; font-size: .95rem; color: var(--muted); max-width: 32rem; }
+.soon-badge { display: inline-block; margin: 0 0 .5rem; border-radius: 999px; padding: .15rem .7rem; font-size: .8rem; font-weight: 800;
+  letter-spacing: .04em; text-transform: uppercase; border: 2px dashed var(--muted); color: var(--muted); }
+/* "Coming in 1.1": what isn't in App Store 1.0 yet (owner, 2026-11-03). Same dashed pill, small enough to sit in a heading. */
+.in-11 { display: inline-block; vertical-align: middle; margin-inline-start: .35rem; border-radius: 999px; padding: .1rem .6rem;
+  font-size: .72rem; line-height: 1.4; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap;
+  border: 2px dashed var(--muted); color: var(--muted); }
+.in-11-lead { margin: 0 0 .6rem; }
+.in-11-lead .in-11 { margin-inline-start: 0; }
+
+/* ── the device list: features down, devices across; on a phone each feature is a card ── */
+.devtable { border-collapse: separate; border-spacing: 0; width: 100%; max-width: 60rem; font-size: .95rem; }
+.devtable th, .devtable td { text-align: start; padding: .7rem .8rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.devtable thead th { font-weight: 800; }
+.devtable tbody th { font-weight: 800; white-space: nowrap; }
+.devtable tbody th a { color: var(--accent); }
+.devtable td.yes::before { content: '✓ '; color: var(--teal); font-weight: 800; }
+.devtable td.soon, .devtable td.no { color: var(--muted); }
+/* Dashed means not on the App Store yet (owner, 2026-11-02): chips, buttons and these cells alike. */
+.devtable td.soon { outline: 2px dashed var(--muted); outline-offset: -5px; border-radius: 12px; }
+.devtable tr.need td, .devtable tr.need th { color: var(--muted); font-size: .9rem; border-bottom: 0; }
+.get { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1.25rem; margin-top: 1.75rem; }
+.get .soon-note { margin: 0; max-width: 24rem; }
+@media (max-width: 40rem) {
+  .devtable thead { display: none; }
+  .devtable, .devtable tbody, .devtable tr { display: block; }
+  .devtable tr { background: var(--card); border-radius: 18px; padding: .8rem 1rem; margin-bottom: .8rem;
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem .9rem; }
+  .devtable tbody th { grid-column: 1 / -1; padding: 0; border: 0; }
+  .devtable td { padding: 0; border: 0; }
+  .devtable td::after { content: attr(data-dev); display: block; order: -1; font-size: .78rem; font-weight: 800; color: var(--muted); }
+  .devtable td { display: flex; flex-direction: column-reverse; align-items: flex-start; }
+  .devtable td.yes::before { content: none; }
+  .devtable td.yes { color: var(--text); }
+}
+
+/* ── iPhone Duo (#258): folded it's a phone with translated captions; open, Face to face splits it for two people.
+   Scrolling unfolds it (devices.js sets --f, the fold, 1 to 0, and --split, 0 to 1); only transform and opacity move.
+   Without the scroll (Reduce Motion, no script) the two states are two still pictures. ── */
+/* clip, not hidden: no sideways scroll from the folded leaf, and the sticky picture still sticks. */
+.duo-section { overflow-x: clip; }
+.duo-sticky { display: grid; grid-template-columns: .9fr 1.1fr; gap: 2.5rem; align-items: center; }
+@media (max-width: 52rem) { .duo-sticky { grid-template-columns: 1fr; gap: 1.25rem; } }
+.duo-steps { list-style: none; padding: 0; margin: 0; display: grid; gap: .9rem; max-width: 30rem; }
+.duo-steps li { color: var(--muted); }
+.duo-steps b { color: var(--text); }
+/* Scrolling: the section is tall, and the picture and its step stay put while the Duo unfolds. */
+.duo-section.is-scrolling .duo-track { height: 280vh; }
+.duo-section.is-scrolling .duo-sticky { position: sticky; top: 0; min-height: 100vh; align-content: center; }
+.duo-section.is-scrolling .duo-steps { display: grid; }
+.duo-section.is-scrolling .duo-steps li { grid-area: 1 / 1; opacity: var(--o, 0); }
+@media (max-width: 52rem) { .duo-section.is-scrolling .duo-sticky > :first-child { order: 2; } }
+
+/* The Duo itself, measured in points from Xcode's iPhone Duo simulator profile and drawn at --s px per point:
+   - folded: the outer screen is 466 x 678, corners 59 on the outside edge and 8 on the hinge (left) edge;
+   - open: the inner screen is 669 x 951 (corners 55). It folds across its middle, so it opens like a book into a
+     landscape 951 x 669, then turns upright to the inner screen's own portrait, the way the simulator shows it;
+   - the bezel is the simulator chrome's 14 pt; colour, ring and shadow are the site's own phone (.phone above).
+   The body is laid out open and landscape: 979 x 706, the cover (left half) and the base (right half), hinge between. */
+.duo-section { --s: calc(min(440px, 86vw) / 979); }
+.duo-stage { justify-self: center; position: relative; width: calc(979 * var(--s)); height: calc(979 * var(--s)); perspective: 1600px; }
+.duo-rot { position: absolute; inset: 0; margin: auto; width: calc(979 * var(--s)); height: calc(706 * var(--s));
+  transform: rotate(calc(var(--r, 0) * -90deg)); transform-style: preserve-3d; }
+.duo-body { position: absolute; inset: 0; transform-style: preserve-3d; transform: translateX(calc(var(--f, 0) * -25%)); }
+/* One shadow, as wide as what shows: the base alone when folded, both halves open. */
+.duo-body::before { content: ''; position: absolute; inset: 0; border-radius: calc(69 * var(--s)); box-shadow: 0 30px 60px -20px rgba(0,0,0,.35);
+  transform-origin: 100% 50%; transform: translateZ(-2px) scaleX(calc(1 - var(--f, 0) * .5)); }
+.duo-half { position: absolute; top: 0; width: 50%; height: 100%; transform-style: preserve-3d; }
+/* No ring on the open halves: the real Duo's inner screen has no line down the hinge, so nothing may draw one there. */
+.duo-base { inset-inline-start: 50%; background: #0E1A19; opacity: var(--lo, 1);
+  border-start-end-radius: calc(69 * var(--s)); border-end-end-radius: calc(69 * var(--s)); }
+.duo-cover { inset-inline-start: 0; transform-origin: 100% 50%; transform: rotateY(calc(var(--f, 0) * 180deg)) translateZ(calc(var(--f, 0) * -1px)); } /* flat when open, so the two halves line up exactly */
+.duo-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; background: #0E1A19; }
+.duo-front { border-start-start-radius: calc(69 * var(--s)); border-end-start-radius: calc(69 * var(--s)); }
+/* The outside of the cover, seen when folded: hinge on the left, so tight corners there. */
+.duo-back { transform: rotateY(180deg); box-shadow: inset 0 0 0 2px #2C3B3A; border-radius: calc(17.5 * var(--s)) calc(73 * var(--s)) calc(73 * var(--s)) calc(17.5 * var(--s)); }
+.duo-outer { position: absolute; inset-inline-start: calc(9.5 * var(--s)); top: calc(14 * var(--s)); width: calc(466 * var(--s)); height: calc(678 * var(--s));
+  border-radius: calc(8 * var(--s)) calc(59 * var(--s)) calc(59 * var(--s)) calc(8 * var(--s)); object-fit: cover; display: block; overflow: hidden; }
+/* The inner screen, split by the hinge: each half shows its half of one 951 x 669 screen. */
+.duo-clip { position: absolute; top: calc(18.5 * var(--s)); width: calc(475.5 * var(--s)); height: calc(669 * var(--s)); overflow: hidden; background: #050707; }
+.duo-cover .duo-clip { inset-inline-start: calc(14 * var(--s)); border-start-start-radius: calc(55 * var(--s)); border-end-start-radius: calc(55 * var(--s)); }
+.duo-base .duo-clip { inset-inline-start: 0; border-start-end-radius: calc(55 * var(--s)); border-end-end-radius: calc(55 * var(--s)); }
+.duo-scr { position: absolute; top: 0; width: calc(951 * var(--s)); height: calc(669 * var(--s)); }
+.duo-cover .duo-scr { inset-inline-start: 0; }
+.duo-base .duo-scr { inset-inline-start: calc(-475.5 * var(--s)); }
+/* Once it's flat open, one whole Duo and one whole screen take over from the two halves, so there is no line at the
+   hinge: the real Duo's inner screen is one piece, and the only line on it is Seal Speak's own, in the middle. */
+.duo-whole { position: absolute; inset: 0; border-radius: calc(69 * var(--s)); background: #0E1A19; opacity: var(--whole, 0); transform: translateZ(2px); }
+.duo-whole .duo-scr { inset-inline-start: calc(14 * var(--s)); top: calc(18.5 * var(--s)); border-radius: calc(55 * var(--s)); overflow: hidden; background: #050707; }
+/* Open flat: the landscape screen (951 x 669, [ Face to face ] in its top row), lit once the Duo is open. */
+.duo-land { position: absolute; inset: 0; opacity: var(--land, 0); }
+/* Upright: the portrait screen, turned a quarter inside the landscape body so it stands up when the Duo does. */
+.duo-pic { position: absolute; inset-inline-start: calc(141 * var(--s)); top: calc(-141 * var(--s)); width: calc(669 * var(--s)); height: calc(951 * var(--s));
+  transform: rotate(90deg); opacity: var(--lit, 0); }
+/* A touch on [ Face to face ], where it sits in the landscape screen's top row. */
+.duo-tap { position: absolute; inset-inline-start: 73.7%; top: 5.6%; width: calc(44 * var(--s)); height: calc(44 * var(--s)); margin: calc(-22 * var(--s)) 0 0 calc(-22 * var(--s));
+  border-radius: 50%; background: rgba(20, 81, 75, .28); box-shadow: 0 0 0 2px rgba(20, 81, 75, .55); opacity: var(--press, 0); transform: scale(calc(.6 + var(--press, 0) * .4)); }
+
+/* ── The Duo's screens, live (#258): laid out in points as the app draws them on the iPhone Duo simulator (traced from
+   Gil's recording: outer-010, inner-020, inner-024, inner-029), then scaled by --s. Paper theme, OpenDyslexic captions
+   at 28 pt, the translate mark over the translation, what was said in 15 pt under it. devices.js fills them in. ── */
+/* --k is --s as a plain number (devices.js measures it), since scale() takes no length. */
+.dx { position: absolute; top: 0; inset-inline-start: 0; transform: scale(var(--k, .45)); transform-origin: 0 0; overflow: hidden; background: #FAF5E6; color: #141419;
+  font: 15px/1.3 -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif; }
+.dx-outer { width: 466px; height: 678px; }
+.dx-land { width: 951px; height: 669px; }
+.dx-port { width: 669px; height: 951px; }
+.dx > *, .dx-half > * { position: absolute; }
+.dx-icon { width: 26px; height: 26px; color: #14514B; }
+.dx-icon svg { width: 100%; height: 100%; display: block; }
+.dx-status { font-weight: 600; color: #424142; text-align: center; }
+.dx-f2f { font: 600 17px/1 ui-monospace, 'SF Mono', Menlo, monospace; color: #14514B; white-space: pre; }
+.dx-time { font: 600 17px/1 -apple-system, system-ui, sans-serif; color: #000; text-align: center; width: 60px; }
+.dx-ring { width: 40px; height: 40px; }
+.dx-stop { width: 56px; height: 56px; border-radius: 50%; background: #CC1F1F; display: grid; place-items: center; }
+.dx-stop svg { width: 22px; height: 22px; }
+.dx-home { height: 5px; border-radius: 3px; background: #575650; }
+/* Captions: newest at the bottom, older ones fading out at the top. */
+.dx-caps { display: flex; flex-direction: column; justify-content: flex-end; gap: 22px; overflow: hidden;
+  -webkit-mask-image: linear-gradient(transparent, #000 48px); mask-image: linear-gradient(transparent, #000 48px); }
+.dx-caps > * { margin: 0; flex: none; }
+.dx-spk { display: block; font: 600 16px/1.2 -apple-system, system-ui, sans-serif; margin-bottom: 6px; }
+.dx-spk.s0 { color: #14514B; } .dx-spk.s1 { color: #7A350C; }
+.dx-tx, .dx-vol, .dx-own, .dx-sound { margin: 0; font: 28px/49px 'OpenDyslexic', system-ui, sans-serif; }
+.dx-tx { position: relative; padding-inline-start: 36px; }
+.dx-mark { position: absolute; inset-inline-start: 0; top: 14px; width: 26px; height: 20px; color: #747D77; }
+.dx-mark svg { width: 100%; height: 100%; display: block; }
+.dx-said { margin: 2px 0 0; font-size: 15px; line-height: 21px; color: #56625F; }
+.dx-vol { color: #706E6B; }
+.dx-sound { font-style: italic; color: #565454; }
+.dx-new { animation: dx-in .45s ease-out; }
+@keyframes dx-in { from { opacity: 0; } }
+/* Face to face: two halves, the top one turned to face the other person; a short line between, well short of the edges. */
+/* Centred on the screen (951 / 2 = 475.5) both ways, as Gil asked (2026-11-03); the simulator drew it 22 pt lower,
+   centred in the safe area. It's the only line on the inner screen. */
+.dx-mid { top: 474px; inset-inline-start: 207px; width: 255px; height: 3px; border-radius: 2px; background: #989D95; }
+.dx-half { inset-inline-start: 0; width: 669px; }
+.dx-half.you { top: 477px; height: 474px; }
+.dx-half.them { top: 0; height: 474px; transform: rotate(180deg); }
+.dx-label1, .dx-label2, .dx-pick { inset-inline-start: 0; width: 669px; text-align: center; color: #56625F; font-weight: 600; transition: opacity .3s; }
+.dx-label1 { top: 16px; font-size: 13px; }
+.dx-label2 { top: 47px; font-size: 15px; }
+.dx-pick { font: 600 26px/1 ui-monospace, 'SF Mono', Menlo, monospace; white-space: pre; }
+.dx-half .dx-caps { inset-inline-start: 40px; width: 572px; top: 70px; transition: opacity .3s; }
+.dx-half.you .dx-caps { height: 285px; }
+.dx-half.them .dx-caps { height: 330px; }
+.dx-half [data-when="picked"] { opacity: 0; }
+.dx-half[data-picked] [data-when="picked"] { opacity: 1; }
+.dx-half[data-picked] [data-when="list"] { opacity: 0; }
+.dx-touch { width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; background: rgba(20, 81, 75, .28); box-shadow: 0 0 0 2px rgba(20, 81, 75, .55); }
+.dx-touch.you { opacity: var(--pb, 0); }
+.dx-touch.them { opacity: var(--pt, 0); }
+@media (prefers-reduced-motion: reduce) { .dx-new { animation: none; } .dx-half > * { transition: none; } }
+
+/* The two still pictures: the folded Duo and the opened, split Duo, same measurements, no 3D. */
+.duo-stills { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-end; gap: 1.5rem; }
+.duo-still { margin: 0; display: grid; justify-items: center; gap: .6rem; }
+.duo-still figcaption { font-size: .9rem; color: var(--muted); text-align: center; max-width: 16rem; }
+.duo-fold-still, .duo-open-still { position: relative; background: #0E1A19; box-shadow: 0 30px 60px -20px rgba(0,0,0,.35), inset 0 0 0 2px #2C3B3A; }
+.duo-fold-still { width: calc(489.5 * var(--s)); height: calc(706 * var(--s));
+  border-radius: calc(17.5 * var(--s)) calc(73 * var(--s)) calc(73 * var(--s)) calc(17.5 * var(--s)); }
+.duo-open-still { width: calc(706 * var(--s)); height: calc(979 * var(--s)); border-radius: calc(69 * var(--s)); }
+.duo-open-still img { position: absolute; inset-inline-start: calc(18.5 * var(--s)); top: calc(14 * var(--s)); width: calc(669 * var(--s)); height: calc(951 * var(--s));
+  border-radius: calc(55 * var(--s)); object-fit: cover; display: block; }
+
+/* ── translation in your ear: speech in, the translation spoken into any headphones ── */
+.ear { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: .8rem; }
+.ear-in, .ear-out { margin: 0; background: #FBF6EA; color: #141419; border-radius: 16px; padding: .55rem .9rem; font-weight: 600; }
+.ear-seal { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 20px; background: var(--card); }
+.ear-phones { position: relative; display: grid; place-items: center; width: 84px; height: 84px; color: var(--accent); }
+.ear-phones .wave { position: absolute; inset: 6px; border-radius: 50%; border: 2px solid var(--teal); opacity: 0; }
+html.motion .ear.in .ear-phones .wave { animation: ear-wave 2.4s ease-out infinite; }
+html.motion .ear.in .ear-phones .wave + .wave { animation-delay: 1.2s; }
+@keyframes ear-wave { 0% { opacity: .7; transform: scale(.7); } 100% { opacity: 0; transform: scale(1.25); } }
+html.motion .ear .ear-out { opacity: 0; transform: translateY(6px); transition: opacity .5s 1s, transform .5s 1s; }
+html.motion .ear.in .ear-out { opacity: 1; transform: none; }
+
+/* Three feature names don't fit one line on a phone: smaller pills, and they may wrap (the pill follows offsetTop). */
+@media (max-width: 34rem) {
+  .devices { flex-wrap: wrap; gap: .4rem; }
+  .devices [role="tab"] { padding: .4rem .9rem; font-size: .95rem; }
+}
+
+/* A download that isn't out yet: the same pill, dashed and not a link. */
+.gummy.gummy-soon { background: transparent; color: var(--muted); box-shadow: none; border: 2px dashed var(--muted); cursor: default; }
+.hero .get { margin-top: 1.25rem; }
+
+/* The to-scale pair is 307 px wide; on the narrowest phones the gap between them gives way. */
+@media (max-width: 22rem) { .to-scale, .to-scale figcaption { column-gap: 1rem; } }
+.price-note + .when { margin-top: 1.5rem; }
+.gummy.gummy-soon small { font-weight: 600; font-size: .85rem; }
+@media (max-width: 40rem) { .devtable td.soon { padding: .5rem .65rem; } }
+
+/* Translation, face to face: the moments it's for, beside the to-scale picture and the reason it lives on the big screens. */
+.why-split { list-style: none; padding: 0; margin: 1.25rem 0 0; display: grid; gap: .9rem; max-width: 32rem; }
+.why-split li { padding-inline-start: 1rem; border-inline-start: 3px solid var(--teal); color: var(--muted); }
+.why-split b { display: block; color: var(--text); }
+.to-scale-wrap { display: grid; justify-items: center; gap: 1rem; }
+.to-scale-why { margin: .5rem 0 0; max-width: 24rem; color: var(--muted); font-size: .95rem; }
+.to-scale-why b { display: block; color: var(--text); font-size: 1.05rem; }
+.to-scale-wrap .price-note { margin: 0; max-width: 24rem; }
