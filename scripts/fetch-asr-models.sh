@@ -8,9 +8,11 @@
 # Idempotent: a folder that already matches the manifest is left alone.
 #
 #   scripts/fetch-asr-models.sh                       # from the GitHub Release asset
-#   SEAL_MODEL_SOURCE=mini scripts/fetch-asr-models.sh # from the Mac mini's copy (rsync --checksum)
+#   SEAL_MODEL_SOURCE=local scripts/fetch-asr-models.sh # from the eval bench's release copy (rsync --checksum)
+#       reads ~/$SEAL_MODEL_PATH (default edacc-eval/models/release); if a cold store parked it, it comes back first
+#       (scripts/ensure-local.sh). SEAL_MODEL_HOST=<ssh host> reads that machine's copy instead. `mini` = old name.
 #   scripts/fetch-asr-models.sh --write-manifest DIR  # maintainers: write the manifest from a reviewed folder
-#   SEAL_ASR_MODEL=hebrew SEAL_MODEL_SOURCE=mini scripts/fetch-asr-models.sh   # the Hebrew engine (#220)
+#   SEAL_ASR_MODEL=hebrew SEAL_MODEL_SOURCE=local scripts/fetch-asr-models.sh   # the Hebrew engine (#220)
 #
 # Switching to the 4-bit fallback build is this one line (plus its manifest and asset).
 set -eu
@@ -24,8 +26,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MANIFEST="$ROOT/scripts/models/$VARIANT.sha256"
 DEST="${SEAL_MODEL_DEST:-$ROOT/Apps/Spike/Resources/Models/$NAME}"
 RELEASE_URL="https://github.com/G-Eskayo/clarity-captions/releases/download/models-$VARIANT/$NAME-$VARIANT.zip"
-MINI_HOST="gils-mac-mini"
-MINI_PATH="edacc-eval/models/release/$VARIANT/$NAME"
+MODEL_PATH="${SEAL_MODEL_PATH:-edacc-eval/models/release}/$VARIANT/$NAME"   # relative to the home folder
 
 # check DIR: exit 0 if DIR holds exactly the manifest's files with the right sizes and hashes.
 check() {
@@ -104,15 +105,21 @@ case "${SEAL_MODEL_SOURCE:-github}" in
         unzip -q "$STAGING/model.zip" -d "$STAGING/unzipped"
         FETCHED="$STAGING/unzipped/$NAME"
         ;;
-    mini)
-        if [ -d "$HOME/$MINI_PATH" ]; then SRC="$HOME/$MINI_PATH/"; else SRC="$MINI_HOST:$MINI_PATH/"; fi
+    local|mini)
+        if [ -n "${SEAL_MODEL_HOST:-}" ]; then
+            SRC="$SEAL_MODEL_HOST:$MODEL_PATH/"
+        else
+            . "$ROOT/scripts/ensure-local.sh"
+            ensure_local "$HOME/$MODEL_PATH" || exit 1
+            SRC="$HOME/$MODEL_PATH/"
+        fi
         echo "copying from $SRC"
         mkdir -p "$STAGING/$NAME"
         rsync -a --checksum --exclude .DS_Store "$SRC" "$STAGING/$NAME/"
         FETCHED="$STAGING/$NAME"
         ;;
     *)
-        echo "SEAL_MODEL_SOURCE must be github or mini" >&2
+        echo "SEAL_MODEL_SOURCE must be github or local" >&2
         exit 2
         ;;
 esac

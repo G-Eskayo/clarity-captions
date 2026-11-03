@@ -10,6 +10,7 @@ export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 REMOTE="${EVAL_REMOTE:-mac-mini-2012}"
 WORK="${EVAL_WORK:-$HOME/edacc-eval}"
 REPO="${EVAL_REPO:?EVAL_REPO must point at the clarity-captions worktree}"
+. "$REPO/scripts/ensure-local.sh"; ensure_local "$WORK" || { echo "$WORK is parked and could not come back"; exit 1; }
 REPEATS="${EVAL_REPEATS:-1}"
 FIRST="${EVAL_FIRST:-1}"
 MAX_SHARDS="${EVAL_MAX_SHARDS:-1}"

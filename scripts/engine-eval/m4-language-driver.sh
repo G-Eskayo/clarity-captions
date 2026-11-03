@@ -9,6 +9,7 @@ export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 REPO="${EVAL_REPO:?EVAL_REPO must point at the clarity-captions worktree}"
 WORK="${EVAL_WORK:-$HOME/edacc-eval}"          # models, venv and the status window (shared with #145)
+. "$REPO/scripts/ensure-local.sh"; ensure_local "$WORK" || { echo "$WORK is parked and could not come back"; exit 1; }
 DATA="${LANG_DATA:-$HOME/fleurs-eval}"         # shards, results, report for this run
 LANGS="${LANG_LANGS:-es fr de}"
 THREADS="${EVAL_SHERPA_THREADS:-8}"

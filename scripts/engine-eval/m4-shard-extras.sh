@@ -10,6 +10,7 @@ export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 REMOTE="${EVAL_REMOTE:-mac-mini-2012}"
 WORK="${EVAL_WORK:-$HOME/edacc-eval}"
 REPO="${EVAL_REPO:?}"
+. "$REPO/scripts/ensure-local.sh"; ensure_local "$WORK" || { echo "$WORK is parked and could not come back"; exit 1; }
 K="${EVAL_FIRST:-1}"
 name=$(printf 'shard-%03d' "$K")
 EXTRA_ENGINES="${EVAL_EXTRA_ENGINES:-whisperkit-nogate}"
