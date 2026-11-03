@@ -23,6 +23,9 @@ const SITE = process.env.SITE_DIR || path.join(ROOT, 'site')
 const failures = []
 const check = (ok, msg) => { if (!ok) failures.push(msg) }
 export const RELEASE_11_ONLY = ['ipad-full-screen', 'duo', 'parakeet', 'caption-languages', 'live-translation', 'face-to-face', 'in-your-ear']
+// New caption languages ship as a batch (owner, 2026-11-03), so an upcoming release names no single language: it says
+// "more caption languages". The measurements below the release cards may still name the language they measured.
+export const SINGLE_LANGUAGE = /\b(Hebrew|Arabic|Spanish|French|German|Italian|Portuguese|Japanese|Korean|Chinese|Hindi|Russian)\b/
 
 const LANGS = languages()
 const built = LANGS.flatMap((lang) => lang.pages.map((page) => ({ lang, page, file: outPath(lang.code, page) })))
@@ -429,6 +432,16 @@ const styleOf = (f) => f.endsWith('.css') ? read(f) : [...read(f).matchAll(/<sty
 for (const f of [...pages, ...readdirSync(SITE).filter((p) => p.endsWith('.css'))]) {
   for (const r of physicalRules(styleOf(f))) check(false, `${f}: physical left/right, use a logical property: ${r}`)
 }
+
+// Upcoming releases name no single caption language (see SINGLE_LANGUAGE).
+for (const f of pages.filter((p) => p.endsWith('versions.html'))) {
+  for (const [, id] of read(f).matchAll(/<div class="version" id="(v1-[2-9])"/g)) {
+    const cards = read(f).split(`id="${id}"`)[1]?.split(/id="science"|<div class="version"/)[0] || ''
+    const m = visible(cards).match(SINGLE_LANGUAGE)
+    check(!m, `${f} ${id}: an upcoming release names one language ("${m?.[0]}"); say "more caption languages"`)
+  }
+}
+check(SINGLE_LANGUAGE.test('Hebrew captions') && !SINGLE_LANGUAGE.test('More caption languages'), 'SINGLE_LANGUAGE self-test')
 
 if (failures.length) {
   console.error(`site check: ${failures.length} problem(s)\n- ${failures.join('\n- ')}`)

@@ -376,10 +376,10 @@
       <h2 id="v12-h">Version 1.2</h2>
       <div class="card release">
         <h3 id="v1-2-0">1.2 <span class="badge">Planned</span></h3>
-        <p>The optimisation release. Same app, smaller and in more languages.</p>
+        <p>The optimization release. Same app, smaller and in more languages.</p>
         <ul>
           <li>A smaller caption engine. The English model is 498&nbsp;MB today. The goal is a fraction of that with no more mistakes.</li>
-          <li>Hebrew captions, from an open Hebrew model that made less than a third of the mistakes Apple's Hebrew dictation did.</li>
+          <li>More caption languages. Each one is measured against Apple's speech recognition before it goes in.</li>
         </ul>
         <p class="note">Planned, not built yet. No date. The numbers below are from a Mac.</p>
       </div>
@@ -411,8 +411,8 @@
       </div>
       <p class="note src">Wrong letters per 100 (character error rate), Hebrew conversations from ivrit.ai eval-d1. Lower is better. <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/hebrew-coreml-comparison.md">The report</a>.</p>
       <p>At 4 bits the Hebrew model made no more mistakes than at full size, at a seventh of the size. 3-bit barely slipped. 2-bit fell apart. For English, 6-bit Parakeet made no more mistakes than the published 8-bit build at 134&nbsp;MB less, and 4-bit cost about one point. 3-bit and 2-bit English builds haven't been measured yet. One surprise: fewer bits weren't faster on our Mac.</p>
-      <h3>Hebrew</h3>
-      <p>On recorded Hebrew conversations, Apple's Hebrew dictation got 17.8 words in 100 wrong. Two open Hebrew models got about 5: Parakeet-He 5.2 and the ivrit.ai zipformer 5.0. The zipformer is the small one, so it's the one we shrank above.</p>
+      <h3>Measuring a new language</h3>
+      <p>Every new caption language gets the same test before it goes in. One we've measured so far: on recorded Hebrew conversations, Apple's Hebrew dictation got 17.8 words in 100 wrong. Two open Hebrew models got about 5: Parakeet-He 5.2 and the ivrit.ai zipformer 5.0. The zipformer is the small one, so it's the one we shrank above.</p>
       <p class="note src">ivrit.ai eval-d1, 17 recordings, 1.43 hours, on a Mac. <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/hebrew-accuracy-comparison.md">The report</a>.</p>
     </div></div>
   </section>
