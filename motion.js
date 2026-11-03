@@ -95,7 +95,7 @@ function steps(grid) {
     across = Math.abs(z.x - a.x) > Math.abs(z.y - a.y)
     grid.dataset.dir = across ? 'across' : 'down'
     Object.assign(line.style, across
-      ? { left: a.x + 'px', top: a.y - 2 + 'px', width: z.x - a.x + 'px', height: '4px' }
+      ? { left: Math.min(a.x, z.x) + 'px', top: a.y - 2 + 'px', width: Math.abs(z.x - a.x) + 'px', height: '4px' }
       : { left: a.x - 2 + 'px', top: a.y + 'px', width: '4px', height: z.y - a.y + 'px' })
     at = c.map((p) => (across ? (p.x - a.x) / (z.x - a.x) : (p.y - a.y) / (z.y - a.y)))
   }
@@ -132,7 +132,9 @@ function sample(box, still) {
     text.style.fontFamily = lettering.css
     name.textContent = `${theme.name} · ${lettering.name}`
   }
-  const label = () => { play.textContent = timer ? 'Pause' : 'Play' }
+  // The page holds both labels, in its own language.
+  const labels = { play: play.textContent, pause: play.dataset.pause || 'Pause' }
+  const label = () => { play.textContent = timer ? labels.pause : labels.play }
   const halt = () => { clearInterval(timer); timer = null; label() }
   const run = () => {
     if (timer) return
@@ -200,7 +202,7 @@ function counts(el, still) {
 }
 
 // ── Versions: the highlight slides between 1.0 and 1.1; the version fades in ──────────────────────────────────────
-// A pill that slides to the chosen item: the Versions switcher (aria-current) and the device tabs (aria-selected).
+// A pill that slides to the chosen item: the Versions switcher (aria-current) and the feature tabs (aria-selected).
 export function slidingPill(nav, attr = 'aria-current') {
   const pill = document.createElement('span')
   pill.className = 'pill'
@@ -216,7 +218,7 @@ export function slidingPill(nav, attr = 'aria-current') {
     if (!pill.classList.contains('ready')) requestAnimationFrame(() => requestAnimationFrame(() => pill.classList.add('ready')))
   }
   place()
-  // The device tabs start hidden until their script runs; place the pill again once they show.
+  // The feature tabs start hidden until their script runs; place the pill again once they show.
   new MutationObserver(place).observe(nav, { subtree: true, attributes: true, attributeFilter: [attr, 'hidden'] })
   addEventListener('resize', place)
 }
@@ -247,7 +249,7 @@ if (typeof document !== 'undefined') {
     for (const f of document.querySelectorAll('figure.chart')) if (f.querySelector('rect.bar')) chartBars(f)
     const nav = document.querySelector('.version-nav')
     if (nav) switcher(nav)
-    const devices = document.querySelector('[data-devices]')
+    const devices = document.querySelector('[data-features]')
     if (devices) slidingPill(devices, 'aria-selected')
   }
 }
