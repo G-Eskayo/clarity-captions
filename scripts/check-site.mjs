@@ -349,6 +349,10 @@ for (const id of ['ipad-screen', 'ipad-languages', 'ipad-tested', 'ipad-faq', 'm
 // The iPad's face to face is the app's own (#258 parity): its still is the simulator's screenshot, and the live screen
 // plays the same split as the Duo.
 check(html.includes('assets/ipad/face-to-face.jpg') && html.includes('data-dx="pad"'), `${f}: the iPad shows the app's face to face, still and live`)
+// No status bars on any device (owner, 2026-11-03): no frozen 9:41, no app name, no carrier. The stills have theirs painted out.
+for (const [name, text] of [[f, html], ['devices.js', read('devices.js')], ['devices.css', read('devices.css')]]) {
+  check(!/9:41|dx-(time|clock|ring)\b|statusBar\(/.test(text.replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g, '')), `${name}: draws a status bar; devices on the site have none`)
+}
 // Each feature says which devices it works on, and the device list has a row for each feature.
 for (const d of FEATURES) {
   const part = html.match(new RegExp(`<div data-feature="${d}"[\\s\\S]*?(?=<div data-feature=|<!-- shared -->)`))?.[0] || ''

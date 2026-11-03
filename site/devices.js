@@ -193,29 +193,28 @@ const ICON = {
   gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
   list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.2" fill="currentColor" stroke="none"/></svg>',
   stop: '<svg viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>',
-  ring: '<svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="17" stroke="#BDBDBD" stroke-width="2.5" stroke-dasharray="1 5" stroke-linecap="round"/><path d="M8 29.5A15 15 0 1 1 32 29.5" stroke="#34C759" stroke-width="3.5" stroke-linecap="round"/><path d="M13 19a10 10 0 0 1 14 0M15.6 22a6 6 0 0 1 8.8 0" stroke="#000" stroke-width="2.4" stroke-linecap="round"/><circle cx="20" cy="25.5" r="1.8" fill="#000"/><path d="M20.5 6l-2 4h3l-2 4" stroke="#000" stroke-width="1.2"/></svg>',
   mark: '<svg viewBox="0 0 26 20"><rect x="1" y="1" width="14" height="12" rx="3" fill="currentColor"/><text x="8" y="10.5" font-size="9" font-weight="700" text-anchor="middle" fill="#FAF5E6" font-family="system-ui,sans-serif">A</text><rect x="10.5" y="6.5" width="14" height="12" rx="3" fill="#FAF5E6" stroke="currentColor" stroke-width="1.6"/><text x="17.5" y="16" font-size="8.5" font-weight="700" text-anchor="middle" fill="currentColor" font-family="system-ui,sans-serif">文</text></svg>'
 }
 const at = (x, y, extra = '') => `style="inset-inline-start:${x}px;top:${y}px;${extra}"`
 const icon = (name, x, y) => `<span class="dx-icon" ${at(x, y)}>${ICON[name]}</span>`
-const statusBar = (x, y, ringX, ringY) => `<span class="dx-time" ${at(x, y)}>9:41</span><span class="dx-ring" ${at(ringX, ringY)}>${ICON.ring}</span>`
+// No status bars on any device (owner, 2026-11-03): a frozen 9:41 or an app name read as fake, and on the 320 px frames
+// a live one is clutter. The app screens start below where the status bar would be; the stills have it painted out.
 const stopButton = (x, y) => `<span class="dx-stop" ${at(x, y)}>${ICON.stop}</span>`
 const homeBar = (x, y, w) => `<span class="dx-home" ${at(x, y, `width:${w}px`)}></span>`
 const capsBox = (x, y, w, h) => `<div class="dx-caps" data-caps ${at(x, y, `width:${w}px;height:${h}px`)}></div>`
 
 const DUO_SCREENS = {
   outer: () => icon('gear', 25, 25) + `<span class="dx-status" ${at(0, 29, 'width:380px')}>Listening</span>` + icon('list', 321, 25) +
-    statusBar(388, 84, 398, 108) + capsBox(16, 64, 334, 455) + stopButton(309, 569) + homeBar(150, 662, 166),
+    capsBox(16, 64, 334, 455) + stopButton(309, 569) + homeBar(150, 662, 166),
   land: () => icon('gear', 25, 25) + `<span class="dx-status" ${at(0, 29, 'width:866px')}>Listening</span>` +
     `<span class="dx-f2f" ${at(615, 30)}>[ Face to face ]</span>` + icon('list', 816, 25) +
-    statusBar(872, 30, 882, 56) + capsBox(16, 70, 820, 470) + stopButton(794, 560) + homeBar(353, 653, 245),
+    capsBox(16, 70, 820, 470) + stopButton(794, 560) + homeBar(353, 653, 245),
   // With the line centred, the two halves are the same size, so their lists mirror each other exactly.
   port: () => dxHalf('them', 'Español') + '<span class="dx-mid"></span>' + dxHalf('you', 'English', [597, 359]) +
-    statusBar(540, 39, 600, 27) + homeBar(215, 937, 238) +
+    homeBar(215, 937, 238) +
     `<span class="dx-touch you" ${at(334, 610)}></span><span class="dx-touch them" ${at(334, 277)}></span>`,
   // The iPad's face to face (iPad Air 11-inch, 820 x 1180 pt), both halves already talking.
-  pad: () => dxHalf('them', 'Español') + '<span class="dx-mid"></span>' + dxHalf('you', 'English', [746, 487]) +
-    `<span class="dx-clock" ${at(28, 14)}>9:41 AM   Mon Nov 2</span>` // no home bar: the iPad simulator shows none here
+  pad: () => dxHalf('them', 'Español') + '<span class="dx-mid"></span>' + dxHalf('you', 'English', [746, 487]) // no home bar: the iPad simulator shows none here
 }
 function dxHalf(who, lang, stopAt = null, first = 120) {
   return `<div class="dx-half ${who}" data-half="${who}">` +

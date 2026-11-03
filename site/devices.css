@@ -31,7 +31,6 @@ html.tabs-on .device-name { display: none; }
 .dx-pad .dx-tx, .dx-pad .dx-vol, .dx-pad .dx-own { font-size: 35px; line-height: 61px; }
 .dx-pad .dx-tx { padding-inline-start: 44px; }
 .dx-pad .dx-mark { top: 20px; }
-.dx-pad .dx-clock { font: 600 13px/1 -apple-system, system-ui, sans-serif; color: #000; white-space: pre; }
 @keyframes t-in { from { opacity: 0; transform: translateY(6px); } }
 .tablet-hint { font-size: .9rem; color: var(--muted); text-align: center; max-width: 24rem; margin: 0; }
 .flip { font: inherit; font-weight: 800; border-radius: 999px; padding: .45rem 1.2rem; border: 2px solid var(--accent); color: var(--accent); background: transparent; cursor: pointer; }
@@ -306,8 +305,6 @@ table.data tr:not(.cap) > * { border-bottom: 0; }
 .dx-icon svg { width: 100%; height: 100%; display: block; }
 .dx-status { font-weight: 600; color: #424142; text-align: center; }
 .dx-f2f { font: 600 17px/1 ui-monospace, 'SF Mono', Menlo, monospace; color: #14514B; white-space: pre; }
-.dx-time { font: 600 17px/1 -apple-system, system-ui, sans-serif; color: #000; text-align: center; width: 60px; }
-.dx-ring { width: 40px; height: 40px; }
 .dx-stop { width: 56px; height: 56px; border-radius: 50%; background: #CC1F1F; display: grid; place-items: center; }
 .dx-stop svg { width: 22px; height: 22px; }
 .dx-home { height: 5px; border-radius: 3px; background: #575650; }
