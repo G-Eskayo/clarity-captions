@@ -31,6 +31,23 @@ const pages = [...new Set([...built.map((b) => b.file), ...readdirSync(SITE).fil
 const read = (f) => readFileSync(path.join(SITE, f), 'utf-8')
 const langOf = (f) => (f.includes('/') ? f.split('/')[0] : 'en')
 
+// Every Hebrew string is in Hebrew (#235, owner 2026-11-03: translate, then review). The Hebrew pages are live, and an
+// English string there is an untranslated placeholder. Only these stay in Latin script: product and engine names,
+// numbers, a citation title, and a system version.
+export const HE_LATIN_OK = new Set(['index.seal-speak', 'index.aa', 'index.psychophysics-of-reading-xi', 'index.apple', 'index.parakeet',
+  'index.wer', 'index.parakeet-ultra-6-bit', 'index.parakeet-v2', 'index.sherpa-onnx', 'index.apple-speechanalyzer-1-0', 'index.iphone-12',
+  'index.70-ms', 'index.opus-mt', 'index.google-ml-kit', 'index.facetime', 'index.zoom', 'index.teams', 'index.google-meet', 'index.whatsapp',
+  'index.github', 'index.f-dev-iphone', 'index.f-dev-ipad', 'index.f-dev-duo', 'index.f-dev-mac', 'index.f-t-need-duo'])
+{
+  const he = JSON.parse(readFileSync(path.join(ROOT, 'site-src', 'lang', 'he.json'), 'utf-8'))
+  const strings = (o, pre = '') => Object.entries(o).flatMap(([k, v]) => (typeof v === 'string' ? [[pre + k, v]] : v && typeof v === 'object' ? strings(v, `${pre}${k}.`) : []))
+  for (const [k, v] of strings(he)) {
+    if (HE_LATIN_OK.has(k)) continue
+    check(/[֐-׿]/.test(v), `he.json ${k}: no Hebrew in it ("${v.slice(0, 60)}"); translate it, or add it to HE_LATIN_OK if it's a name or a number`)
+  }
+  for (const k of HE_LATIN_OK) check(k in he && !/[֐-׿]/.test(he[k]), `HE_LATIN_OK ${k}: gone or now Hebrew; take it off the list`)
+}
+
 // 1. local only
 const isLocal = (u) => !/^(https?:)?\/\//i.test(u) || /^data:/i.test(u)
 for (const f of pages) {
