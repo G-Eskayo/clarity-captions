@@ -307,10 +307,11 @@ check(Object.values(OLD_TABS).every((t) => FEATURES.includes(t)), 'OLD_TABS: eve
   const at = (p) => duoFrame(p)
   const ps0 = () => [...Array(101).keys()].map((i) => i / 100)
   check(at(0).state === 'folded' && at(0).fold === 1 && at(0).split === 0, 'duoFrame: starts folded, not split')
-  check(at(0.3).state === 'opening' && Math.abs(at(0.3).fold - 0.5) < 0.01 && at(0.3).lit === 0, `duoFrame: halfway open at 0.3, inner screen still dark (fold ${at(0.3).fold})`)
-  check(at(0.48).state === 'turning' && at(0.48).fold === 0, 'duoFrame: open flat, then it turns upright')
-  check(at(0.6).state === 'open' && at(0.6).turn === 1 && at(0.6).lit === 1 && at(0.6).split === 0, 'duoFrame: upright and lit, Face to face offered, before the split')
-  check(ps0().every((p) => duoFrame(p).lit === 0 || duoFrame(p).fold === 0), 'duoFrame: the inner screen only lights once the Duo is open')
+  check(at(0.25).state === 'opening' && Math.abs(at(0.25).fold - 0.5) < 0.01 && at(0.25).land === 0 && at(0.25).lit === 0, `duoFrame: halfway open at 0.25, inner screen still dark (fold ${at(0.25).fold})`)
+  check(at(0.45).state === 'open' && at(0.45).land === 1 && at(0.45).turn === 0, 'duoFrame: open flat in landscape, Face to face offered, as the simulator showed')
+  check(at(0.48).press === 1 && at(0.48).state === 'open', 'duoFrame: the touch on Face to face comes while it is still landscape')
+  check(at(0.7).state === 'choosing' && at(0.7).turn === 1 && at(0.7).lit === 1 && at(0.7).split === 0, 'duoFrame: upright, each half picking its language, before the split')
+  check(ps0().every((p) => (duoFrame(p).lit === 0 && duoFrame(p).land === 0) || duoFrame(p).fold === 0), 'duoFrame: the inner screen only lights once the Duo is open')
   check(at(1).state === 'split' && at(1).fold === 0 && at(1).split === 1, 'duoFrame: ends open and split')
   check(at(0).steps.join() === '1,0,0' && at(1).steps.join() === '0,0,1' && at(0.45).steps[1] === 1, 'duoFrame: one step at a time')
   const ps = [...Array(101).keys()].map((i) => i / 100), folds = ps.map((p) => at(p).fold), splits = ps.map((p) => at(p).split)
@@ -319,7 +320,7 @@ check(Object.values(OLD_TABS).every((t) => FEATURES.includes(t)), 'OLD_TABS: eve
 }
 check(/data-duo-stills/.test(html) && /class="duo-fold-still"/.test(html) && /class="duo-open-still"/.test(html), `${f}: the Duo has its two still pictures for Reduce Motion`)
 // The Duo's screens are the app's real screenshots, not drawings.
-for (const img of ['outer-captions.jpg', 'inner-face-to-face-offered.jpg', 'inner-split.jpg']) check(html.includes(`assets/duo/${img}`), `${f}: the Duo shows the app's screenshot ${img}`)
+for (const img of ['outer-captions.jpg', 'inner-open-landscape.jpg', 'inner-choose-languages.jpg', 'inner-split.jpg']) check(html.includes(`assets/duo/${img}`), `${f}: the Duo shows the app's screenshot ${img}`)
 check(!/class="ds[ "-]/.test(html), `${f}: no drawn app screens in the Duo`)
 // Every old per-device section id (#184) is still an anchor on the page, so links into it keep working.
 for (const id of ['ipad-screen', 'ipad-languages', 'ipad-tested', 'ipad-faq', 'mac-apps', 'mac-room', 'mac-ring', 'mac-tested', 'mac-faq', 'how', 'faq', 'private', 'easy', 'why', 'tested', 'story'])

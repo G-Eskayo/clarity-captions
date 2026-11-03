@@ -227,15 +227,17 @@ try {
         const s = document.querySelector('[data-duo-stage]'), r = s.getBoundingClientRect()
         const shown = [...document.querySelectorAll('.duo-steps li')].map((li) => +getComputedStyle(li).opacity)
         return { state: s.dataset.state, onScreen: r.top >= -1 && r.bottom <= innerHeight + 1, step: shown.indexOf(Math.max(...shown)) + 1, sw: document.documentElement.scrollWidth,
+          land: +getComputedStyle(document.querySelector('.duo-base .duo-img-land')).opacity,
           lit: +getComputedStyle(document.querySelector('.duo-base .duo-pic')).opacity }
       })
     }
     const seen = []
-    for (const p of [0, 0.3, 0.6, 1, 0.3, 0]) seen.push(await duoAt(p))
-    ok(seen.map((x) => x.state).join() === 'folded,opening,open,split,opening,folded', `${tag}: the Duo unfolds as you scroll down and folds back up (${seen.map((x) => x.state)})`)
+    for (const p of [0, 0.25, 0.45, 0.7, 1, 0.45, 0.25, 0]) seen.push(await duoAt(p))
+    ok(seen.map((x) => x.state).join() === 'folded,opening,open,choosing,split,open,opening,folded', `${tag}: the Duo unfolds as you scroll down and folds back up (${seen.map((x) => x.state)})`)
     ok(seen.every((x) => x.onScreen), `${tag}: the Duo stays on screen while it plays`)
-    ok(seen.map((x) => x.step).join() === '1,2,2,3,2,1', `${tag}: the step's words follow the Duo (${seen.map((x) => x.step)})`)
-    ok(seen[1].lit === 0 && seen[2].lit === 1 && seen[3].lit === 1, `${tag}: the inner screen (the app's own screenshot) lights only once the Duo is open and upright (${seen.map((x) => x.lit)})`)
+    ok(seen.map((x) => x.step).join() === '1,2,2,3,3,2,2,1', `${tag}: the step's words follow the Duo (${seen.map((x) => x.step)})`)
+    ok(seen[1].land === 0 && seen[1].lit === 0 && seen[2].land === 1 && seen[3].lit === 1 && seen[4].lit === 1,
+      `${tag}: the inner screen (the app's own screens from the Duo simulator) lights only once the Duo is open: landscape, then upright (${seen.map((x) => `${x.land}/${x.lit}`)})`)
     ok(seen.every((x) => x.sw <= w), `${tag}: the Duo never makes the page scroll sideways (${seen.map((x) => x.sw)})`)
     // The iPad's translation results grow as bars, the best translator marked in each row.
     await dp.goto(BASE + '#translation'); await scrollThrough(dp); await wait(dp, 800)

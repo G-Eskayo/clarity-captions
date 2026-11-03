@@ -135,26 +135,29 @@ function mac(win) {
 }
 
 // iPhone Duo (#258), measured from Xcode's iPhone Duo simulator profile, showing the app's real screens (see
-// devices.css): folded, the outer screen shows translated captions. It opens like a book, hinge on the left, into a
-// landscape inner screen, then turns upright to the inner screen's portrait. There the app offers [ Face to face ]
-// (FaceToFace.offersSplit: big enough for two); a touch on it, and the split, one half turned to each person.
+// devices.css), playing what the real Duo simulator did when unfolded by hand (2026-11-02): folded, the outer screen
+// shows translated captions. It opens like a book, hinge on the left, and the inner screen comes on in landscape with
+// [ Face to face ] in the top row (FaceToFace.offersSplit: big enough for two). A touch on it; the Duo turns upright,
+// each half picks its language; then the split, one half turned to each person.
 // Scrolling plays that in order and scrolling back plays it backwards: duoFrame turns how far through the section you
-// are (0 to 1) into the fold, the turn, the inner screen lighting, the touch, the split and which step's words show.
+// are (0 to 1) into the fold, the landscape screen, the touch, the turn, the portrait screens and the step's words.
 const clamp = (x) => Math.min(1, Math.max(0, x))
 const ease = (t) => t * t * (3 - 2 * t)
 export function duoFrame(p) {
-  const fold = 1 - ease(clamp((p - 0.18) / 0.24)) // folded until 0.18, open flat by 0.42
-  const turn = ease(clamp((p - 0.42) / 0.12)) // then upright by 0.54
-  const lit = ease(clamp((p - 0.5) / 0.08)) // the inner screen comes on as it stands up; dark while it opens
-  const press = clamp(1 - Math.abs(p - 0.64) / 0.04) // a touch on Face to face
-  const split = ease(clamp((p - 0.68) / 0.14)) // the split by 0.82
+  const fold = 1 - ease(clamp((p - 0.15) / 0.2)) // folded until 0.15, open flat by 0.35
+  const land = ease(clamp((p - 0.35) / 0.06)) * (1 - ease(clamp((p - 0.6) / 0.06))) // landscape screen, dark while it opens
+  const press = clamp(1 - Math.abs(p - 0.48) / 0.04) // a touch on Face to face
+  const turn = ease(clamp((p - 0.53) / 0.12)) // then upright by 0.65
+  const lit = ease(clamp((p - 0.6) / 0.06)) // the portrait screens: choosing languages, then the split
+  const split = ease(clamp((p - 0.76) / 0.12)) // the split by 0.88
   const steps = [
-    1 - ease(clamp((p - 0.2) / 0.06)),
-    ease(clamp((p - 0.26) / 0.06)) * (1 - ease(clamp((p - 0.6) / 0.06))),
-    ease(clamp((p - 0.66) / 0.06))
+    1 - ease(clamp((p - 0.17) / 0.05)),
+    ease(clamp((p - 0.22) / 0.05)) * (1 - ease(clamp((p - 0.55) / 0.05))),
+    ease(clamp((p - 0.6) / 0.05))
   ]
-  const state = fold > 0.999 ? 'folded' : fold > 0.001 ? 'opening' : turn < 0.999 ? 'turning' : split < 0.001 ? 'open' : split < 0.999 ? 'splitting' : 'split'
-  return { fold, turn, lit, press, split, steps, state }
+  const state = fold > 0.999 ? 'folded' : fold > 0.001 ? 'opening' : turn < 0.001 ? 'open' : turn < 0.999 ? 'turning'
+    : split < 0.001 ? 'choosing' : split < 0.999 ? 'splitting' : 'split'
+  return { fold, land, press, turn, lit, split, steps, state }
 }
 
 function duoScroll(section) {
@@ -175,6 +178,7 @@ function duoScroll(section) {
     stage.style.setProperty('--press', f.press.toFixed(4))
     stage.style.setProperty('--r', f.turn.toFixed(4))
     stage.style.setProperty('--lit', f.lit.toFixed(4))
+    stage.style.setProperty('--land', f.land.toFixed(4))
     stage.dataset.state = f.state
     steps.forEach((li, i) => li.style.setProperty('--o', f.steps[i].toFixed(3)))
   }
