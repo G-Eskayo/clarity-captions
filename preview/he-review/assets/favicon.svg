@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-50 125 840 840">
+  <!-- Favicon: the seal from seal.svg alone (no teal tile, no rays, no front flipper, matching the app icon).
+       A deep-teal outline drawn underneath keeps the cream seal visible on light browser tabs. -->
+  <g fill="#0E5A56" stroke="#0E5A56" stroke-width="44" stroke-linejoin="round">
+    <ellipse cx="88" cy="598" rx="92" ry="50" transform="rotate(-38 88 598)"/>
+    <ellipse cx="60" cy="535" rx="38" ry="30" transform="rotate(-20 60 535)"/>
+    <ellipse cx="410" cy="612" rx="300" ry="298"/>
+    <circle cx="430" cy="505" r="322"/>
+  </g>
+  <ellipse cx="88" cy="598" rx="92" ry="50" transform="rotate(-38 88 598)" fill="#FBE8C1"/>
+  <ellipse cx="60" cy="535" rx="38" ry="30" transform="rotate(-20 60 535)" fill="#FBE8C1"/>
+  <ellipse cx="410" cy="612" rx="300" ry="298" fill="#EFC587"/>
+  <circle cx="430" cy="505" r="322" fill="#FBE8C1"/>
+  <g fill="#EFC587">
+    <ellipse cx="705" cy="402" rx="36" ry="31"/>
+    <ellipse cx="397" cy="578" rx="54" ry="32"/>
+  </g>
+    <g id="eyes">
+      <g id="eye-near">
+        <circle cx="357" cy="472" r="62" fill="#0E5A56"/>
+        <circle class="shine" cx="362" cy="440" r="17" fill="#FBE8C1"/>
+        <circle class="shine" cx="322" cy="471" r="9" fill="#FBE8C1"/>
+      </g>
+      <g id="eye-far">
+        <ellipse cx="630" cy="329" rx="37" ry="40" fill="#0E5A56"/>
+        <circle class="shine" cx="621" cy="309" r="11" fill="#FBE8C1"/>
+        <circle class="shine" cx="604" cy="330" r="5" fill="#FBE8C1"/>
+      </g>
+    </g>
+    <ellipse id="nose" cx="568" cy="430" rx="57" ry="33" transform="rotate(-18 568 430)" fill="#0E5A56"/>
+    <g id="mouth">
+      <path d="M487 580 C540 592 602 560 642 508 L634 606 C628 648 590 668 558 656 C528 644 505 614 487 580 Z" fill="#0E5A56"/>
+      <ellipse cx="586" cy="624" rx="47" ry="25" transform="rotate(-12 586 624)" fill="#EFC587"/>
+    </g>
+    <g id="whiskers" stroke="#0E5A56" stroke-width="9" stroke-linecap="round" fill="none">
+      <line x1="450" y1="560" x2="318" y2="572"/>
+      <line x1="450" y1="564" x2="320" y2="607"/>
+      <line x1="452" y1="567" x2="342" y2="636"/>
+    </g>
+</svg>
