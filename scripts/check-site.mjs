@@ -130,6 +130,22 @@ check(BANNED_BY_LANG.he[0][0].test('האפליקציה מראה מי מדבר') 
 check(BANNED_BY_LANG.he[4][0].test('הורדה בחינם') && !BANNED_BY_LANG.he[4][0].test('$4.99 פעם אחת'), 'BANNED he[4] self-test')
 check(BANNED_BY_LANG.he[3][0].test('משפרת את השמיעה') && !BANNED_BY_LANG.he[3][0].test('לאמא שלי, שכבדת שמיעה'), 'BANNED he[3] self-test')
 check(NOT_YET.he.test('Seal מציגה כתוביות בעברית') && !NOT_YET.he.test('עדיין אין כתוביות בעברית'), 'NOT_YET he self-test')
+// A Hebrew string is Hebrew throughout (#264): no English sentence glued to a Hebrew one, as index.f-cap-for once was
+// ("For iPhone 12 or newer, … Full-screen iPad and iPhone Duo: האפליקציה…"). Product names and code are fine; an English
+// function word inside a string that also has Hebrew is the tell. Citations keep their English titles.
+export const MIXED_ENGLISH = /(^|[^A-Za-z])(and|the|or|for|on|in|of|to|with|is|it|are|you|your|from|at|no|once|runs|newer|later)(?=[^A-Za-z]|$)/i
+const HEBREW = /[֐-׿]/
+for (const lang of LANGS.filter((l) => l.code === 'he')) {
+  const strings = JSON.parse(readFileSync(path.join(ROOT, 'site-src', 'lang', 'he.json'), 'utf-8'))
+  for (const [k, v] of Object.entries(strings)) {
+    if (typeof v !== 'string' || k.startsWith('index.source-') || !HEBREW.test(v)) continue
+    const m = v.replace(/<[^>]+>|&[a-z]+;/g, ' ').match(MIXED_ENGLISH)
+    check(!m, `he.json ${k}: mixes an English sentence into the Hebrew ("${m?.[2]}"); translate it`)
+  }
+  // The "Coming in 1.1" pills on the Hebrew page are Hebrew too.
+  for (const k of ['index.f-in-11', 'index.f-in-11-lower']) check(HEBREW.test(strings[k] || ''), `he.json ${k}: the 1.1 pill isn't in Hebrew`)
+}
+check(MIXED_ENGLISH.test('For iPhone 12 or newer. האפליקציה') && !MIXED_ENGLISH.test('iPhone 12 ומעלה עם iOS 26 ואילך') && !MIXED_ENGLISH.test('ב-iPad במסך מלא ו-iPhone Duo'), 'MIXED_ENGLISH self-test')
 // The banned patterns must catch real claims and spare honest disclaimers.
 check(BANNED[0][0].test('Seal shows who is speaking') && !BANNED[0][0].test("It doesn't know who anyone is"), 'BANNED[0] self-test')
 check(BANNED[4][0].test('Free for everyone') && !BANNED[4][0].test('freedom'), 'BANNED[4] self-test')
