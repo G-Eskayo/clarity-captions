@@ -9,6 +9,7 @@
 //   swift run --package-path Packages/EarSpike ear-spike headset-real --out DIR 16 kHz vs 8 kHz on real speech (EdAcc)
 //   swift run --package-path Packages/EarSpike ear-spike acoustic   --out DIR   speaker -> mic, voice processing off/on
 //   swift run --package-path Packages/EarSpike ear-spike headset    --out DIR   16 kHz vs 8 kHz vs room mic accuracy
+//   swift run --package-path Packages/EarSpike ear-spike voice-match --out DIR  each speaker's pitch and pace -> the voice (#247)
 @preconcurrency import AVFoundation
 import EarProbe
 import EarSpikeKit
@@ -356,7 +357,122 @@ case "headset":
     try save(envelope(H(voices: voices.map(\.identifier), lines: harvard.count, conditions: conds)), "headset-band-mac.json")
     for c in conds { print("\(c.condition): WER \(c.wer)") }
 
+case "voice-match":
+    // #247 part 1: the voice in your ear set to each speaker's pitch and pace. Renders only: nothing plays. The A/B
+    // files are written for the owner to listen to.
+    let synth = AVSpeechSynthesizer()
+    let target = arg("--target") ?? "es"
+    let codes = AVSpeechSynthesisVoice.speechVoices().map(\.language)
+    guard let code = VoiceCoverage.voice(for: target, among: codes), let best = Voices.best(for: code),
+          let tlines = ReferenceTranslations.lines[target] else { print("\(target): no voice or no lines"); exit(1) }
+    let english = SampleLines.english
+    let speakers = TestSpeaker.standard
+
+    // Setup (Settings, when the voice is ready): every voice for the language, measured once.
+    let candidates = AVSpeechSynthesisVoice.speechVoices().filter { $0.language == code && !$0.voiceTraits.contains(.isNoveltyVoice) }
+    var calibrations: [VoiceCalibrationRun] = []
+    for v in candidates {
+        let c = try await VoiceMatchProbe.calibrate(v, lines: Array(tlines.prefix(3)), language: target, synth: synth)
+        calibrations.append(c)
+        print("voice \(v.name)\t\(Int(c.calibration.pitchHz)) Hz\t\(String(format: "%.2f", c.calibration.syllablesPerSecond)) syl/s\tpitch span \(String(format: "%.1f", c.pitchSpanSemitones)) st\trate span x\(String(format: "%.2f", c.rateSpan))\t\(String(format: "%.1f", c.seconds)) s")
+    }
+    let cals = calibrations.map(\.calibration)
+
+    // Normal pace, as the syllable counter hears it: the test speakers' voices at Apple's default rate and pitch.
+    var normals: [Double] = []
+    for s in speakers {
+        var plain: [(String, [Float])] = []
+        for line in english { plain.append((line, try await VoiceMatchProbe.render(line, voiceID: s.voiceID, synth: synth).audio16k)) }
+        if let p = VoiceMatchProbe.pace(plain, language: "en") { normals.append(p) }
+    }
+    let normal = normals.sorted()[normals.count / 2]
+    print("normal pace \(String(format: "%.2f", normal)) syl/s (\(normals.map { String(format: "%.2f", $0) }))")
+
+    // The speakers, as the app would hear them. Each says two lines (what the profile has by its first translation),
+    // and all ten (to see whether two lines are enough).
+    var runs: [SpeakerRun] = [], longRuns: [SpeakerRun] = []
+    var voiced: [[Float]] = [], spoken: [[AVAudioPCMBuffer]] = []
+    for (i, s) in speakers.enumerated() {
+        let mine = [english[2 * i], english[2 * i + 1]]
+        var audio: [Float] = [], parts: [AVAudioPCMBuffer] = [], lines: [(String, [Float])] = []
+        for line in mine {
+            let r = try await VoiceMatchProbe.render(line, voiceID: s.voiceID, rate: s.rate, pitch: s.pitch, synth: synth)
+            audio += r.audio16k + [Float](repeating: 0, count: 4800)
+            parts.append(r.buffer22k)
+            lines.append((line, r.audio16k))
+        }
+        voiced.append(audio); spoken.append(parts)
+        let truth = "\(s.voiceID) rate \(s.rate) pitch \(s.pitch)"
+        runs.append(VoiceMatchProbe.profile(audio, lines: lines, label: s.label, truth: truth).1)
+        var allAudio: [Float] = [], allLines: [(String, [Float])] = []
+        for line in english {
+            let r = try await VoiceMatchProbe.render(line, voiceID: s.voiceID, rate: s.rate, pitch: s.pitch, synth: synth)
+            allAudio += r.audio16k + [Float](repeating: 0, count: 4800)
+            allLines.append((line, r.audio16k))
+        }
+        longRuns.append(VoiceMatchProbe.profile(allAudio, lines: allLines, label: s.label, truth: truth).1)
+        let r = runs.last!, l = longRuns.last!
+        print("\(s.label): \(r.traits.map { "\(Int($0.pitchHz)) Hz \(String(format: "%.2f", $0.syllablesPerSecond)) syl/s" } ?? "not settled") after \(r.settledAfterSeconds.map { String(format: "%.1f", $0) } ?? "-") s of \(String(format: "%.1f", r.audioSeconds)) s; ten lines: \(l.traits.map { "\(Int($0.pitchHz)) Hz \(String(format: "%.2f", $0.syllablesPerSecond))" } ?? "-"); \(String(format: "%.2f", r.processingMsPerAudioSecond)) ms per audio s")
+    }
+
+    let defaultVoice = MatchedVoice(voiceID: best.identifier, pitchMultiplier: 1, rate: VoiceMatch.defaultRate)
+    let traits = runs.map(\.traits)
+    var matchCost = 0.0
+    let t0 = CFAbsoluteTimeGetCurrent()
+    for _ in 0..<1000 { _ = VoiceMatch.match(traits, voices: cals, normalSyllablesPerSecond: normal, defaultVoiceID: best.identifier) }
+    matchCost = (CFAbsoluteTimeGetCurrent() - t0) * 1000 // ms per 1000 = microseconds each
+    let matched = VoiceMatch.match(traits, voices: cals, normalSyllablesPerSecond: normal, defaultVoiceID: best.identifier)
+
+    // Warm both before timing.
+    _ = try await VoiceMatchProbe.render(tlines[0], voiceID: best.identifier, synth: synth)
+    var matches: [MatchRun] = []
+    for (i, s) in speakers.enumerated() {
+        guard let t = traits[i] else { continue }
+        let m = try await VoiceMatchProbe.compare(speaker: s.label, traits: t, defaultVoice: defaultVoice, matched: matched[i],
+                                                  calibrations: cals, normal: normal, lines: Array(tlines.prefix(arg("--lag-lines").flatMap(Int.init) ?? 10)),
+                                                  language: target, synth: synth)
+        matches.append(m)
+        let f = { (v: Double?) in v.map { String(format: "%+.1f", $0) } ?? "-" }
+        let pct = { (v: Double?) in v.map { String(format: "%+.0f%%", $0 * 100) } ?? "-" }
+        print("\(s.label) -> \(m.matchedVoiceName ?? "-") pitch x\(String(format: "%.2f", matched[i].pitchMultiplier)) rate \(String(format: "%.3f", matched[i].rate)) | pitch off default \(f(m.defaultPitchOffSemitones)) st, matched \(f(m.matchedPitchOffSemitones)) st | pace off default \(pct(m.defaultPaceOff)), matched \(pct(m.matchedPaceOff)) | audible ms default \(Int(LagStats(m.defaultAudibleMs).median ?? -1)) matched \(Int(LagStats(m.matchedAudibleMs).median ?? -1)) same voice plain \(Int(LagStats(m.sameVoicePlainAudibleMs).median ?? -1))")
+    }
+
+    // The A/B the owner listens to: each speaker's English, then the translation, default voice (A) or matched (B).
+    func conversation(_ settings: (Int) -> MatchedVoice) async throws -> AVAudioPCMBuffer {
+        var parts: [AVAudioPCMBuffer] = [AudioFiles.silence(0.3, rate: 22050)]
+        for (i, _) in speakers.enumerated() {
+            for (j, line) in [tlines[2 * i], tlines[2 * i + 1]].enumerated() {
+                parts.append(AudioFiles.normalized(spoken[i][j]))
+                parts.append(AudioFiles.silence(0.25, rate: 22050))
+                let v = settings(i)
+                let r = try await VoiceMatchProbe.render(line, voiceID: v.voiceID, rate: v.rate, pitch: v.pitchMultiplier, synth: synth)
+                parts.append(AudioFiles.normalized(r.buffer22k))
+                parts.append(AudioFiles.silence(0.6, rate: 22050))
+            }
+        }
+        return AudioFiles.concat(parts)
+    }
+    if arg("--no-audio") == nil {
+        let a = out.appendingPathComponent("voice-match-a-default.m4a"), b = out.appendingPathComponent("voice-match-b-matched.m4a")
+        try AudioFiles.writeM4A(try await conversation { _ in defaultVoice }, to: a)
+        try AudioFiles.writeM4A(try await conversation { matched[$0] }, to: b)
+        print("wrote \(a.path)\nwrote \(b.path)")
+    }
+
+    struct VoiceMatchFile: Encodable {
+        let target: String; let defaultVoice: String; let normalSyllablesPerSecond: Double
+        let voices: [VoiceCalibrationRun]; let speakersTwoLines: [SpeakerRun]; let speakersTenLines: [SpeakerRun]
+        let matchMicroseconds: Double; let matches: [MatchRun]; let loadAverage: String
+    }
+    var load = [0.0, 0, 0]
+    getloadavg(&load, 3)
+    try save(envelope(VoiceMatchFile(target: target, defaultVoice: best.identifier, normalSyllablesPerSecond: normal,
+                                     voices: calibrations, speakersTwoLines: runs, speakersTenLines: longRuns,
+                                     matchMicroseconds: matchCost, matches: matches,
+                                     loadAverage: load.map { String(format: "%.1f", $0) }.joined(separator: " "))),
+             arg("--name") ?? "voice-match-mac.json")
+
 default:
-    print("usage: ear-spike voices|lag|echo|fingerprint|finish-lag|headset-real|acoustic|headset --out DIR")
+    print("usage: ear-spike voices|lag|echo|fingerprint|finish-lag|headset-real|acoustic|headset|voice-match --out DIR")
     exit(2)
 }
