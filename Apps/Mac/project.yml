@@ -35,6 +35,10 @@ targets:
       - path: ../Spike/Sources/CaptionLanguagePage.swift
       # #178: Stop becomes the iPhone's small X with the iPhone's shrink animation, the same control.
       - path: ../Spike/Sources/MorphingControl.swift
+      # #238 put "Speak it in my ear" in the shared Settings page; its rows live here (the Mac build broke without it).
+      - path: ../Spike/Sources/EarViews.swift
+      # #246: the translated caption mock-up options, the same view as the iPhone's.
+      - path: ../Spike/Sources/TranslatedCaptionView.swift
       - path: ../Spike/Resources/Fonts
         type: folder
         buildPhase: resources
