@@ -1,0 +1,45 @@
+## North-star fit
+
+**Reuses:** the exact pattern of the prior ticket of this same type, #242 (*"Act on owner decisions on PR #227"*) — closed by replying on the PR with the decisions-addressed marker and, where the owner's note raised a new open question, folding it back into the PR's own `<!-- marvin:decisions -->` block rather than guessing (`docs/agents/decisions-format.md`, mirrored from `~/.agents/docs/agents/decisions-format.md` since the repo-local copy doesn't exist). For the substantive design question (multiple languages on one call), it reuses #60's already-recorded precedent — "Assign each half to a language... rather than detecting language" and "Mixed-language rooms are out of scope for the first version" — the one existing answer in this codebase to "what happens when one audio stream could be more than one language," referenced directly from #213's own body ("see #60's voice-to-language matching").
+
+**Simplest sufficient approach:** I read PR #231 (`feature/213-mac-call-translation`, based on `main`, draft, CI green except an unrelated macOS-runner capacity failure) against its own three Decisions, and found all three chosen options already match the committed code exactly:
+- **look** ("Approve as shown, go ahead and wire it"): the mock-up (`Apps/Mac/Sources/TranslationMockup.swift`, drawn through the real `CallPopupView`/`SettingsPage`) is the same code the approved screenshots were taken from (commit `dc31e6d`) — nothing to change.
+- **from-labels** ("Room / Calls (as shown)"): `Apps/Spike/Sources/SettingsPage.swift`'s `if let call = language.callCaptions { ... }` branch already renders exactly "Room" / "Calls" rows.
+- **you-label** ("Yes, 'You'"): `TranslationMockup.swift`'s `callLines` already sets `name: String(localized: "You")`, and `CallPopupView.Line.name` already renders whatever name it's given.
+
+So there is no Swift change to make for the three chosen options — saying so plainly and acting on it (reply only) is cheaper than inventing busywork, and is the literal instruction when existing code already satisfies a ticket.
+
+**Where it spends tokens, deliberately:** the owner's note under "from-labels" is not a chosen option — it's him thinking aloud and ending with "I think we should work around that. Figure out what to do in terms of behavior," for the case of more than one language on the same call. That's a real open design question. Guessing an implementation here would mean inventing per-speaker language detection that Apple's engine doesn't support (E27) and that #60 already ruled out for the equivalent problem elsewhere in the app. Per the ticket's own instruction and `docs/agents/decisions-format.md`, this goes back to the owner as a structured Decisions block on PR #231 (`bin/gh` would refuse an unstructured "Open questions" prose heading anyway — `DECISIONS_NOT_ASKABLE`).
+
+**Deferred, not silently built, and said so:** PR #231's own "Not wired yet" section (two separate audio streams tagged by `MacAudioSide`, the shared translation-loop refactor, the Mac's StoreKit product, real-call lag measurement) is real future work, but it is not one of the three Decisions, it needs a real FaceTime/Zoom call and a real microphone (this environment can't run either), and the StoreKit product requires an App Store Connect record, which is explicitly the owner's job (#213, #176). #213 itself is still labeled `needs-info`, not `ready-for-agent` — the pipeline's own signal that this larger wiring isn't actionable yet. Building it anyway inside an "act on decisions" ticket would be scope creep past what was asked and past what can be verified here.
+
+**User capability:** this leaves Gil with one clear decision to press a button on, instead of a wall of prose to re-read, and keeps PR #231 moving (draft → ready once he's answered) without a wiring feature he can't yet verify landing silently on a device he hasn't tested.
+
+## Tests I'll write first
+
+No production Swift changes are needed (see above), so there are no new XCTest cases for `MacTranslationTests.swift`/CaptionCore. The ticket's actual "misuse" surface is the reply/edit I make to PR #231's body and comment, so the checks before acting are:
+
+1. **Notes contradict a chosen option** (ticket's own break-it case): verified — re-diffed PR #231's committed code against each of the three literal chosen options; none contradict. Only the attached *note* under from-labels is unresolved, and it's treated as a question, not an instruction.
+2. **The PR changed since the decisions** (ticket's own break-it case): re-read PR #231 fresh immediately before editing — confirmed its base was already retargeted to `main` (the earlier "rebuild on #239" comment is resolved: #239 merged 2026-10-30, PR #231 already shows `baseRefName: main`), so no rebase/cherry-pick step is outstanding.
+3. **Malformed Decisions block** (bad input to the `bin/gh` gate): the new `### multi-lang-calls` question must parse — unique lowercase id, ≥2 task-list options, placed inside the existing `<!-- marvin:decisions -->` block (which already contains `look`, `from-labels`, `you-label` — new id must not collide). Verify by matching the exact syntax already used in that same PR body, not reinventing it.
+4. **Repeats/concurrency**: three sibling "Act on owner decisions" tickets are open right now (#254, #255, #256) for other PRs — none target #231, so no collision expected, but I still re-fetch the PR body right before editing (not from an earlier cached read) to avoid clobbering a concurrent edit, and edit via `gh pr edit --body-file` with the freshly re-read body rather than reconstructing it from memory.
+5. **Wrong permissions / tooling**: all `gh` writes (`pr edit`, `pr comment`, `pr ready`) go through `~/.agents/bin/gh`, not raw `gh` (memory: GitHub gate).
+6. **A person's mistake downstream**: once Gil answers `multi-lang-calls`, whatever he picks must become its own follow-up ticket/PR, not get built unattended into #231 — stating this explicitly so a future run doesn't silently scope-creep.
+7. **Stale CI read**: the one failing check ("App builds (iOS Simulator)") is a GitHub Actions runner-capacity timeout ("job was not acquired by Runner... capacity constraints"), not a content failure — confirmed by reading the run's annotations — and is unrelated to anything this ticket touches, so it's not something to chase here.
+
+## Decisions
+<!-- marvin:decisions -->
+### multi-lang-calls: On a Mac call with people speaking more than one language, what should happen (Calls currently has one From language)?
+- [ ] A: Out of scope for v1, same as #60's "mixed-language rooms are out of scope for the first version" — Calls keeps one From language; any speaker not in that language is left untranslated (same fallback `MacTranslation` already uses for an unknown side), and Settings' note says so
+- [ ] B: Let Calls hold more than one From language and assign each speaker to one by hand, mirroring #60's "assign a side to a language rather than detect it" — a real follow-up feature, its own ticket after this one
+- [ ] C: Something else (say what in the note)
+<!-- /marvin:decisions -->
+
+## Task List
+
+1. Re-fetch PR #231's current body via `~/.agents/bin/gh pr view 231 --repo G-Eskayo/clarity-captions --json body` immediately before editing (guard against a concurrent edit or further CI/base drift since this plan was written).
+2. Append the `multi-lang-calls` question above into PR #231's existing `<!-- marvin:decisions -->` block (after `you-label`, before the closing), leaving the three already-answered questions untouched.
+3. Post a reply comment on PR #231 carrying `<!-- marvin:decisions-addressed -->` that: confirms `look`, `from-labels`, and `you-label` are already carried out in the committed code (cite the three files/lines above) with no screenshot retake needed ("the look didn't change, so the images stand"); explains that the remaining "Not wired yet" work (two audio streams, shared translation path, Mac StoreKit product, real-call lag) is deferred to #213 because it needs a real call/device and the owner's App Store Connect step, neither available here; and asks the new `multi-lang-calls` question via the Decisions block just added (not in prose).
+4. Move PR #231 from draft to ready for review (`gh pr ready 231`), since the look is approved and nothing else in this ticket blocks it — leave the new Decision unanswered; it will hold Approve until Gil responds, per the existing merge-gate mechanism.
+5. No CaptionCore/Swift changes, no new XCTest cases — verify this ticket's own closing note says so explicitly, matching the precedent of #242 being closed on a reply alone.
+6. Do not act on `multi-lang-calls` myself; if Gil answers it, that answer becomes a new, separate ticket (likely a CaptionCore change with new `MacTranslationTests.swift` cases for whichever option he picks), not a same-PR addition here.
