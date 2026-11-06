@@ -1,0 +1,60 @@
+## North-star fit
+
+**Reuses:** the exact graduation pattern already used for this same spike package — commit `fe599b4` moved `EarSpike`'s `EchoGuard.swift` and `VoiceCoverage.swift` into `Packages/CaptionCore/Sources/CaptionCore/` with their Swift-Testing suites rewritten as XCTest (`CaptionCoreTests/EarEchoGuardTests.swift`, `EarVoiceCoverageTests.swift`) when `#233` shipped. I'll do the same for `#247`'s `Packages/EarSpike/Sources/EarSpikeKit/SpeakerVoice.swift` (its 31 tests move the same way). The utterance-building site already exists and needs only new fields, not a new pipeline: `EarCenter.speakNext()` (`Apps/Spike/Sources/EarCenter.swift:137`) already builds one `AVSpeechUtterance` per phrase and sets `.voice`/`.rate`; `TranscriptionEngine.processBuffer` (`Packages/CaptionCore/Sources/CaptionCore/TranscriptionEngine.swift:466`) already has the same 16 kHz mono buffer, `fed.seconds`, and `diarizer.segments` that `SpeakerLabelSmoother` and `FaceToFaceRouting.feed` reuse to attribute audio to a speaker — I attribute the same buffer to a `SpeakerProfile` the same way, instead of building a second audio path. The settings row reuses `EarSettingsRows`'s existing On/Off pill (`Apps/Spike/Sources/EarViews.swift:64`) and `LanguageSettingsState`'s `earOffered`/`ear` plumbing (`Apps/Spike/Sources/LanguageSettings.swift:34`) — same pill, same place in Settings, one more row under it.
+
+**Simplest sufficient approach:** no new pipeline, no new dependency, no network, no on-device measurement at runtime (the owner's decision text itself says "our shipped calibration table" — measured once by us, not by the phone). `VoiceMatch.match` already returns today's single-voice behavior whenever its `voices` array is empty, so an unmeasured target language or an uninstalled calibrated voice degrades to exactly what the app does today — no new failure mode to design around.
+
+**Token/compute cost:** the spike's own measurement says this costs ~0.25% of one core and ~28 µs per phrase, on audio already captured for diarization; no new audio capture, no new model, no new resource download.
+
+**Phone-OS direction:** low. It is a comfort/accessibility refinement inside one existing feature, not a step toward reachability or generality.
+
+**User capability:** more capable — a deaf user's companion can tell speakers apart by voice in her ear, not just by position in the transcript, which is squarely ADR 0012's "dim, don't dismiss" territory (more signal, never less) — it doesn't do anything *for* her she'd otherwise have had to do herself.
+
+**Where I'd push back:** none — "A" (wire it), "B" (gated on/off row with a mock-up first) and "A" (park part 2) are all exactly what the spike's own write-up recommended, and nothing here contradicts an ADR.
+
+**Scope call I'm making, not a silent guess:** PR #254 is explicitly documented as *"No change to the app... the app doesn't reference `EarSpike`"* and its own Checks section says exactly that. Amending that branch to add real app wiring would falsify its own existing description. The established precedent (`fe599b4`) is: spike lands as its own record, graduation lands as a separate PR citing the real feature ticket. So the wiring goes in a **new PR off `main`**, citing `#247` (the feature ticket, still open, labeled "stays claimed until those Decisions are answered"), and **links PR #254** per the ticket's own instruction. PR #254 itself gets no commit — its content is already correct and unchanged — only a reply with the addressed marker.
+
+## Pre-flight checks already done (ticket's own break-it cases)
+
+- **"The notes contradict a chosen option"** — ticket #260 carries `(no notes)`; the decisions comment on PR #254 is unambiguous (`wire: A`, `setting: B`, `timbre: A`). No contradiction.
+- **"The PR changed since the decisions"** — re-diffed `origin/feature/247-voice-match` against its merge-base with current `origin/main` just now: still exactly the 13-file, +2150/-2 diff described in the PR body (`Packages/EarSpike/...`, the two `.m4a` files, `voice-match-mac.json`, `voice-match-spike.md`, two evidence files). Unchanged.
+- **Known infra risk, not a code defect:** `Apps/Spike/project.yml` requires `Apps/Spike/Resources/Models/ParakeetUltra` as a resource folder, but it's gitignored and absent in this worktree (confirmed). This exact missing-directory error already failed builds on both this ticket's history and `#247`'s own history, before any voice-match code existed. If the "App build" verify step fails on this again, that's the pipeline's model-provisioning step, not this diff — I'll say so plainly rather than try to work around it (no network fetch, no signing change).
+
+## Tests to write first
+
+**Ported unchanged (move only, no new test needed — the 31 that already pass in `EarSpikeKitTests`):** YIN pitch tracking (silence, noise, clipping, NaN, out-of-range, 8–48 kHz), `SyllableRate` with pauses/steady hum, `SpeakerProfile` fed in chunks/a laugh/bounded memory, `VoiceMatch.match` with no voices, broken numbers, more speakers than voices, similar speakers, catch-up on top. Verify-fails-without-a-test-changing is satisfied here because the types move byte-for-byte; only the import (`EarSpikeKit` → nothing, same module) and the test harness (`Testing` → `XCTest`) change.
+
+**New, for the new glue code (one file, `CaptionCoreTests/SpeakerVoiceTrackerTests.swift`, plus a few in `EarCenterTests`/`LanguageSettingsTests` on the app side):**
+
+1. Empty/huge/malformed audio into the tracker: zero-length buffer, a buffer of all-NaN/Inf samples, a single sample, a 10-minute buffer in one call — doesn't crash, memory stays bounded (mirrors `SpeakerProfile`'s own 30 s/3000-frame caps, but at the multi-speaker dictionary level).
+2. Dependency failing: calibration table empty for the active target language → every speaker falls back to today's single default voice, no crash. A calibrated voice ID from the shipped table that isn't actually installed on this device (deleted voice, different iOS build) must be filtered out *before* calling `VoiceMatch.match`, not handed to `AVSpeechUtterance` blind.
+3. Concurrency: audio-thread `add(samples:, speaker:)` racing a main-actor `matchedVoices(...)` read — needs the same `NSLock` discipline as `FedAudioClock`/`LiveDiarizer`; test interleaved calls don't crash or corrupt a profile.
+4. Out-of-order / revised speaker attribution: a diarizer segment that's later revised to a different speaker index must not double-count or push a profile negative.
+5. Stale state: translation target language changes mid-session (mirrors `EarCenter.targetChanged`) — per-speaker pitch/pace traits (language-independent) survive; the *voice assignment* (which target-language voice) is recomputed cleanly with no leftover reference to the old language's table.
+6. A person's mistakes: toggling the new "Sound like the speaker" row off and on mid-conversation changes nothing about tracking (tracking runs whenever ear translation audio is already being captured; the setting only gates whether `speakNext()` *uses* the match) — in-flight utterances aren't interrupted by the toggle, unlike the master "Speak it in my ear" off switch which already calls `stopAll()`.
+7. Shipped table sanity: a data test asserting every entry in the new Spanish `VoiceCalibrationTable` has finite, in-range pitch/pace/curve values — catches a transcription typo from the raw `voice-match-mac.json` numbers before it ever reaches a device.
+8. Settings-state test: the new row is absent from `LanguageSettingsState` whenever `ear == .off`, and its persisted value survives the master toggle going off and back on.
+
+## Decisions
+
+Everything the owner needs to choose was already answered on PR #254 (`wire: A`, `setting: B`, `timbre: A`). One scope question those decisions don't cover:
+
+<!-- marvin:decisions -->
+### coverage: Which target languages ship a calibration table in this first wiring pass?
+- [ ] A: Spanish only for now (the spike's own measured numbers, zero new research); every other translation target keeps today's single-voice behavior until it's measured and added in a follow-up ticket (recommended: smallest sufficient slice, nothing new to measure)
+- [ ] B: Block this PR until every currently-offered translation language has a measured calibration table
+
+## Task List
+
+1. Port `Packages/EarSpike/Sources/EarSpikeKit/SpeakerVoice.swift` into `Packages/CaptionCore/Sources/CaptionCore/SpeakerVoice.swift` unchanged (pure types: `PitchTracker`, `SyllableRate`, `TextSyllables`, `SpeakerTraits`, `SpeakerProfile`, `CalibrationPoint`, `VoiceCalibration`, `MatchedVoice`, `VoiceMatch`); port `VoiceMatchTests.swift` into `CaptionCoreTests/SpeakerVoiceTests.swift` as XCTest, same conversion `EchoGuard`/`VoiceCoverage` got in `fe599b4`.
+2. Add `Packages/CaptionCore/Sources/CaptionCore/VoiceCalibrationTable.swift`: a static Spanish table transcribed from `docs/perf/ear-translation/voice-match-mac.json`'s own measured points (per Decision `coverage`), plus `VoiceCalibrationTable.calibrations(for languageCode: String) -> [VoiceCalibration]` returning `[]` for anything unmeasured.
+3. Add `SpeakerVoiceTracker` to CaptionCore: `[Int: SpeakerProfile]`, `add(samples:sampleRate:speaker:)`, `addLine(text:speechSeconds:speaker:language:)`, lock-protected, plus `matchedVoices(voices:normalSyllablesPerSecond:defaultVoiceID:) -> [Int: MatchedVoice]` built on `VoiceMatch.match` over the full ordered speaker list (keeps per-speaker voice assignment sticky across calls, per the spike's own "speaker labels that flip" limitation).
+4. Wire `TranscriptionEngine.processBuffer` (`TranscriptionEngine.swift:466`) to feed the tracker the same 16 kHz samples it already hands `diarizer`/`soundLabeler`, attributed via `diarizer.segments`; wire `makeResultStream`'s per-piece `speaker`/`startSeconds`/`endSeconds`/`text` (`TranscriptionEngine.swift:519`) into `addLine`. Expose a thread-safe `matchedVoices(...)` passthrough on `TranscriptionEngine`, the `CaptioningEngine` protocol, and `CaptionSessionController` (same idiom as the existing `engineName`/`decodeSeconds` passthroughs).
+5. `EarPhrases.Phrase` gains `speaker: Int?`, populated from `CaptionLine.speaker` in `EarPhrases.take`.
+6. `EarCenter` gains persisted `soundLikeSpeakerOn` (mirrors `isOn`/`onKey`, default `false`), and a `matchedVoiceProvider: ((Int) -> MatchedVoice?)?` set from `ContentView.init()` next to where `controller` is built. `speakNext()` applies `utterance.pitchMultiplier`/`.rate`/`.voice` from the match only when `soundLikeSpeakerOn` and a provider result exists; otherwise unchanged.
+7. Produce a mock-up of the new "Sound like the speaker" On/Off row (same pill style as `EarSettingsRows`, directly under it, shown only when `ear != .off`) and attach it to PR #254 or the new PR before building the real view, per `docs/agents/pr-requirements.md`'s "tickets that change the look carry images... before they are built."
+8. Build the real row (`EarSettingsRows` gains the new pill group, or a sibling view placed right after it in `SettingsPage.swift:258`), wired through `LanguageSettingsState`/`onEar`-style callback.
+9. Write the tests in the list above (`SpeakerVoiceTrackerTests`, calibration-table sanity test, `EarCenter`/`LanguageSettingsState` toggle tests).
+10. `swift test --package-path Packages/CaptionCore`; confirm the ported 31 plus the new tests all pass.
+11. Open the new PR off `main` (not `feature/247-voice-match`), title citing `#247`, body naming PR #254 and explaining the split; include the mock-up and, once the pipeline's simulator build runs, real screenshots of the new row, light/dark.
+12. Reply on PR #254 with the `<!-- marvin:decisions-addressed -->` marker: `wire`/`timbre` carried out via the new PR (link), `setting` reflected in that PR's row; state plainly that PR #254's own branch/content is unchanged (still accurate as "no change to the app"), so its existing images stand — the new PR carries its own new screenshots.

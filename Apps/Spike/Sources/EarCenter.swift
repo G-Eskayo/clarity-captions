@@ -13,6 +13,7 @@ import UIKit
 final class EarCenter: NSObject, ObservableObject {
     static let shared = EarCenter()
     static let onKey = "earTranslationOn"
+    private static let soundLikeSpeakerOnKey = "soundLikeSpeakerOn"
     private static let log = Logger(subsystem: "com.gileskayo.captions", category: "ear")
 
     /// The line the voice is saying, which of its words, and how far through them (0...1), for the speaker mark.
@@ -30,6 +31,8 @@ final class EarCenter: NSObject, ObservableObject {
     @Published private(set) var spokenTranslations: [Int: String] = [:]
     /// The voice for the translation language, chosen from the voices already on the device.
     @Published private(set) var voice: AVSpeechSynthesisVoice?
+    /// #247: sound like each speaker (pitch and pace matched to them); off by default.
+    @Published private(set) var soundLikeSpeakerOn: Bool
 
     /// Asked for when words are holding still and will be ready to speak early: the translator looks again then.
     var onCheck: (() -> Void)?
@@ -49,6 +52,7 @@ final class EarCenter: NSObject, ObservableObject {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         isOn = defaults.bool(forKey: Self.onKey)
+        soundLikeSpeakerOn = defaults.bool(forKey: Self.soundLikeSpeakerOnKey)
         super.init()
         synthesizer.delegate = self
         #if DEBUG
@@ -76,6 +80,12 @@ final class EarCenter: NSObject, ObservableObject {
         defaults.set(on, forKey: Self.onKey)
         MicAudioSource.speaksIntoEar = on && Self.offered
         if on { warmUp() } else { stopAll() }
+    }
+
+    /// #247: toggle whether to match each speaker's pitch and pace.
+    func setSoundLikeSpeaker(_ on: Bool) {
+        soundLikeSpeakerOn = on
+        defaults.set(on, forKey: Self.soundLikeSpeakerOnKey)
     }
 
     /// The translation language changed (or was first read): pick its voice from what's on the device, and load it

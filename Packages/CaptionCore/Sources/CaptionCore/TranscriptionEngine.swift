@@ -106,6 +106,9 @@ public final class TranscriptionEngine {
     public private(set) var startupReport = ""
     private var loudnessTracker = LoudnessWordTracker()
     private var loudnessBaseline = LoudnessBaseline()
+    private let voiceTracker = SpeakerVoiceTracker()
+    private var voiceSampleStream: AsyncStream<(samples: [Float], sampleRate: Double, speaker: Int?)>.Continuation?
+    private var voiceSampleTask: Task<Void, Never>?
     private var loudnessTimeSeries: [(audioTime: Double, level: Double)] = []
     private let loudnessLock = NSLock()
     private let prepareLock = NSLock()
@@ -154,6 +157,13 @@ public final class TranscriptionEngine {
     /// Called once when Parakeet falls back to Apple, so the app can count it toward the daily pin.
     public var onFallback: (@Sendable (FallbackReason) -> Void)?
     private var fallbackCounted = false
+
+    /// #247: matched voices for each speaker, keyed by speaker ID. Returns empty until there is enough speech to judge.
+    public func matchedVoices(voices: [VoiceCalibration], normalSyllablesPerSecond: Double,
+                              defaultVoiceID: String? = nil) async -> [Int: MatchedVoice] {
+        await voiceTracker.matchedVoices(voices: voices, normalSyllablesPerSecond: normalSyllablesPerSecond,
+                                         defaultVoiceID: defaultVoiceID)
+    }
 
     /// `diarizerModelURL` has no default on purpose: the app must say where its bundled speaker model
     /// lives, so there is no accidental network path (ADR 0014). The same goes for Parakeet's folder.
@@ -301,6 +311,15 @@ public final class TranscriptionEngine {
         let (alStream, alCont) = AsyncStream.makeStream(of: Double.self)
         self.audioLevelStreamValue = alStream
         self.audioLevelContinuation = alCont
+
+        let (voiceStream, voiceCont) = AsyncStream.makeStream(of: (samples: [Float], sampleRate: Double, speaker: Int?).self)
+        self.voiceSampleStream = voiceCont
+        self.voiceSampleTask = Task {
+            for await (samples, sampleRate, speaker) in voiceStream {
+                await self.voiceTracker.add(samples: samples, sampleRate: sampleRate, speaker: speaker)
+            }
+        }
+
         let fed = FedAudioClock()
         self.fed = fed
 
@@ -465,7 +484,7 @@ public final class TranscriptionEngine {
 
     private func processBuffer(_ buffer: AVAudioPCMBuffer, inFormat: AVAudioFormat, fed: FedAudioClock) {
         let (backend, converter, format) = routeLock.withLock { (route.backend, route.converter, route.format) }
-        // 16 kHz mono Float32 for the diarizer, the sound labeler, loudness, and Parakeet.
+        // 16 kHz mono Float32 for the diarizer, the sound labeler, loudness, voice tracking, and Parakeet.
         if let diarFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000, channels: 1, interleaved: false),
            let dOut = convert(buffer, with: diarConverter(from: inFormat, to: diarFormat), to: diarFormat),
            let ch = dOut.floatChannelData {
@@ -473,6 +492,13 @@ public final class TranscriptionEngine {
             diarizer.feed(samples)
             soundLabeler.feed(samples, atAudioTime: fed.seconds)
             let level = recordLoudness(samples: samples, atAudioTime: fed.seconds)
+
+            // Find the segment that covers this buffer's time window by overlap, not just the last segment.
+            // The diarizer runs behind the audio, so the last segment may be from a previous speaker.
+            let bufferDuration = Double(dOut.frameLength) / 16_000
+            let speaker = SpeakerAligner.speaker(start: fed.seconds, end: fed.seconds + bufferDuration,
+                                                segments: diarizer.segments)
+            voiceSampleStream?.yield((samples: samples, sampleRate: 16_000, speaker: speaker))
             if let faceToFace {
                 faceToFace.feed(samples, at: fed.seconds, level: level, segments: diarizer.segments)
             } else if format == nil {
@@ -519,6 +545,11 @@ public final class TranscriptionEngine {
                             let speaker = (piece.start.flatMap { st in piece.end.map { (st, $0) } })
                                 .flatMap { labels.label(start: $0.0, end: $0.1, segments: self.diarizer.segments, isFinal: piece.isFinal) }
                             let lag = wallTime.elapsedSinceStart().flatMap { lagTracker.sample(elapsed: $0, audioEnds: piece.wordEnds) }
+                            // #247: track speaker voice if this piece has a speaker label, a time range, and is final.
+                            if piece.isFinal, let sp = speaker, let duration = piece.end.flatMap({ e in piece.start.map { $0..<e } }) {
+                                let speechSeconds = duration.upperBound - duration.lowerBound
+                                Task { await self.voiceTracker.addLine(piece.text, speechSeconds: speechSeconds, speaker: sp, language: self.locale.language.minimalIdentifier) }
+                            }
                             var update = CaptionUpdate(text: piece.text, isFinal: piece.isFinal, lagSeconds: lag, speaker: speaker,
                                                        startSeconds: piece.start, endSeconds: piece.end,
                                                        diagnostics: self.diagnostics, wordEmphasis: self.wordEmphasis(piece.words))
@@ -638,6 +669,10 @@ public final class TranscriptionEngine {
         soundLabeler.finish()
         audioLevelContinuation?.finish()   // left open, it kept the session waiting after Stop (#89)
         audioLevelContinuation = nil
+        voiceSampleStream?.finish()
+        voiceSampleStream = nil
+        await voiceSampleTask?.value
+        voiceSampleTask = nil
     }
 
     /// Loads the speaker model once and discards it, so Core ML's one-time Neural Engine preparation

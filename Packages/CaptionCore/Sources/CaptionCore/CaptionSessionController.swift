@@ -12,11 +12,17 @@ public protocol CaptioningEngine: AnyObject {
     /// Loads everything `start()` needs except the microphone, reporting each finished step (#119). Never opens the
     /// microphone or asks for permission. Safe to call more than once; `start()` finishes a load in progress.
     func prepare(onStep: @escaping @Sendable (Int) -> Void) async throws
+    /// #247: matched voices for each speaker. Returns empty if no engines support it or there is not enough speech.
+    func matchedVoices(voices: [VoiceCalibration], normalSyllablesPerSecond: Double,
+                       defaultVoiceID: String?) async -> [Int: MatchedVoice]
 }
 
 public extension CaptioningEngine {
     /// Engines with nothing to load ahead (test fakes) are ready at once.
     func prepare(onStep: @escaping @Sendable (Int) -> Void) async throws {}
+    /// Default: engines without voice matching support return no matches.
+    func matchedVoices(voices: [VoiceCalibration], normalSyllablesPerSecond: Double,
+                       defaultVoiceID: String?) async -> [Int: MatchedVoice] { [:] }
 }
 
 extension TranscriptionEngine: CaptioningEngine {}
@@ -117,6 +123,14 @@ public final class CaptionSessionController {
         }
         await engine.stop()
         await task.value
+    }
+
+    /// #247: matched voices for each speaker from the live engine, if any.
+    public func matchedVoices(voices: [VoiceCalibration], normalSyllablesPerSecond: Double,
+                              defaultVoiceID: String? = nil) async -> [Int: MatchedVoice] {
+        guard let engine else { return [:] }
+        return await engine.matchedVoices(voices: voices, normalSyllablesPerSecond: normalSyllablesPerSecond,
+                                          defaultVoiceID: defaultVoiceID)
     }
 
     private var endedState: CaptionState { quietStopMinutes.map { .pausedQuiet(minutes: $0) } ?? .idle }
