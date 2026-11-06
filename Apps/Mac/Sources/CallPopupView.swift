@@ -13,6 +13,8 @@ struct CallPopupView: View {
         let name: String?
         let text: String
         var volatile = false
+        var translation: String? = nil
+        var speakingFirm: Int? = nil
     }
 
     enum Status: Equatable {
@@ -158,11 +160,19 @@ struct CallPopupView: View {
                                     .font(.system(size: 13, weight: .semibold))
                                     .foregroundStyle(speakerColors[speaker % speakerColors.count].color)
                             }
-                            Text(line.text)
-                                .font(captionFont)
-                                .foregroundStyle(style.text.color.opacity(line.volatile ? style.volatileOpacity : 1))
-                                .fixedSize(horizontal: false, vertical: true)
-                                .textSelection(.enabled)
+                            if let translation = line.translation {
+                                TranslatedCaptionView(translated: translation, said: line.text,
+                                                     speakingFirm: line.speakingFirm,
+                                                     font: captionFont, saidFont: .system(size: 11),
+                                                     text: style.text.color, muted: style.text.color.opacity(0.6),
+                                                     mark: style.gear.color, volatileOpacity: style.volatileOpacity)
+                            } else {
+                                Text(line.text)
+                                    .font(captionFont)
+                                    .foregroundStyle(style.text.color.opacity(line.volatile ? style.volatileOpacity : 1))
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .textSelection(.enabled)
+                            }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .id(line.id)

@@ -43,6 +43,7 @@ import Foundation
 ///                     headphones taken as connected (the simulator's only output is its speaker) except `noheadphones`.
 ///                     `mark` holds the newest spoken line part-way said; `speak` really speaks it. With
 ///                     -ClarityDemoTranslate sr: a language with no voice (Serbian).
+///   -ClarityDemoTranslatedOpen  force the newest translated line opened for a screenshot (#246/#257)
 ///   -ClarityDemoFaceToFaceStopAfter <step>   the same flow, then Stop tapped at that moment (#245: it always leaves)
 ///   -ClarityDemoFaceToFaceHung   the split's engines never finish starting or stopping (#245, the owner's iPad)
 ///   -ClarityDemoFaceToFaceReady one   only one language is ready: Face to face opens Settings' setup (#245)
@@ -108,6 +109,8 @@ enum DemoMode {
     static var translationOwned: Bool { flag("-ClarityDemoTranslationOwned") }
     /// `-ClarityDemoEar <variant>`: Live Translation in your ear (#233), on, in one of its states.
     static var ear: String? { value(after: "-ClarityDemoEar") }
+    /// `-ClarityDemoTranslatedOpen`: force the newest translated line's `startsOpen` to true for a screenshot (#246/#257).
+    static var translatedOpen: Bool { flag("-ClarityDemoTranslatedOpen") }
     /// `-ClarityDemoIntoSpeechProgress 0.4` (#245): Into's speech model mid-download in Settings.
     static var intoSpeechProgress: Double? { value(after: "-ClarityDemoIntoSpeechProgress").flatMap(Double.init) }
     /// `-ClarityDemoFaceToFace` (#208): opens the split and taps through it the way two people would, through the real

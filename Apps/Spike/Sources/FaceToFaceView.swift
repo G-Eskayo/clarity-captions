@@ -115,14 +115,10 @@ struct FaceToFaceView<Control: View>: View {
         let font = style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: device)
         VStack(alignment: .leading, spacing: 2) {
             if let said = entry.said {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Image(systemName: "translate").font(.subheadline.bold()).foregroundStyle(mutedColor(style))
-                    Text(entry.text).font(font)
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(String(localized: "Translated: ") + entry.text)
-                Text(said).font(.body).foregroundStyle(mutedColor(style))
-                    .accessibilityLabel(String(localized: "Said: ") + said)
+                TranslatedCaptionView(translated: entry.text, said: said,
+                                     speakingFirm: nil,
+                                     font: font, saidFont: .body, text: style.text.color, muted: mutedColor(style),
+                                     mark: style.gear.color, volatileOpacity: style.volatileOpacity)
             } else {
                 Text(entry.text).font(entry.isSoundLabel ? font.italic() : font)
                     .opacity(entry.isFinal ? 1 : style.volatileOpacity)

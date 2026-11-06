@@ -6,7 +6,7 @@ import SwiftUI
 /// The MARVIN Mac screenshot contract (marvin #727): launched with `-MarvinScreenshot <png>` (and optionally
 /// `-MarvinAppearance light|dark`) plus a scene's own arguments, the app draws that scene off-screen, writes the PNG
 /// at 2x and quits. Needs no Screen Recording permission. Scenes:
-///   `-SealPopupMockup auto|waiting|stopped`
+///   `-SealPopupMockup auto|waiting|stopped|translated`
 ///   `-SealCallMockup ringing|call|ended` (`-SealCallPhase 0...1`): a call arriving mid-conversation (#178)
 /// `-MarvinLiveSnapshot <png> -MarvinLiveSnapshotAfter <seconds>` instead snapshots the live window while the app keeps
 /// running (proof of a real run, without Screen Recording).  the #172 pop-up mock-up (Paper when light, Harbor when dark)

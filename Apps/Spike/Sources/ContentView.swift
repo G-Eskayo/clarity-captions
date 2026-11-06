@@ -1064,29 +1064,19 @@ struct ContentView: View {
                                     .trackWords(in: textFrames, key: "text-\(line.id)")
                             } else if translation.isActive,
                                       let translated = translation.translations.translation(for: line) ?? ear.spokenTranslations[line.id] {
-                                // #53 (owner, PR #171): the translation is the line that's read, on top at caption size
-                                // behind a translate mark; what was said stays, smaller, underneath. Selection and Copy
-                                // work on what was said. #233: until a line's own translation lands, what the voice said
-                                // for it shows.
-                                if let earSpeaking, earSpeaking.lineID == line.id {
+                                let speakingFirm = if let earSpeaking, earSpeaking.lineID == line.id {
                                     let shown = translated.split(separator: " ").count
-                                    EarSpeakingLine(translated: translated,
-                                                    firm: EarProgress.firmWords(shown: shown, lineWords: line.text.split(separator: " ").count,
-                                                                                phrase: earSpeaking.words, share: earSpeaking.share),
-                                                    font: style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass),
-                                                    mark: style.gear.color, text: style.text.color, volatileOpacity: style.volatileOpacity)
+                                    EarProgress.firmWords(shown: shown, lineWords: line.text.split(separator: " ").count,
+                                                        phrase: earSpeaking.words, share: earSpeaking.share)
                                 } else {
-                                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                                        Image(systemName: "translate").font(.subheadline.bold()).foregroundStyle(mutedColor(style))
-                                        Text(translated).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass))
-                                    }
-                                    .accessibilityElement(children: .combine)
-                                    .accessibilityLabel(String(localized: "Translated: ") + translated)
+                                    nil as Int?
                                 }
-                                Text(line.text).font(.body).foregroundStyle(mutedColor(style))
-                                    .textRenderer(renderer)
-                                    .trackWords(in: textFrames, key: "text-\(line.id)")
-                                    .accessibilityLabel(String(localized: "Said: ") + line.text)
+                                TranslatedCaptionView(translated: translated, said: line.text,
+                                                     speakingFirm: speakingFirm,
+                                                     font: style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass),
+                                                     saidFont: .body, text: style.text.color, muted: mutedColor(style),
+                                                     mark: style.gear.color, volatileOpacity: style.volatileOpacity,
+                                                     startsOpen: DemoMode.translatedOpen && line.id == newestSpokenLineID)
                             } else {
                                 Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass)).opacity(line.isFinal ? 1 : style.volatileOpacity)
                                     .textRenderer(renderer)
