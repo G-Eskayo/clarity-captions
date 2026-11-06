@@ -2,8 +2,10 @@ import Foundation
 
 public enum RetentionPolicy {
     public static func isExpired(savedAt: Date, now: Date, retentionDays: Int = 30) -> Bool {
-        let expiryDate = Calendar.current.date(byAdding: .day, value: retentionDays, to: savedAt) ?? savedAt
-        return now >= expiryDate
+        let secondsPerDay = 24.0 * 60.0 * 60.0
+        let secondsInRetention = Double(retentionDays) * secondsPerDay
+        let timePassed = now.timeIntervalSince(savedAt)
+        return timePassed >= secondsInRetention
     }
 }
 

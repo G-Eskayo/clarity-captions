@@ -9,7 +9,7 @@ public struct CaptionUpdate: Sendable {
     /// Seconds of audio already fed in minus the audio time this result covers up to --
     /// i.e. how far behind live speech this caption is. Nil if the result carried no time range.
     public let lagSeconds: Double?
-    /// 0-based speaker slot for this caption, nil if the diarizer has no overlap with it yet.
+    /// Display label (0-based speaker slot, in order of appearance) for this caption, nil if the diarizer has no overlap with it yet.
     public let speaker: Int?
     /// Audio-time span this caption covers, in seconds; nil if the result carried no time range.
     public let startSeconds: Double?
@@ -18,6 +18,11 @@ public struct CaptionUpdate: Sendable {
     public let diagnostics: String
     /// Emphasis level per word in the text (split on whitespace), empty if unavailable.
     public let wordEmphasis: [EmphasisLevel]
+    /// The raw diarizer slot for this caption, used to match speaker characteristics.
+    public let rawSlot: Int?
+    /// The voice characteristics of the speaker for this caption (#247): pitch and pace, or nil if not enough speech yet.
+    /// Only populated in finished captions (isFinal: true), nil in live updates.
+    public let speakerTraits: SpeakerTraits?
     /// The recognizer behind this caption, and why it left Parakeet if it did (beta report, ADR 0025).
     public var engine = ""
     public var engineFallback: FallbackReason?
@@ -108,6 +113,8 @@ public final class TranscriptionEngine {
     private var loudnessBaseline = LoudnessBaseline()
     private var loudnessTimeSeries: [(audioTime: Double, level: Double)] = []
     private let loudnessLock = NSLock()
+    private var speakerVoiceTracker = SpeakerVoiceTracker()
+    private let speakerVoiceLock = NSLock()
     private let prepareLock = NSLock()
     private var prepareTask: Task<SpeechRecognizerBackend?, Error>?
     /// Face to face (#60): two language engines routed by voice instead of the one recognizer. Nil one-way.
@@ -473,6 +480,9 @@ public final class TranscriptionEngine {
             diarizer.feed(samples)
             soundLabeler.feed(samples, atAudioTime: fed.seconds)
             let level = recordLoudness(samples: samples, atAudioTime: fed.seconds)
+            speakerVoiceLock.withLock {
+                speakerVoiceTracker.feed(samples: samples, sampleRate: 16000, at: fed.seconds, segments: diarizer.segments)
+            }
             if let faceToFace {
                 faceToFace.feed(samples, at: fed.seconds, level: level, segments: diarizer.segments)
             } else if format == nil {
@@ -519,9 +529,20 @@ public final class TranscriptionEngine {
                             let speaker = (piece.start.flatMap { st in piece.end.map { (st, $0) } })
                                 .flatMap { labels.label(start: $0.0, end: $0.1, segments: self.diarizer.segments, isFinal: piece.isFinal) }
                             let lag = wallTime.elapsedSinceStart().flatMap { lagTracker.sample(elapsed: $0, audioEnds: piece.wordEnds) }
+                            var traits: SpeakerTraits? = nil
+                            var rawSlot: Int? = nil
+                            if piece.isFinal, let slot = labels.currentSlot {
+                                rawSlot = slot
+                                self.speakerVoiceLock.withLock {
+                                    self.speakerVoiceTracker.addLine(piece.text, speechSeconds: (piece.end ?? 0) - (piece.start ?? 0),
+                                                                     language: self.locale.language.minimalIdentifier, forSlot: slot)
+                                    traits = self.speakerVoiceTracker.traits(forSlot: slot)
+                                }
+                            }
                             var update = CaptionUpdate(text: piece.text, isFinal: piece.isFinal, lagSeconds: lag, speaker: speaker,
                                                        startSeconds: piece.start, endSeconds: piece.end,
-                                                       diagnostics: self.diagnostics, wordEmphasis: self.wordEmphasis(piece.words))
+                                                       diagnostics: self.diagnostics, wordEmphasis: self.wordEmphasis(piece.words),
+                                                       rawSlot: rawSlot, speakerTraits: traits)
                             update.engine = self.engineName
                             update.engineFallback = self.fallbackReason
                             continuation.yield(update)
@@ -560,7 +581,8 @@ public final class TranscriptionEngine {
                         let r = routing.receive(piece, from: half, segments: segments, elapsed: wallTime.elapsedSinceStart())
                         var update = CaptionUpdate(text: r.piece.text, isFinal: r.piece.isFinal, lagSeconds: r.lag, speaker: r.speaker,
                                                    startSeconds: r.piece.start, endSeconds: r.piece.end,
-                                                   diagnostics: self.diagnostics, wordEmphasis: self.wordEmphasis(r.piece.words))
+                                                   diagnostics: self.diagnostics, wordEmphasis: self.wordEmphasis(r.piece.words),
+                                                   rawSlot: nil, speakerTraits: nil)
                         update.engine = self.engineName
                         update.lane = half
                         update.languages = r.languages

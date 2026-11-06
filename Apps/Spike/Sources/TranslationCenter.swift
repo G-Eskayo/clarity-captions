@@ -296,6 +296,7 @@ final class TranslationCenter: ObservableObject {
 
     private func demoFill(_ lines: [CaptionLine]) {
         guard isOn, purchase.isOwned, !faceToFace || faceToFacePair != nil else { return }
+        updateSpeakerTraitsInEar(from: lines)
         for phrase in ear.take(from: lines, active: earActive) {
             ear.speak(phrase, translation: DemoMode.englishLine(for: phrase.text) ?? phrase.text)
         }
@@ -324,6 +325,15 @@ final class TranslationCenter: ObservableObject {
         wake?.yield()
     }
 
+    /// Update EarCenter's speaker traits cache from finished lines (#247).
+    private func updateSpeakerTraitsInEar(from lines: [CaptionLine]) {
+        for line in lines where line.isFinal {
+            if let traits = line.speakerTraits, let slot = line.rawSlot {
+                ear.updateSpeakerTraits(traits, for: slot)
+            }
+        }
+    }
+
     /// Runs inside `.translationTask`: makes sure the language pack is there (Apple's own sheet, the one system
     /// pop-up Seal allows, #159), then translates each finished line as it lands, until the session is replaced.
     func run(_ session: TranslationSession) async {
@@ -338,6 +348,7 @@ final class TranslationCenter: ObservableObject {
         continuation.yield()
         for await _ in stream {
             if Task.isCancelled { return }
+            updateSpeakerTraitsInEar(from: latest)
             // #233 first: the voice is the part where every millisecond shows.
             for phrase in ear.take(from: latest, active: earActive) {
                 do {

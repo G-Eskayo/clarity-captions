@@ -17,18 +17,24 @@ public struct CaptionLine: Identifiable, Equatable, Sendable {
     public var soundLabel: SoundLabelKind?
     /// Face to face (#60): which half's language engine wrote this line. Nil for one-way captions.
     public var lane: FaceToFaceHalf?
+    /// The raw diarizer slot (not the display label), used to look up speaker characteristics.
+    public var rawSlot: Int?
+    /// The speaker's voice characteristics (pitch and pace), populated only for finished captions of this speaker.
+    public var speakerTraits: SpeakerTraits?
     var committed: [CaptionWord]
     var tail: String?
     var tailRange: ClosedRange<Double>?
     var startTime: Double?
     var endTime: Double?
 
-    init(id: Int, speaker: Int? = nil, soundLabel: SoundLabelKind? = nil, lane: FaceToFaceHalf? = nil, committed: [CaptionWord],
+    init(id: Int, speaker: Int? = nil, soundLabel: SoundLabelKind? = nil, lane: FaceToFaceHalf? = nil, rawSlot: Int? = nil, speakerTraits: SpeakerTraits? = nil, committed: [CaptionWord],
          tail: String? = nil, tailRange: ClosedRange<Double>? = nil, startTime: Double? = nil, endTime: Double? = nil) {
         self.id = id
         self.speaker = speaker
         self.soundLabel = soundLabel
         self.lane = lane
+        self.rawSlot = rawSlot
+        self.speakerTraits = speakerTraits
         self.committed = committed
         self.tail = tail
         self.tailRange = tailRange
@@ -73,7 +79,7 @@ public struct CaptionStream: Sendable {
     }
 
     public mutating func apply(text: String, isFinal: Bool, speaker: Int? = nil, range: ClosedRange<Double>? = nil, wordEmphasis: [EmphasisLevel] = [],
-                               lane: FaceToFaceHalf? = nil) {
+                               lane: FaceToFaceHalf? = nil, rawSlot: Int? = nil, speakerTraits: SpeakerTraits? = nil) {
         let piece = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !piece.isEmpty else {
             // Face to face (#60): an engine's revision that now has none of its own words takes back its open words.
@@ -98,7 +104,7 @@ public struct CaptionStream: Sendable {
                     lines[index] = last
                 }
                 lines.append(CaptionLine(
-                    id: nextID, speaker: speaker, lane: lane,
+                    id: nextID, speaker: speaker, lane: lane, rawSlot: isFinal ? rawSlot : nil, speakerTraits: (isFinal && lane == nil) ? speakerTraits : nil,
                     committed: isFinal ? words : [], tail: isFinal ? nil : piece,
                     tailRange: isFinal ? nil : range, startTime: range?.lowerBound, endTime: range?.upperBound))
                 nextID += 1
@@ -118,7 +124,7 @@ public struct CaptionStream: Sendable {
                         last.tail = nil; last.tailRange = nil
                         lines[index] = last
                         lines.append(CaptionLine(
-                            id: nextID, speaker: speaker, lane: lane,
+                            id: nextID, speaker: speaker, lane: lane, rawSlot: isFinal ? rawSlot : nil, speakerTraits: (isFinal && lane == nil) ? speakerTraits : nil,
                             committed: isFinal ? words : [], tail: isFinal ? nil : piece,
                             tailRange: isFinal ? nil : range, startTime: tailStart, endTime: range?.upperBound))
                         nextID += 1
@@ -154,7 +160,7 @@ public struct CaptionStream: Sendable {
         }
 
         lines.append(CaptionLine(
-            id: nextID, speaker: speaker, lane: lane,
+            id: nextID, speaker: speaker, lane: lane, rawSlot: isFinal ? rawSlot : nil, speakerTraits: (isFinal && lane == nil) ? speakerTraits : nil,
             committed: isFinal ? words : [], tail: isFinal ? nil : piece,
             tailRange: isFinal ? nil : range, startTime: range?.lowerBound, endTime: range?.upperBound))
         nextID += 1

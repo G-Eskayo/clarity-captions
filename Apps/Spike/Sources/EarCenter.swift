@@ -13,6 +13,7 @@ import UIKit
 final class EarCenter: NSObject, ObservableObject {
     static let shared = EarCenter()
     static let onKey = "earTranslationOn"
+    static let voiceMatchKey = "earVoiceMatch"
     private static let log = Logger(subsystem: "com.gileskayo.captions", category: "ear")
 
     /// The line the voice is saying, which of its words, and how far through them (0...1), for the speaker mark.
@@ -45,6 +46,7 @@ final class EarCenter: NSObject, ObservableObject {
     private var target: Locale?
     private var check: Task<Void, Never>?
     private var foreground = true
+    private var speakerTraitsCache: [Int: SpeakerTraits] = [:]
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -68,6 +70,11 @@ final class EarCenter: NSObject, ObservableObject {
 
     /// For Settings' note and for whether anything is spoken.
     var state: EarState { EarState(on: isOn, hasVoice: voice != nil, headphones: headphones) }
+
+    /// Cache speaker traits from finished captions (#247): used if voice-match is on.
+    func updateSpeakerTraits(_ traits: SpeakerTraits?, for slot: Int) {
+        if let traits { speakerTraitsCache[slot] = traits }
+    }
 
     // MARK: settings
 
@@ -138,10 +145,33 @@ final class EarCenter: NSObject, ObservableObject {
         guard current == nil, !queue.isEmpty, let voice else { return }
         let item = queue.removeFirst()
         let utterance = AVSpeechUtterance(string: item.text)
-        utterance.voice = voice
-        // A little faster while more is waiting, so it catches up without skipping.
-        utterance.rate = min(AVSpeechUtteranceMaximumSpeechRate,
-                             AVSpeechUtteranceDefaultSpeechRate * Float(EarPace.speed(waiting: queue.count)))
+        var rate = min(AVSpeechUtteranceMaximumSpeechRate,
+                       AVSpeechUtteranceDefaultSpeechRate * Float(EarPace.speed(waiting: queue.count)))
+        var selectedVoice = voice
+        var pitchMultiplier = 1.0
+
+        // Voice matching (#247, dark-launch): if enabled and we have speaker traits, match the voice.
+        if defaults.bool(forKey: Self.voiceMatchKey), target != nil, let speakerSlot = item.phrase.speakerSlot {
+            // Use the speaker who said this phrase, not an arbitrary speaker from the cache.
+            if let traits = speakerTraitsCache[speakerSlot], let targetLang = target?.language.minimalIdentifier {
+                let calibrations = VoiceCalibrationTable.calibrations(for: targetLang)
+                if !calibrations.isEmpty {
+                    let matched = VoiceMatch.match([traits], voices: calibrations, normalSyllablesPerSecond: 5)
+                    if let first = matched.first {
+                        rate = min(AVSpeechUtteranceMaximumSpeechRate, first.rate(catchUp: EarPace.speed(waiting: queue.count)))
+                        if let voiceID = first.voiceID,
+                           let matchedVoice = AVSpeechSynthesisVoice(identifier: voiceID) {
+                            selectedVoice = matchedVoice
+                        }
+                        pitchMultiplier = Double(first.pitchMultiplier)
+                    }
+                }
+            }
+        }
+
+        utterance.voice = selectedVoice
+        utterance.rate = rate
+        utterance.pitchMultiplier = Float(pitchMultiplier)
         let start = Self.now
         current = (item, ObjectIdentifier(utterance), start)
         // Counted as said from now, with a generous end, so its echo is caught while it's still playing.
@@ -165,6 +195,7 @@ final class EarCenter: NSObject, ObservableObject {
         queue = []
         current = nil
         speaking = nil
+        speakerTraitsCache = [:]
         if synthesizer.isSpeaking { synthesizer.stopSpeaking(at: .immediate) }
     }
 

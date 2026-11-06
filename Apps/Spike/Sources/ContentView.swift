@@ -129,7 +129,7 @@ final class CaptionModel: ObservableObject {
             guard let self else { return }
             var range: ClosedRange<Double>?
             if let a = u.startSeconds, let b = u.endSeconds, a <= b { range = a...b }
-            self.stream.apply(text: u.text, isFinal: u.isFinal, speaker: u.speaker, range: range, lane: u.lane)
+            self.stream.apply(text: u.text, isFinal: u.isFinal, speaker: u.speaker, range: range, lane: u.lane, rawSlot: u.rawSlot, speakerTraits: u.speakerTraits)
             if let languages = u.languages { self.speakerLanguages = languages }
             if let l = u.lagSeconds { self.lag = l }
             self.diag = u.diagnostics

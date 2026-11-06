@@ -201,7 +201,7 @@ final class CaptionSessionIdleStopTests: XCTestCase {
             return s
         }
         func emit(_ text: String) {
-            cont?.yield(CaptionUpdate(text: text, isFinal: true, lagSeconds: nil, speaker: nil, startSeconds: nil, endSeconds: nil, diagnostics: "", wordEmphasis: []))
+            cont?.yield(CaptionUpdate(text: text, isFinal: true, lagSeconds: nil, speaker: nil, startSeconds: nil, endSeconds: nil, diagnostics: "", wordEmphasis: [], rawSlot: nil, speakerTraits: nil))
         }
         func fail(_ e: Error) { cont?.finish(throwing: e); labelCont?.finish(); levelCont?.finish() }
         func soundLabelsStream() -> AsyncStream<SoundLabelKind> { labels ?? AsyncStream { $0.finish() } }

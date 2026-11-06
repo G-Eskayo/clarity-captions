@@ -11,6 +11,8 @@ public struct EarPhrases: Sendable {
         public let words: Range<Int>
         /// Spoken before the engine finished these words: it can turn out wrong, and can't be taken back.
         public let early: Bool
+        /// The raw diarizer slot of the speaker who said this phrase, for voice matching (#247).
+        public let speakerSlot: Int?
     }
 
     /// The spike (#237): the first 3 words of a line are final a median of 2.0 s before the line is, on 54 of 87 lines.
@@ -51,7 +53,7 @@ public struct EarPhrases: Sendable {
             let committed = min(line.styledWords.count, words.count)
             if committed > s.spoken {
                 out.append(Phrase(lineID: line.id, text: words[s.spoken..<committed].joined(separator: " "),
-                                  words: s.spoken..<committed, early: false))
+                                  words: s.spoken..<committed, early: false, speakerSlot: line.rawSlot))
                 s.spoken = committed
                 s.run = []; s.since = []
             }
@@ -67,7 +69,7 @@ public struct EarPhrases: Sendable {
                 let steady = s.since.prefix { now - $0 >= hold - 1e-9 }.count
                 if steady >= minimumEarlyWords {
                     out.append(Phrase(lineID: line.id, text: open[0..<steady].joined(separator: " "),
-                                      words: s.spoken..<(s.spoken + steady), early: true))
+                                      words: s.spoken..<(s.spoken + steady), early: true, speakerSlot: line.rawSlot))
                     s.spoken += steady
                     s.run = []; s.since = []
                 } else if s.since.count >= minimumEarlyWords {

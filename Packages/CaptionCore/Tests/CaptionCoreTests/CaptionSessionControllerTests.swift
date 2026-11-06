@@ -57,7 +57,7 @@ final class CaptionSessionControllerTests: XCTestCase {
     struct Boom: Error, Equatable {}
 
     private func update(_ text: String) -> CaptionUpdate {
-        CaptionUpdate(text: text, isFinal: true, lagSeconds: nil, speaker: nil, startSeconds: nil, endSeconds: nil, diagnostics: "", wordEmphasis: [])
+        CaptionUpdate(text: text, isFinal: true, lagSeconds: nil, speaker: nil, startSeconds: nil, endSeconds: nil, diagnostics: "", wordEmphasis: [], rawSlot: nil, speakerTraits: nil)
     }
 
     /// Waits (briefly) for a condition that depends on background work.

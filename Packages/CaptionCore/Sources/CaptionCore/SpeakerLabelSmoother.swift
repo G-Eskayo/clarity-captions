@@ -27,6 +27,9 @@ public struct SpeakerLabelSmoother: Sendable {
         self.switchSeconds = switchSeconds
     }
 
+    /// The raw diarizer slot of the last labeled caption, or nil if no caption has been labeled yet.
+    public var currentSlot: Int? { current }
+
     /// The display label (0-based, in order of appearance) for the caption covering `start...end`, given every
     /// segment the diarizer has produced so far. Nil until the diarizer has anything for that stretch.
     public mutating func label(start: Double, end: Double, segments: [SpeakerSegment], isFinal: Bool) -> Int? {
