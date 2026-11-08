@@ -13,6 +13,7 @@ import UIKit
 final class EarCenter: NSObject, ObservableObject {
     static let shared = EarCenter()
     static let onKey = "earTranslationOn"
+    static let soundsLikeSpeakerOnKey = "earSoundsLikeSpeakerOn"
     private static let log = Logger(subsystem: "com.gileskayo.captions", category: "ear")
 
     /// The line the voice is saying, which of its words, and how far through them (0...1), for the speaker mark.
@@ -23,6 +24,7 @@ final class EarCenter: NSObject, ObservableObject {
     }
 
     @Published private(set) var isOn: Bool
+    @Published private(set) var soundsLikeSpeaker: Bool
     @Published private(set) var headphones = false
     @Published private(set) var speaking: Speaking?
     /// What was spoken for each line, joined: shown in place of a line's translation until that arrives (an early
@@ -30,6 +32,8 @@ final class EarCenter: NSObject, ObservableObject {
     @Published private(set) var spokenTranslations: [Int: String] = [:]
     /// The voice for the translation language, chosen from the voices already on the device.
     @Published private(set) var voice: AVSpeechSynthesisVoice?
+    /// Per-speaker pitch and rate adjustments; updated from the engine while listening.
+    private var speakerTraits: [Int: SpeakerTraits] = [:]
 
     /// Asked for when words are holding still and will be ready to speak early: the translator looks again then.
     var onCheck: (() -> Void)?
@@ -49,6 +53,7 @@ final class EarCenter: NSObject, ObservableObject {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         isOn = defaults.bool(forKey: Self.onKey)
+        soundsLikeSpeaker = defaults.bool(forKey: Self.soundsLikeSpeakerOnKey)
         super.init()
         synthesizer.delegate = self
         #if DEBUG
@@ -78,6 +83,11 @@ final class EarCenter: NSObject, ObservableObject {
         if on { warmUp() } else { stopAll() }
     }
 
+    func setSoundsLikeSpeaker(_ on: Bool) {
+        soundsLikeSpeaker = on
+        defaults.set(on, forKey: Self.soundsLikeSpeakerOnKey)
+    }
+
     /// The translation language changed (or was first read): pick its voice from what's on the device, and load it
     /// now, in Settings, so the first line isn't late (the spike: up to 10 s for the first sentence after a boot).
     func targetChanged(_ locale: Locale?) {
@@ -86,6 +96,11 @@ final class EarCenter: NSObject, ObservableObject {
         voice = locale.flatMap(Self.bestVoice(for:))
         stopAll()
         if isOn { warmUp() }
+    }
+
+    /// Update the tracked speaker voice traits (called from the caption session controller).
+    func updateSpeakerTraits(_ traits: [Int: SpeakerTraits]) {
+        speakerTraits = traits
     }
 
     /// The best installed voice that speaks `locale`'s language (VoiceCoverage, #237), premium before enhanced before
@@ -140,8 +155,15 @@ final class EarCenter: NSObject, ObservableObject {
         let utterance = AVSpeechUtterance(string: item.text)
         utterance.voice = voice
         // A little faster while more is waiting, so it catches up without skipping.
+        var rate = Float(EarPace.speed(waiting: queue.count))
+        var pitch = 1.0
+        if soundsLikeSpeaker, let match = VoiceMatch.match(speaker: item.phrase.speaker, from: speakerTraits, language: target?.language.minimalIdentifier ?? "") {
+            pitch = match.pitch
+            rate *= Float(match.rate)
+        }
         utterance.rate = min(AVSpeechUtteranceMaximumSpeechRate,
-                             AVSpeechUtteranceDefaultSpeechRate * Float(EarPace.speed(waiting: queue.count)))
+                             AVSpeechUtteranceDefaultSpeechRate * rate)
+        utterance.pitchMultiplier = Float(pitch)
         let start = Self.now
         current = (item, ObjectIdentifier(utterance), start)
         // Counted as said from now, with a generous end, so its echo is caught while it's still playing.

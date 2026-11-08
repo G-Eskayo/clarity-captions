@@ -47,6 +47,9 @@ targets:
       # iPhone check C2 runs both engines on the same audio (ADR 0025).
       - path: Resources/latency-fixture.wav
         buildPhase: resources
+      # Spanish speaker voice calibration for speaker adaptation (#247).
+      - path: Resources/voice-match-mac.json
+        buildPhase: resources
     # Hebrew's engine (#220): SEAL_ASR_MODEL=hebrew scripts/fetch-asr-models.sh. Copied in when it has been fetched, not a required
     # resource like Parakeet, until its release asset is published (a Decision on the PR): a build without it still
     # captions every other language, and Hebrew is then not offered.

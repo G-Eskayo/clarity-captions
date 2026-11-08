@@ -46,6 +46,24 @@ domain understanding only.
   alternatives (LS-EEND) are available but not bundled pending real-world measurements on resource
   budgets and latency — see [[0017]].
 
+## Live translation ("Speak it in my ear", #233)
+
+- **Speaker voice traits**: estimated acoustic properties of each speaker (pitch in Hz, speech rate
+  in words/second) collected during a session from audio samples and text timing, used to adapt
+  voice pitch and rate per speaker when translating (#247). Collected on-device, never persisted
+  or sent anywhere; dropped when the session ends.
+- **Voice matching**: matching a speaker's measured voice to a shipped calibration table so the
+  app's on-device synthesis can imitate each speaker's pitch and rate (#247, #254). Spanish only
+  at launch; English and others deferred pending measurement data. No per-user training: the
+  calibration table is measured once per language on a diverse sample of real speakers and shipped
+  with the app.
+
+## Speaker voice traits (#247, #254)
+
+- **Wire**: `SpeakerVoiceTracker` collects pitch (via autocorrelation on audio samples) and speech rate (via word timing) per diarizer speaker. Traits fed to `EarCenter` for voice synthesis pitch/rate modulation when "Sound like the speaker" is enabled (default off). Spanish calibration shipped; English and others deferred pending measurement.
+- **Setting**: "Sound like the speaker" under "Speak it in my ear" in Settings. Persisted flag `soundsLikeSpeakerOn`; when on, `EarCenter` applies calibration-derived pitch/rate to each speaker's translation. When off or no calibration, falls back to fixed voice.
+- **Timbre**: Deferred. Current implementation is pitch+rate adjustment only; full voice ID matching and AVSpeechSynthesisVoice(identifier:) selection reserved for later.
+
 ## Caption display
 
 - **Caption display settings**: user-controllable appearance of the live caption text —

@@ -4,6 +4,7 @@ import Foundation
 /// tests use a fake, so the lifecycle rules below are checked without a microphone or a speech model.
 public protocol CaptioningEngine: AnyObject {
     var startupReport: String { get }
+    var speakerTraits: [Int: SpeakerTraits] { get }
     func start() async throws -> AsyncThrowingStream<CaptionUpdate, Error>
     func soundLabelsStream() -> AsyncStream<SoundLabelKind>
     func audioLevelStream() -> AsyncStream<Double>
@@ -17,6 +18,8 @@ public protocol CaptioningEngine: AnyObject {
 public extension CaptioningEngine {
     /// Engines with nothing to load ahead (test fakes) are ready at once.
     func prepare(onStep: @escaping @Sendable (Int) -> Void) async throws {}
+    /// Engines that don't track speaker traits (test fakes) return empty.
+    var speakerTraits: [Int: SpeakerTraits] { [:] }
 }
 
 extension TranscriptionEngine: CaptioningEngine {}
@@ -36,11 +39,15 @@ public final class CaptionSessionController {
     public private(set) var state: CaptionState = .idle {
         didSet { if state != oldValue { onStateChange(state) } }
     }
+    public private(set) var speakerTraits: [Int: SpeakerTraits] = [:] {
+        didSet { if speakerTraits != oldValue { onSpeakerTraitsChange(speakerTraits) } }
+    }
     public var onStateChange: (CaptionState) -> Void = { _ in }
     public var onUpdate: (CaptionUpdate) -> Void = { _ in }
     public var onSoundLabel: (SoundLabelKind) -> Void = { _ in }
     public var onAudioLevel: (Double) -> Void = { _ in }
     public var onStartup: (String) -> Void = { _ in }
+    public var onSpeakerTraitsChange: ([Int: SpeakerTraits]) -> Void = { _ in }
 
     private let makeEngine: () throws -> CaptioningEngine
     private var task: Task<Void, Never>?
@@ -154,6 +161,13 @@ public final class CaptionSessionController {
                 group.addTask { @MainActor [weak self] in
                     for await level in levels { self?.onAudioLevel(level) }
                     return false
+                }
+                group.addTask { @MainActor [weak self] in
+                    while true {
+                        try await Task.sleep(for: .milliseconds(100))
+                        guard let self else { return false }
+                        self.speakerTraits = engine.speakerTraits
+                    }
                 }
                 while let captionsEnded = try await group.next() {
                     if captionsEnded { group.cancelAll(); break }

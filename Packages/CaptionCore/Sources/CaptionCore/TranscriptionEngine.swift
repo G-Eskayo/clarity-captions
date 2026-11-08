@@ -102,6 +102,11 @@ public final class TranscriptionEngine {
     private var soundLabelerStream: AsyncStream<SoundLabelKind>?
     private var audioLevelStreamValue: AsyncStream<Double>?
     private var audioLevelContinuation: AsyncStream<Double>.Continuation?
+    private let speakerVoiceTracker = SpeakerVoiceTracker()
+    private var speakerLabelSmoother = SpeakerLabelSmoother()
+    /// Mapping from raw diarizer speaker IDs to smoothed speaker IDs, built up during the session.
+    private var speakerIDMapping: [Int: Int] = [:]
+    private let speakerMappingLock = NSLock()
     /// Spike-only: how long each startup step took, for the developer panel. Measured, not guessed.
     public private(set) var startupReport = ""
     private var loudnessTracker = LoudnessWordTracker()
@@ -140,6 +145,9 @@ public final class TranscriptionEngine {
     public var decodeSeconds: (p50: Double, p95: Double)? {
         decodeLock.withLock { decodeTimes.value(at: 0.5).flatMap { p50 in decodeTimes.value(at: 0.95).map { (p50, $0) } } }
     }
+
+    /// Per-speaker acoustic traits for voice matching (#247).
+    public var speakerTraits: [Int: SpeakerTraits] { speakerVoiceTracker.traits }
 
     /// The recognizer captions are on now ("parakeet-ultra-pal6" / "apple-speechanalyzer"): beta report, diagnostics.
     /// Stays set after Stop, so the report written at the end of a session still names it.
@@ -306,6 +314,9 @@ public final class TranscriptionEngine {
 
         let inFormat = try source.open()
         let wallTime = FedWallTime()
+        // Reset per-session state: speaker label smoother and speaker ID mapping.
+        speakerLabelSmoother = SpeakerLabelSmoother()
+        speakerMappingLock.withLock { speakerIDMapping.removeAll() }
         if let faceToFace {
             self.inFormat = inFormat
             let lanes = try await faceToFace.start()
@@ -473,6 +484,7 @@ public final class TranscriptionEngine {
             diarizer.feed(samples)
             soundLabeler.feed(samples, atAudioTime: fed.seconds)
             let level = recordLoudness(samples: samples, atAudioTime: fed.seconds)
+            speakerVoiceTracker.feed(samples, sampleRate: 16_000, bufferStartTime: fed.seconds, segments: diarizer.segments)
             if let faceToFace {
                 faceToFace.feed(samples, at: fed.seconds, level: level, segments: diarizer.segments)
             } else if format == nil {
@@ -512,13 +524,34 @@ public final class TranscriptionEngine {
             let task = Task {
                 do {
                     var lagTracker = WordLagTracker()
-                    var labels = SpeakerLabelSmoother()     // one per session (#91)
                     for await stream in pieces {
                         for try await piece in stream {
                             guard let self else { break }
                             let speaker = (piece.start.flatMap { st in piece.end.map { (st, $0) } })
-                                .flatMap { labels.label(start: $0.0, end: $0.1, segments: self.diarizer.segments, isFinal: piece.isFinal) }
+                                .flatMap { self.speakerLabelSmoother.label(start: $0.0, end: $0.1, segments: self.diarizer.segments, isFinal: piece.isFinal) }
                             let lag = wallTime.elapsedSinceStart().flatMap { lagTracker.sample(elapsed: $0, audioEnds: piece.wordEnds) }
+                            if piece.isFinal, let start = piece.start, let end = piece.end, let smoothedSpeaker = speaker {
+                                let speechSeconds = end - start
+                                // Map raw diarizer speaker IDs to smoothed speaker IDs to align pitch and rate samples.
+                                if let rawSegments = self.diarizer.segments as? [SpeakerSegment] {
+                                    for segment in rawSegments {
+                                        if segment.start < end, segment.end > start {
+                                            let mapping = self.speakerMappingLock.withLock { () -> (found: Bool, needsUpdate: Bool) in
+                                                let found = self.speakerIDMapping[segment.speaker] != nil
+                                                let needsUpdate = !found && self.speakerIDMapping[segment.speaker] != smoothedSpeaker
+                                                if !found {
+                                                    self.speakerIDMapping[segment.speaker] = smoothedSpeaker
+                                                }
+                                                return (found, needsUpdate)
+                                            }
+                                            if !mapping.found {
+                                                self.speakerVoiceTracker.remapSpeaker(from: segment.speaker, to: smoothedSpeaker)
+                                            }
+                                        }
+                                    }
+                                }
+                                self.speakerVoiceTracker.addLine(speaker: smoothedSpeaker, text: piece.text, speechSeconds: speechSeconds)
+                            }
                             var update = CaptionUpdate(text: piece.text, isFinal: piece.isFinal, lagSeconds: lag, speaker: speaker,
                                                        startSeconds: piece.start, endSeconds: piece.end,
                                                        diagnostics: self.diagnostics, wordEmphasis: self.wordEmphasis(piece.words))

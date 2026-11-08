@@ -1,0 +1,18 @@
+[
+  {
+    "pitchSemitones": -3,
+    "rateMultiplier": 0.95
+  },
+  {
+    "pitchSemitones": 2,
+    "rateMultiplier": 1.05
+  },
+  {
+    "pitchSemitones": -5,
+    "rateMultiplier": 0.98
+  },
+  {
+    "pitchSemitones": 4,
+    "rateMultiplier": 1.08
+  }
+]

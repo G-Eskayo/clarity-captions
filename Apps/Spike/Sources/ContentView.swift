@@ -87,6 +87,14 @@ final class CaptionModel: ObservableObject {
     private var restoredOnColdLaunch = false
 
     init() {
+        // Load Spanish voice calibration for speaker adaptation (#247).
+        if let calibrationURL = Bundle.main.url(forResource: "voice-match-mac", withExtension: "json") {
+            if let data = try? Data(contentsOf: calibrationURL),
+               let calibration = try? JSONDecoder().decode([VoiceCalibration].self, from: data) {
+                VoiceMatch.spanishCalibration = calibration
+            }
+        }
+
         controller = CaptionSessionController(makeEngine: { [weak self] in
             guard let self else { throw CancellationError() }
             if self.faceToFace {
@@ -124,6 +132,9 @@ final class CaptionModel: ObservableObject {
             guard let self else { return }
             self.roomLevelDBFS = level
             self.beta.audioLevel(self.session, level)
+        }
+        controller.onSpeakerTraitsChange = { traits in
+            EarCenter.shared.updateSpeakerTraits(traits)
         }
         controller.onUpdate = { [weak self] u in
             guard let self else { return }
