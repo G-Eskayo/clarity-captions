@@ -6,7 +6,8 @@ import Translation
 /// #60: the face-to-face split on iPad and the unfolded iPhone Duo. The owner's half is at the bottom, facing
 /// her; the other person's half is at the top, turned 180° to face them. A short line across the middle, well short
 /// of both edges, divides them (owner, 2026-10-29). Each half shows its own speaker's words as said and the other
-/// person's words translated, translation on top behind the translate mark, what was said smaller underneath (#171).
+/// person's words translated: folded, just the translation with the translate mark after it, and a tap shows what was
+/// said underneath (#246, owner on PR #255).
 struct FaceToFaceView<Control: View>: View {
     let style: CaptionStyle
     let device: CaptionDeviceClass
@@ -15,6 +16,8 @@ struct FaceToFaceView<Control: View>: View {
     /// Each half's language, named in that language: the one its list picked (#208).
     let ownerLanguage: String
     let partnerLanguage: String
+    /// `-ClarityDemoSaidOpen` (screenshots): each half's newest translated line starts opened.
+    var demoOpensNewestSaid = false
     /// #208: a half that hasn't picked its language (or is picking again) shows the stacked, dimmed list of downloaded
     /// languages instead of its lines; nil once it has picked. Tapping one starts that half.
     var ownerChoices: [String]? = nil
@@ -33,6 +36,10 @@ struct FaceToFaceView<Control: View>: View {
     /// the paused split (#208, seen on the iPad simulator).
     @State private var ownerScroll = ScrollPosition(edge: .bottom)
     @State private var partnerScroll = ScrollPosition(edge: .bottom)
+    /// #246: which translated lines show what was said, per half (each reader taps their own).
+    @State private var ownerFold = SaidFold()
+    @State private var partnerFold = SaidFold()
+    @State private var demoOpened: [Bool: Int] = [:]
 
     var body: some View {
         GeometryReader { geo in
@@ -91,13 +98,18 @@ struct FaceToFaceView<Control: View>: View {
             .accessibilityHint(String(localized: "Pick another language"))
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 14) {
-                    ForEach(entries) { entry in line(entry) }
+                    ForEach(entries) { entry in line(entry, fold: isOwner ? $ownerFold : $partnerFold) }
                 }
                 .padding(.horizontal, 8)
             }
             .scrollPosition(position)
             .defaultScrollAnchor(.bottom)
-            .onChange(of: entries) { _, _ in position.wrappedValue.scrollTo(edge: .bottom) }
+            .onChange(of: entries) { _, _ in
+                position.wrappedValue.scrollTo(edge: .bottom)
+                (isOwner ? $ownerFold : $partnerFold).wrappedValue.keep(only: entries.map(\.id))   // a new conversation starts folded
+                openDemoSaid(entries, isOwner: isOwner)
+            }
+            .onAppear { openDemoSaid(entries, isOwner: isOwner) }
             .contentMargins(.bottom, isOwner ? 72 + 12 : 12, for: .scrollContent)
             .mask {
                 VStack(spacing: 0) {
@@ -110,19 +122,25 @@ struct FaceToFaceView<Control: View>: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    /// Debug screenshots only: the half's newest translated line opened (the demo plays its flow, so it follows along).
+    private func openDemoSaid(_ entries: [FaceToFaceEntry], isOwner: Bool) {
+        guard demoOpensNewestSaid, let id = entries.last(where: \.isTranslated)?.id, demoOpened[isOwner] != id else { return }
+        var fold = isOwner ? ownerFold : partnerFold
+        if let old = demoOpened[isOwner], fold.isOpen(old) { fold.tap(old) }
+        if !fold.isOpen(id) { fold.tap(id) }
+        demoOpened[isOwner] = id
+        if isOwner { ownerFold = fold } else { partnerFold = fold }
+    }
+
     @ViewBuilder
-    private func line(_ entry: FaceToFaceEntry) -> some View {
+    private func line(_ entry: FaceToFaceEntry, fold: Binding<SaidFold>) -> some View {
         let font = style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: device)
         VStack(alignment: .leading, spacing: 2) {
             if let said = entry.said {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Image(systemName: "translate").font(.subheadline.bold()).foregroundStyle(mutedColor(style))
-                    Text(entry.text).font(font)
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(String(localized: "Translated: ") + entry.text)
-                Text(said).font(.body).foregroundStyle(mutedColor(style))
-                    .accessibilityLabel(String(localized: "Said: ") + said)
+                TranslatedCaptionView(translated: entry.text, said: said, font: font,
+                                      text: style.text.color, muted: mutedColor(style), mark: style.gear.color,
+                                      volatileOpacity: style.volatileOpacity, isOpen: fold.wrappedValue.isOpen(entry.id),
+                                      onTap: { fold.wrappedValue.tap(entry.id) })
             } else {
                 Text(entry.text).font(entry.isSoundLabel ? font.italic() : font)
                     .opacity(entry.isFinal ? 1 : style.volatileOpacity)

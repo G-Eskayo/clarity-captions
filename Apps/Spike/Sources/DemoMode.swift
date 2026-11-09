@@ -43,6 +43,8 @@ import Foundation
 ///                     headphones taken as connected (the simulator's only output is its speaker) except `noheadphones`.
 ///                     `mark` holds the newest spoken line part-way said; `speak` really speaks it. With
 ///                     -ClarityDemoTranslate sr: a language with no voice (Serbian).
+///   -ClarityDemoSaidOpen   #246: with -ClarityDemoTranslate (one-way) or -ClarityDemoFaceToFace (the split), the newest
+///                     translated line but one starts opened, showing what was said (screenshots of both states)
 ///   -ClarityDemoEarMatch on|one   with -ClarityDemoEar: Sound like the speaker on (#247, PR #254), matching, or `one`:
 ///                     the language has no measured voice, so everyone gets the same one.
 ///   -ClarityDemoFaceToFaceStopAfter <step>   the same flow, then Stop tapped at that moment (#245: it always leaves)
@@ -110,6 +112,8 @@ enum DemoMode {
     static var translationOwned: Bool { flag("-ClarityDemoTranslationOwned") }
     /// `-ClarityDemoEar <variant>`: Live Translation in your ear (#233), on, in one of its states.
     static var ear: String? { value(after: "-ClarityDemoEar") }
+    /// `-ClarityDemoSaidOpen`: #246, one translated line starts opened (screenshots).
+    static var saidOpen: Bool { flag("-ClarityDemoSaidOpen") }
     /// `-ClarityDemoEarMatch on|one`: Sound like the speaker (#247, PR #254) on, matching or with one voice for everyone.
     static var earMatch: String? { value(after: "-ClarityDemoEarMatch") }
     /// `-ClarityDemoIntoSpeechProgress 0.4` (#245): Into's speech model mid-download in Settings.

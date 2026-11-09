@@ -30,6 +30,10 @@ domain understanding only.
   like "[Doorbell]" or "[Laughter]" — added to the stream independently of speech captions and
   never replacing or hiding spoken text. Distinct from speaker-turn labeling (which identifies
   *who* is speaking) and not a safety alert or notification. See [[0016]].
+- **Folded translated caption**: how every translated caption looks (owner, PR #255, #246): just
+  the translation, with a small mark after its last word (the translate mark, or the speaker mark
+  while the voice says it in her ear). What was said, in its own language, is hidden until she taps
+  the line; another tap hides it again. Same on the iPhone, in the face-to-face split and on the Mac.
 
 ## Transcription engine
 
