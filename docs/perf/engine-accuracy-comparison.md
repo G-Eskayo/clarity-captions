@@ -167,41 +167,36 @@ Result lines read: 152287; corrupt lines skipped: 0; duplicates ignored: 0.
 
 ## Low-bit builds (#203)
 
-#203 "[E] 2-bit north star, English first": data-free 3-bit, 2-bit and mixed 2/4/6-bit builds of Parakeet Ultra
-(`compress_parakeet.py --variants ultra-pal3,ultra-pal2,ultra-mixed246`), scored on all of EdAcc like #150. Chain:
-`scripts/engine-eval/m4-low-bit.sh` (written to `~/edacc-eval/results-203`, not by the 2012 scorer).
+#203 "[E] 2-bit north star, English first": data-free 3-bit, 2-bit and two mixed builds of Parakeet Ultra
+(`compress_parakeet.py --variants ultra-pal3,ultra-pal2,ultra-mixed246,ultra-mixed24`), scored on all of EdAcc like
+#150. Chain: `scripts/engine-eval/m4-low-bit.sh`, run on the M4 on 2026-10-30 (accuracy 08:37–11:58 UTC), written to
+`~/edacc-eval/results-203` (now parked on the 2012 mini), not by the 2012 scorer. Every build ran all 17,529 clips
+(31.55 h), the same clips as #150 (`match-shards`: 0 moved, 0 missing).
 
-**Status, 2026-10-29: the three new builds have not been made yet, so there are no WER, size or speed rows for
-them.** The fp16 Ultra encoder they're cut from has to be exported again (#150's export was deleted to save disk),
-and that needs the mobius conversion env (torch, NeMo, coremltools 9.0b1). Installing it was refused on the
-unattended run. Everything after the export is ready and was tested: the build code, the EdAcc shards (rebuilt on
-the M4, every one of #150's 17,529 clips in the same shard) and the scoring.
+**Result: data-free k-means below 4 bits breaks the model.** 3-bit more than doubles the error, the mixed builds are
+worse, and 2-bit outputs nothing at all (every word deleted). The errors are almost all deletions: the model drops
+words rather than mishearing them. None of these can ship, and none is a 2-bit north star; reaching that needs data:
+calibration first, then fine-tuning (#272).
 
-| Build | Bits per encoder weight | On disk | WER (95% CI) | Speed (x real time) |
-|---|---|---:|---|---:|
-| ultra-pal3 | 3 | not built | not run | not run |
-| ultra-pal2 | 2 | not built | not run | not run |
-| ultra-mixed246 | 6 front end and first/last block, 4 attention, 2 the rest (about 2.7 on average) | not built | not run | not run |
+| Build | Bits per encoder weight | On disk | Zipped | WER (95% CI) | Deletions | x real time, shard 1 | Correct word, median / p95 | Words right in final | Peak memory |
+|---|---|---:|---:|---|---:|---:|---|---:|---:|
+| ultra-pal6 (ships; #150) | 6 | 498 MB | 485 MB | 13.8% (12.8%–14.8%) | 15,046 | 109.6x | 0.25 s / 1.35 s | 87.1% | 50 MB |
+| ultra-pal4 (#150) | 4 | 350 MB | 320 MB | 14.8% (13.7%–15.8%) | 18,663 | – | 0.27 s / 1.44 s | 85.9% | 60 MB |
+| ultra-pal3 | 3 | 276 MB | 263 MB | 33.6% (30.8%–36.5%) | 62,693 | 81.3x | 0.38 s / 2.10 s | 63.9% | 50 MB |
+| ultra-mixed246 | 2.73 (6 front end and first/last block, 4 attention, 2 the rest) | 253 MB | 235 MB | 60.5% (57.4%–63.5%) | 140,165 | 46.5x | 0.46 s / 3.20 s | 38.5% | 50 MB |
+| ultra-mixed24 | 2.21 (4 front end and first/last block, 2 the rest) | 216 MB | 198 MB | 83.4% (80.9%–85.6%) | 229,946 | 33.3x | 0.61 s / 3.60 s | 16.4% | 49 MB |
+| ultra-pal2 | 2 | 203 MB | 187 MB | 100.0% (100.0%–100.0%) | 298,964 (all) | 16.3x | no words | 0.0% | 50 MB |
 
-### Speed check on a quiet machine (shard 1, the builds that exist)
+WER over all 17,529 clips (298,964 reference words); the #150 rows are over the 17,528 clips every #150 engine shared.
+Latency and memory: shard 1 (526 clips up to 30 s, 60 clips for memory), 6-bit measured again in the same chain.
 
-The same 548 clips, one run each, M4 Mac mini at nice +15, 2026-10-29 23:32–23:50 UTC. Load was sampled every 30 s
-(37 samples): 1-minute load average median 3.8 on 10 cores, CPU idle median 63% (lowest 29%, while the Neural
-Engine compiler and Spotlight ran during the first model load). Another session's test suite (one Python process,
-about one core) ran for part of the window. Nothing else heavy ran.
+**Did fewer bits run faster than 6-bit? No, slower.** On shard 1, 6-bit ran at 109.6x real time just before the new
+builds; 3-bit at 81.3x, the mixed builds at 46.5x and 33.3x, and 2-bit at 16.3x. The per-clip median barely moved
+(48.5 ms for 6-bit, 47.0 ms for 3-bit, 51.5 and 55.3 ms mixed): the time goes on long clips. The likely cause is the
+decoder rather than the encoder: with a damaged encoder output the TDT decoder takes many more steps per clip. That
+is an inference from the medians, not a profile. Either way, below 4 bits these builds are slower *and* far less
+accurate. Load during the accuracy run: 1-minute load average median 3.9 on 10 cores, CPU idle median 66% (400
+samples, `load.tsv`), with heavy spells from other work (idle under 5% in a tenth of samples), so treat the speeds as
+indicative; the shard-1 ordering is the same as the full-run ordering (74.9x, 48.6x, 33.2x, 27.4x).
 
-| Build | WER on shard 1 (95% CI) | x real time, today | x real time, #150 (same shard) | Median per clip | Correct word, median / p95 |
-|---|---|---:|---:|---:|---|
-| parakeet-ultra-coreml (int8, published) | 13.3% (11.8%–15.0%) | 122.5x | 121.6x | 43.2 ms | 0.24 s / 1.34 s |
-| ultra-pal6 (ships) | 13.4% (11.9%–15.0%) | 108.3x | 113.4x | 49.1 ms | 0.24 s / 1.35 s |
-| ultra-pal4 | 14.1% (12.6%–15.8%) | 108.2x | 112.6x | 47.6 ms | 0.27 s / 1.43 s |
-
-**Did fewer bits run faster than 6-bit?** No. 4-bit ran at the same speed as 6-bit (108.2x vs 108.3x), and both
-were about 12% slower than the published 8-bit build (122.5x). That repeats #150's ordering on the same shard.
-3-bit and 2-bit haven't been measured; the chain runs 6-bit again next to them, in the same hour, so that
-comparison will be like for like.
-
-- The rebuilt audio gives the same transcripts as #150's: 1,642 of 1,644 clip results are identical. The two that
-  differ are one clip each for 6-bit and 8-bit, with small wording changes at the end of a phrase.
-- Correct-word latency barely moves between builds, because the 0.5 s hop sets it, not decode time.
-
+On the 2026-11-09 held-out test split (below, #272) the same builds score the same: 3-bit 34.0%, 6-bit 13.9%.

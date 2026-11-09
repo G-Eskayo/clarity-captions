@@ -130,3 +130,66 @@ def test_lower_mixed_plan_average_on_ultra_shapes_is_near_two_point_two():
     avg = average_bits(mixed_plan(names(), layout="ultra-mixed24"), sizes)
     assert 2.0 < avg < 2.3
     assert avg < average_bits(mixed_plan(names()), sizes)
+
+
+# --- #272: bit plan from measured sensitivity --------------------------------------------------------------------
+
+from edacc_eval.lowbit import plan_from_sensitivity  # noqa: E402
+
+
+def sens(deltas, params, base=0.010, low=4):
+    """deltas: group -> extra rel error at `low` bits; each group holds one weight named after it."""
+    groups = {g: [f"{g}.w"] for g in deltas}
+    rows = {"all@6": {"rel_error": base}}
+    rows.update({f"{g}@{low}": {"rel_error": base + d} for g, d in deltas.items()})
+    sizes = {f"{g}.w": params[g] for g in deltas}
+    return {"meta": {"groups": groups, "base_bits": 6}, "rows": rows}, sizes
+
+
+def test_promotes_the_most_sensitive_per_weight_first():
+    s, sizes = sens({"a": 0.05, "b": 0.01, "c": 0.002}, {"a": 100, "b": 100, "c": 100})
+    plan, _ = plan_from_sensitivity(s, sizes, target_bits=4 + 2 / 3)   # room for exactly one group at 6
+    assert plan == {"a.w": 6, "b.w": 4, "c.w": 4}
+
+
+def test_cost_is_per_weight_not_per_group():
+    # big group a hurts more in total but far less per weight than small group b
+    s, sizes = sens({"a": 0.04, "b": 0.03}, {"a": 1000, "b": 10})
+    plan, _ = plan_from_sensitivity(s, sizes, target_bits=4.05)
+    assert plan["b.w"] == 6 and plan["a.w"] == 4
+
+
+def test_never_exceeds_the_bit_budget():
+    rng = __import__("random").Random(7)
+    d = {f"g{i}": rng.random() for i in range(40)}
+    p = {f"g{i}": rng.randint(10, 1000) for i in range(40)}
+    s, sizes = sens(d, p)
+    for t in (4.0, 4.3, 4.75, 5.5):
+        plan, _ = plan_from_sensitivity(s, sizes, target_bits=t)
+        assert average_bits(plan, sizes) <= t + 1e-9
+
+
+def test_budget_at_or_below_low_is_all_low_and_at_high_is_all_high():
+    s, sizes = sens({"a": 0.1, "b": 0.2}, {"a": 5, "b": 5})
+    assert set(plan_from_sensitivity(s, sizes, target_bits=4)[0].values()) == {4}
+    assert set(plan_from_sensitivity(s, sizes, target_bits=6)[0].values()) == {6}
+
+
+def test_missing_measurement_is_refused():
+    s, sizes = sens({"a": 0.1, "b": 0.2}, {"a": 5, "b": 5})
+    del s["rows"]["b@4"]
+    with pytest.raises(ValueError):
+        plan_from_sensitivity(s, sizes, target_bits=5)
+
+
+def test_weight_outside_every_group_is_refused():
+    s, sizes = sens({"a": 0.1}, {"a": 5})
+    sizes["stray.w"] = 3
+    with pytest.raises(ValueError):
+        plan_from_sensitivity(s, sizes, target_bits=5)
+
+
+def test_ties_break_by_name_so_the_plan_is_reproducible():
+    s, sizes = sens({"b": 0.1, "a": 0.1}, {"a": 10, "b": 10})
+    plan, _ = plan_from_sensitivity(s, sizes, target_bits=5)
+    assert plan == {"a.w": 6, "b.w": 4}

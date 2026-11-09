@@ -52,3 +52,41 @@ def average_bits(plan: dict[str, int], sizes: dict[str, int]) -> float:
         raise ValueError(f"no size for {len(missing)} weight(s), e.g. {missing[0]}")
     total = sum(sizes[n] for n in plan)
     return sum(plan[n] * sizes[n] for n in plan) / total
+
+
+def plan_from_sensitivity(sens: dict, sizes: dict[str, int], target_bits: float, low: int = 4,
+                          high: int = 6) -> tuple[dict[str, int], str]:
+    """#272 step 2: every weight at `low` bits, then whole module groups promoted to `high`, most damaging per weight
+    first, while the weight-averaged width stays within target_bits.
+
+    sens: calibrated_ultra.py sensitivity output. A group's damage is the encoder-output error it adds when it alone
+    drops from the base width to `low` (rows "G@low" vs "all@base"); per weight = damage / weights in the group.
+    Greedy knapsack: optimal for equal-sized groups, near-optimal otherwise. Ties break by group name.
+    """
+    groups: dict[str, list[str]] = sens["meta"]["groups"]
+    rows = sens["rows"]
+    base = rows[f"all@{sens['meta']['base_bits']}"]["rel_error"]
+    member = {n: g for g, ns in groups.items() for n in ns}
+    stray = [n for n in sizes if n not in member]
+    if stray:
+        raise ValueError(f"{len(stray)} weight(s) in no sensitivity group, e.g. {stray[0]}")
+    missing = [g for g in groups if f"{g}@{low}" not in rows]
+    if missing:
+        raise ValueError(f"no {low}-bit measurement for {len(missing)} group(s), e.g. {missing[0]}")
+    gsize = {g: sum(sizes[n] for n in ns if n in sizes) for g, ns in groups.items()}
+    total = sum(sizes.values())
+    budget = (target_bits - low) * total        # extra bit-weights available above `low`
+    order = sorted(groups, key=lambda g: (-(rows[f"{g}@{low}"]["rel_error"] - base) / max(gsize[g], 1), g))
+    plan = {n: low for n in sizes}
+    promoted = []
+    for g in order:
+        cost = (high - low) * gsize[g]
+        if cost <= budget + 1e-9:
+            budget -= cost
+            promoted.append(g)
+            for n in groups[g]:
+                if n in plan:
+                    plan[n] = high
+    desc = (f"mixed {low}/{high}-bit from measured layer sensitivity: {len(promoted)} of {len(groups)} module groups "
+            f"at {high} bits, the rest {low}")
+    return plan, desc
