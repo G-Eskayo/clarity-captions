@@ -1,0 +1,8 @@
+1. Immediately before posting, re-read PR #267's current description and comment list in full (guards against further changes since this plan was drafted).
+2. Draft the reply comment for PR #267 containing `<!-- marvin:decisions-addressed -->`, stating:
+   - the chosen option is carried out: 1.1.0 (10) stands as the released artifact for the Korea tester; no new build/upload; feedback continues through the share sheet / TestFlight's screenshot feedback, which is already how build 10 behaves;
+   - no commit was made (none was needed) and no screenshots were retaken — the PR carries no look-changing content, so there's nothing to re-pin;
+   - the separate "Denied by dashboard review" `GATE_TESTS_FAILED` status is unrelated to this decision: it's caused by the merge gate's temp worktree not running `scripts/fetch-asr-models.sh` before building, so `Resources/Models/ParakeetUltra` (gitignored, ADR 0025) is missing — a pipeline/merge-gate defect, not a defect in build 10.
+3. Post it with `gh pr comment 267 --repo G-Eskayo/clarity-captions --body-file <tmp>` (no `marvin:decisions` block needed — the comment only reports, it asks nothing new).
+4. Surface the merge-gate's missing model-fetch step to Gil as a separate, out-of-repo infra gap (it lives in the pipeline's merge-gate script, not in `clarity-captions`) rather than silently leaving it to keep blocking every future PR that touches `Apps/Spike` — flag, don't fix unilaterally, since it's outside this ticket's scope and this repo.
+5. No clarity-captions commit is required to close ticket #270; per `lib/owner_decisions.py`, the marker-bearing reply alone counts as "addressed."
