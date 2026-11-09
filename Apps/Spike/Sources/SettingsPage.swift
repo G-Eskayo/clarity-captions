@@ -25,6 +25,8 @@ struct SettingsPage: View {
     var onChooseTranslationTarget: (() -> Void)?
     /// #233: Speak it in my ear, on or off.
     var onEar: ((Bool) -> Void)?
+    /// #247 (PR #254): Sound like the speaker, on or off.
+    var onEarMatch: ((Bool) -> Void)?
     /// The translation purchase (#53): StoreKit is wired with the feature; the mock-up only shows the two states.
     var onBuyTranslation: (() -> Void)?
     var onRestorePurchases: (() -> Void)?
@@ -257,8 +259,10 @@ struct SettingsPage: View {
             // #233's ear rows are iPhone and iPad only: the Mac target has no EarViews.swift, and hides this section (#209).
             #if !os(macOS)
             if language.earOffered {
-                EarSettingsRows(style: style, state: language.ear, target: language.target.map(LanguageSettingsState.name) ?? "",
-                                font: { scaled($0, $1) }, muted: muted, softFill: softFill) { onEar?($0) }
+                EarSettingsRows(style: style, state: language.ear, match: language.earMatch,
+                                target: language.target.map(LanguageSettingsState.name) ?? "",
+                                font: { scaled($0, $1) }, muted: muted, softFill: softFill,
+                                onChange: { onEar?($0) }, onMatch: { onEarMatch?($0) })
                     .padding(.top, 4)
             }
             #endif

@@ -778,6 +778,7 @@ struct ContentView: View {
                          onTranslation: { translation.setOn($0) },
                          onChooseTranslationTarget: { go { $0.open(.translationTarget) } },
                          onEar: { ear.setOn($0) },
+                         onEarMatch: { ear.setMatch($0) },
                          onBuyTranslation: { Task { await translation.unlock() } },
                          onRestorePurchases: { Task { await translation.restore() } })
         case .translationTarget:
