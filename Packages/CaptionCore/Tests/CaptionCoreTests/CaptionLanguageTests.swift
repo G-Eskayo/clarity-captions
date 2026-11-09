@@ -121,4 +121,22 @@ final class CaptionLanguageTests: XCTestCase {
         let c = CaptionLanguage.resolve(saved: Locale(identifier: "es-ES"), preferred: ["en-US"], supported: [])
         XCTAssertEqual(c, .use(Locale(identifier: "es-ES")))
     }
+
+    // MARK: Languages Seal brings itself (#220)
+
+    func testHebrewJoinsTheListWhenSealHasItsOwnEngineForIt() {
+        let list = CaptionLanguage.adding(locales("he-IL"), to: locales("en-US", "es-ES"))
+        XCTAssertEqual(list.map(CaptionLanguage.bcp47), ["en-US", "es-ES", "he-IL"])
+    }
+
+    func testALanguageAppleAlreadyListsIsNotRepeated() {
+        let list = CaptionLanguage.adding(locales("he-IL", "en-US"), to: locales("en-US", "he-IL"))
+        XCTAssertEqual(list.map(CaptionLanguage.bcp47), ["en-US", "he-IL"])
+    }
+
+    func testAHebrewPhoneSettlesOnHebrewOnceItIsListed() {
+        let list = CaptionLanguage.adding(locales("he-IL"), to: locales("en-US"))
+        XCTAssertEqual(CaptionLanguage.defaultChoice(preferred: ["he-IL", "en-US"], supported: list), .use(Locale(identifier: "he-IL")))
+        XCTAssertEqual(CaptionLanguage.defaultChoice(preferred: ["he", "en-US"], supported: list), .use(Locale(identifier: "he-IL")))
+    }
 }

@@ -129,6 +129,7 @@
     <nav class="version-nav" id="releases" aria-label="Choose a version" data-default="v1-0">
       <a href="#v1-0">1.0</a>
       <a href="#v1-1">1.1</a>
+      <a href="#v1-2">1.2</a>
     </nav>
   </div>
 
@@ -159,13 +160,13 @@
       </div>
       <div id="v1-0-1">
       <div class="card release">
-        <h3>1.0.1 <span class="badge">Coming next</span></h3>
+        <h3>1.0.1 <span class="badge">Became 1.1</span></h3>
         <p>Display fixes.</p>
         <ul>
           <li>A full-screen iPad layout, with the captions using the whole screen.</li>
           <li>It also works on iPhone Duo, folded or open.</li>
         </ul>
-        <p class="note">Not on the App Store yet. No date.</p>
+        <p class="note">This didn't ship on its own. It's part of 1.1.0.</p>
       </div>
       </div>
     </div>
@@ -177,15 +178,17 @@
     <div class="wrap">
       <h2 id="v11-h">Version 1.1</h2>
       <div class="card release">
-        <h3 id="v1-1-0">1.1.0 <span class="badge">Planned</span></h3>
+        <h3 id="v1-1-0">1.1.0 <span class="badge">Coming next</span></h3>
         <ul>
-          <li>A new engine makes the captions: Parakeet Ultra instead of Apple's speech recognition. In our tests it makes fewer mistakes and the words show up sooner. The story is <a href="#engine">below</a>.</li>
-          <li>Captions in more languages. Parakeet understands 25 European languages: Bulgarian, Croatian, Czech, Danish, Dutch, English, Estonian, Finnish, French, German, Greek, Hungarian, Italian, Latvian, Lithuanian, Maltese, Polish, Portuguese, Romanian, Russian, Slovak, Slovenian, Spanish, Swedish and Ukrainian. So far we have measured English, Spanish, French and German (<a href="#languages">below</a>), and we test each of the others before switching it on.</li>
-          <li>Live translation of the captions into another language, right on your phone. It is an optional add-on, bought once as an in-app purchase: $4.99 on iPhone, iPad and iPhone Duo, and $1.99 on the Mac. Captions in every language stay part of the app. It uses Apple's on-device translation, the most accurate engine we tested (<a href="#translation">below</a>).</li>
+          <li>Seal Speak runs on iPad, with the captions using the whole screen, and on iPhone Duo, folded or open.</li>
+          <li>A new engine makes the captions in English, Spanish, French, German, Italian and Portuguese: Parakeet Ultra instead of Apple's speech recognition. In our tests it makes fewer mistakes and the words show up sooner. The story is <a href="#engine">below</a>.</li>
+          <li>Captions in more languages: pick from the ones your device's speech recognition offers. English, Spanish, French, German, Italian and Portuguese run on Parakeet. Japanese, Korean and Chinese run on Apple's engine.</li>
+          <li>Live Translation, coming (still in testing): the captions translated into your language as people talk, on your device with Apple's translation, and spoken into your headphones if you want. An optional add-on, bought once: $4.99 on iPhone, iPad and iPhone Duo. Captions stay part of the app.</li>
+          <li>Face to face, part of Live Translation, on iPad and on iPhone Duo when it's open: lay it flat between you, each half picks its language, and both people read the whole conversation.</li>
           <li>It still works with no internet, and nothing leaves your device.</li>
           <li>The app gets bigger: the new caption model is about 498 MB.</li>
         </ul>
-        <p class="note">Planned, not built yet. The new engine has run on a Mac; we still need to check it on an iPhone. No date.</p>
+        <p class="note">Not on the App Store yet.</p>
       </div>
     </div>
   </section>
@@ -258,7 +261,7 @@
           <li>It is fast to show words (median 0.25 s), and it runs on the phone with no internet.</li>
         </ul>
         <p><strong>If it does not work out on an iPhone,</strong> the fallback is Parakeet Ultra 4-bit: smaller (350 MB), about a point less accurate, still better than Apple.</p>
-        <p class="note">What we have not shown yet: these tests ran on a Mac with one set of recordings. The next step is checking on an iPhone. Until then, Seal Speak uses Apple's recognition. The switch arrives in 1.1.0. Captions can still contain mistakes with any engine.</p>
+        <p class="note">These tests ran on a Mac with one set of recordings. 1.1.0 uses Parakeet Ultra 6-bit for captions in English, Spanish, French, German, Italian and Portuguese. Captions can still contain mistakes with any engine.</p>
       </div>
 
       <p class="intro" style="margin-top:2rem">The full results, including every accent we tested, are in the <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/engine-accuracy-comparison.md">engine accuracy report</a> on GitHub. The research note behind the size test is <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/research/evidence-log.md">evidence log E12</a>.</p>
@@ -287,7 +290,7 @@
         </table>
       </div>
       <div class="prose" style="margin-top:1.5rem">
-        <p>Parakeet made 30 to 40% fewer mistakes in every language, and the ranges do not overlap. That is why 1.1.0 uses it.</p>
+        <p>Parakeet made 30 to 40% fewer mistakes in every language, and the ranges do not overlap. That is why 1.1.0 uses it for them, and for Italian and Portuguese, where it also won.</p>
       </div>
       <p class="note src">These recordings are people reading sentences in quiet rooms, not conversations, so every engine scores much better here than in real life. The ranking is the useful part. Measured on a Mac, not an iPhone. Source: <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/language-accuracy-comparison.md">language accuracy report</a> (FLEURS test sets, CC BY 4.0).</p>
     </div>
@@ -360,10 +363,58 @@
           <li>Simplified Chinese sometimes came back in Traditional characters, in about 2 of every 100 caption lines. We will check this on an iPhone.</li>
           <li>Each language is a one-time download of 154 to 291 MB, made by iOS, not by Seal Speak.</li>
         </ul>
-        <p>Which of these languages 1.1.0 offers is not decided yet.</p>
+        <p>In 1.1.0 you can pick from the languages Apple's translation offers on your device.</p>
       </div>
       <p class="note src">Sentences from FLORES-200 (1,012 per language), written text rather than conversation. Measured on a Mac, not an iPhone. Sources: <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/translation-comparison.md">translation comparison report</a>, with every confidence interval, and <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/translation-languages-results.md">results for every language</a>.</p>
     </div>
+  </section>
+  </div>
+
+  <div class="version" id="v1-2">
+  <section class="band" aria-labelledby="v12-h">
+    <div class="wrap">
+      <h2 id="v12-h">Version 1.2</h2>
+      <div class="card release">
+        <h3 id="v1-2-0">1.2 <span class="badge">Planned</span></h3>
+        <p>The optimization release. Same app, smaller and in more languages.</p>
+        <ul>
+          <li>A smaller caption engine. The English model is 498&nbsp;MB today. The goal is a fraction of that with no more mistakes.</li>
+          <li>More caption languages. Each one is measured against Apple's speech recognition before it goes in.</li>
+        </ul>
+        <p class="note">Planned, not built yet. No date. The numbers below are from a Mac.</p>
+      </div>
+      <div class="card release" id="android">
+        <h3>Later <span class="badge">Planned</span></h3>
+        <p>Seal Speak on Android, with the same speed and the same experience as on iPhone, and as close to the same look as Android allows. No date yet.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="science" aria-labelledby="sci-h">
+    <div class="wrap"><div class="prose">
+      <h2 id="sci-h">The science behind 1.2</h2>
+      <h3>The accent test</h3>
+      <p>Every engine we try runs on the same 31.4 hours of real conversations in many English accents (the EdAcc corpus). It's how we picked Parakeet for 1.1: 13.8 mistakes in 100 words against Apple's 17.2. Any smaller build has to pass the same test. The full story is under <a href="#engine">How we chose the caption engine</a>.</p>
+      <h3>The 2-bit north star</h3>
+      <p>A model is mostly numbers. Store each one in fewer bits and the download shrinks. The question is how few bits it takes before the captions get worse. The north star is 2 bits. We tried it first on a small Hebrew model.</p>
+      <div class="tablewrap">
+        <table class="data">
+          <caption class="sr-only">Hebrew model size and character error rate by number of bits</caption>
+          <thead><tr><th scope="col">Build</th><th class="n" scope="col">On disk</th><th class="n" scope="col">Wrong letters</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Full size (32-bit)</th><td class="n">267.1 MB</td><td class="n">2.4%</td></tr>
+            <tr><th scope="row">4-bit</th><td class="n">38.6 MB</td><td class="n">2.4%</td></tr>
+            <tr><th scope="row">3-bit</th><td class="n">30.4 MB</td><td class="n">2.6%</td></tr>
+            <tr><th scope="row">2-bit</th><td class="n">22.3 MB</td><td class="n">34.7%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note src">Wrong letters per 100 (character error rate), Hebrew conversations from ivrit.ai eval-d1. Lower is better. <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/hebrew-coreml-comparison.md">The report</a>.</p>
+      <p>At 4 bits the Hebrew model made no more mistakes than at full size, at a seventh of the size. 3-bit barely slipped. 2-bit fell apart. For English, 6-bit Parakeet made no more mistakes than the published 8-bit build at 134&nbsp;MB less, and 4-bit cost about one point. 3-bit and 2-bit English builds haven't been measured yet. One surprise: fewer bits weren't faster on our Mac.</p>
+      <h3>Measuring a new language</h3>
+      <p>Every new caption language gets the same test before it goes in. One we've measured so far: on recorded Hebrew conversations, Apple's Hebrew dictation got 17.8 words in 100 wrong. Two open Hebrew models got about 5: Parakeet-He 5.2 and the ivrit.ai zipformer 5.0. The zipformer is the small one, so it's the one we shrank above.</p>
+      <p class="note src">ivrit.ai eval-d1, 17 recordings, 1.43 hours, on a Mac. <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/hebrew-accuracy-comparison.md">The report</a>.</p>
+    </div></div>
   </section>
   </div>
 </main>

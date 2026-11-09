@@ -14,7 +14,7 @@ import { fileURLToPath } from 'url'
 import { THEMES, SCRIPT, LETTERING, SAVED_EXAMPLE } from '../site/seal-data.js'
 import { chunksOf, blocksFor, lip, transcriptOf, previewOf, savedTitle, autoplay } from '../site/demo.js'
 import { barFractions, winners, countFrame, SAMPLE_STEPS } from '../site/motion.js'
-import { DEVICES, deviceFor, lineFor, TABLE_TALK } from '../site/devices.js'
+import { FEATURES, OLD_TABS, featureFor, duoFrame, duoBlocks, duoChunks, DUO_TALK, DUO_CAPTIONS } from '../site/devices.js'
 import { languages, outPath, urlOf, alternatesFor } from './build-site.mjs'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -22,6 +22,10 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const SITE = process.env.SITE_DIR || path.join(ROOT, 'site')
 const failures = []
 const check = (ok, msg) => { if (!ok) failures.push(msg) }
+export const RELEASE_11_ONLY = ['ipad-full-screen', 'duo', 'parakeet', 'caption-languages', 'live-translation', 'face-to-face', 'in-your-ear']
+// New caption languages ship as a batch (owner, 2026-11-03), so an upcoming release names no single language: it says
+// "more caption languages". The measurements below the release cards may still name the language they measured.
+export const SINGLE_LANGUAGE = /\b(Hebrew|Arabic|Spanish|French|German|Italian|Portuguese|Japanese|Korean|Chinese|Hindi|Russian)\b/
 
 const LANGS = languages()
 const built = LANGS.flatMap((lang) => lang.pages.map((page) => ({ lang, page, file: outPath(lang.code, page) })))
@@ -126,6 +130,22 @@ check(BANNED_BY_LANG.he[0][0].test('האפליקציה מראה מי מדבר') 
 check(BANNED_BY_LANG.he[4][0].test('הורדה בחינם') && !BANNED_BY_LANG.he[4][0].test('$4.99 פעם אחת'), 'BANNED he[4] self-test')
 check(BANNED_BY_LANG.he[3][0].test('משפרת את השמיעה') && !BANNED_BY_LANG.he[3][0].test('לאמא שלי, שכבדת שמיעה'), 'BANNED he[3] self-test')
 check(NOT_YET.he.test('Seal מציגה כתוביות בעברית') && !NOT_YET.he.test('עדיין אין כתוביות בעברית'), 'NOT_YET he self-test')
+// A Hebrew string is Hebrew throughout (#264): no English sentence glued to a Hebrew one, as index.f-cap-for once was
+// ("For iPhone 12 or newer, … Full-screen iPad and iPhone Duo: האפליקציה…"). Product names and code are fine; an English
+// function word inside a string that also has Hebrew is the tell. Citations keep their English titles.
+export const MIXED_ENGLISH = /(^|[^A-Za-z])(and|the|or|for|on|in|of|to|with|is|it|are|you|your|from|at|no|once|runs|newer|later)(?=[^A-Za-z]|$)/i
+const HEBREW = /[֐-׿]/
+for (const lang of LANGS.filter((l) => l.code === 'he')) {
+  const strings = JSON.parse(readFileSync(path.join(ROOT, 'site-src', 'lang', 'he.json'), 'utf-8'))
+  for (const [k, v] of Object.entries(strings)) {
+    if (typeof v !== 'string' || k.startsWith('index.source-') || !HEBREW.test(v)) continue
+    const m = v.replace(/<[^>]+>|&[a-z]+;/g, ' ').match(MIXED_ENGLISH)
+    check(!m, `he.json ${k}: mixes an English sentence into the Hebrew ("${m?.[2]}"); translate it`)
+  }
+  // The "Coming in 1.1" pills on the Hebrew page are Hebrew too.
+  for (const k of ['index.f-in-11', 'index.f-in-11-lower']) check(HEBREW.test(strings[k] || ''), `he.json ${k}: the 1.1 pill isn't in Hebrew`)
+}
+check(MIXED_ENGLISH.test('For iPhone 12 or newer. האפליקציה') && !MIXED_ENGLISH.test('iPhone 12 ומעלה עם iOS 26 ואילך') && !MIXED_ENGLISH.test('ב-iPad במסך מלא ו-iPhone Duo'), 'MIXED_ENGLISH self-test')
 // The banned patterns must catch real claims and spare honest disclaimers.
 check(BANNED[0][0].test('Seal shows who is speaking') && !BANNED[0][0].test("It doesn't know who anyone is"), 'BANNED[0] self-test')
 check(BANNED[4][0].test('Free for everyone') && !BANNED[4][0].test('freedom'), 'BANNED[4] self-test')
@@ -293,22 +313,72 @@ homeTables.forEach((want, i) => check(want.every(Boolean) && JSON.stringify(show
 const lat = (row) => engines.split('## Live latency')[1]?.split('\n').find((l) => l.startsWith(row))?.split('|')[3].trim()
 for (const t of [lat('| parakeet-fluidaudio (ultra-pal6) |'), lat('| apple-speechanalyzer')]) check(t && visible(tested).includes(home.code === 'en' ? t : t.split(' ')[0]), `${f} #tested: latency ${t} missing`)
 
-// 8. device tabs (#184)
-const owner = (id) => ({ how: 'iphone', 'ipad-how': 'ipad', 'mac-how': 'mac' })[id] || null
-check(deviceFor('', owner) === 'iphone' && deviceFor('#mac', owner) === 'mac' && deviceFor('#ipad', owner) === 'ipad', 'deviceFor: no hash is iPhone; a device name opens it')
-check(deviceFor('#mac-how', owner) === 'mac' && deviceFor('#how', owner) === 'iphone', 'deviceFor: a link inside a device opens that device')
-check(deviceFor('#faq', owner) === null, 'deviceFor: a shared part keeps the device you are on')
-for (const d of DEVICES) check(new RegExp(`data-device="${d}"`).test(html) && new RegExp(`data-tab="${d}"`).test(html), `${f} has a tab and a part for ${d}`)
-for (const l of TABLE_TALK) {
-  const you = lineFor('you', l), them = lineFor('them', l)
-  check(you.text === l.en && them.text === l.es, `lineFor: each half reads its own language ("${l.en}")`)
-  check(you.translated === (l.side === 'them') && them.translated === (l.side === 'you'), `lineFor: only the other side's words are marked translated ("${l.en}")`)
+// 8. feature tabs (#235, were device tabs in #184): the pills are features; old device addresses still land
+const owner = (id) => ({ how: 'captions', 'translation-languages': 'translation', 'mac-ring': 'calls' })[id] || null
+check(featureFor('', owner) === 'captions' && featureFor('#calls', owner) === 'calls' && featureFor('#translation', owner) === 'translation', 'featureFor: no hash is captions; a feature name opens it')
+check(featureFor('#mac-ring', owner) === 'calls' && featureFor('#how', owner) === 'captions', 'featureFor: a link inside a feature opens that feature')
+check(featureFor('#iphone', owner) === 'captions' && featureFor('#ipad', owner) === 'translation' && featureFor('#mac', owner) === 'calls', 'featureFor: the old device tabs open a feature')
+check(featureFor('#faq', owner) === null, 'featureFor: a shared part keeps the feature you are on')
+for (const d of FEATURES) check(new RegExp(`data-feature="${d}"`).test(html) && new RegExp(`data-tab="${d}"`).test(html), `${f} has a tab and a part for ${d}`)
+check(Object.values(OLD_TABS).every((t) => FEATURES.includes(t)), 'OLD_TABS: every old device tab lands on a feature')
+// The iPhone Duo scroll (#258): folded at the top, open, then split at the end, the same frames backwards, and one
+// step's words showing at a time at each end.
+{
+  const at = (p) => duoFrame(p)
+  const ps0 = () => [...Array(101).keys()].map((i) => i / 100)
+  check(at(0).state === 'folded' && at(0).fold === 1 && at(0).split === 0, 'duoFrame: starts folded, not split')
+  check(at(0.25).state === 'opening' && Math.abs(at(0.25).fold - 0.5) < 0.01 && at(0.25).land === 0 && at(0.25).lit === 0, `duoFrame: halfway open at 0.25, inner screen still dark (fold ${at(0.25).fold})`)
+  check(at(0.45).state === 'open' && at(0.45).land === 1 && at(0.45).turn === 0, 'duoFrame: open flat in landscape, Face to face offered, as the simulator showed')
+  check(at(0.48).press === 1 && at(0.48).state === 'open', 'duoFrame: the touch on Face to face comes while it is still landscape')
+  check(at(0.7).state === 'choosing' && at(0.7).turn === 1 && at(0.7).lit === 1 && at(0.7).split === 0, 'duoFrame: upright, each half picking its language, before the split')
+  check(ps0().every((p) => (duoFrame(p).lit === 0 && duoFrame(p).land === 0) || duoFrame(p).fold === 0), 'duoFrame: the inner screen only lights once the Duo is open')
+  check(at(1).state === 'split' && at(1).fold === 0 && at(1).split === 1, 'duoFrame: ends open and split')
+  check(at(0).steps.join() === '1,0,0' && at(1).steps.join() === '0,0,1' && at(0.45).steps[1] === 1, 'duoFrame: one step at a time')
+  const ps = [...Array(101).keys()].map((i) => i / 100), folds = ps.map((p) => at(p).fold), splits = ps.map((p) => at(p).split)
+  check(folds.every((v, i) => i === 0 || v <= folds[i - 1]) && splits.every((v, i) => i === 0 || v >= splits[i - 1]), 'duoFrame: unfolds and splits steadily, never back and forth')
+  check(ps.every((p) => at(p).split === 0 || at(p).fold === 0), 'duoFrame: the split only shows on the opened Duo, as in the app')
+  check(at(0.69).pickYou === 0 && at(0.72).pickYou === 1 && at(0.72).pickThem === 0 && at(0.8).pickThem === 1, 'duoFrame: your half picks English, then theirs picks Español, before the split')
 }
-// The iPad and Mac parts say where they are (Today, 1.0.1, Planned, In testing) before anything else.
-for (const d of ['ipad', 'mac']) {
-  const part = html.match(new RegExp(`<div data-device="${d}"[\\s\\S]*?<ol class="when"[\\s\\S]*?<\\/ol>`))?.[0] || ''
-  check(/<li class="done">/.test(part) && STATUS[home.code]?.test(part), `${f} ${d}: the hero says where ${d} is`)
+check(/data-duo-stills/.test(html) && /class="duo-fold-still"/.test(html) && /class="duo-open-still"/.test(html), `${f}: the Duo has its two still pictures for Reduce Motion`)
+// Reduce Motion's two stills are the simulator's own screenshots; the moving Duo's screens are live, like the other demos.
+for (const img of ['outer-captions.jpg', 'inner-split.jpg']) check(html.includes(`assets/duo/${img}`), `${f}: the Duo's still shows the app's screenshot ${img}`)
+for (const dx of ['outer', 'land', 'port']) check(html.includes(`data-dx="${dx}"`), `${f}: the Duo has its live ${dx} screen`)
+// The live Duo plays the app's own demo lines: what each half shows follows the app's rules.
+{
+  const you = duoBlocks(DUO_TALK, 3, { i: 3, text: 'Do I buy' }, 'you'), them = duoBlocks(DUO_TALK, 3, { i: 3, text: 'Do I buy' }, 'them')
+  check(you[0].tr && !you[1].tr && you[2].tr && you[3].vol, 'duoBlocks: your half shows your own words as said and theirs translated')
+  check(!them[0].tr && them[1].tr && !them[2].tr && them[3].vol && them[3].said === 'Do I buy', 'duoBlocks: their half mirrors it; a line still being said stays as said')
+  const one = duoBlocks(DUO_CAPTIONS, DUO_CAPTIONS.length, null)
+  check(one.at(-1).vol && one.at(-1).said.startsWith('Bueno') && one[0].tr === 'Is it on? Say something so we can see.', 'duoBlocks: one-way, finished lines are translated; the unfinished one stays as said')
+  check(JSON.stringify(duoChunks('one two three four five six seven')) === JSON.stringify(chunksOf('one two three four five six seven')), 'duoChunks: the same 3 words at a time as the demo')
 }
+check(!/class="ds[ "-]/.test(html), `${f}: no drawn app screens in the Duo`)
+// Gil, 2026-11-03: Seal Speak's dividing line sits exactly in the middle of the Duo's 951 pt inner screen, and the
+// device art draws no line of its own at the hinge (the real inner screen is one piece).
+{
+  const css = readFileSync(path.join(SITE, 'devices.css'), 'utf-8')
+  const mid = css.match(/\.dx-mid \{ top: ([\d.]+)px;[^}]*height: ([\d.]+)px/)
+  check(mid && +mid[1] + +mid[2] / 2 === 951 / 2, `devices.css: the face-to-face line is centred on the Duo's inner screen (${mid?.[1]} + ${mid?.[2]}/2 vs 475.5)`)
+  for (const sel of ['.duo-base', '.duo-face']) check(!new RegExp(`\\${sel} \\{[^}]*inset 0 0 0`).test(css), `devices.css: ${sel} draws no ring, so nothing shows at the hinge`)
+  check(/class="duo-whole"/.test(html), `${f}: the open Duo shows one whole screen, not two halves with a seam`)
+}
+// Every old per-device section id (#184) is still an anchor on the page, so links into it keep working.
+for (const id of ['ipad-screen', 'ipad-languages', 'ipad-tested', 'ipad-faq', 'mac-apps', 'mac-room', 'mac-ring', 'mac-tested', 'mac-faq', 'how', 'faq', 'private', 'easy', 'why', 'tested', 'story'])
+  check(new RegExp(`\\sid="${id}"`).test(html), `${f}: the old anchor #${id} has no target`)
+// The iPad's face to face is the app's own (#258 parity): its still is the simulator's screenshot, and the live screen
+// plays the same split as the Duo.
+check(html.includes('assets/ipad/face-to-face.jpg') && html.includes('data-dx="pad"'), `${f}: the iPad shows the app's face to face, still and live`)
+// No status bars on any device (owner, 2026-11-03): no frozen 9:41, no app name, no carrier. The stills have theirs painted out.
+for (const [name, text] of [[f, html], ['devices.js', read('devices.js')], ['devices.css', read('devices.css')]]) {
+  check(!/9:41|dx-(time|clock|ring)\b|statusBar\(/.test(text.replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g, '')), `${name}: draws a status bar; devices on the site have none`)
+}
+// Each feature says which devices it works on, and the device list has a row for each feature.
+for (const d of FEATURES) {
+  const part = html.match(new RegExp(`<div data-feature="${d}"[\\s\\S]*?(?=<div data-feature=|<!-- shared -->)`))?.[0] || ''
+  check(/<ul class="works-on"/.test(part), `${f} ${d}: says which devices it works on`)
+}
+const deviceList = html.match(/<section[^>]*id="devices"[\s\S]*?<\/section>/)?.[0] || ''
+check((deviceList.match(/<tr data-row=/g) || []).length === FEATURES.length, `${f} #devices: one row per feature`)
 // The iPad's 19 translation scores are the measured ones, and each bar is as long as its score.
 const langRows = readFileSync(path.join(ROOT, 'docs', 'perf', 'translation-languages-results.md'), 'utf-8').split('\n').filter((l) => /^\| [A-Z]/.test(l) && !l.startsWith('| Language'))
 const measuredComet = langRows.map((l) => l.split('|')[5].trim()).sort()
@@ -326,12 +396,22 @@ const ipadWant = ['en-es', 'en-fr', 'en-de'].flatMap((pr) => [
 const ipadPart = html.match(/<section class="band" id="ipad-tested"[\s\S]*?<\/section>/)?.[0] || ''
 const ipadShown = [...ipadPart.matchAll(/<td class="n">([^<]*)<\/td>/g)].map((m) => m[1])
 check(ipadWant.every(Boolean) && JSON.stringify(ipadShown) === JSON.stringify(ipadWant), `${f} iPad translation table shows ${JSON.stringify(ipadShown)}, the reports say ${JSON.stringify(ipadWant)}`)
-// Each device has its own questions, and only the iPhone part has the general sections.
-for (const d of ['iphone', 'ipad', 'mac']) {
-  const part = html.match(new RegExp(`<div data-device="${d}"[\\s\\S]*?(?=<div data-device=|<\\/main>)`))?.[0] || ''
-  check((part.match(/data-faq/g) || []).length === 1, `${f} ${d}: has its own questions, once`)
-  for (const id of ['story', 'private', 'easy', 'why', 'tested']) check((d === 'iphone') === part.includes(`id="${id}"`), `${f}: #${id} belongs to the iPhone part only (${d})`)
+// The caption sections live in the captions part; privacy, the device list and questions are shared, once.
+const capPart = html.match(/<div data-feature="captions"[\s\S]*?(?=<div data-feature=)/)?.[0] || ''
+for (const id of ['story', 'how', 'easy', 'why', 'tested']) check(capPart.includes(`id="${id}"`), `${f}: #${id} belongs to the captions part`)
+const shared = html.split('<!-- shared -->')[1] || ''
+for (const id of ['devices', 'private', 'faq']) check(shared.includes(`id="${id}"`) && !/data-feature=/.test(shared), `${f}: #${id} is shared, after the feature parts`)
+check((html.match(/data-faq/g) || []).length === 1, `${f}: one set of questions`)
+// "Coming in 1.1" (owner, 2026-11-03): the site went live while the App Store had 1.0, so everything 1.0 lacks wears
+// the label. RELEASE_11_ONLY is what App Store build 1.0 (5), commit bc3b6623, does not have: it is iPhone-only
+// (TARGETED_DEVICE_FAMILY 1), English captions from Apple's engine, no TranslationCenter, FaceToFaceView,
+// CaptionLanguageCenter, EarCenter, Parakeet or StoreKit. Each label names one of these, and each one is labelled.
+const labels = [...html.matchAll(/<[a-z]+[^>]*data-in="1\.1"[^>]*>/g)].map((m) => m[0])
+for (const tag of labels) {
+  const feat = tag.match(/data-feat="([^"]+)"/)?.[1]
+  check(RELEASE_11_ONLY.includes(feat), `${f}: a "Coming in 1.1" label names ${feat || 'no feature'}, which isn't on the 1.1-only list`)
 }
+for (const feat of RELEASE_11_ONLY) check(labels.some((t) => t.includes(`data-feat="${feat}"`)), `${f}: ${feat} isn't in App Store 1.0 but has no "Coming in 1.1" label`)
 }
 
 // 10. The app's prices (#228): the StoreKit file sells Live Translation at the iOS price, not shared with family (the
@@ -368,6 +448,16 @@ const styleOf = (f) => f.endsWith('.css') ? read(f) : [...read(f).matchAll(/<sty
 for (const f of [...pages, ...readdirSync(SITE).filter((p) => p.endsWith('.css'))]) {
   for (const r of physicalRules(styleOf(f))) check(false, `${f}: physical left/right, use a logical property: ${r}`)
 }
+
+// Upcoming releases name no single caption language (see SINGLE_LANGUAGE).
+for (const f of pages.filter((p) => p.endsWith('versions.html'))) {
+  for (const [, id] of read(f).matchAll(/<div class="version" id="(v1-[2-9])"/g)) {
+    const cards = read(f).split(`id="${id}"`)[1]?.split(/id="science"|<div class="version"/)[0] || ''
+    const m = visible(cards).match(SINGLE_LANGUAGE)
+    check(!m, `${f} ${id}: an upcoming release names one language ("${m?.[0]}"); say "more caption languages"`)
+  }
+}
+check(SINGLE_LANGUAGE.test('Hebrew captions') && !SINGLE_LANGUAGE.test('More caption languages'), 'SINGLE_LANGUAGE self-test')
 
 if (failures.length) {
   console.error(`site check: ${failures.length} problem(s)\n- ${failures.join('\n- ')}`)

@@ -28,7 +28,7 @@ async function scrollThrough(p, step = 350, pause = 120) {
 }
 // Anything that is meant to be read but still invisible, or still moved off its place.
 const hiddenText = (p) => p.evaluate(() => [...document.querySelectorAll('main h2, main h3, main p, main li, main .card, main td, main figure')]
-  .filter((e) => e.getClientRects().length && !e.closest('[hidden]') && !e.closest('.phone, .tablet')) // the demo phone has its own screens; the iPad's top half is upside down on purpose
+  .filter((e) => e.getClientRects().length && !e.closest('[hidden]') && !e.closest('.phone, .tablet, .duo, .duo-stage, .duo-steps')) // the demo phone has its own screens; the iPad's and Duo's top halves are upside down on purpose; the Duo's steps take turns as you scroll
   .filter((e) => { for (let n = e; n && n !== document.body; n = n.parentElement) { const s = getComputedStyle(n); if (+s.opacity < 0.99 || (s.transform !== 'none' && s.transform !== 'matrix(1, 0, 0, 1, 0, 0)' && !n.closest('.phone'))) return true } return false })
   .map((e) => e.tagName + ':' + (e.textContent || '').trim().slice(0, 40)))
 
@@ -129,12 +129,14 @@ try {
       const r = pill.getBoundingClientRect(), s = a.getBoundingClientRect()
       return Math.abs(r.left - s.left) < 2 && Math.abs(r.width - s.width) < 2 ? 'ok' : `pill ${r.left},${r.width} vs ${s.left},${s.width}`
     }, label)
-    ok((await pillOn('1.0')) === 'ok', `${tag}: highlight sits on 1.0 (${await pillOn('1.0')})`)
-    await p.click('.version-nav a:text-is("1.1")')
+    ok((await pillOn('1.0')) === 'ok', `${tag}: highlight sits on 1.0, the default (${await pillOn('1.0')})`)
+    await p.click('.version-nav a:text-is("1.2")')
     await wait(p, 120)
-    ok((await pillOn('1.1')) !== 'ok', `${tag}: highlight slides (is not already on 1.1 after 120 ms)`)
+    ok((await pillOn('1.2')) !== 'ok', `${tag}: highlight slides (is not already on 1.2 after 120 ms)`)
     await wait(p, 700)
-    ok((await pillOn('1.1')) === 'ok', `${tag}: highlight ends on 1.1 (${await pillOn('1.1')})`)
+    ok((await pillOn('1.2')) === 'ok', `${tag}: highlight ends on 1.2 (${await pillOn('1.2')})`)
+    await p.click('.version-nav a:text-is("1.1")')
+    await wait(p, 700)
     await p.screenshot({ path: `${OUT}/motion-versions-switch-${tag}.png` })
     await scrollThrough(p)
     ok((await hiddenText(p)).length === 0, `${tag}: Versions text still hidden or moved after scrolling: ${(await hiddenText(p)).slice(0, 4).join(' | ')}`)
@@ -157,70 +159,100 @@ try {
     await ctx.close()
   }
 
-  // ── Device tabs (#184): iPhone, iPad, Mac swap the top of the page; the address follows ──────────────────────
+  // ── Feature tabs (#235; device tabs in #184): captions, translation, calls swap the top of the page ─────────
   for (const [w, scheme] of [[1280, 'light'], [390, 'dark']]) {
-    const tag = `${w}-${scheme} devices`
+    const tag = `${w}-${scheme} features`
     const dc = await browser.newContext({ viewport: { width: w, height: 844 }, colorScheme: scheme, isMobile: w < 500, hasTouch: w < 500 })
     const dp = await dc.newPage()
     const errors = []; dp.on('pageerror', (e) => errors.push(e.message))
-    const shown = () => dp.$$eval('[data-device]', (ps) => ps.filter((x) => x.getClientRects().length).map((x) => x.dataset.device).join(','))
+    const shown = () => dp.$$eval('[data-feature]', (ps) => ps.filter((x) => x.getClientRects().length).map((x) => x.dataset.feature).join(','))
     const selected = () => dp.$$eval('[role="tab"][aria-selected="true"]', (ts) => ts.map((t) => t.dataset.tab).join(','))
     await dp.goto(BASE); await wait(dp, 300)
-    ok((await shown()) === 'iphone' && (await selected()) === 'iphone', `${tag}: iPhone shows first (${await shown()})`)
-    await dp.click('[role="tab"][data-tab="mac"]'); await wait(dp, 120)
+    ok((await shown()) === 'captions' && (await selected()) === 'captions', `${tag}: captions shows first (${await shown()})`)
+    await dp.click('[role="tab"][data-tab="calls"]'); await wait(dp, 120)
     const pillOnTab = () => dp.evaluate(() => {
-      const pill = document.querySelector('[data-devices] .pill'), t = document.querySelector('[data-devices] [aria-selected="true"]')
+      const pill = document.querySelector('[data-features] .pill'), t = document.querySelector('[data-features] [aria-selected="true"]')
       if (!pill) return 'no pill'
       const r = pill.getBoundingClientRect(), s = t.getBoundingClientRect()
       return Math.abs(r.left - s.left) < 2 && Math.abs(r.width - s.width) < 2 ? 'ok' : `pill ${r.left},${r.width} vs ${s.left},${s.width}`
     })
-    ok((await pillOnTab()) !== 'ok', `${tag}: the pill slides to Mac (is not there yet after 120 ms)`)
+    ok((await pillOnTab()) !== 'ok', `${tag}: the pill slides to calls (is not there yet after 120 ms)`)
     await wait(dp, 600)
-    ok((await pillOnTab()) === 'ok', `${tag}: the pill ends on Mac (${await pillOnTab()})`)
-    ok((await shown()) === 'mac' && (await selected()) === 'mac', `${tag}: the Mac tab shows only the Mac part (${await shown()})`)
-    ok(new URL(dp.url()).hash === '#mac', `${tag}: the address says #mac (${dp.url()})`)
+    ok((await pillOnTab()) === 'ok', `${tag}: the pill ends on calls (${await pillOnTab()})`)
+    ok((await shown()) === 'calls' && (await selected()) === 'calls', `${tag}: the calls tab shows only the calls part (${await shown()})`)
+    ok(new URL(dp.url()).hash === '#calls', `${tag}: the address says #calls (${dp.url()})`)
     await dp.keyboard.press('ArrowLeft'); await wait(dp, 100)
-    ok((await shown()) === 'ipad' && await dp.evaluate(() => document.activeElement?.dataset.tab) === 'ipad', `${tag}: ← moves to iPad and focuses it`)
+    ok((await shown()) === 'translation' && await dp.evaluate(() => document.activeElement?.dataset.tab) === 'translation', `${tag}: ← moves to translation and focuses it`)
     await dp.keyboard.press('ArrowRight'); await dp.keyboard.press('ArrowRight'); await wait(dp, 100)
-    ok((await shown()) === 'iphone', `${tag}: → wraps round to iPhone (${await shown()})`)
-    ok(!new URL(dp.url()).hash, `${tag}: iPhone has a plain address (${dp.url()})`)
-    for (const dev of ['ipad', 'mac']) {
-      await dp.goto(BASE + '#' + dev); await wait(dp, 300)
-      ok((await shown()) === dev, `${tag}: a link to #${dev} opens ${dev} (${await shown()})`)
-      ok(await dp.evaluate(() => scrollY) === 0, `${tag}: #${dev} opens at the top of the page, not scrolled`)
+    ok((await shown()) === 'captions', `${tag}: → wraps round to captions (${await shown()})`)
+    ok(!new URL(dp.url()).hash, `${tag}: captions has a plain address (${dp.url()})`)
+    for (const [hash, want, address] of [['translation', 'translation', '#translation'], ['calls', 'calls', '#calls'], ['ipad', 'translation', '#translation'], ['mac', 'calls', '#calls'], ['iphone', 'captions', '']]) {
+      await dp.goto(BASE + '#' + hash); await wait(dp, 300)
+      ok((await shown()) === want, `${tag}: a link to #${hash} opens ${want} (${await shown()})`)
+      ok(new URL(dp.url()).hash === address, `${tag}: #${hash} ends at the address "${address}" (${dp.url()})`)
+      ok(await dp.evaluate(() => scrollY) === 0, `${tag}: #${hash} opens at the top of the page, not scrolled`)
       const sw = await dp.evaluate(() => document.documentElement.scrollWidth)
-      ok(sw <= w, `${tag}: ${dev} has no sideways scroll (scrollWidth ${sw})`)
+      ok(sw <= w, `${tag}: ${want} has no sideways scroll (scrollWidth ${sw})`)
     }
-    await dp.goto(BASE + '#how'); await wait(dp, 300)
-    ok((await shown()) === 'iphone', `${tag}: a link into the iPhone part (#how) opens iPhone`)
+    for (const [id, want] of [['how', 'captions'], ['ipad-screen', 'translation'], ['ipad-languages', 'translation'], ['mac-ring', 'calls']]) {
+      await dp.goto(BASE + '#' + id); await wait(dp, 300)
+      ok((await shown()) === want, `${tag}: an old link into #${id} opens ${want} (${await shown()})`)
+    }
+    await dp.goto(BASE + '#calls'); await wait(dp, 200)
     await dp.goto(BASE + '#faq'); await wait(dp, 300)
-    ok((await shown()) === 'iphone', `${tag}: a fresh load of a shared part (#faq) starts on iPhone`)
+    ok((await shown()) === 'calls', `${tag}: a link to a shared part (#faq) keeps the feature you're on`)
+    await dp.goto('about:blank'); await dp.goto(BASE + '#faq'); await wait(dp, 300)
+    ok((await shown()) === 'captions', `${tag}: a fresh load of a shared part (#faq) starts on captions`)
     // iPad: both halves fill line by line, each in its own language; the button turns the iPad round.
-    await dp.goto(BASE + '#ipad'); await dp.locator('[data-tablet]').scrollIntoViewIfNeeded(); await wait(dp, 9000)
-    const halves = await dp.$$eval('[data-half]', (hs) => hs.map((h) => ({ half: h.dataset.half, lines: [...h.querySelectorAll('.t-line')].map((l) => (l.classList.contains('tr') ? 'T:' : '') + l.textContent) })))
-    const you = halves.find((h) => h.half === 'you').lines, them = halves.find((h) => h.half === 'them').lines
-    ok(you.length === 4 && them.length === 4, `${tag}: the whole conversation plays on both halves (${you.length}, ${them.length})`)
-    ok(you[0] === 'T:How was the drive?' && them[0] === '¿Qué tal el viaje?', `${tag}: their words come to you translated and marked (${you[0]} / ${them[0]})`)
-    ok(you[1] === 'Long, but the kids slept the whole way.' && them[1].startsWith('T:Largo'), `${tag}: your words go to them translated and marked`)
+    // (#258 parity: the app's own split, live, the ticket-counter conversation from DemoMode.faceToFaceScript)
+    await dp.goto(BASE + '#translation'); await dp.locator('[data-tablet]').scrollIntoViewIfNeeded(); await wait(dp, 6500)
+    const halfText = (who) => dp.$eval(`[data-dx="pad"] [data-half="${who}"] [data-caps]`, (c) => [...c.children].map((b) => (b.querySelector('.dx-tx') ? (b.querySelector('.dx-tx .dx-mark') ? 'T:' : 'unmarked:') + [...b.querySelector('.dx-tx').childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join('') : b.textContent)))
+    const you = await halfText('you'), them = await halfText('them')
+    ok(you.length >= 3 && them.length >= 3, `${tag}: the conversation plays on both halves (${you.length}, ${them.length})`)
+    ok(you[0] === 'T:Hi, good afternoon. How can I help you?' && them[0] === 'Hola, buenas tardes. ¿En qué le puedo ayudar?', `${tag}: their words come to you translated and marked (${you[0]} / ${them[0]})`)
+    ok(you[1] === 'I need the train to the airport.' && them[1] === 'T:Necesito el tren al aeropuerto.', `${tag}: your words go to them translated and marked (${you[1]} / ${them[1]})`)
+    await wait(dp, 8000)
     ok(await dp.getAttribute('[data-flip]', 'aria-pressed') === 'true', `${tag}: at the end it turns once to show their side`)
     await dp.click('[data-flip]'); await wait(dp, 1100)
     const t = await dp.$eval('.tablet', (e) => getComputedStyle(e).transform)
     ok(t === 'none' || t === 'matrix(1, 0, 0, 1, 0, 0)', `${tag}: "See your side" turns it back (${t})`)
     ok((await dp.textContent('[data-flip]')).includes('their side'), `${tag}: the button then offers their side`)
-    await dp.goto(BASE + '#mac'); await dp.locator('[data-mac]').scrollIntoViewIfNeeded(); await wait(dp, 7500)
+    await dp.goto(BASE + '#calls'); await dp.locator('[data-mac]').scrollIntoViewIfNeeded(); await wait(dp, 7500)
     const pop = await dp.$$eval('[data-pop-lines] .pop-line', (ls) => ls.map((l) => l.textContent))
     ok(pop.length === 3 && pop[2] === 'Speaker 2Hi Grandpa! We miss you.', `${tag}: the Mac window captions the call, newest three lines (${pop.join(' | ')})`)
-    // Questions in the header stays on the device you're on and goes to its own questions.
-    await dp.goto(BASE + '#mac'); await wait(dp, 300)
-    if (w > 500) {
-      await dp.click('header.top a[href="#faq"]'); await wait(dp, 1200)
-      ok((await shown()) === 'mac', `${tag}: Questions keeps you on Mac (${await shown()})`)
-      // At the top of the window, or as far as the page goes when they're at the very end.
-      const [top, atEnd] = await dp.$eval('#mac-faq', (e) => [Math.round(e.getBoundingClientRect().top), Math.abs(innerHeight + scrollY - document.documentElement.scrollHeight) < 2])
-      ok(Math.abs(top) < 5 || (atEnd && top > 0 && top < 844 / 2), `${tag}: Questions scrolls to the Mac questions (top ${top})`)
+    // The iPhone Duo (#258) follows the scroll: folded, opening, open with Face to face offered, split; and back.
+    await dp.goto(BASE + '#translation'); await wait(dp, 300)
+    const duoAt = async (p) => {
+      await dp.evaluate((p) => { const t = document.querySelector('.duo-track'); scrollTo({ top: t.getBoundingClientRect().top + scrollY + p * (t.offsetHeight - innerHeight), behavior: 'instant' }) }, p)
+      await wait(dp, 250)
+      return dp.evaluate(() => {
+        const s = document.querySelector('[data-duo-stage]'), r = s.getBoundingClientRect()
+        const shown = [...document.querySelectorAll('.duo-steps li')].map((li) => +getComputedStyle(li).opacity)
+        return { state: s.dataset.state, onScreen: r.top >= -1 && r.bottom <= innerHeight + 1, step: shown.indexOf(Math.max(...shown)) + 1, sw: document.documentElement.scrollWidth,
+          land: +getComputedStyle(document.querySelector('.duo-base .duo-land')).opacity,
+          lit: +getComputedStyle(document.querySelector('.duo-base .duo-pic')).opacity,
+          lines: document.querySelector('.duo-back [data-dx="outer"] [data-caps]').textContent,
+          you: document.querySelector('.duo-base [data-half="you"]').hasAttribute('data-picked'),
+          them: document.querySelector('.duo-base [data-half="them"]').hasAttribute('data-picked'),
+          talk: document.querySelector('.duo-base [data-half="you"] [data-caps]').textContent }
+      })
     }
+    const seen = []
+    for (const p of [0, 0.25, 0.45, 0.7, 1, 0.45, 0.25, 0]) seen.push(await duoAt(p))
+    ok(seen.map((x) => x.state).join() === 'folded,opening,open,choosing,split,open,opening,folded', `${tag}: the Duo unfolds as you scroll down and folds back up (${seen.map((x) => x.state)})`)
+    ok(seen.every((x) => x.onScreen), `${tag}: the Duo stays on screen while it plays`)
+    ok(seen.map((x) => x.step).join() === '1,2,2,3,3,2,2,1', `${tag}: the step's words follow the Duo (${seen.map((x) => x.step)})`)
+    ok(seen[1].land === 0 && seen[1].lit === 0 && seen[2].land === 1 && seen[3].lit === 1 && seen[4].lit === 1,
+      `${tag}: the inner screen lights only once the Duo is open: landscape, then upright (${seen.map((x) => `${x.land}/${x.lit}`)})`)
+    ok(!seen[3].them && seen[4].you && seen[4].them && !seen[5].you && !seen[5].them,`${tag}: each half picks its language on the way down, and goes back to its list on the way up`)
+    // The screens are live, like the other demos: the captions move on their own while the Duo is in view.
+    await duoAt(0.05); const before = (await duoAt(0.05)).lines; await wait(dp, 2500); const after = (await duoAt(0.05)).lines
+    ok(before && after && before !== after, `${tag}: the folded screen's captions type in live`)
+    await duoAt(1); await wait(dp, 3000); const t1 = (await duoAt(1)).talk; await wait(dp, 2000); const t2 = (await duoAt(1)).talk
+    ok(t1 && t2 && t1 !== t2, `${tag}: the split's two halves fill with the conversation`)
+    ok(seen.every((x) => x.sw <= w), `${tag}: the Duo never makes the page scroll sideways (${seen.map((x) => x.sw)})`)
     // The iPad's translation results grow as bars, the best translator marked in each row.
-    await dp.goto(BASE + '#ipad'); await scrollThrough(dp); await wait(dp, 800)
+    await dp.goto(BASE + '#translation'); await scrollThrough(dp); await wait(dp, 800)
     await checkBars(dp, `${tag} iPad`, 18, 6)
     ok(errors.length === 0, `${tag}: no page errors (${errors.join('; ')})`)
     await dc.close()
@@ -243,9 +275,11 @@ try {
   const counted = await rp.$$eval('[data-count]', (es) => es.every((e) => e.textContent === e.dataset.count))
   ok(counted, 'reduced motion: numbers show their real value at once')
   await rp.screenshot({ path: `${OUT}/motion-versions-reduced.png` })
-  await rp.goto(BASE + '#ipad'); await wait(rp, 300)
-  ok(await rp.$$eval('[data-half="you"] .t-line', (l) => l.length) === 4, 'reduced motion: the iPad conversation shows whole at once')
+  await rp.goto(BASE + '#translation'); await wait(rp, 300)
+  ok(await rp.$eval('.t-still', (e) => !e.hidden && e.complete && e.naturalWidth > 0) && await rp.$eval('[data-dx="pad"]', (e) => e.hidden), 'reduced motion: the iPad shows the app\'s own face to face as a still')
   ok(await rp.$eval('.tablet', (e) => !e.hasAttribute('data-turned')), 'reduced motion: the iPad does not turn by itself')
+  ok(await rp.$eval('[data-duo-stage]', (e) => e.hidden) && await rp.$eval('[data-duo-stills]', (e) => !e.hidden && e.getClientRects().length > 0), 'reduced motion: the Duo shows as two still pictures, no scroll animation')
+  ok(await rp.$eval('.duo-section', (e) => !e.classList.contains('is-scrolling')), 'reduced motion: the Duo section is not stretched for scrolling')
   await rm.close()
 
   // ── No JavaScript: every word and number shows ───────────────────────────────
@@ -256,7 +290,7 @@ try {
     ok((await hiddenText(np)).length === 0, `no JavaScript: ${page || 'home'} text hidden: ${(await hiddenText(np)).slice(0, 4).join(' | ')}`)
   }
   await np.goto(BASE)
-  ok(await np.$$eval('[data-device]', (ps) => ps.filter((x) => x.getClientRects().length).length) === 3, 'no JavaScript: iPhone, iPad and Mac all show, one after the other')
+  ok(await np.$$eval('[data-feature]', (ps) => ps.filter((x) => x.getClientRects().length).length) === 3, 'no JavaScript: every feature shows, one after the other')
   await nj.close()
 } finally {
   await browser.close()

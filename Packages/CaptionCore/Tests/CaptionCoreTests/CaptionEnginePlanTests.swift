@@ -63,6 +63,36 @@ final class CaptionEnginePlanTests: XCTestCase {
         XCTAssertEqual(plan("es-MX", choice: .apple).selection, EngineSelection(engine: .apple, reason: nil))
         XCTAssertEqual(plan("es-MX", choice: .apple).locale.identifier(.bcp47), "es-MX")
     }
+
+    // MARK: Hebrew on Seal's own engine (#220, owner 2026-10-30)
+
+    func testHebrewRunsSealsZipformerWhenItIsBundled() {
+        let p = plan("he-IL")
+        XCTAssertEqual(p.selection, EngineSelection(engine: .parakeet, reason: nil))
+        XCTAssertEqual(p.sealModel, .hebrewZipformer)
+        XCTAssertEqual(p.locale.identifier(.bcp47), "he-IL")
+    }
+
+    func testAWonLanguageNamesParakeetAsItsModelAndOtherLanguagesNone() {
+        XCTAssertEqual(plan("en-US").sealModel, .parakeetUltra)
+        XCTAssertEqual(plan("es-ES").sealModel, .parakeetUltra, "#234: Spanish won on FLEURS")
+        XCTAssertNil(plan("ja-JP").sealModel, "Parakeet doesn't cover Japanese")
+        XCTAssertNil(plan("he-IL", choice: .apple).sealModel, "the developer panel's Apple pick wins")
+    }
+
+    func testHebrewWithoutItsModelSaysTheModelIsMissing() {
+        let p = plan("he-IL", modelPresent: false)
+        XCTAssertEqual(p.selection, EngineSelection(engine: .apple, reason: .modelMissing))
+        XCTAssertNil(p.sealModel)
+    }
+
+    func testEachLanguageMapsToItsOwnModel() {
+        XCTAssertEqual(SealModel.forLanguage(Locale(identifier: "he")), .hebrewZipformer)
+        XCTAssertEqual(SealModel.forLanguage(Locale(identifier: "iw-IL")), .hebrewZipformer, "the old code for Hebrew")
+        XCTAssertEqual(SealModel.forLanguage(Locale(identifier: "en-IN")), .parakeetUltra)
+        XCTAssertEqual(SealModel.forLanguage(Locale(identifier: "pt-BR")), .parakeetUltra, "#234's wins run Parakeet")
+        XCTAssertNil(SealModel.forLanguage(Locale(identifier: "ar-SA")))
+    }
 }
 
 /// Italian and Portuguese, from the #234 measurement. Both won, so the only languages left on Apple are the ones

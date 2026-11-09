@@ -14,6 +14,7 @@ set -uo pipefail
 export PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin
 WORK="${EVAL_WORK:-$HOME/edacc-eval}"
 REPO="${EVAL_REPO:?}"
+. "$REPO/scripts/ensure-local.sh"; ensure_local "$WORK" || { echo "$WORK is parked and could not come back"; exit 1; }
 HERE="$REPO/scripts/engine-eval"
 C="${EVAL_CONVERT:-$WORK/convert}"
 M="$C/mobius/models/stt"
