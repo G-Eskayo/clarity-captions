@@ -202,7 +202,7 @@ function counts(el, still) {
 }
 
 // ── Versions: the highlight slides between 1.0 and 1.1; the version fades in ──────────────────────────────────────
-// A pill that slides to the chosen item: the Versions switcher (aria-current) and the device tabs (aria-selected).
+// A pill that slides to the chosen item: the Versions switcher (aria-current) and the feature tabs (aria-selected).
 export function slidingPill(nav, attr = 'aria-current') {
   const pill = document.createElement('span')
   pill.className = 'pill'
@@ -218,7 +218,7 @@ export function slidingPill(nav, attr = 'aria-current') {
     if (!pill.classList.contains('ready')) requestAnimationFrame(() => requestAnimationFrame(() => pill.classList.add('ready')))
   }
   place()
-  // The device tabs start hidden until their script runs; place the pill again once they show.
+  // The feature tabs start hidden until their script runs; place the pill again once they show.
   new MutationObserver(place).observe(nav, { subtree: true, attributes: true, attributeFilter: [attr, 'hidden'] })
   addEventListener('resize', place)
 }
@@ -249,7 +249,7 @@ if (typeof document !== 'undefined') {
     for (const f of document.querySelectorAll('figure.chart')) if (f.querySelector('rect.bar')) chartBars(f)
     const nav = document.querySelector('.version-nav')
     if (nav) switcher(nav)
-    const devices = document.querySelector('[data-devices]')
+    const devices = document.querySelector('[data-features]')
     if (devices) slidingPill(devices, 'aria-selected')
   }
 }

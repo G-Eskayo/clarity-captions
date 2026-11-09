@@ -33,6 +33,8 @@ struct LanguageSettingsState: Equatable {
     /// Live Translation in your ear (#233): offered on this device, and what it's doing.
     var earOffered = false
     var ear: EarState = .off
+    /// Sound like the speaker (#247, PR #254), under it.
+    var earMatch: EarMatchState = .off
     /// A plain line from the purchase (Ask to Buy, nothing to restore, didn't go through), or nil.
     var purchaseMessage: String?
 
@@ -54,6 +56,7 @@ struct LanguageSettingsState: Equatable {
         state.purchaseMessage = translation.purchase.message
         state.earOffered = EarCenter.offered
         state.ear = ear.state
+        state.earMatch = ear.matchState
         #if DEBUG
         if let id = DemoMode.language { state.followsDevice = id == preferred.first }
         if let p = DemoMode.translateProgress { state.downloadProgress = p }

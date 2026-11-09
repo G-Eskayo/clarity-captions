@@ -76,9 +76,10 @@
   .d-gear { width: 44px; height: 44px; border: 0; background: none; padding: 9px; color: var(--d-gear); cursor: pointer; }
   .d-gear svg { width: 100%; height: 100%; }
   .d-status { text-align: center; font-weight: 600; font-size: 15px; }
-  .d-status .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--d-text); margin-inline-end: 7px; vertical-align: middle; }
+  /* The app's status has no dot at rest; the light is red and only on while captions run (#258 parity, main ea6ade3). */
+  .d-status .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #CC1F1F; margin-inline-end: 7px; vertical-align: middle; }
   .phone[data-state="running"] .d-status .dot { animation: pulse 1.6s ease-in-out infinite; }
-  .phone[data-state="idle"] .d-status .dot { opacity: .35; }
+  .phone:not([data-state="running"]) .d-status .dot { display: none; }
   @keyframes pulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
   @media (prefers-reduced-motion: reduce) { .phone[data-state="running"] .d-status .dot { animation: none; } }
   .d-status-sub { display: block; font-weight: 400; font-size: 13px; opacity: .75; }
@@ -91,12 +92,13 @@
   .d-vol { opacity: .55; }
   .d-sound { font-style: italic; opacity: .8; }
   .d-empty { margin: auto 0; text-align: center; font: 600 15px/1.4 system-ui, sans-serif; opacity: .6; }
-  .d-btn { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); height: 54px; padding: 0 30px; border: 0; border-radius: 27px;
+  .d-btn { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); width: calc(100% - 40px); height: 54px; padding: 0 20px; border: 0; border-radius: 27px;
            background: var(--d-text); color: var(--d-bg); box-shadow: 0 3px 0 var(--d-lip); font: 800 18px/1 -apple-system, 'SF Pro Rounded', sans-serif;
            letter-spacing: .04em; white-space: nowrap; cursor: pointer; }
   .d-btn:active { transform: translateX(-50%) scaleX(1.06) scaleY(.9) translateY(2px); box-shadow: 0 1px 0 var(--d-lip); }
-  .d-stop { position: absolute; inset-inline-end: 22px; bottom: 26px; width: 54px; height: 54px; border: 0; border-radius: 50%; background: var(--d-text);
-            color: var(--d-bg); box-shadow: 0 3px 0 var(--d-lip); cursor: pointer; display: grid; place-items: center; }
+  /* The app's stop: a red circle with a white ✕ in every theme. */
+  .d-stop { position: absolute; inset-inline-end: 22px; bottom: 26px; width: 54px; height: 54px; border: 0; border-radius: 50%; background: #CC1F1F;
+            color: #fff; box-shadow: 0 3px 0 #8E1515; cursor: pointer; display: grid; place-items: center; }
   .d-stop:active { transform: scaleX(1.06) scaleY(.9) translateY(2px); box-shadow: 0 1px 0 var(--d-lip); }
   .d-stop svg { width: 20px; height: 20px; }
   @media (prefers-reduced-motion: reduce) { .d-btn:active, .d-stop:active { transform: translateX(-50%); } .d-stop:active { transform: none; } }
@@ -130,13 +132,24 @@
   .d-page { position: absolute; inset: 0; background: var(--d-bg); overflow-y: auto; font: 15px/1.4 system-ui, sans-serif; display: flex; flex-direction: column; }
   .d-page-title { text-align: center; font: 800 17px/1.2 system-ui, sans-serif; }
   .d-body { padding: 4px 20px 24px; }
-  .d-settings h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; opacity: .7; margin: 18px 0 8px; }
+  /* Settings as the app lays it out: one upper-case heading over the preview, the rest sentence case; named colour
+     tiles with a tick; two big size buttons; letterings as a list with a tick (#258 parity with main). */
+  .d-settings h3 { font: 700 15px/1.3 system-ui, sans-serif; opacity: .7; margin: 20px 0 10px; padding-top: 14px; border-top: 1px solid color-mix(in srgb, var(--d-text) 12%, transparent); }
+  .d-settings h3#d-preview-h { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
   .d-settings .row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .d-settings [aria-labelledby="d-colors"] { flex-wrap: nowrap; justify-content: space-between; gap: 4px; padding-bottom: 18px; }
+  .d-settings [aria-labelledby="d-size"] { flex-wrap: nowrap; gap: 12px; }
+  .d-settings [aria-labelledby="d-size"] .chip { flex: 1; height: 50px; border-radius: 14px; font: 800 20px/1 system-ui, sans-serif; }
+  .d-settings [aria-labelledby="d-lettering"] { flex-direction: column; flex-wrap: nowrap; gap: 0; }
+  .d-settings [aria-labelledby="d-lettering"] .chip { background: none; border: 0; border-radius: 0; padding: 10px 28px 10px 0; text-align: start; font-size: 17px; position: relative; }
+  .d-settings [aria-labelledby="d-lettering"] .chip[aria-pressed="true"]::after { content: '✓'; position: absolute; inset-inline-end: 2px; color: var(--d-gear); font: 800 18px/1 system-ui; }
   .d-note { margin: 8px 0 0; font-size: 13px; opacity: .75; }
   .d-preview { padding: 6px 0 4px; font-family: var(--d-font); font-size: var(--d-size); line-height: 1.4; }
   .d-preview .d-spk { color: var(--d-s1); }
-  .swatch { width: 38px; height: 38px; border-radius: 50%; cursor: pointer; font: 700 15px/1 system-ui; border: 2px solid transparent; }
-  .swatch[aria-pressed="true"] { border-color: var(--d-gear); box-shadow: 0 0 0 2px var(--d-bg) inset; }
+  .swatch { position: relative; width: 38px; height: 38px; border-radius: 10px; cursor: pointer; font: 700 14px/1 system-ui; border: 0; box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+  .swatch::after { content: attr(aria-label); position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%); white-space: nowrap;
+                   font: 500 9.5px/1 system-ui; color: var(--d-text); }
+  .swatch[aria-pressed="true"]::before { content: '✓'; position: absolute; top: calc(100% + 15px); left: 50%; transform: translateX(-50%); color: var(--d-gear); font: 800 12px/1 system-ui; }
   .chip { border: 2px solid transparent; background: color-mix(in srgb, var(--d-text) 8%, transparent); color: var(--d-text); border-radius: 999px;
           padding: 8px 14px; font: 600 14px/1 system-ui; cursor: pointer; }
   .chip small { font: 700 11px/1 system-ui; opacity: .7; }
@@ -145,16 +158,32 @@
   .d-about a { display: block; color: var(--d-gear); font-weight: 600; padding: 4px 0; }
   .d-done { margin-top: 4px; position: static; transform: none; }
   .d-done:active { transform: scaleX(1.06) scaleY(.9) translateY(2px); }
+  /* Page header and Saved as main draws them (#258 parity, SavedConversationsView + PageHeader): app points x .88.
+     Muted words and thin rules use the app's own colours, light and dark. */
+  .phone { --d-muted: #56625F; --d-rule: rgba(20,20,25,.12); --d-red: #A8261B; }
+  .phone[data-dark="1"] { --d-muted: #B9B3A6; --d-rule: rgba(236,230,217,.16); --d-red: #FF8A80; }
   .d-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 38px 12px 6px; min-height: 88px; }
-  .d-back { justify-self: start; border: 0; background: none; color: var(--d-gear); font: 600 16px/1 system-ui, sans-serif; padding: 12px 4px; cursor: pointer; }
-  .d-muted { margin: 4px 0 12px; opacity: .75; }
-  .d-search input { width: 100%; border: 0; border-bottom: 1px solid color-mix(in srgb, var(--d-text) 18%, transparent); background: none; color: var(--d-text);
-                    font: 15px/1.4 system-ui, sans-serif; padding: 8px 0; }
-  .d-search input::placeholder { color: color-mix(in srgb, var(--d-text) 60%, transparent); }
-  .d-row { display: block; width: 100%; text-align: start; border: 0; border-bottom: 1px solid color-mix(in srgb, var(--d-text) 12%, transparent); background: none;
+  .d-back { justify-self: start; border: 0; background: none; color: var(--d-gear); font: 700 15px/1 system-ui, sans-serif; padding: 12px 4px; cursor: pointer; white-space: nowrap; }
+  .d-page-title { font-size: 17.5px; }
+  .d-muted { margin: 4px 0 12px; color: var(--d-muted); }
+  [data-saved-list] .d-body { padding: 0 20px 36px; }
+  [data-saved-list] .d-muted { margin: 16px 0 0; font-size: 15px; }
+  .d-search { display: block; margin-top: 19px; }
+  .d-search input { width: 100%; border: 0; border-bottom: 1px solid var(--d-rule); background: none; color: var(--d-text);
+                    font: 15px/1.3 system-ui, sans-serif; padding: 0 0 7px; }
+  .d-search input::placeholder { color: color-mix(in srgb, var(--d-text) 28%, transparent); }
+  .d-row { display: block; width: 100%; text-align: start; border: 0; border-bottom: 1px solid var(--d-rule); background: none;
            color: var(--d-text); padding: 12px 0; font: inherit; cursor: pointer; }
-  .d-row strong { display: block; font-size: 16px; font-weight: 800; }
-  .d-row span { display: block; font-size: 14px; opacity: .75; }
+  .d-row strong { display: block; font: 800 15px/1.3 system-ui, sans-serif; margin-bottom: 3px; }
+  .d-row span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 15px; line-height: 1.3; color: var(--d-muted); }
+  /* [ Delete all ]: the app's retro words in the muted colour, centred under the list; it asks in place. */
+  .d-delall { display: flex; flex-direction: column; align-items: center; margin-top: 23px; }
+  .d-retro-muted { color: var(--d-muted); }
+  .d-delall .d-q { padding: 0; gap: 8px; }
+  .d-delall .d-q strong { font: 800 17.5px/1.25 system-ui, sans-serif; }
+  .d-delall .d-q span { font-size: 14px; opacity: .8; }
+  .d-delall .d-q .d-retro { font-size: 19px; padding: 6px 14px; }
+  .d-retro-red { color: var(--d-red); }
   .d-transcript { flex: 1; padding: 8px 20px 40px; font-family: var(--d-font); font-size: var(--d-size); line-height: 1.5; display: flex; flex-direction: column; gap: 14px; }
   .d-transcript:focus-visible, .d-captions:focus-visible { outline-offset: -3px; }
   .d-one-veil { inset: 88px 0 0; }
@@ -257,6 +286,7 @@
     <img src="../assets/favicon.svg" alt="" width="40" height="40">
     <span class="name">Seal Speak</span>
     <nav aria-label="בעמוד הזה">
+      <a href="#devices">Devices</a>
       <a href="#private">פרטיות</a>
       <a href="#faq">שאלות</a>
       <a href="../versions.html" hreflang="en">גרסאות (באנגלית)</a>
@@ -267,22 +297,26 @@
 
 <main id="main">
   <div class="wrap">
-    <div class="devices" role="tablist" aria-label="בחרו מכשיר" data-devices hidden>
-      <button role="tab" data-tab="iphone" id="tab-iphone" aria-controls="panel-iphone" aria-selected="true">iPhone</button>
-      <button role="tab" data-tab="ipad" id="tab-ipad" aria-controls="panel-ipad" aria-selected="false" tabindex="-1">iPad</button>
-      <button role="tab" data-tab="mac" id="tab-mac" aria-controls="panel-mac" aria-selected="false" tabindex="-1">Mac</button>
+    <div class="devices" role="tablist" aria-label="Choose a feature" data-features hidden>
+      <button role="tab" data-tab="captions" id="tab-captions" aria-controls="panel-captions" aria-selected="true">Captions</button>
+      <button role="tab" data-tab="translation" id="tab-translation" aria-controls="panel-translation" aria-selected="false" tabindex="-1">Translation</button>
+      <button role="tab" data-tab="calls" id="tab-calls" aria-controls="panel-calls" aria-selected="false" tabindex="-1">Calls</button>
     </div>
   </div>
 
-  <div data-device="iphone" id="panel-iphone" role="tabpanel" aria-labelledby="tab-iphone">
+  <div data-feature="captions" id="panel-captions" role="tabpanel" aria-labelledby="tab-captions">
   <div class="wrap">
-    <p class="device-name">iPhone</p>
+    <p class="device-name">Captions</p>
     <div class="hero">
       <div>
         <h1>לעקוב אחרי השיחה סביב השולחן.</h1>
         <p class="lede">Seal Speak מציגה את מה שהאנשים סביבכם אומרים, בזמן שהם מדברים, בטקסט גדול וברור. הכול קורה ב-iPhone שלכם, ולכן זה עובד בלי אינטרנט.</p>
-        <a class="gummy" href="https://apps.apple.com/us/app/seal-speak/id6821561495">להורדה מ-App Store</a>
-        <span class="soon-note">ל-iPhone 12 ומעלה עם iOS 26 ואילך. האפליקציה והכתוביות באנגלית בלבד בינתיים: עדיין אין כתוביות בעברית.</span>
+        <div class="get">
+          <a class="gummy" href="https://apps.apple.com/us/app/seal-speak/id6821561495">Download for iPhone and iPad</a>
+          <span class="gummy gummy-soon" aria-disabled="true">Mac app: coming</span>
+        </div>
+        <span class="soon-note">האפליקציה והכתוביות באנגלית בלבד בינתיים: עדיין אין כתוביות בעברית. מתאימה ל-iPhone 12 ומעלה עם iOS 26 ואילך. ב-iPad היא רצה בינתיים בפריסה של ה-iPhone. iPad במסך מלא ו-iPhone Duo: <span class="in-11" data-in="1.1" data-feat="ipad-full-screen">בגרסה 1.1</span></span>
+        <ul class="works-on" aria-label="Works on"><li class="yes">iPhone</li><li class="yes">iPad</li><li class="soon">iPhone Duo <small data-in="1.1" data-feat="duo">ב-1.1</small></li><li class="soon">Mac <small>in testing</small></li></ul>
         <ul class="facts" aria-label="במבט אחד">
           <li>הכתוביות נוצרות בטלפון</li>
           <li>עובדת בלי אינטרנט</li>
@@ -393,6 +427,15 @@
                 <p class="d-muted" data-saved-empty hidden>Conversations you save show up here.</p>
                 <label class="d-search"><span class="sr-only">Search saved conversations</span><input type="search" data-saved-search placeholder="Search"></label>
                 <div data-saved-rows></div>
+                <div class="d-delall" data-delall-wrap>
+                  <button class="d-retro d-retro-muted" data-delall aria-label="Delete all saved conversations">[ Delete all ]</button>
+                  <div class="d-q" data-delall-q hidden role="group" aria-labelledby="d-delall-h">
+                    <strong id="d-delall-h" data-delall-title>Delete all conversations?</strong>
+                    <span>This can't be undone.</span>
+                    <button class="d-retro d-retro-red" data-delall-yes>[ Delete all ]</button>
+                    <button class="d-retro" data-delall-no>[ Keep ]</button>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -453,25 +496,6 @@
         <div class="card"><h3>שמרו שיחה</h3><p>הקישו על <bdi lang="en">[&nbsp;Save&nbsp;]</bdi>. השיחות השמורות נמצאות מאחורי סמל הרשימה בפינה הימנית העליונה. כל שיחה נשארת בטלפון 30 יום, ואז היא נמחקת.</p></div>
         <div class="card"><h3>שתפו אם תרצו</h3><p>פתחו שיחה שמורה והקישו על <bdi lang="en">[&nbsp;Share&nbsp;]</bdi> כדי לשלוח את הטקסט לפתקים, להודעות, לדואר, לקבצים או ב-AirDrop. <bdi lang="en">[&nbsp;Delete&nbsp;]</bdi> מוחק אותה מיד.</p></div>
       </div>
-    </div>
-  </section>
-
-  <section class="band" id="private" aria-labelledby="private-h">
-    <div class="wrap">
-      <h2 id="private-h">שום דבר לא יוצא מהמכשיר.</h2>
-      <figure class="private" data-grow aria-label="קולות נכנסים למכשיר ויוצאים כמילים על המסך שלו. הדרך לאינטרנט מחוקה.">
-        <span class="pv voice" aria-hidden="true"><svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M10 20v8M18 14v20M26 8v32M34 16v16M42 21v6"/></svg></span>
-        <span class="pv arrow" aria-hidden="true"></span>
-        <span class="pv device" aria-hidden="true"><svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><rect x="13" y="4" width="22" height="40" rx="5"/><path d="M19 16h10M19 22h10M19 28h6"/></svg></span>
-        <span class="pv arrow" aria-hidden="true"></span>
-        <span class="pv words" aria-hidden="true">Aa</span>
-        <span class="pv cloud" aria-hidden="true"><svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M14 36h22a8 8 0 0 0 0-16 12 12 0 0 0-23-2A9 9 0 0 0 14 36z"/><path class="x" d="M6 6l36 36"/></svg></span>
-      </figure>
-      <ul class="pv-facts">
-        <li><b>אף פעם לא מוקלט</b>הצליל הופך למילים, ואז נעלם.</li>
-        <li><b>בלי אינטרנט</b>עובדת גם במצב טיסה, אחרי הגדרה חד-פעמית.</li>
-        <li><b>בלי חשבון</b>בלי פרסומות, בלי מעקב. <a href="privacy.html">מדיניות הפרטיות</a></li>
-      </ul>
     </div>
   </section>
 
@@ -538,7 +562,7 @@
       </div>
       <div class="results">
         <div class="card">
-          <h3>פחות טעויות בשיחה</h3>
+          <h3>פחות טעויות בשיחה <span class="in-11" data-in="1.1" data-feat="parakeet">בגרסה 1.1</span></h3>
           <p>Seal Speak 1.0 משתמשת בזיהוי הדיבור של Apple. בדקנו אותו מול שלושה מנועים אחרים, ו-Parakeet Ultra טעה הכי מעט. הוא מגיע בגרסה 1.1.</p>
           <div class="tablewrap">
             <table class="data results-t" style="--cols:2" data-bars data-better="lower">
@@ -552,7 +576,7 @@
           <p class="src">נמוך יותר עדיף. 17,528 קטעים של אנשים מדברים, אותם קטעים לשני המנועים.</p>
         </div>
         <div class="card">
-          <h3>גם שפות אחרות</h3>
+          <h3>גם שפות אחרות <span class="in-11" data-in="1.1" data-feat="caption-languages">בגרסה 1.1</span></h3>
           <p>הכתוביות היום באנגלית בלבד. לפני שנציע שפות נוספות, מדדנו אותן. בספרדית, בצרפתית ובגרמנית, Parakeet טעה ב-30% עד 40% פחות מ-Apple.</p>
           <div class="tablewrap">
             <table class="data results-t" style="--cols:2" data-bars data-better="lower">
@@ -601,51 +625,29 @@
     </div>
   </section>
 
-  <section class="band" id="faq" data-faq aria-labelledby="faq-h">
-    <div class="wrap">
-      <h2 id="faq-h">שאלות</h2>
-      <div class="faq">
-        <h3>על אילו מכשירים היא עובדת?</h3>
-        <p>iPhone 12 ומעלה עם iOS 26 ואילך, ו-iPad עם שבב A14 ומעלה עם iPadOS 26 ואילך. גרסת ה-Mac עדיין בבדיקות.</p>
-        <h3>האם היא מקליטה שיחות או מעלה אותן?</h3>
-        <p>לא. הצליל הופך לטקסט במכשיר שלכם, והאודיו אף פעם לא נשמר. שום דבר לא נשלח לשום מקום, ואחרי הגדרה חד-פעמית היא לא צריכה אינטרנט בכלל. טקסט נשמר רק אם מקישים על <bdi lang="en">[&nbsp;Save&nbsp;]</bdi>.</p>
-        <h3>כמה זמן נשמרות שיחות?</h3>
-        <p>30 יום, ואז הן נמחקות מעצמן. הן לא מגובות ל-iCloud. פתחו שיחה מסמל הרשימה והקישו על <bdi lang="en">[&nbsp;Delete&nbsp;]</bdi> כדי למחוק אותה מוקדם יותר.</p>
-        <h3>ומה אם אשכח לעצור?</h3>
-        <p>Seal עוצרת מעצמה אחרי 5 דקות שבהן אף אחד לא מדבר. בהגדרות אפשר לשנות את זה ל-15 או 30 דקות, או לעולם לא.</p>
-      </div>
-      <p class="intro" style="margin-top:2rem">תשובות נוספות ב<a href="support.html">עמוד התמיכה</a>.</p>
-    </div>
-  </section>
-
   </div>
 
-  <div data-device="ipad" id="panel-ipad" role="tabpanel" aria-labelledby="tab-ipad">
+  <div data-feature="translation" id="panel-translation" role="tabpanel" aria-labelledby="tab-translation">
   <div class="wrap">
-    <p class="device-name">iPad</p>
+    <p class="device-name">Translation</p>
     <div class="hero">
       <div>
-        <h1>לדבר משני צדי השולחן, בשתי שפות.</h1>
-        <p class="lede">הניחו את ה-iPad שטוח ביניכם. כל אחד קורא את השיחה בשפה שלו.</p>
-        <ol class="when" aria-label="איפה ה-iPad עומד">
-          <li class="done"><b>היום</b>רצה בפריסה של ה-iPhone</li>
-          <li><b>1.0.1</b>על כל המסך</li>
-          <li><b>מתוכנן</b>שתי שפות, מסך מפוצל</li>
-        </ol>
+        <p class="in-11-lead"><span class="in-11" data-in="1.1" data-feat="live-translation">בגרסה 1.1</span></p>
+        <h1>Read the conversation in your language.</h1>
+        <p class="lede">Seal Speak translates the captions as people talk. It's done on your device with Apple's translation, so once a language is downloaded it works with no internet.</p>
+        <ul class="works-on" aria-label="Works on"><li class="soon">iPhone <small data-in="1.1" data-feat="live-translation">ב-1.1</small></li><li class="soon">iPad <small data-in="1.1" data-feat="live-translation">ב-1.1</small></li><li class="soon">iPhone Duo <small data-in="1.1" data-feat="live-translation">ב-1.1</small></li><li class="soon">Mac <small>coming</small></li></ul>
+        <div class="get">
+          <span class="gummy gummy-soon" aria-disabled="true">Get Live Translation <small data-in="1.1" data-feat="live-translation">ב-1.1</small></span>
+        </div>
+        <p class="price-note">Live Translation comes in 1.1, so its button isn't live yet. Then you add it inside Seal Speak: $4.99, once, on iPhone, iPad and iPhone Duo. That buys more than on the Mac: the translation spoken in your ear, and face to face on iPad and iPhone Duo. Captions stay part of the app.</p>
       </div>
       <div class="tablet-wrap" data-tablet>
         <div class="tablet" role="img" aria-label="iPad מונח שטוח ומחולק לשניים. החצי התחתון, שפונה אליכם, מציג את השיחה באנגלית. החצי העליון הפוך, פונה לאדם השני ומציג אותה בספרדית. השורות של האדם השני מסומנות כמתורגמות.">
+          <!-- The app's own face to face on the iPad Air 11-inch simulator (main): a still with Reduce Motion or no
+               script; otherwise devices.js puts the live screen over it, drawn in points like the Duo's (#258 parity). -->
           <div class="t-screen" aria-hidden="true" data-app lang="en" dir="ltr">
-            <div class="t-half them" data-half="them">
-              <div class="t-head">Español</div>
-              <p class="t-line tr" data-mark="Traducido del inglés">Largo, pero los niños durmieron todo el camino.</p>
-              <p class="t-line">Qué bien. La cena está casi lista.</p>
-            </div>
-            <div class="t-half you" data-half="you">
-              <div class="t-head">English</div>
-              <p class="t-line">Long, but the kids slept the whole way.</p>
-              <p class="t-line tr" data-mark="Translated from Spanish">Good. Dinner is almost ready.</p>
-            </div>
+            <img class="t-still" src="../assets/ipad/face-to-face.jpg" alt="" width="600" height="863">
+            <div class="dx dx-port dx-pad" data-dx="pad" hidden></div>
           </div>
         </div>
         <button class="flip" data-flip data-other="↻ לצד שלכם" aria-pressed="false" hidden>↻ לצד שלהם</button>
@@ -654,22 +656,106 @@
     </div>
   </div>
 
+  <!-- Face to face, sold through what it's for (#258, owner 2026-11-03), in the look of the earlier screen-size block:
+       translation is on every device; face to face is the extra on iPad and an open Duo, because each person needs a
+       half they can read across a table (FaceToFace.minimumShortSide; iPhone one-way for the owner, Decision on #171). -->
   <section class="band scene" id="ipad-screen" aria-labelledby="ipad-screen-h">
     <div class="wrap scene-grid">
       <div>
-        <h2 id="ipad-screen-h">פי ארבעה מסך.</h2>
-        <p class="intro">אותן מילים, אותו מספר שורות, ואותיות גבוהות בערך פי שניים וחצי. אפשר לקרוא מהצד השני של השולחן.</p>
+        <p class="in-11-lead"><span class="in-11" data-in="1.1" data-feat="face-to-face">בגרסה 1.1</span></p>
+        <h2 id="ipad-screen-h">Two people, two languages, one table.</h2>
+        <p class="intro">Live Translation works on iPhone, iPad and iPhone Duo. On iPad and an open Duo you also get face to face: lay it flat between you, the screen splits in two, and each of you reads the conversation in your own language. You just talk.</p>
+        <ul class="why-split">
+          <li><b>Meeting the grandparents.</b> They speak Portuguese and you don't, yet. Put the iPad on the coffee table and talk.</li>
+          <li><b>A market stall abroad.</b> Ask what's in it and what it costs. You read their answer in English, they read your question in Spanish.</li>
+          <li><b>The new neighbor.</b> Coffee on the porch, the Duo open between you. No more pointing and nodding.</li>
+        </ul>
       </div>
-      <figure class="to-scale" data-grow aria-label="מסך של iPhone 12 ומסך של iPad בגודל 11 אינץ׳, מצוירים באותו קנה מידה, ובכל אחד אותה כתובית. שטח המסך של ה-iPad גדול בערך פי ארבעה, והאותיות גבוהות בערך פי שניים וחצי.">
-        <div class="ts-phone" aria-hidden="true" data-app lang="en" dir="ltr"><p>Dinner is almost ready.</p></div>
-        <div class="ts-pad" aria-hidden="true" data-app lang="en" dir="ltr"><p>Dinner is almost ready.</p></div>
-        <figcaption><span>iPhone 12</span><span>iPad ‏11 אינץ׳</span></figcaption>
+      <div class="to-scale-wrap">
+        <figure class="to-scale" data-grow aria-label="מסך של iPhone 12 ומסך של iPad בגודל 11 אינץ׳, מצוירים באותו קנה מידה, ובכל אחד אותה כתובית. שטח המסך של ה-iPad גדול בערך פי ארבעה, והאותיות גבוהות בערך פי שניים וחצי.">
+          <div class="ts-phone" aria-hidden="true" data-app lang="en" dir="ltr"><p>Dinner is almost ready.</p></div>
+          <div class="ts-pad" aria-hidden="true" data-app lang="en" dir="ltr"><p>Dinner is almost ready.</p></div>
+          <figcaption><span>iPhone 12</span><span>iPad ‏11 אינץ׳</span></figcaption>
+        </figure>
+        <p class="to-scale-why"><b>פי ארבעה מסך.</b> Face to face lives on iPad and the Duo because each of you needs your own half, big enough to read from across the table. An iPad has about four times an iPhone's screen, so each half is still more than a phone's worth.</p>
+        <p class="price-note">On iPhone, Live Translation is for you: captions in your language, or in your headphones.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- iPhone Duo (#258). Measured from Xcode's iPhone Duo simulator profile (iPhone19,4): folded, the outer screen is
+       466 x 678 pt with tight corners on the hinge (left) side; open, the inner screen is 669 x 951 pt, and folds in half
+       across its long side, so it opens like a book into a landscape 951 x 669 and turns upright to its own portrait.
+       The screens are live HTML like the site's other demos (devices.js builds them), traced from the app on the iPhone
+       Duo simulator unfolded by hand in DeviceHub (2026-11-02): captions typing in on the outer screen; open flat in
+       landscape with [ Face to face ]; upright, each half picking its language; the split, both halves talking.
+       Scrolling plays that in order; scrolling back plays it backwards. Reduce Motion or no JavaScript: two stills,
+       the simulator's own screenshots. -->
+  <section class="band scene duo-section" id="face-to-face" aria-labelledby="f2f-h" data-duo>
+    <div class="wrap duo-words">
+      <p class="in-11-lead"><span class="in-11" data-in="1.1" data-feat="duo">בגרסה 1.1</span></p>
+      <h2 id="f2f-h">לדבר משני צדי השולחן, בשתי שפות.</h2>
+      <p class="intro">Folded, it's an iPhone with translated captions. Open it and stand it up, and face to face is one tap away.</p>
+    </div>
+    <div class="duo-track">
+      <div class="wrap duo-sticky">
+        <div>
+          <ol class="duo-steps">
+            <li data-step="1"><b>Folded: one language, like an iPhone</b> The other person's words show up translated into yours, with what they said in small type underneath.</li>
+            <li data-step="2"><b>Opening:</b> It opens like a book. The inside screen is big enough for two, so a Face to face button shows up at the top.</li>
+            <li data-step="3"><b>Open: face to face, a language for each half</b> Tap it and stand the Duo up. Each half picks its language, then the screen splits: your half faces you, theirs is turned to face them, and each shows the whole conversation.</li>
+          </ol>
+        </div>
+        <div class="duo-stage" data-duo-stage role="img" aria-label="An iPhone Duo. Folded, it shows translated captions like an iPhone. Opened, Seal Speak offers Face to face, and the screen splits in two: one half turned to face each person, each in its own language." hidden>
+          <div class="duo-rot">
+            <div class="duo-body" aria-hidden="true" data-app lang="en" dir="ltr">
+              <div class="duo-half duo-cover">
+                <div class="duo-face duo-front"><div class="duo-clip"><div class="duo-scr"><div class="duo-land"><div class="dx dx-land" data-dx="land"></div></div><span class="duo-tap"></span><div class="duo-pic"><div class="dx dx-port" data-dx="port"></div></div></div></div></div>
+                <div class="duo-face duo-back"><div class="duo-outer"><div class="dx dx-outer" data-dx="outer"></div></div></div>
+              </div>
+              <div class="duo-half duo-base"><div class="duo-clip"><div class="duo-scr"><div class="duo-land"><div class="dx dx-land" data-dx="land"></div></div><span class="duo-tap"></span><div class="duo-pic"><div class="dx dx-port" data-dx="port"></div></div></div></div></div>
+              <div class="duo-whole"><div class="duo-scr"><div class="duo-land"><div class="dx dx-land" data-dx="land"></div></div><span class="duo-tap"></span><div class="duo-pic"><div class="dx dx-port" data-dx="port"></div></div></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="duo-stills" data-duo-stills>
+          <figure class="duo-still" aria-label="Folded: one language, like an iPhone">
+            <div class="duo-fold-still" aria-hidden="true" data-app lang="en" dir="ltr"><img class="duo-outer" src="../assets/duo/outer-captions.jpg" alt=""></div>
+            <figcaption>Folded: one language, like an iPhone</figcaption>
+          </figure>
+          <figure class="duo-still" aria-label="Open: face to face, a language for each half">
+            <div class="duo-open-still" aria-hidden="true" data-app lang="en" dir="ltr"><img src="../assets/duo/inner-split.jpg" alt=""></div>
+            <figcaption>Open: face to face, a language for each half</figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band scene" id="ear" aria-labelledby="ear-h">
+    <div class="wrap scene-grid">
+      <div>
+        <p class="in-11-lead"><span class="in-11" data-in="1.1" data-feat="in-your-ear">בגרסה 1.1</span></p>
+        <h2 id="ear-h">Translation in your ear.</h2>
+        <p class="intro">Seal Speak speaks the translation into your headphones, any brand, so you can listen instead of read. On iPhone, iPad and iPhone Duo, not the Mac. It's part of Live Translation, which comes in 1.1.</p>
+      </div>
+      <figure class="ear" data-grow aria-label="Someone speaks Spanish. Seal Speak translates it on the device and speaks it in English into a pair of headphones.">
+        <p class="ear-in" aria-hidden="true" data-app lang="en" dir="ltr">¿Qué tal el viaje?</p>
+        <span class="pv arrow" aria-hidden="true"></span>
+        <span class="ear-seal" aria-hidden="true"><img src="../assets/favicon.svg" alt="" width="44" height="44"></span>
+        <span class="pv arrow" aria-hidden="true"></span>
+        <span class="ear-phones" aria-hidden="true">
+          <svg viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 40V32a22 22 0 0 1 44 0v8"/><rect x="6" y="38" width="12" height="18" rx="5"/><rect x="46" y="38" width="12" height="18" rx="5"/></svg>
+          <i class="wave"></i><i class="wave"></i>
+        </span>
+        <p class="ear-out" aria-hidden="true" data-app lang="en" dir="ltr">“How was the drive?”</p>
       </figure>
     </div>
   </section>
 
   <section class="band scene" id="ipad-languages" aria-labelledby="ipad-languages-h">
     <div class="wrap">
+      <p class="in-11-lead"><span class="in-11" data-in="1.1" data-feat="live-translation">בגרסה 1.1</span></p>
       <h2 id="ipad-languages-h">19 שפות, מהר כמו שאנשים מדברים.</h2>
       <div class="stats">
         <p class="stat"><span class="stat-n" data-count="70 ms">70 ms</span><span class="stat-l">או פחות כדי לתרגם שורה</span></p>
@@ -698,7 +784,7 @@
             <li style="--v:0.565"><span class="lang">ספרדית</span><span class="track"><span class="fill"></span></span><span class="val">0.863</span></li>
             <li class="low" style="--v:0.285"><span class="lang">הינדי</span><span class="track"><span class="fill"></span></span><span class="val">0.807</span></li>
         </ul>
-        <p class="src">הקו מסמן 0.86, היכן שנמצאות ספרדית, צרפתית וגרמנית. התרגום של Apple ניצח שני מנועים אחרים בשלוש השפות האלה. הינדי דורשת בדיקה נוספת, ועדיין לא הוחלט אילו שפות יוצעו בגרסה 1.1. משפטים כתובים, על Mac. <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/translation-languages-results.md">כל התוצאות, באנגלית</a>.</p>
+        <p class="src">The line marks 0.86, where Spanish, French and German sit. Apple's translation beat two other engines in those three. Hindi scored lowest. These are the languages Apple offered on our Mac. The ones you can pick come from Apple's translation on your device, and newer iOS versions add more. Written sentences, on a Mac. <a href="https://github.com/G-Eskayo/clarity-captions/blob/main/docs/perf/translation-languages-results.md">Every result</a>.</p>
       </figure>
     </div>
   </section>
@@ -728,32 +814,20 @@
     </div>
   </section>
 
-  <section class="band" id="ipad-faq" data-faq aria-labelledby="ipad-faq-h">
-    <div class="wrap">
-      <h2 id="ipad-faq-h">שאלות</h2>
-      <div class="faq">
-        <h3>על אילו דגמי iPad היא עובדת?</h3>
-        <p>כל iPad עם שבב A14 ומעלה, עם iPadOS 26 ואילך.</p>
-        <h3>האם התרגום צריך אינטרנט?</h3>
-        <p>רק פעם אחת לכל שפה, כדי להוריד אותה: 154 עד 291&nbsp;MB, מ-Apple. אחרי זה התרגום עובד בלי חיבור, ושום דבר לא יוצא מה-iPad.</p>
-        <h3>מתי יגיע המסך המפוצל?</h3>
-        <p>הוא מתוכנן, עדיין בלי תאריך. קודם יגיעו כתוביות בשפות נוספות ותרגום של הכתוביות, בגרסה 1.1.</p>
-        <h3>אפשר להשתמש בה ב-iPad כבר היום?</h3>
-        <p>כן. Seal Speak 1.0 רצה ב-iPad בפריסה בגודל של iPhone, עם כל מה שהאפליקציה עושה ב-iPhone.</p>
-        <p class="more">תשובות נוספות ב<a href="support.html">עמוד התמיכה</a>.</p>
-      </div>
-    </div>
-  </section>
-
   </div>
 
-  <div data-device="mac" id="panel-mac" role="tabpanel" aria-labelledby="tab-mac">
+  <div data-feature="calls" id="panel-calls" role="tabpanel" aria-labelledby="tab-calls">
   <div class="wrap">
-    <p class="device-name">Mac</p>
+    <p class="device-name">Calls</p>
     <div class="hero">
       <div>
         <h1>כתוביות לשיחות שלכם.</h1>
-        <p class="lede">חלון קטן שנשאר מעל השיחה. <bdi lang="en">&#8984;H</bdi> מסתיר אותו.</p>
+        <p class="lede">חלון קטן שנשאר מעל השיחה. <bdi lang="en">&#8984;H</bdi> מסתיר אותו. Calls are a Mac feature, in the Mac app.</p>
+        <ul class="works-on" aria-label="Works on"><li class="no">iPhone <small>no</small></li><li class="no">iPad <small>no</small></li><li class="no">iPhone Duo <small>no</small></li><li class="soon">Mac <small>in testing</small></li></ul>
+        <div class="get">
+          <span class="gummy gummy-soon" aria-disabled="true">Mac app: coming</span>
+        </div>
+        <p class="price-note">Calls are captioned only in the Mac app. It's in testing and not on the App Store yet, so there's nothing to download today. The button goes live with it.</p>
         <ol class="when" aria-label="איפה אפליקציית ה-Mac עומדת">
           <li class="done"><b>בבדיקות</b>עדיין לא ב-App Store</li>
           <li><b>דורשת</b>Apple silicon ‏(M1 ומעלה), macOS 26</li>
@@ -763,12 +837,12 @@
         <div class="mac" data-mac role="img" aria-label="חלון של שיחת וידאו על Mac, ומעליו החלון הקטן של Seal Speak, שמציג כתוביות לשיחה שורה אחר שורה עם התוויות Speaker 1 ו-Speaker 2.">
           <div class="mac-call" aria-hidden="true"><div class="mac-tile"></div><div class="mac-self"></div></div>
           <div class="pop" aria-hidden="true" data-app lang="en" dir="ltr">
-            <div class="pop-top"><span class="dot"></span>Captioning your call</div>
+            <div class="pop-top"><svg class="pop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span class="pop-title"><span class="dot"></span>Captioning your call</span><svg class="pop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.2" fill="currentColor" stroke="none"/></svg></div>
             <div class="pop-lines" data-pop-lines>
               <p class="pop-line s1"><b>Speaker 1</b>Grandpa wants to say hi to everyone.</p>
               <p class="pop-line s2"><b>Speaker 2</b>Hi Grandpa! We miss you.</p>
             </div>
-            <div class="pop-stop">Stop</div>
+            <div class="pop-stop"><svg viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg></div>
           </div>
         </div>
         <p class="tablet-hint">שיחה מומצאת.</p>
@@ -812,9 +886,9 @@
     <div class="wrap">
       <h2 id="mac-ring-h">שיחה מצלצלת. Seal מציעה להציג לה כתוביות.</h2>
       <ol class="story3" data-story aria-label="כששיחה מצלצלת">
-        <li class="on"><div class="mini" data-app lang="en" dir="ltr"><b>You're getting a call</b><span class="btns"><i>Caption call</i><i>Not now</i></span></div><p>היא מצלצלת</p></li>
-        <li><div class="mini" data-app lang="en" dir="ltr"><b><span class="dot"></span>Captioning your FaceTime call</b><span class="ln">Hi! Can you read me okay?</span></div><p>היא מציגה כתוביות</p></li>
-        <li><div class="mini" data-app lang="en" dir="ltr"><b>Call ended</b><span class="btns"><i>Save transcript</i><i>Don't save</i></span></div><p>אתם בוחרים</p></li>
+        <li class="on"><div class="mini" data-app lang="en" dir="ltr"><b>You're getting a call</b><span class="sub">Pause this conversation and caption the call?</span><span class="btns"><i>Caption call</i><i>Not now</i></span></div><p>היא מצלצלת</p></li>
+        <li><div class="mini" data-app lang="en" dir="ltr"><b><span class="dot"></span>Captioning your call</b><span class="ln">Hi! Can you read me okay on the computer?</span><span class="sub">Your conversation is paused. It comes back when the call ends.</span></div><p>היא מציגה כתוביות</p></li>
+        <li><div class="mini" data-app lang="en" dir="ltr"><b>The call ended</b><span class="sub">Save this call's transcript, or go back to your conversation where it left off.</span><span class="btns"><i>Save transcript</i><i>Return</i></span></div><p>אתם בוחרים</p></li>
       </ol>
       <p class="src">שיחות FaceTime ו-iPhone. באפליקציות אחרות, הקישו על <bdi lang="en">Start</bdi>.</p>
     </div>
@@ -844,24 +918,76 @@
     </div>
   </section>
 
-  <section class="band" id="mac-faq" data-faq aria-labelledby="mac-faq-h">
+  </div>
+
+  <!-- shared -->
+  <section class="band" id="devices" aria-labelledby="devices-h">
     <div class="wrap">
-      <h2 id="mac-faq-h">שאלות</h2>
-      <div class="faq">
-        <h3>האם היא מקליטה את השיחות שלי?</h3>
-        <p>לא. הצליל של השיחה הופך לטקסט ב-Mac שלכם ולא נשמר. המילים נשמרות רק אם בוחרים <bdi lang="en">[&nbsp;Save&nbsp;transcript&nbsp;]</bdi> בסוף השיחה.</p>
-        <h3>האם האנשים בשיחה רואים את זה?</h3>
-        <p>לא. Seal Speak לא מצטרפת לשיחה. היא רק מקשיבה לצליל שה-Mac משמיע.</p>
-        <h3>האם היא עובדת עם אוזניות?</h3>
-        <p>היא בנויה לזה. עם אוזניות שיש בהן מיקרופון, היא מציגה כתוביות לכם ולשיחה; עם אוזניות בלי מיקרופון, רק לשיחה. החלק הזה עדיין בבדיקות.</p>
-        <h3>מתי אפשר לקבל אותה?</h3>
-        <p>היא בבדיקות עכשיו, עדיין בלי תאריך. היא דורשת Mac עם Apple silicon ‏(M1 ומעלה) ו-macOS 26 ואילך. היא לא תרוץ על Mac עם מעבד Intel.</p>
-        <p class="more">תשובות נוספות ב<a href="support.html">עמוד התמיכה</a>.</p>
+      <h2 id="devices-h">Which device does what</h2>
+      <p class="intro">One app for iPhone, iPad and iPhone Duo. The Mac gets its own app.</p>
+      <table class="devtable">
+        <caption class="sr-only">Which device does what</caption>
+        <thead><tr><td></td><th scope="col">iPhone</th><th scope="col">iPad</th><th scope="col">iPhone Duo</th><th scope="col">Mac</th></tr></thead>
+        <tbody>
+          <tr data-row="captions"><th scope="row"><a href="#panel-captions">Captions</a></th><td class="yes" data-dev="iPhone">Yes</td><td class="yes" data-dev="iPad">Yes, in the iPhone layout. Full screen: <span class="in-11" data-in="1.1" data-feat="ipad-full-screen">בגרסה 1.1</span></td><td class="soon" data-dev="iPhone Duo">Folded or open <span class="in-11" data-in="1.1" data-feat="duo">בגרסה 1.1</span></td><td class="soon" data-dev="Mac">In testing</td></tr>
+          <tr data-row="translation"><th scope="row"><a href="#panel-translation">Translation</a> <span class="in-11" data-in="1.1" data-feat="live-translation">בגרסה 1.1</span></th><td class="soon" data-dev="iPhone">Translated captions, and spoken in your ear</td><td class="soon" data-dev="iPad">Translated captions, in your ear, and face to face</td><td class="soon" data-dev="iPhone Duo">Translated captions, in your ear, and face to face when open</td><td class="soon" data-dev="Mac">Translated captions, in the room and on calls</td></tr>
+          <tr data-row="calls"><th scope="row"><a href="#panel-calls">Calls</a></th><td class="no" data-dev="iPhone">No</td><td class="no" data-dev="iPad">No</td><td class="no" data-dev="iPhone Duo">No</td><td class="soon" data-dev="Mac">In testing</td></tr>
+          <tr class="need"><th scope="row">You need</th><td data-dev="iPhone">iPhone 12 or newer, iOS 26</td><td data-dev="iPad">A14 chip or newer, iPadOS 26</td><td data-dev="iPhone Duo">iOS 26</td><td data-dev="Mac">Apple silicon (M1 or later), macOS 26</td></tr>
+        </tbody>
+      </table>
+      <div class="get">
+        <a class="gummy" href="https://apps.apple.com/us/app/seal-speak/id6821561495">Download for iPhone and iPad</a>
+        <span class="gummy gummy-soon" aria-disabled="true">Mac app: coming</span>
       </div>
+      <p class="price-note">The Mac app is a separate app and a separate purchase. Buying Seal Speak on iPhone doesn't get it for you on the Mac. It's still in testing, so its button isn't live yet.</p>
+      <p class="price-note">Seal Speak is $4.99, once, on iPhone, with no subscription. The Mac app is $4.99, once, on its own, coming. Live Translation is an add-on coming in 1.1: $4.99 on iPhone, iPad and iPhone Duo, and $1.99 on the Mac. Why the difference: on iPhone, iPad and iPhone Duo it also speaks the translation in your ear, and does face to face on iPad and iPhone Duo. On the Mac it's translated captions, in the room and on calls.</p>
+      <p class="price-note">Dashed means it isn't on the App Store yet.</p>
+      <p class="price-note">Android: planned, no date yet. The goal is the same speed and the same experience as on iPhone.</p>
     </div>
   </section>
 
-  </div>
+  <section class="band" id="private" aria-labelledby="private-h">
+    <div class="wrap">
+      <h2 id="private-h">שום דבר לא יוצא מהמכשיר.</h2>
+      <figure class="private" data-grow aria-label="קולות נכנסים למכשיר ויוצאים כמילים על המסך שלו. הדרך לאינטרנט מחוקה.">
+        <span class="pv voice" aria-hidden="true"><svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M10 20v8M18 14v20M26 8v32M34 16v16M42 21v6"/></svg></span>
+        <span class="pv arrow" aria-hidden="true"></span>
+        <span class="pv device" aria-hidden="true"><svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><rect x="13" y="4" width="22" height="40" rx="5"/><path d="M19 16h10M19 22h10M19 28h6"/></svg></span>
+        <span class="pv arrow" aria-hidden="true"></span>
+        <span class="pv words" aria-hidden="true">Aa</span>
+        <span class="pv cloud" aria-hidden="true"><svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M14 36h22a8 8 0 0 0 0-16 12 12 0 0 0-23-2A9 9 0 0 0 14 36z"/><path class="x" d="M6 6l36 36"/></svg></span>
+      </figure>
+      <ul class="pv-facts">
+        <li><b>אף פעם לא מוקלט</b>הצליל הופך למילים, ואז נעלם.</li>
+        <li><b>בלי אינטרנט</b>עובדת גם במצב טיסה, אחרי הגדרה חד-פעמית.</li>
+        <li><b>בלי חשבון</b>בלי פרסומות, בלי מעקב. <a href="privacy.html">מדיניות הפרטיות</a></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="band" id="faq" data-faq aria-labelledby="faq-h">
+    <span id="ipad-faq"></span><span id="mac-faq"></span>
+    <div class="wrap">
+      <h2 id="faq-h">שאלות</h2>
+      <div class="faq">
+        <h3>על אילו מכשירים היא עובדת?</h3>
+        <p>iPhone 12 ומעלה עם iOS 26 ואילך, ו-iPad עם שבב A14 ומעלה עם iPadOS 26 ואילך. גרסת ה-Mac עדיין בבדיקות.</p>
+        <h3>האם היא מקליטה שיחות או מעלה אותן?</h3>
+        <p>לא. הצליל הופך לטקסט במכשיר שלכם, והאודיו אף פעם לא נשמר. שום דבר לא נשלח לשום מקום, ואחרי הגדרה חד-פעמית היא לא צריכה אינטרנט בכלל. טקסט נשמר רק אם מקישים על <bdi lang="en">[&nbsp;Save&nbsp;]</bdi>.</p>
+        <h3>האם התרגום צריך אינטרנט? <span class="in-11" data-in="1.1" data-feat="live-translation">בגרסה 1.1</span></h3>
+        <p>Only once per language, to download it from Apple: 154 to 291&nbsp;MB. After that it translates with no connection, and nothing leaves your device.</p>
+        <h3>Is Live Translation shared with my family? <span class="in-11" data-in="1.1" data-feat="live-translation">בגרסה 1.1</span></h3>
+        <p>No. Each person buys their own, once.</p>
+        <h3>כמה זמן נשמרות שיחות?</h3>
+        <p>30 יום, ואז הן נמחקות מעצמן. הן לא מגובות ל-iCloud. פתחו שיחה מסמל הרשימה והקישו על <bdi lang="en">[&nbsp;Delete&nbsp;]</bdi> כדי למחוק אותה מוקדם יותר.</p>
+        <h3>ומה אם אשכח לעצור?</h3>
+        <p>Seal עוצרת מעצמה אחרי 5 דקות שבהן אף אחד לא מדבר. בהגדרות אפשר לשנות את זה ל-15 או 30 דקות, או לעולם לא.</p>
+        <h3>When can I get the Mac app?</h3>
+        <p>היא בבדיקות עכשיו, עדיין בלי תאריך. היא דורשת Mac עם Apple silicon ‏(M1 ומעלה) ו-macOS 26 ואילך. היא לא תרוץ על Mac עם מעבד Intel.</p>
+      </div>
+      <p class="intro" style="margin-top:2rem">תשובות נוספות ב<a href="support.html">עמוד התמיכה</a>.</p>
+    </div>
+  </section>
 
 </main>
 

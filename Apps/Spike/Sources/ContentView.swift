@@ -678,6 +678,15 @@ struct ContentView: View {
         .onChange(of: faceToFace) { _, on in translation.faceToFaceChanged(on, pair: model.split.languagePair); translationLinesChanged() }
         .onChange(of: model.split) { _, split in translation.faceToFaceChanged(faceToFace, pair: split.languagePair); translationLinesChanged() }
         .task {
+            // Debug only (#220): with a sound file in place of the microphone (no demo captions), press the real
+            // Start once the launch has settled, so a screenshot shows the real engine's words.
+            #if DEBUG
+            guard DemoMode.audioFile != nil, !DemoMode.isOn else { return }
+            try? await Task.sleep(for: .seconds(3))
+            model.perform(.start)
+            #endif
+        }
+        .task {
             guard DemoMode.isOn else { return }
             model.demoApplyPreset()
             if DemoMode.tour != nil { await runDemoTour(); return }
@@ -780,6 +789,7 @@ struct ContentView: View {
                          onTranslation: { translation.setOn($0) },
                          onChooseTranslationTarget: { go { $0.open(.translationTarget) } },
                          onEar: { ear.setOn($0) },
+                         onEarMatch: { ear.setMatch($0) },
                          onBuyTranslation: { Task { await translation.unlock() } },
                          onRestorePurchases: { Task { await translation.restore() } })
         case .translationTarget:

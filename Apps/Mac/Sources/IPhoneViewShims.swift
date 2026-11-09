@@ -35,6 +35,14 @@ struct UINotificationFeedbackGenerator {
     func notificationOccurred(_ type: FeedbackType) {}
 }
 
+/// The shared caption-language list (CaptionLanguagePage.swift) lists the languages Seal brings its own engine for
+/// (#220). The Mac has no CaptionEngineFactory, so this is the same rule: Hebrew when its zipformer is in the bundle.
+enum CaptionEngineFactory {
+    static var bundledLanguages: [Locale] {
+        Bundle.main.url(forResource: "HebrewZipformer", withExtension: nil) != nil ? [Locale(identifier: "he-IL")] : []
+    }
+}
+
 /// The iPhone's debug demo flags (screenshots of set-up screens). None of them apply on the Mac.
 enum DemoMode {
     static let isOn = false

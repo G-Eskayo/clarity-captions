@@ -45,6 +45,8 @@ import Foundation
 ///                     -ClarityDemoTranslate sr: a language with no voice (Serbian).
 ///   -ClarityDemoSaidOpen   #246: with -ClarityDemoTranslate (one-way) or -ClarityDemoFaceToFace (the split), the newest
 ///                     translated line but one starts opened, showing what was said (screenshots of both states)
+///   -ClarityDemoEarMatch on|one   with -ClarityDemoEar: Sound like the speaker on (#247, PR #254), matching, or `one`:
+///                     the language has no measured voice, so everyone gets the same one.
 ///   -ClarityDemoFaceToFaceStopAfter <step>   the same flow, then Stop tapped at that moment (#245: it always leaves)
 ///   -ClarityDemoFaceToFaceHung   the split's engines never finish starting or stopping (#245, the owner's iPad)
 ///   -ClarityDemoFaceToFaceReady one   only one language is ready: Face to face opens Settings' setup (#245)
@@ -102,6 +104,9 @@ enum DemoMode {
     /// `-ClarityDemoLanguage es-ES`: captions in this language (#37). `-ClarityDemoTranslate en-US`: translation on,
     /// into this language (#53). `-ClarityDemoTranslateProgress 0.42`: its language pack mid-download.
     static var language: String? { value(after: "-ClarityDemoLanguage") }
+    /// #220: captions replay this sound file through the real engine instead of the microphone (the simulator's
+    /// microphone hears nothing useful), so a screenshot shows a real engine's words.
+    static var audioFile: URL? { value(after: "-ClarityDemoAudio").map { URL(fileURLWithPath: $0) } }
     static var translate: String? { value(after: "-ClarityDemoTranslate") }
     static var translateProgress: Double? { value(after: "-ClarityDemoTranslateProgress").flatMap(Double.init) }
     static var translationOwned: Bool { flag("-ClarityDemoTranslationOwned") }
@@ -109,6 +114,8 @@ enum DemoMode {
     static var ear: String? { value(after: "-ClarityDemoEar") }
     /// `-ClarityDemoSaidOpen`: #246, one translated line starts opened (screenshots).
     static var saidOpen: Bool { flag("-ClarityDemoSaidOpen") }
+    /// `-ClarityDemoEarMatch on|one`: Sound like the speaker (#247, PR #254) on, matching or with one voice for everyone.
+    static var earMatch: String? { value(after: "-ClarityDemoEarMatch") }
     /// `-ClarityDemoIntoSpeechProgress 0.4` (#245): Into's speech model mid-download in Settings.
     static var intoSpeechProgress: Double? { value(after: "-ClarityDemoIntoSpeechProgress").flatMap(Double.init) }
     /// `-ClarityDemoFaceToFace` (#208): opens the split and taps through it the way two people would, through the real
