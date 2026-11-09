@@ -5,7 +5,24 @@ pace, at low latency. Part 1 asks whether Apple's own voices can get there cheap
 pace from the audio Seal already has, set `AVSpeechUtterance` voice, `pitchMultiplier` and `rate` to match, and
 measure what that costs in lag. Part 2 (voice conversion) is research only, at the end.
 
-No change to the app. The code is in the spike package `Packages/EarSpike`, which the app never references:
+**Wired (owner's answers on PR #254, 2026-11-03).** "wire" A: voice, pitch and pace per speaker, from a shipped
+calibration table, with a new speaker's first phrase in the usual voice. "setting" B: its own "Sound like the speaker"
+On/Off row under "Speak it in my ear", off to start, shown as a mock-up for approval first. "timbre" A: part 2 is
+parked until part 1 has been heard on a phone. In the app:
+
+- `CaptionCore/SpeakerVoice.swift`: the spike's pure code, moved unchanged (the spike's copy stays as the record).
+- `CaptionCore/EarVoiceMatch.swift`: `SpeakerVoiceRecorder` (fed the 16 kHz audio the engine already makes for the
+  diarizer, and each final line with its settled speaker label; keeps 20 s of audio and 8 speakers at most; does
+  nothing unless the row is on), `EarVoiceChooser` (a speaker's voice is chosen once and never jumps), and
+  `VoiceCalibrationTable`.
+- `CaptionCore/VoiceCalibrationData.swift`: the table, 113 voices in 20 locales, measured on this Mac with
+  `ear-spike calibrate` (renders only) and written by `scripts/ship-voice-calibrations.sh`. Raw:
+  [`ear-translation/voice-calibrations-mac.json`](ear-translation/voice-calibrations-mac.json). Only voices already
+  installed are used; nothing is downloaded or measured on the device.
+- `EarCenter`: each phrase is said in its speaker's matched voice, pitch and rate (the catch-up still on top, same
+  cap); the matched voices are warmed up when the row is turned on, so a new speaker isn't late.
+
+The spike itself, below, changed nothing in the app. Its code is in `Packages/EarSpike`, which the app never references:
 
 - `EarSpikeKit/SpeakerVoice.swift` (pure, 31 tests): `PitchTracker` (YIN), `SyllableRate` (loudness peaks),
   `TextSyllables` (syllables from caption text), `SpeakerProfile` (one per speaker, fed in the app's ~85 ms buffers),
@@ -128,6 +145,8 @@ Spanish alone, and does it sound like the person, not just a different person?
 3. **V3** The premium or enhanced Spanish voice downloaded: does it follow the pitch at all?
 
 ## Part 2: on-device voice conversion and cloning (research only)
+
+**Parked** (owner, PR #254 "timbre" A): revisit after part 1 has been heard on a phone.
 
 Part 1 can only pick the nearest Apple voice and move it. Sounding like the person means changing the timbre:
 **voice conversion** (turn Apple's spoken translation into the speaker's voice) or **cloning TTS** (synthesise

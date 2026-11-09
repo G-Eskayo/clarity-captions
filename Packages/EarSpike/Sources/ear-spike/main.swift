@@ -10,6 +10,7 @@
 //   swift run --package-path Packages/EarSpike ear-spike acoustic   --out DIR   speaker -> mic, voice processing off/on
 //   swift run --package-path Packages/EarSpike ear-spike headset    --out DIR   16 kHz vs 8 kHz vs room mic accuracy
 //   swift run --package-path Packages/EarSpike ear-spike voice-match --out DIR  each speaker's pitch and pace -> the voice (#247)
+//   swift run --package-path Packages/EarSpike ear-spike calibrate --out DIR    the voice table the app ships (#254)
 @preconcurrency import AVFoundation
 import EarProbe
 import EarSpikeKit
@@ -472,7 +473,47 @@ case "voice-match":
                                      loadAverage: load.map { String(format: "%.1f", $0) }.joined(separator: " "))),
              arg("--name") ?? "voice-match-mac.json")
 
+case "calibrate":
+    // #254 ("wire" A): the calibration table the app ships, so a phone never measures a voice. Every installed voice
+    // in each language Seal has sample lines for, measured once here. Renders only: nothing plays.
+    let synth = AVSpeechSynthesizer()
+    let bases = (arg("--only")?.split(separator: ",").map(String.init)) ?? (["en"] + ReferenceTranslations.lines.keys.sorted())
+    let novelty: Set<String> = ["Albert", "Bad News", "Bahh", "Bells", "Boing", "Bubbles", "Cellos", "Good News",
+                                "Jester", "Organ", "Superstar", "Trinoids", "Whisper", "Wobble", "Zarvox",
+                                "Deranged", "Hysterical", "Pipe Organ", "Fred", "Junior", "Kathy", "Ralph"]
+    struct Language: Encodable { let normalSyllablesPerSecond: Double; let voices: [VoiceCalibration] }
+    var table: [String: Language] = [:]
+    for base in bases {
+        let lines = base == "en" ? Array(SampleLines.english.prefix(3)) : Array((ReferenceTranslations.lines[base] ?? []).prefix(3))
+        guard !lines.isEmpty else { print("\(base): no lines"); continue }
+        let all = AVSpeechSynthesisVoice.speechVoices().filter {
+            ($0.language == base || $0.language.hasPrefix(base + "-")) && !$0.voiceTraits.contains(.isNoveltyVoice) && !novelty.contains($0.name)
+        }
+        for code in Set(all.map(\.language)).sorted() {
+            var cals: [VoiceCalibration] = []
+            for v in all where v.language == code {
+                do {
+                    let c = try await VoiceMatchProbe.calibrate(v, lines: lines, language: base, synth: synth).calibration
+                    guard c.pitchHz > 0 else { print("\(code) \(v.name): no pitch, left out"); continue }
+                    cals.append(c)
+                    print("\(code)\t\(v.name)\t\(Int(c.pitchHz)) Hz\t\(String(format: "%.2f", c.syllablesPerSecond)) syl/s")
+                } catch { print("\(code) \(v.name): \(error.localizedDescription), left out") }
+            }
+            guard !cals.isEmpty else { continue }
+            // Normal pace in this language, as the syllable counter hears it: the median voice at Apple's default rate.
+            let paces = cals.map(\.syllablesPerSecond).filter { $0 > 0 }.sorted()
+            table[code] = Language(normalSyllablesPerSecond: paces.isEmpty ? 0 : paces[paces.count / 2], voices: cals.sorted { $0.id < $1.id })
+        }
+    }
+    struct Table: Encodable { let measuredOn: String; let date: String; let languages: [String: Language] }
+    let compact = JSONEncoder()
+    compact.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+    let tableName = arg("--name") ?? "voice-calibrations.json"
+    let file = Table(measuredOn: "Mac (\(host)), macOS \(os)", date: String(ISO8601DateFormatter().string(from: Date()).prefix(10)), languages: table)
+    try compact.encode(file).write(to: out.appendingPathComponent(tableName))
+    print("wrote \(out.appendingPathComponent(tableName).path): \(table.count) languages, \(table.values.map(\.voices.count).reduce(0, +)) voices")
+
 default:
-    print("usage: ear-spike voices|lag|echo|fingerprint|finish-lag|headset-real|acoustic|headset|voice-match --out DIR")
+    print("usage: ear-spike voices|lag|echo|fingerprint|finish-lag|headset-real|acoustic|headset|voice-match|calibrate --out DIR")
     exit(2)
 }

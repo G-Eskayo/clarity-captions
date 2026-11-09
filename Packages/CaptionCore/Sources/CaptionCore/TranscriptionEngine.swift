@@ -112,6 +112,9 @@ public final class TranscriptionEngine {
     private var prepareTask: Task<SpeechRecognizerBackend?, Error>?
     /// Face to face (#60): two language engines routed by voice instead of the one recognizer. Nil one-way.
     private let faceToFace: FaceToFaceRouting?
+    /// "Sound like the speaker" (#247, PR #254): each speaker's pitch and pace, from audio already converted for the
+    /// diarizer. A no-op unless the ear has it on (`isRecording`); one-way captions only.
+    var voiceRecorder = SpeakerVoiceRecorder.shared
     private var faceToFaceStarted = false
     private var preparedLaps: [String] = []
     /// Set by `stop()`: a load still running then frees what it made instead of keeping it.
@@ -319,6 +322,7 @@ public final class TranscriptionEngine {
             return makeFaceToFaceStream(lanes: lanes, routing: faceToFace, wallTime: wallTime)
         }
         guard let backend else { throw TranscriptionError.converterUnavailable }
+        voiceRecorder.begin(language: locale.identifier)
         let pieces = try await open(backend, inFormat: inFormat)
         try source.start { buffer in
             self.processBuffer(buffer, inFormat: inFormat, fed: fed)
@@ -475,8 +479,9 @@ public final class TranscriptionEngine {
             let level = recordLoudness(samples: samples, atAudioTime: fed.seconds)
             if let faceToFace {
                 faceToFace.feed(samples, at: fed.seconds, level: level, segments: diarizer.segments)
-            } else if format == nil {
-                backend?.feed(samples16k: samples, level: level)
+            } else {
+                voiceRecorder.feed(samples, at: fed.seconds)
+                if format == nil { backend?.feed(samples16k: samples, level: level) }
             }
         }
         if let backend, let converter, let format, let out = convert(buffer, with: converter, to: format) {
@@ -525,6 +530,11 @@ public final class TranscriptionEngine {
                             update.engine = self.engineName
                             update.engineFallback = self.fallbackReason
                             continuation.yield(update)
+                            // After the caption is out, so profiling the speaker never holds it back. A final
+                            // piece's label is the settled one (#91), so a voice follows a settled label only.
+                            if piece.isFinal {
+                                self.voiceRecorder.lineFinished(speaker: speaker, text: piece.text, start: piece.start, end: piece.end)
+                            }
                         }
                     }
                     continuation.finish()
