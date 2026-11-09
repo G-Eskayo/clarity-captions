@@ -34,10 +34,19 @@ for l in open(sys.argv[1]):
     print(json.dumps({"id": c["id"], "file": c["file"]}))
 ' "$CONV/conversations-$SPLIT.jsonl" > "$LIST"
 
-rc=0
-"$B1"  batch --list "$LIST" --audio-dir "$CONV" --out-dir "$OUT/A-1.0-apple"     --diarizer "$D" --path replaying --label "build-1.0-5@4e7f55a" || rc=1
-"$B10" batch --list "$LIST" --audio-dir "$CONV" --out-dir "$OUT/B-10-parakeet"   --diarizer "$D" --parakeet "$P" --path replaying --label "build-1.1.0-10@be128a5" || rc=1
-"$B10" batch --list "$LIST" --audio-dir "$CONV" --out-dir "$OUT/C-10-apple"      --diarizer "$D" --parakeet "$P" --engine apple --path replaying --label "build-1.1.0-10@be128a5" || rc=1
-"$B10" batch --list "$LIST" --audio-dir "$CONV" --out-dir "$OUT/D-10-parakeet-source" --diarizer "$D" --parakeet "$P" --path source --tail 0 --label "build-1.1.0-10@be128a5" || rc=1
-echo "run-ab: done, rc=$rc" >&2
-exit $rc
+# One process per session, every arm: a session that doesn't give everything back at Stop (1.0's Stop takes minutes on
+# a Mac with no microphone) can't hold a speech recognizer into the next one. Resumable: a finished session is skipped.
+arm() {
+    bin="$1"; dir="$OUT/$2"; shift 2
+    mkdir -p "$dir"
+    python3 -I -c 'import json,sys; [print(json.loads(l)["id"], json.loads(l)["file"]) for l in open(sys.argv[1])]' "$LIST" |
+    while read -r id file; do
+        [ -f "$dir/$id.json" ] && continue
+        "$bin" run --audio "$CONV/$file" --out "$dir/$id.json" "$@" 2>/dev/null | grep SYSTEM-REPLAY || echo "run-ab: $2 $id failed" >&2
+    done
+}
+arm "$B1"  A-1.0-apple             --diarizer "$D" --path replaying --label "build-1.0-5@4e7f55a"
+arm "$B10" B-10-parakeet           --diarizer "$D" --parakeet "$P" --path replaying --label "build-1.1.0-10@be128a5"
+arm "$B10" C-10-apple              --diarizer "$D" --parakeet "$P" --engine apple --path replaying --label "build-1.1.0-10@be128a5"
+arm "$B10" D-10-parakeet-source    --diarizer "$D" --parakeet "$P" --path source --tail 0 --label "build-1.1.0-10@be128a5"
+echo "run-ab: done" >&2

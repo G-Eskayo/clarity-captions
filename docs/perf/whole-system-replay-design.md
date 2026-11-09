@@ -29,6 +29,10 @@ Two ways in, because 1.0 has no `AudioSource` (its mic is wired into the engine)
   recognizer, diarizer and lag clock, fed from the file in 4096-frame buffers at real-time pace. The 1.0 vs 10
   comparison uses this path for both builds, so neither gets a different mechanism. The session ends with a Stop tap
   2 s after the recording has played (1.0's replay never ends its stream on its own; build 10's does at the file's end).
+  On this Mac, 1.0's Stop then took 510 s to return (it waits on its analyzer and the mic's input node; a Mac mini has
+  no microphone), with its lines already complete. So every arm waits at most 10 s for Stop, takes the lines as they
+  are then, and runs each session in its own process, so nothing left allocated reaches the next session. On the dev
+  clip, 1.0's lines were word-for-word the same either way.
 
 Arm D checks the mechanism itself: build 10 through the source path vs through replaying.
 

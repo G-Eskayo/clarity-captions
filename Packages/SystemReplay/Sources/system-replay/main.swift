@@ -139,6 +139,7 @@ struct Options {
     var rate: Double
     var frames: Int
     var tail: Double
+    var stopWait: Double
     var label: String
     var path: String
 
@@ -152,6 +153,7 @@ struct Options {
         rate = Double(arg("--rate", args) ?? "48000") ?? 48_000
         frames = Int(arg("--frames", args) ?? "4096") ?? 4_096
         tail = Double(arg("--tail", args) ?? "3") ?? 3
+        stopWait = Double(arg("--stop-wait", args) ?? "10") ?? 10
         label = arg("--label", args) ?? "unlabelled"
         path = arg("--path", args) ?? "source"
         guard ["source", "replaying"].contains(path) else { fail("--path source|replaying") }
@@ -272,8 +274,14 @@ func replay(audio: URL, options o: Options) async -> SessionLog {
     limit.cancel()
     stopTap?.cancel()
     let stopStart = uptime()
-    await controller.stopAndWait()
-    log.stopSeconds = uptime() - stopStart
+    // Stop, waited for at most `stopWait` seconds. 1.0's Stop takes minutes on a Mac with no microphone (it waits on
+    // its analyzer and the mic's input node); its lines are complete by then. The lines are taken as they are when
+    // the wait ends, the same rule for every arm; `run` exits the process right after, which frees anything left.
+    var stopped = false
+    let stopTask = Task { @MainActor in await controller.stopAndWait(); stopped = true }
+    while !stopped && uptime() - stopStart < o.stopWait { try? await Task.sleep(for: .milliseconds(50)) }
+    if stopped { log.stopSeconds = uptime() - stopStart } else { log.stopTimedOut = true }
+    _ = stopTask
     // Stop flushes the recognizer's last words as final; give the main actor a moment to apply them.
     try? await Task.sleep(for: .milliseconds(500))
 

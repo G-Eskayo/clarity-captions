@@ -102,6 +102,8 @@ public struct SessionLog: Codable, Sendable {
     public var stoppedByTap = false
     /// How long Stop took to give everything back (1.0's touches the mic's input node, slow on a Mac with no mic).
     public var stopSeconds: Double?
+    /// Stop hadn't given everything back within the harness's wait (`--stop-wait`); the lines are as they were then.
+    public var stopTimedOut = false
     /// Set when the session failed or timed out; the scorer refuses a session with an error.
     public var error: String?
 
