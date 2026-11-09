@@ -7,18 +7,24 @@ public enum MacAudioSide: Equatable, Hashable, Sendable {
     case room
     /// The call's sound: the other people on the call (or anything else the Mac plays).
     case theirs
-    /// The microphone during a call: her own voice.
+    /// A headset's mic during a call: only her own voice.
     case yours
 
     /// Which stream the sound came in on.
     public enum Source: Equatable, Sendable { case call, microphone }
 
-    public init(source: Source, onCall: Bool) {
+    /// `mic`: which microphone joins the call (`RoomMicChoice`). Owner's note on PR #231: without headphones the Mac's
+    /// own mic hears the people beside her as well as her, so on a call it is still the room's. Only a headset's mic is
+    /// hers alone.
+    public init(source: Source, onCall: Bool, mic: RoomMicChoice) {
         switch source {
         case .call: self = .theirs
-        case .microphone: self = onCall ? .yours : .room
+        case .microphone: self = onCall && mic == .headset ? .yours : .room
         }
     }
+
+    /// Her lines are labelled "You" (owner, PR #231): only when they can't be anyone else's.
+    public var isYou: Bool { self == .yours }
 }
 
 /// #213: what the Mac translates, from which language, into which. Pure: the app's translator (Apple's Translation,
@@ -44,10 +50,16 @@ public struct MacTranslation: Equatable, Sendable {
     /// What she reads: every translation goes into it.
     public var into: Locale
 
-    public init(room: Locale, call: Locale, into: Locale) {
+    /// Languages captioned by an engine that hears every one of them (Parakeet: it takes no language setting, ADR 0029),
+    /// so a side in one of them can be translated from another of them, line by line. Apple's engine hears only the
+    /// language it was started in (E27).
+    public var multilingual: Set<String>
+
+    public init(room: Locale, call: Locale, into: Locale, multilingual: Set<String> = CaptionEngineRouting.parakeetLanguages) {
         self.room = room
         self.call = call
         self.into = into
+        self.multilingual = multilingual
     }
 
     /// The saved choices: the call's language follows the room's until one is picked for it.
@@ -67,22 +79,40 @@ public struct MacTranslation: Equatable, Sendable {
         return Self.sameLanguage(from, into) ? nil : Pair(from: from, into: into)
     }
 
+    /// The languages a side's lines can be in, its own From first: the languages set up for this conversation (Room,
+    /// Calls, Into) that its engine hears. Nothing else, so nothing new is ever downloaded mid-call (owner's rule).
+    /// Her own lines: none.
+    public func languages(for side: MacAudioSide) -> [Locale] {
+        let own: Locale
+        switch side {
+        case .yours: return []
+        case .room: own = room
+        case .theirs: own = call
+        }
+        var heard = [own]
+        if hearsSeveral(own) {
+            for l in [room, call] where hearsSeveral(l) { heard.append(l) }
+        }
+        heard.append(into)
+        var out: [Locale] = []
+        for l in heard where !out.contains(where: { Self.sameLanguage($0, l) }) { out.append(l) }
+        return out
+    }
+
     /// Every translator needed, each once: room first, then the call.
     public var pairs: [Pair] {
         var seen: [Pair] = []
         for side in [MacAudioSide.room, .theirs] {
-            if let p = pair(for: side), !seen.contains(where: { Self.samePair($0, p) }) { seen.append(p) }
+            for from in languages(for: side) where !Self.sameLanguage(from, into) {
+                let p = Pair(from: from, into: into)
+                if !seen.contains(where: { Self.samePair($0, p) }) { seen.append(p) }
+            }
         }
         return seen
     }
 
-    /// The lines a pair's translator takes, in order. A line whose side isn't known is left alone: better untranslated
-    /// than her own words translated by mistake.
-    public func lines(_ lines: [CaptionLine], for pair: Pair, side: (CaptionLine) -> MacAudioSide?) -> [CaptionLine] {
-        lines.filter { line in
-            guard let s = side(line), let p = self.pair(for: s) else { return false }
-            return Self.samePair(p, pair)
-        }
+    func hearsSeveral(_ locale: Locale) -> Bool {
+        locale.language.languageCode.map { multilingual.contains($0.identifier) } ?? false
     }
 
     /// Same language for translation: the language and its script (Traditional and Simplified Chinese differ), not
@@ -92,7 +122,7 @@ public struct MacTranslation: Equatable, Sendable {
         return x.languageCode == y.languageCode && x.maximalIdentifierScript == y.maximalIdentifierScript
     }
 
-    private static func samePair(_ a: Pair, _ b: Pair) -> Bool {
+    static func samePair(_ a: Pair, _ b: Pair) -> Bool {
         sameLanguage(a.from, b.from) && sameLanguage(a.into, b.into)
     }
 }

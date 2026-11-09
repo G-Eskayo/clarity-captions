@@ -21,18 +21,40 @@ final class MacTranslationTests: XCTestCase {
 
     // MARK: whose words are whose
 
-    func testTheCallsSoundIsTheOtherPeopleAndTheMicIsHerOnACall() {
-        XCTAssertEqual(MacAudioSide(source: .call, onCall: true), .theirs)
-        XCTAssertEqual(MacAudioSide(source: .microphone, onCall: true), .yours)
+    func testTheCallsSoundIsTheOtherPeople() {
+        for mic in [RoomMicChoice.room, .headset, .none] {
+            XCTAssertEqual(MacAudioSide(source: .call, onCall: true, mic: mic), .theirs)
+        }
+    }
+
+    func testOnACallAHeadsetsMicIsHerOwn() {
+        // A headset's mic hears only the wearer (RoomMicChoice.headset): her words, never translated.
+        XCTAssertEqual(MacAudioSide(source: .microphone, onCall: true, mic: .headset), .yours)
+    }
+
+    func testOnACallWithoutHeadphonesTheMicIsTheRoom() {
+        // Owner's note on PR #231: a Spanish speaker sits next to her while they call a French speaker. The Mac's own
+        // mic hears the room as well as her, so its words are the room's (translated from Room); her own words are
+        // left alone because they're in her language, not because of where they came from.
+        XCTAssertEqual(MacAudioSide(source: .microphone, onCall: true, mic: .room), .room)
+        XCTAssertEqual(MacAudioSide(source: .microphone, onCall: true, mic: .none), .room)
     }
 
     func testOffACallTheMicIsTheRoom() {
-        XCTAssertEqual(MacAudioSide(source: .microphone, onCall: false), .room)
+        for mic in [RoomMicChoice.room, .headset, .none] {
+            XCTAssertEqual(MacAudioSide(source: .microphone, onCall: false, mic: mic), .room)
+        }
     }
 
     func testSystemSoundOffACallStillCountsAsTheOtherPeople() {
         // `ListenTo.call` captions every sound the Mac plays, a video too: it's never her own voice.
-        XCTAssertEqual(MacAudioSide(source: .call, onCall: false), .theirs)
+        XCTAssertEqual(MacAudioSide(source: .call, onCall: false, mic: .room), .theirs)
+    }
+
+    func testOnlyHerOwnLinesAreLabelledYou() {
+        XCTAssertTrue(MacAudioSide.yours.isYou)
+        XCTAssertFalse(MacAudioSide.room.isYou, "the open mic also hears the people beside her: they keep their speaker numbers")
+        XCTAssertFalse(MacAudioSide.theirs.isYou)
     }
 
     // MARK: which captions get translated
@@ -69,10 +91,10 @@ final class MacTranslationTests: XCTestCase {
     func testOnlyTheLinesOfASidesPairGoToItsTranslator() {
         let said = lines(["¿Me oyes bien?", "Yes, I can hear you.", "Bonjour à tous."])
         let side: [Int: MacAudioSide] = [said[0].id: .theirs, said[1].id: .yours, said[2].id: .room]
-        let t = MacTranslation(room: fr, call: es, into: en)
-        let fromSpanish = t.lines(said, for: MacTranslation.Pair(from: es, into: en)) { side[$0.id] }
+        var r = MacTranslationRouter(MacTranslation(room: fr, call: es, into: en), guess: { _ in nil })
+        let fromSpanish = r.lines(said, for: MacTranslation.Pair(from: es, into: en)) { side[$0.id] }
         XCTAssertEqual(fromSpanish.map(\.text), ["¿Me oyes bien?"])
-        let fromFrench = t.lines(said, for: MacTranslation.Pair(from: fr, into: en)) { side[$0.id] }
+        let fromFrench = r.lines(said, for: MacTranslation.Pair(from: fr, into: en)) { side[$0.id] }
         XCTAssertEqual(fromFrench.map(\.text), ["Bonjour à tous."])
     }
 
@@ -81,14 +103,15 @@ final class MacTranslationTests: XCTestCase {
         let side: [Int: MacAudioSide] = [said[0].id: .room, said[1].id: .theirs, said[2].id: .yours]
         let t = MacTranslation(room: es, call: Locale(identifier: "es-ES"), into: en)
         XCTAssertEqual(t.pairs.count, 1, "one session, not two, for the same pair")
-        XCTAssertEqual(t.lines(said, for: t.pairs[0]) { side[$0.id] }.map(\.text), ["Hola a todos.", "¿Qué tal?"])
+        var r = MacTranslationRouter(t, guess: { _ in nil })
+        XCTAssertEqual(r.lines(said, for: t.pairs[0]) { side[$0.id] }.map(\.text), ["Hola a todos.", "¿Qué tal?"])
     }
 
     func testALineWithNoKnownSideIsNotTranslated() {
         // Safer to leave a line untranslated than to translate her own words by mistake.
         let said = lines(["¿Me oyes?"])
-        let t = MacTranslation(room: es, call: es, into: en)
-        XCTAssertTrue(t.lines(said, for: MacTranslation.Pair(from: es, into: en)) { _ in nil }.isEmpty)
+        var r = MacTranslationRouter(MacTranslation(room: es, call: es, into: en), guess: { _ in nil })
+        XCTAssertTrue(r.lines(said, for: MacTranslation.Pair(from: es, into: en)) { _ in nil }.isEmpty)
     }
 
     func testPairsListsEachNeededTranslatorOnceAndNoneWhenAllIsInHerLanguage() {
