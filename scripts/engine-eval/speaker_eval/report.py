@@ -42,7 +42,7 @@ def markdown(s: dict) -> str:
         f"| DER, bare model segments | {_ci(s['der_bare'])} |",
         f"| Floor: every line given its true speaker | {_ci(s['der_floor'])} |",
         f"| Speaker-count error (mean abs, labels shown vs people) | {_ci(s['speaker_count_mae'], lambda x: 'n/a' if x != x else f'{x:.2f}')} |",
-        f"| Meetings with the right speaker count | {s['speaker_count_exact']} of {s['recordings']} |",
+        f"| Recordings with the right speaker count | {s['speaker_count_exact']} of {s['recordings']} |",
         f"| One long monologue split across two labels | {_ci(s['monologue_split_rate'])} of {s['monologues']} monologues (≥20 s) |",
         f"| Line's first label, median / p90 after the line starts | {_ci(s['line_first_label_median_s'], _s)} / "
         f"{_ci(s['line_first_label_p90_s'], _s)} |",

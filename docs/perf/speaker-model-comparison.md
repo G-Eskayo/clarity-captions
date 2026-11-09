@@ -6,6 +6,10 @@ Synthetic voice benchmark comparing speaker-diarization model accuracy (Diarizat
 
 **Status:** Benchmark harness implemented; results TBD (requires network, measured device).
 
+> **Real voices:** decisions about the bundled Sortformer build (#271) are made on the real-voice scoreboard,
+> [speaker-scoreboard.md](speaker-scoreboard.md) (AMI meetings and CHiME-6 dinner parties, 95% CIs). The synthetic
+> `say` voices here can't resolve a half-point DER change.
+
 ## Run Instructions
 
 ### Prerequisites
