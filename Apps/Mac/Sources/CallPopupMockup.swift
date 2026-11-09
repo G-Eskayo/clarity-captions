@@ -11,7 +11,7 @@ struct CallPopupMockup: View {
         case waiting
         /// Captions switched off.
         case stopped
-        /// #246: captioning a Spanish call translated into English, in the look `-SealTranslatedLook` names.
+        /// #246: captioning a Spanish call translated into English, folded, with the middle line opened.
         case translated
     }
 
@@ -28,14 +28,13 @@ struct CallPopupMockup: View {
     /// part-way through the newest line.
     private let translatedLines = [
         CallPopupView.Line(id: 0, speaker: 0, name: nil, text: "¿Está encendido? Di algo para que lo veamos.",
-                           translation: "Is it on? Say something so we can see.", saidLanguage: "es-ES"),
+                           translation: "Is it on? Say something so we can see."),
         CallPopupView.Line(id: 1, speaker: 1, name: nil, text: "Hola. Mis palabras aparecen en la pantalla.",
-                           translation: "Hi. My words are showing up on the screen.", saidLanguage: "es-ES"),
+                           translation: "Hi. My words are showing up on the screen."),
         CallPopupView.Line(id: 2, speaker: 0, name: nil, text: "También funciona en modo avión. Nada sale del teléfono.",
-                           translation: "It works in airplane mode too. Nothing leaves the phone.", saidLanguage: "es-ES",
+                           translation: "It works in airplane mode too. Nothing leaves the phone.",
                            speakingFirm: 5),
     ]
-    var look: TranslatedCaptionLook = .today
 
     var body: some View {
         let state: CaptionState = variant == .stopped ? .idle : .listening
@@ -46,7 +45,7 @@ struct CallPopupMockup: View {
             style: style,
             control: PrimaryControl.for(state),
             roomLevelDBFS: shown ? -28 : -60,   // someone talking; a quiet room
-            translatedLook: look
+            saidFold: SaidFold(opened: variant == .translated ? [1] : [])
         )
         .frame(width: 440)
         .frame(height: shown ? (variant == .translated ? 580 : 420) : nil)

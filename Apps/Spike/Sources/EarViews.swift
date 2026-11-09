@@ -1,31 +1,6 @@
 import CaptionCore
 import SwiftUI
 
-/// The translated line the voice is saying (#233, "screen" A on #238): a speaker mark in the gear's colour in place of
-/// the translate mark, the words already said at full strength and the rest at the caption's volatile strength, so the
-/// eye can follow the voice.
-struct EarSpeakingLine: View {
-    let translated: String
-    /// How many of the shown words the voice has said (EarProgress).
-    let firm: Int
-    let font: Font
-    let mark: Color
-    let text: Color
-    let volatileOpacity: Double
-
-    var body: some View {
-        let words = translated.split(separator: " ").map(String.init)
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Image(systemName: "speaker.wave.2.fill").font(.subheadline.bold()).foregroundStyle(mark)
-            let said = Text(verbatim: words.prefix(firm).joined(separator: " ") + (firm > 0 ? " " : ""))
-            let rest = Text(verbatim: words.dropFirst(firm).joined(separator: " ")).foregroundColor(text.opacity(volatileOpacity))
-            Text("\(said)\(rest)").font(font)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(String(localized: "Speaking in your ear: ") + translated)
-    }
-}
-
 /// Settings, under Into ("turnon" A): Speak it in my ear, Off or On, in the same pills as Translate captions, and a
 /// note that says what it's doing: no headphones (it never uses the iPhone's speaker), or no voice for the language.
 struct EarSettingsRows: View {

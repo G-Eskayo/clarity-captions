@@ -528,6 +528,9 @@ struct ContentView: View {
     @State private var showingVeilHint = false
     /// The caption text selected for copying (#107), or nil.
     @State private var selection: CaptionSelection?
+    /// #246: which translated lines show what was said (folded until tapped).
+    @State private var saidFold = SaidFold()
+    @State private var saidFoldDemoOpened = false
     /// When the Copy button shows: half a second after the selection stops changing.
     @State private var copyTiming = CopyButtonTiming()
     /// Where each caption's characters are, recorded as they draw, so a selection can cross lines.
@@ -637,6 +640,14 @@ struct ContentView: View {
         .animation(.snappy, value: control.presentation)
         .overlayPreferenceValue(TourTargetKey.self) { anchors in tourLayer(anchors) }
         .onAppear { maybeStartTour() }
+        .task {
+            // -ClarityDemoSaidOpen: the demo's translations land a moment after its lines; try for up to 5 s.
+            guard DemoMode.saidOpen else { return }
+            for _ in 0..<50 where !saidFoldDemoOpened {
+                openDemoSaidLine()
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+        }
         .onChange(of: launchCovering) { maybeStartTour() }
         .onChange(of: model.tour) { old, new in tourChanged(from: old, to: new) }
         .onChange(of: scenePhase) { _, phase in
@@ -936,8 +947,7 @@ struct ContentView: View {
             partner: FaceToFace.entries(for: .partner, lines: lines, half: faceToFaceHalf, translation: faceToFaceTranslation),
             ownerLanguage: split.language(of: .owner)?.nameInItself ?? "",
             partnerLanguage: split.language(of: .partner)?.nameInItself ?? "",
-            ownerLanguageID: split.language(of: .owner)?.identifier, partnerLanguageID: split.language(of: .partner)?.identifier,
-            translatedLook: DemoMode.translatedLook,
+            demoOpensNewestSaid: DemoMode.saidOpen,
             ownerChoices: ownerChoices?.map(\.nameInItself), partnerChoices: partnerChoices?.map(\.nameInItself),
             ownerStatus: status(.owner), partnerStatus: status(.partner),
             choose: { half, i in
@@ -1055,11 +1065,14 @@ struct ContentView: View {
                                     .textRenderer(renderer)
                                     .accessibilityLabel(line.soundLabel.map { soundLabelA11yLabel(for: $0) } ?? "")
                                     .trackWords(in: textFrames, key: "text-\(line.id)")
-                            } else if let look = DemoMode.translatedLook, translation.isActive,
+                            } else if translation.isActive,
                                       let translated = translation.translations.translation(for: line) ?? ear.spokenTranslations[line.id] {
-                                // #246 mock-up (debug demo flag only): the same line drawn in one of the options.
+                                // #246 (owner, PR #255: C, folded): just the translation, with the translate mark after
+                                // it (the speaker mark while the voice says it, #233). A tap shows what was said
+                                // underneath, where selection and Copy work as before (#107); another tap hides it.
+                                // #233: until a line's own translation lands, what the voice said for it shows.
                                 let speaking = earSpeaking.flatMap { $0.lineID == line.id ? $0 : nil }
-                                TranslatedCaptionView(look: look, translated: translated, said: line.text, saidLanguage: DemoMode.language,
+                                TranslatedCaptionView(translated: translated,
                                                       speakingFirm: speaking.map {
                                                           EarProgress.firmWords(shown: translated.split(separator: " ").count,
                                                                                 lineWords: line.text.split(separator: " ").count,
@@ -1067,33 +1080,13 @@ struct ContentView: View {
                                                       },
                                                       font: style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass),
                                                       text: style.text.color, muted: mutedColor(style), mark: style.gear.color,
-                                                      volatileOpacity: style.volatileOpacity,
-                                                      startsOpen: line.id == lines.dropLast().last(where: { !$0.isSoundLabel })?.id)
-                            } else if translation.isActive,
-                                      let translated = translation.translations.translation(for: line) ?? ear.spokenTranslations[line.id] {
-                                // #53 (owner, PR #171): the translation is the line that's read, on top at caption size
-                                // behind a translate mark; what was said stays, smaller, underneath. Selection and Copy
-                                // work on what was said. #233: until a line's own translation lands, what the voice said
-                                // for it shows.
-                                if let earSpeaking, earSpeaking.lineID == line.id {
-                                    let shown = translated.split(separator: " ").count
-                                    EarSpeakingLine(translated: translated,
-                                                    firm: EarProgress.firmWords(shown: shown, lineWords: line.text.split(separator: " ").count,
-                                                                                phrase: earSpeaking.words, share: earSpeaking.share),
-                                                    font: style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass),
-                                                    mark: style.gear.color, text: style.text.color, volatileOpacity: style.volatileOpacity)
-                                } else {
-                                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                                        Image(systemName: "translate").font(.subheadline.bold()).foregroundStyle(mutedColor(style))
-                                        Text(translated).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass))
-                                    }
-                                    .accessibilityElement(children: .combine)
-                                    .accessibilityLabel(String(localized: "Translated: ") + translated)
+                                                      volatileOpacity: style.volatileOpacity, isOpen: saidFold.isOpen(line.id),
+                                                      onTap: { saidFold.tap(line.id, selecting: selection != nil) }) {
+                                    Text(line.text).font(.body).foregroundStyle(mutedColor(style))
+                                        .textRenderer(renderer)
+                                        .trackWords(in: textFrames, key: "text-\(line.id)")
+                                        .accessibilityLabel(String(localized: "Said: ") + line.text)
                                 }
-                                Text(line.text).font(.body).foregroundStyle(mutedColor(style))
-                                    .textRenderer(renderer)
-                                    .trackWords(in: textFrames, key: "text-\(line.id)")
-                                    .accessibilityLabel(String(localized: "Said: ") + line.text)
                             } else {
                                 Text(line.text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize), device: deviceClass)).opacity(line.isFinal ? 1 : style.volatileOpacity)
                                     .textRenderer(renderer)
@@ -1150,6 +1143,7 @@ struct ContentView: View {
                 if atBottom { following = true } else if userDragging { following = false }
             }
             .onChange(of: model.stream.lines) {
+                saidFold.keep(only: model.stream.lines.map(\.id))   // #246: a new conversation starts folded
                 // A selection whose words are gone (a new conversation) goes too; while one is held, new captions
                 // don't scroll the words out from under her finger.
                 if let selection, selection.resolved(in: model.stream.lines) == nil { clearSelection() }
@@ -1580,6 +1574,18 @@ struct ContentView: View {
             try? await Task.sleep(for: .seconds(CopyButtonTiming.settle + 0.02))
             withAnimation(Fluid.quick(reduceMotion)) { _ = copyTiming.update(now: Date()) }
         }
+    }
+
+    /// `-ClarityDemoSaidOpen` (debug demo, screenshots): the newest translated line but one starts opened, so the picture
+    /// shows a folded line and an opened one. Once only; a tap still folds it.
+    private func openDemoSaidLine() {
+        #if DEBUG
+        guard DemoMode.saidOpen, !saidFoldDemoOpened else { return }
+        let spoken = model.stream.lines.filter { !$0.isSoundLabel && translation.translations.translation(for: $0) != nil }
+        guard let line = spoken.dropLast().last else { return }
+        saidFold.tap(line.id)
+        saidFoldDemoOpened = true
+        #endif
     }
 
     private func clearSelection() {

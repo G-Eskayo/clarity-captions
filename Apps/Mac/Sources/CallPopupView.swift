@@ -13,10 +13,9 @@ struct CallPopupView: View {
         let name: String?
         let text: String
         var volatile = false
-        /// #246 mock-up: the line's translation, the language of what was said, and how many of the translation's
-        /// words the voice has said (#233). The Mac doesn't translate yet; only the screenshot mock-up sets these.
+        /// #246: the line's translation, and how many of its words the voice has said (#233). The Mac doesn't
+        /// translate yet; only the screenshot mock-up sets these.
         var translation: String? = nil
-        var saidLanguage: String? = nil
         var speakingFirm: Int? = nil
     }
 
@@ -52,8 +51,8 @@ struct CallPopupView: View {
     var roomLevelDBFS: Double? = nil
     /// Replaces the top bar's words: "Captioning your FaceTime call" only while a call app is really in a call (#178).
     var statusOverride: String? = nil
-    /// #246 mock-up: how translated lines are drawn.
-    var translatedLook: TranslatedCaptionLook = .today
+    /// #246 (owner, PR #255): translated lines are folded; these show what was said.
+    @State var saidFold = SaidFold()
 
     /// The Start captions pill's height on the Mac (its size before the iPhone's control came in).
     static let pillHeight: CGFloat = 47
@@ -166,11 +165,11 @@ struct CallPopupView: View {
                                     .foregroundStyle(speakerColors[speaker % speakerColors.count].color)
                             }
                             if let translation = line.translation {
-                                TranslatedCaptionView(look: translatedLook, translated: translation, said: line.text,
-                                                      saidLanguage: line.saidLanguage, speakingFirm: line.speakingFirm,
+                                TranslatedCaptionView(translated: translation, said: line.text, speakingFirm: line.speakingFirm,
                                                       font: captionFont, saidFont: .system(size: 14),
                                                       text: style.text.color, muted: style.text.color.opacity(0.62), mark: style.gear.color,
-                                                      volatileOpacity: style.volatileOpacity, startsOpen: line.id == lines.dropLast().last?.id)
+                                                      volatileOpacity: style.volatileOpacity, isOpen: saidFold.isOpen(line.id),
+                                                      onTap: { saidFold.tap(line.id) })
                             } else {
                                 Text(line.text)
                                     .font(captionFont)
@@ -189,6 +188,7 @@ struct CallPopupView: View {
             .onChange(of: lines.last?.text) { _, _ in
                 if let last = lines.last { proxy.scrollTo(last.id, anchor: .bottom) }
             }
+            .onChange(of: lines.map(\.id)) { _, ids in saidFold.keep(only: ids) }   // a new conversation starts folded
         }
     }
 

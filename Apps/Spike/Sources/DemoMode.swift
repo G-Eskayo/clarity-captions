@@ -43,8 +43,8 @@ import Foundation
 ///                     headphones taken as connected (the simulator's only output is its speaker) except `noheadphones`.
 ///                     `mark` holds the newest spoken line part-way said; `speak` really speaks it. With
 ///                     -ClarityDemoTranslate sr: a language with no voice (Serbian).
-///   -ClarityDemoTranslatedLook today|a|b|c   #246's mock-up options for a translated caption (TranslatedCaptionLook),
-///                     with -ClarityDemoTranslate (one-way) or -ClarityDemoFaceToFace (the split)
+///   -ClarityDemoSaidOpen   #246: with -ClarityDemoTranslate (one-way) or -ClarityDemoFaceToFace (the split), the newest
+///                     translated line but one starts opened, showing what was said (screenshots of both states)
 ///   -ClarityDemoFaceToFaceStopAfter <step>   the same flow, then Stop tapped at that moment (#245: it always leaves)
 ///   -ClarityDemoFaceToFaceHung   the split's engines never finish starting or stopping (#245, the owner's iPad)
 ///   -ClarityDemoFaceToFaceReady one   only one language is ready: Face to face opens Settings' setup (#245)
@@ -107,8 +107,8 @@ enum DemoMode {
     static var translationOwned: Bool { flag("-ClarityDemoTranslationOwned") }
     /// `-ClarityDemoEar <variant>`: Live Translation in your ear (#233), on, in one of its states.
     static var ear: String? { value(after: "-ClarityDemoEar") }
-    /// `-ClarityDemoTranslatedLook <option>`: #246's mock-up, translated captions drawn in that option. Nil in release.
-    static var translatedLook: TranslatedCaptionLook? { TranslatedCaptionLook(flag: value(after: "-ClarityDemoTranslatedLook")) }
+    /// `-ClarityDemoSaidOpen`: #246, one translated line starts opened (screenshots).
+    static var saidOpen: Bool { flag("-ClarityDemoSaidOpen") }
     /// `-ClarityDemoIntoSpeechProgress 0.4` (#245): Into's speech model mid-download in Settings.
     static var intoSpeechProgress: Double? { value(after: "-ClarityDemoIntoSpeechProgress").flatMap(Double.init) }
     /// `-ClarityDemoFaceToFace` (#208): opens the split and taps through it the way two people would, through the real
