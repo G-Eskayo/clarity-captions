@@ -23,6 +23,7 @@ setvbuf(stdout, nil, _IOLBF, 0)  // progress lines reach the driver log as they 
 let args = Array(CommandLine.arguments.dropFirst())
 if args.first == "latency" { runLatency(args) }
 if args.first == "memory" { runMemory(args) }
+if args.first == "speakers" { runSpeakers(args) }
 guard args.first == "run" else {
     fail("usage: engine-eval run --shard-dir DIR --results FILE [--engines a,b] [--repeats N] [--models-dir DIR] [--status FILE]")
 }
@@ -160,6 +161,35 @@ func runMemory(_ args: [String]) -> Never {
             print("MEMORY-RESULT \(t.model) loaded \(loaded / 1_048_576) MB peak \(peak / 1_048_576) MB")
         } catch {
             print("MEMORY-ERROR \(error)"); code = 1
+        }
+        sem.signal()
+    }
+    sem.wait()
+    exit(code)
+}
+
+// engine-eval speakers --audio FILE.wav --phrases FILE.json --model DIR.mlmodelc --out FILE.json
+//                      [--model-label fp16] [--recording ID]
+// One 16 kHz mono recording through the app's live speaker path (#271). See docs/perf/speaker-scoreboard-design.md.
+func runSpeakers(_ args: [String]) -> Never {
+    guard let audio = arg("--audio", args), let phrases = arg("--phrases", args), let model = arg("--model", args),
+          let out = arg("--out", args) else {
+        fail("speakers needs --audio, --phrases, --model and --out")
+    }
+    let resolved = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        .deletingLastPathComponent().appendingPathComponent("Package.resolved")
+    let fluid = PackagePins.version(of: "fluidaudio", resolvedFile: resolved) ?? "unknown"
+    let audioURL = URL(fileURLWithPath: audio)
+    let recording = arg("--recording", args) ?? audioURL.deletingPathExtension().lastPathComponent
+    let sem = DispatchSemaphore(value: 0)
+    var code: Int32 = 0
+    Task {
+        do {
+            try await SpeakerEval.run(audio: audioURL, phrasesFile: URL(fileURLWithPath: phrases),
+                                      model: URL(fileURLWithPath: model), modelLabel: arg("--model-label", args) ?? "fp16",
+                                      recording: recording, fluidAudio: fluid, out: URL(fileURLWithPath: out))
+        } catch {
+            print("SPEAKER-EVAL-ERROR \(recording): \(error)"); code = 1
         }
         sem.signal()
     }
