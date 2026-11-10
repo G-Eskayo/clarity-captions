@@ -172,6 +172,9 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
 
     private var captioningSeconds = 0.0
     private var segmentStart: Date?
+    /// When she left Seal with captions running (#287). Seal has no background audio, so captions end then; a
+    /// stretch the app never closed (iOS killed it while she was away) ends here, not when the report is sent.
+    private var leftAt: Date?
     private var startPressedAt: Date?
     private var lag = PercentileHistogram(lower: 0, upper: 10, binWidth: 0.05)
     private var micLevel = PercentileHistogram(lower: -60, upper: 0, binWidth: 1)
@@ -205,7 +208,7 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
         case id, startedAt, rating, ratingSkipped, note, asked, ending, leftWhileCaptioning, lowPowerModeSeen
         case maxThermal, launchToStartSeconds, startToFirstCaptionSeconds, launch
         case captioningSeconds, segmentStart, startPressedAt, lag, micLevel, changedWords, finalWords, relabels
-        case speakers, batteryDrop, batteryMinutes, segmentBattery, engine, engineFallback
+        case speakers, batteryDrop, batteryMinutes, segmentBattery, engine, engineFallback, leftAt
     }
 
     public init(id: UUID) { self.id = id }
@@ -225,6 +228,7 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
         if startedAt == nil { startedAt = date }
         segmentStart = date
         segmentBattery = battery
+        leftAt = nil
         ending = nil
         leftWhileCaptioning = false
         shownWordCount = 0
@@ -280,25 +284,36 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
         }
         segmentStart = nil
         segmentBattery = nil
+        leftAt = nil
         ending = newEnding
     }
 
     /// She left for another app while captions were running.
-    public mutating func leftMidConversation() {
-        if segmentStart != nil { leftWhileCaptioning = true }
+    public mutating func leftMidConversation(at date: Date) {
+        if segmentStart != nil { leftWhileCaptioning = true; leftAt = date }
     }
 
     /// Back on screen with captions still running: she didn't leave the conversation after all.
     public mutating func backWhileCaptioning() {
-        if segmentStart != nil { leftWhileCaptioning = false }
+        if segmentStart != nil { leftWhileCaptioning = false; leftAt = nil }
     }
 
-    /// A cold launch restored this conversation: captions were cut off by the app closing.
+    /// A cold launch restored this conversation: captions were cut off by the app closing, when she left.
     public mutating func restoredAfterAppClosed(at date: Date) {
         if segmentStart != nil {
-            captioningStopped(at: date, battery: nil, ending: .appClosed)
+            closeCutOffStretch(notAfter: date)
             leftWhileCaptioning = true
         }
+    }
+
+    /// This conversation isn't on screen, so a stretch still open was cut off by the app closing (#287). It ends
+    /// when she left; with no leave time (saved by build 10 or earlier, or a crash) its length is unknown and it
+    /// counts as nothing, never up to now.
+    public mutating func closeCutOffStretch(notAfter limit: Date? = nil) {
+        guard let start = segmentStart else { return }
+        var end = leftAt ?? start
+        if let limit { end = min(end, limit) }
+        captioningStopped(at: max(start, end), battery: nil, ending: .appClosed)
     }
 
     public mutating func rate(_ value: Int, note: String?) {
@@ -321,7 +336,7 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
 
     public func entry(now: Date) -> ConversationReport {
         var seconds = captioningSeconds
-        if let start = segmentStart { seconds += max(0, now.timeIntervalSince(start)) }
+        if let start = segmentStart { seconds += max(0, min(now, leftAt ?? now).timeIntervalSince(start)) }
         let minutes = seconds / 60
         return ConversationReport(
             id: id.uuidString,
@@ -347,6 +362,24 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
             launch: launch.map { .init(fullDance: $0.fullDance, barShown: $0.barShown) },
             engine: engine,
             engineFallback: engineFallback)
+    }
+
+    /// The report's conversations: every stored one, with the copy on screen (if it has started) in place of its
+    /// stored copy. Only the one on screen can still be captioning; any other open stretch was cut off (#287).
+    public static func reportEntries(stored: [StoredConversation], onScreen: ConversationRecorder?,
+                                     now: Date) -> [ConversationReport] {
+        var list = stored.map(\.recorder)
+        let live = onScreen?.hasData == true ? onScreen : nil
+        if let live {
+            list.removeAll { $0.id == live.id }
+            list.append(live)
+        }
+        return list.map { r in
+            guard r.id != live?.id else { return r.entry(now: now) }
+            var closed = r
+            closed.closeCutOffStretch(notAfter: now)
+            return closed.entry(now: now)
+        }
     }
 
     private static func round(_ value: Double, _ places: Int) -> Double {

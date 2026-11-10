@@ -149,7 +149,7 @@ final class BetaFeedbackCenter: ObservableObject {
     }
 
     func leftApp(_ session: ConversationSession) {
-        update(session, persist: true) { $0.leftMidConversation() }
+        update(session, persist: true) { $0.leftMidConversation(at: Date()) }
     }
 
     /// A cold launch brought back a conversation: if captions were running when the app closed, that counts as a
@@ -216,23 +216,21 @@ final class BetaFeedbackCenter: ObservableObject {
 
     /// Everything not yet sent: finished conversations plus the one on screen, if it has started.
     func makeReport(style: CaptionStyle, idleStop: IdleStopSetting) -> (report: FeedbackReport, ids: Set<UUID>) {
-        var stored = store?.all() ?? []
-        if let recorder, recorder.hasData {
-            stored.removeAll { $0.recorder.id == recorder.id }
-            stored.append(StoredConversation(recorder: recorder, finished: false))
-        }
+        let stored = store?.all() ?? []
+        let live = recorder?.hasData == true ? recorder : nil
+        let ids = Set(stored.map(\.recorder.id) + (live.map { [$0.id] } ?? []))
         let now = Date()
         let info = Bundle.main.infoDictionary ?? [:]
         let report = FeedbackReport(
             app: .init(version: info["CFBundleShortVersionString"] as? String ?? "?",
                        build: info["CFBundleVersion"] as? String ?? "?", environment: environment),
             device: .init(model: Self.deviceModel(), os: "iOS " + UIDevice.current.systemVersion,
-                          lowPowerModeSeen: stored.contains { $0.recorder.lowPowerModeSeen }),
+                          lowPowerModeSeen: stored.contains { $0.recorder.lowPowerModeSeen } || live?.lowPowerModeSeen == true),
             settings: .init(theme: style.preset?.id ?? "custom", lettering: style.font.rawValue,
                             textSize: String(describing: style.size), quietStop: idleStop.rawValue),
             sentAt: now,
-            conversations: stored.map { $0.recorder.entry(now: now) })
-        return (report, Set(stored.map(\.recorder.id)))
+            conversations: ConversationRecorder.reportEntries(stored: stored, onScreen: live, now: now))
+        return (report, ids)
     }
 
     /// Messages (or the share sheet) reported the text went: the finished conversations in it are deleted.

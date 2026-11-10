@@ -232,7 +232,7 @@ final class BetaFeedbackTests: XCTestCase {
 
     func testLeavingMidConversationAndColdLaunchRestore() {
         var r = conversation()
-        r.leftMidConversation()
+        r.leftMidConversation(at: at(30))
         XCTAssertTrue(r.leftWhileCaptioning)
         r.restoredAfterAppClosed(at: at(120.5))
         XCTAssertEqual(r.ending, .appClosed)
@@ -243,7 +243,7 @@ final class BetaFeedbackTests: XCTestCase {
 
     func testComingBackWhileStillCaptioningMeansHerLaterStopIsStillHers() {
         var r = conversation()
-        r.leftMidConversation()
+        r.leftMidConversation(at: at(30))
         r.backWhileCaptioning()
         r.captioningStopped(at: at(60), battery: nil, ending: .userStop)
         XCTAssertFalse(RatingCardTiming.shouldShow(event: .returnedToConversation, ending: r.ending,
@@ -255,10 +255,81 @@ final class BetaFeedbackTests: XCTestCase {
     func testLeavingWhilePausedIsNotLeavingMidConversation() {
         var r = conversation()
         r.captioningStopped(at: at(30), battery: nil, ending: .userStop)
-        r.leftMidConversation()
+        r.leftMidConversation(at: at(30))
         XCTAssertFalse(r.leftWhileCaptioning)
         r.restoredAfterAppClosed(at: at(500))
         XCTAssertEqual(r.ending, .userStop, "paused by her before leaving: still her pause")
+    }
+
+    // MARK: a stretch cut off by leaving (#287)
+
+    private func leftAndKilled() -> ConversationRecorder {
+        var r = conversation()                       // captions from 0.5 s
+        r.leftMidConversation(at: at(120.5))         // she left at 2 min; no background audio, so captions end there
+        return try! JSONDecoder().decode(ConversationRecorder.self, from: JSONEncoder().encode(r))   // what the phone kept
+    }
+
+    func testAStretchCutOffByLeavingEndsWhenSheLeftEvenIfNeverRestored() {
+        // The demo phone (#273): left mid-captioning, away > 30 min, a new conversation started, sent 9 days later.
+        var r = leftAndKilled()
+        r.closeCutOffStretch()
+        let e = r.entry(now: at(9.4 * 24 * 3600))
+        XCTAssertEqual(e.minutes, 2.0, "never up to the moment the report is sent")
+        XCTAssertEqual(e.ending, .appClosed, "it ended because the app closed, not with no ending")
+    }
+
+    func testAColdLaunchRestoreDoesNotCountTheTimeSheWasAway() {
+        var r = leftAndKilled()
+        r.restoredAfterAppClosed(at: at(120.5 + 25 * 60))   // back 25 minutes later
+        XCTAssertEqual(r.entry(now: at(5000)).minutes, 2.0)
+        XCTAssertEqual(r.ending, .appClosed)
+    }
+
+    func testTheConversationOnScreenStillCountsToNow() {
+        let live = conversation()
+        let gone = leftAndKilled()
+        let entries = ConversationRecorder.reportEntries(stored: [StoredConversation(recorder: gone, finished: false)],
+                                                         onScreen: live, now: at(600.5))
+        XCTAssertEqual(entries.count, 2)
+        XCTAssertEqual(entries.first { $0.id == live.id.uuidString }?.minutes, 10.0, "captions running: counts to now")
+        XCTAssertEqual(entries.first { $0.id == gone.id.uuidString }?.minutes, 2.0)
+    }
+
+    func testOnScreenCopyReplacesTheStoredOne() {
+        var live = conversation()
+        let stored = StoredConversation(recorder: live, finished: false)
+        live.captioningStopped(at: at(60.5), battery: nil, ending: .userStop)
+        let entries = ConversationRecorder.reportEntries(stored: [stored], onScreen: live, now: at(999))
+        XCTAssertEqual(entries.map(\.minutes), [1.0])
+    }
+
+    func testComingBackForgetsTheLeaveTime() {
+        var r = conversation()
+        r.leftMidConversation(at: at(30.5))
+        r.backWhileCaptioning()                          // still captioning when she came back
+        XCTAssertEqual(r.entry(now: at(300.5)).minutes, 5.0, "she came back: the stretch runs on")
+    }
+
+    func testACutOffStretchWithNoLeaveTimeCountsNothingRatherThanEverything() throws {
+        // Saved by build 10 or earlier: an open stretch and no leave time (the demo phone's Oct 31 conversation).
+        var r = conversation()
+        r.captioningStopped(at: at(60.5), battery: nil, ending: .userStop)
+        r.captioningStarted(at: at(100), battery: nil)
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(r)) as? [String: Any])
+        json.removeValue(forKey: "leftAt")
+        var old = try JSONDecoder().decode(ConversationRecorder.self, from: JSONSerialization.data(withJSONObject: json))
+        old.closeCutOffStretch()
+        let e = old.entry(now: at(9.4 * 24 * 3600))
+        XCTAssertEqual(e.minutes, 1.0, "the closed stretch counts; the open one, of unknown length, doesn't")
+        XCTAssertEqual(e.ending, .appClosed)
+    }
+
+    func testClosingAFinishedConversationChangesNothing() {
+        var r = conversation()
+        r.captioningStopped(at: at(60.5), battery: nil, ending: .userStop)
+        r.closeCutOffStretch()
+        XCTAssertEqual(r.ending, .userStop)
+        XCTAssertEqual(r.entry(now: at(999)).minutes, 1.0)
     }
 
     func testRecorderSurvivesBeingWrittenToThePhone() throws {
