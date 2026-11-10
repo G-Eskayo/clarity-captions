@@ -1,0 +1,10 @@
+{
+  "author": "NVIDIA (Sortformer v2.1); Core ML conversion by FluidInference; rebuilt and compressed for Seal Speak (#271)",
+  "license": "NVIDIA Open Model License. Licensed by NVIDIA Corporation under the NVIDIA Open Model License",
+  "short_description": "Streaming Sortformer speaker diarization (4 speakers), rebuilt from the shipped Core ML model",
+  "version": "2.1",
+  "user_defined": {
+    "chunk_left_context": 1, "chunk_len": 6, "chunk_right_context": 7, "fifo_len": 40, "frame_duration": "0.08",
+    "mel_feature_frames": 48, "spkcache_len": 188, "spkcache_update_period": 31, "subsampling_factor": 8
+  }
+}

@@ -67,6 +67,42 @@ A compressed build ships only if its DER-on-screen CI overlaps fp16's on **both*
 latency is within 10% of fp16's. Because every build runs on the same recordings, step 2 also reports a paired
 bootstrap of the DER difference (build minus fp16, same resamples), which is tighter than comparing two intervals.
 
+## Step 2 builds: how they're made and chosen (fixed 2026-11-09, before any calibration result)
+
+**Source: the shipped model itself.** FluidInference publishes this Sortformer only compiled, and coremltools can't
+compress a compiled model; the one `.mlpackage` in that repo is an older, different export (another output name,
+other weights). So `scripts/engine-eval/sortformer_mil/` rebuilds the shipped `.mlmodelc` from its own MIL text and
+weight files: same ops, names and weights, converted with no graph passes. **Gate:** the rebuilt fp16 must give
+bit-identical outputs to the shipped model (`cli.py parity --exact`, 24 seeded inputs covering empty and full caches,
+CPU and all compute units). It does, at the shipped iOS 16 opset and at iOS 18. A compressed build then differs from
+the shipped model by its compression only, and needs no NeMo or re-export.
+
+**Compression: the head only.** The pre-encoder (9 MB, fp32) stays as shipped. Weight-only, no calibration data,
+tensors under 2,048 values (biases, norms) left 16-bit, as for Parakeet (#150). Candidates:
+
+| Bits | Build | Method |
+|---|---|---|
+| 8 | `pal8` | k-means palettization, one table per tensor (iOS 16) |
+| 8 | `pal8g` | k-means palettization, one table per 16 output channels (iOS 18) |
+| 8 | `int8` | linear symmetric int8, per channel (iOS 16) |
+| 6 | `pal6` | k-means palettization, one table per tensor (iOS 16; FluidInference's own 6-bit is this kind) |
+| 6 | `pal6g` | k-means palettization, one table per 16 output channels (iOS 18) |
+
+**Choosing one per bit width, on calibration audio only** (`speaker_eval/fidelity.py`, which refuses test
+recordings): every third AMI calibration meeting in sorted order (ES2011a, ES2011d, IB4003, IB4011, IS1008c, TS3004b,
+about 3 h) replayed by fp16 and every candidate through the app path. A candidate's **drift** is the DER of its bare
+segments against fp16's segments on the same audio, pooled over the meetings: what the compression changed and
+nothing else. Lowest drift per bit width goes on; a tie goes to the smaller build; no choice on partial data. Bare
+DER against the dev reference is reported beside it, not used to choose. The rebuilt fp16 runs too, as an end-to-end
+check (its drift must be 0). CHiME-6's calibration sessions (S02, S09) aren't downloaded, so the choice is made on
+meetings only; CHiME-6 test still decides shipping.
+
+**Then the test sets**, for the chosen 8-bit and 6-bit builds only: AMI test and CHiME-6 test, twice each, scored by
+the step 1 scorer, against the ship rule above, with the paired bootstrap of the DER difference (build minus fp16,
+same resamples). Scoring runs on the 2012 mini (`kali-speaker-score.sh`), the same code as on the M4 (checked: it
+reproduces the fp16 baseline field for field). A build that fails the rule doesn't ship: the owner decides what next,
+not a retry tuned on test results.
+
 ## Running it
 
 ```bash

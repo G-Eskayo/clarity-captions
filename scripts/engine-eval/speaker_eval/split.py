@@ -17,12 +17,20 @@ class CalibrationLeak(ValueError):
 class Split:
     calibration: frozenset[str]     # every set's calibration recordings
     test: tuple[str, ...]           # this set's test recordings
+    test_all: frozenset[str] = frozenset()   # every set's test recordings
 
     def require_test(self, recording: str) -> None:
         if recording in self.calibration:
             raise CalibrationLeak(f"{recording} is calibration audio: it is never scored (#271)")
         if recording not in self.test:
             raise CalibrationLeak(f"{recording} is not in the frozen test list")
+
+    def require_calibration(self, recording: str) -> None:
+        """The other direction (#271 step 2): choosing or calibrating a build may use calibration audio only."""
+        if recording in self.test_all:
+            raise CalibrationLeak(f"{recording} is test audio: a build is never chosen or calibrated on it (#271)")
+        if recording not in self.calibration:
+            raise CalibrationLeak(f"{recording} is not in the frozen calibration list")
 
 
 def load(path: Path = DEFAULT, set_name: str = "ami") -> Split:
@@ -36,4 +44,4 @@ def load(path: Path = DEFAULT, set_name: str = "ami") -> Split:
         raise ValueError(f"recordings in both slices: {sorted(set(cal_all) & set(test_all))}")
     if set_name not in sets:
         raise ValueError(f"no set {set_name!r} (have {sorted(sets)})")
-    return Split(frozenset(cal_all), tuple(sets[set_name]["test"]))
+    return Split(frozenset(cal_all), tuple(sets[set_name]["test"]), frozenset(test_all))
