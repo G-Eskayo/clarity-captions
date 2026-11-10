@@ -31,6 +31,7 @@ import Foundation
 ///   -ClarityDemoBetaCard  paused, with the rating card up (mock-up 01); -ClarityDemoBetaNote with a note open (02)
 ///   -ClarityDemoBetaNotice  the one-time test-version notice (06), even if it was seen
 ///   -ClarityDemoBetaPreview opens Settings' "What will be sent" (04)
+///   -ClarityDemoBetaCutOff  adds a conversation she left mid-captioning 2 hours ago and never came back to (#287)
 ///   -ClarityDemoFlow rate|feedback   pause, [ New ], tap 8 and the card fades; or Settings → preview → Messages
 ///   -ClarityDemoShow <id>  one state for the UI audit (2026-10-10; simctl can't tap): savedfromcaptions (#137), banner, preparing, confirmnew,
 ///                         namespeaker, jump, canthear, listening, failed, quiet, tour4save, savebeta
@@ -158,6 +159,7 @@ enum DemoMode {
     static var betaNote: Bool { flag("-ClarityDemoBetaNote") }
     static var betaNotice: Bool { flag("-ClarityDemoBetaNotice") }
     static var betaPreview: Bool { flag("-ClarityDemoBetaPreview") }
+    static var betaCutOff: Bool { flag("-ClarityDemoBetaCutOff") }
     /// Caption-screen demos and the gummy screen go straight in, so their screenshots stay repeatable.
     static var skipsLaunchAnimation: Bool { launch == nil && (isOn || gummyDemo || aliveDemo) }
 

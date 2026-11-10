@@ -305,6 +305,16 @@ final class BetaFeedbackCenter: ObservableObject {
              speakers: [0, 1, 2], ending: .userStop, drop: 6.5, thermal: .fair)
         make(3600 * 10, minutes: 12, rating: 9, note: nil, lags: [0.5, 0.6, 0.6, 0.7], speakers: [0, 1],
              ending: .userStop, drop: nil, thermal: .nominal)
+        if DemoMode.betaCutOff {
+            // #287: 2 minutes of captions, then she left Seal and iOS closed it; never restored, never stopped.
+            var r = ConversationRecorder(id: UUID())
+            let start = Date().addingTimeInterval(-2 * 3600)   // newest, so it is the top card
+            r.startPressed(at: start, sinceLaunch: 1.8, launch: .init(fullDance: false, barShown: false))
+            r.captioningStarted(at: start, battery: nil)
+            r.captionUpdate(text: "x", isFinal: true, speaker: 0, lagSeconds: 0.8, at: start.addingTimeInterval(5))
+            r.leftMidConversation(at: start.addingTimeInterval(120))
+            store.upsert(r, finished: false)
+        }
         refreshCount()
         #endif
     }
