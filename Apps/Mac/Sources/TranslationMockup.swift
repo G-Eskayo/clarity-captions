@@ -10,9 +10,9 @@ struct TranslationMockup: View {
         case offer
         /// Settings once bought and on: a From for the room and one for calls, then Into.
         case settings
-        /// A FaceTime call: the other person's words translated, hers left as she said them.
+        /// A FaceTime call: the other person's words translated and folded (#246), hers left as she said them.
         case call
-        /// The room: everyone near the Mac translated.
+        /// The room: everyone near the Mac translated, folded (#246).
         case room
     }
 
@@ -56,7 +56,10 @@ struct TranslationMockup: View {
             style: style,
             control: PrimaryControl.for(.listening),
             roomLevelDBFS: -28,
-            statusOverride: step == .call ? CallSignal.captioningWords(app: "FaceTime") : nil
+            statusOverride: step == .call ? CallSignal.captioningWords(app: "FaceTime") : nil,
+            // #246's folded look: the call has Dana's newest finished line tapped open, to show what was said under
+            // it; the room is as every conversation starts, all folded.
+            saidFold: SaidFold(opened: step == .call ? [2] : [])
         )
         .frame(width: 440, height: 480)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
