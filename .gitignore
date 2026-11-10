@@ -17,3 +17,5 @@ Packages/EngineEval/.build/
 *.parquet
 edacc/
 Apps/Mac/Resources/Models/
+scripts/system-replay/**/__pycache__/
+.pytest_cache/
