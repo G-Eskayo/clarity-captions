@@ -44,12 +44,16 @@ the comparison test in its ticket. Confidence follows the evidence log (E14–E1
 
 ## Speaker labels
 
-- Sortformer, the model behind FluidAudio's diarizer, has community ONNX exports (4-speaker streaming, about
-  470–480 MB, unofficial). Their licence claims disagree: CC BY 4.0 vs the NVIDIA Open Model License, and the older
-  offline v1 is CC BY-NC. Read NVIDIA's own card for the exact checkpoint first. (E17, Weak.)
-- sherpa-onnx has its own diarization with prebuilt Android demos.
-- **Test to run:** the speaker-stability set from `docs/perf/speaker-label-stability.md` (#91), FluidAudio vs an
-  ONNX Sortformer vs sherpa-onnx.
+- Sortformer, the model behind FluidAudio's diarizer, has community ONNX exports, and they are **different
+  checkpoints**. soniqo's export is v2.1, the weights the app ships, under the NVIDIA Open Model License, but its graph
+  is fixed at 30 s chunks. Recogment's export is the older v2 under CC BY 4.0, with dynamic shapes. The offline v1 is
+  CC BY-NC and stays out. NVIDIA's own AMI figures at 1.04 s latency: v2 31.3% DER, v2.1 20.6%. (Evidence
+  `2026-11-09-android-speaker-engine-licences`, Strong for the licences.)
+- sherpa-onnx has its own diarization with prebuilt Android demos (Apache 2.0; pyannote segmentation MIT, WeSpeaker
+  embedding CC BY 4.0). It is offline: it needs the whole recording before it labels anyone.
+- **Test (#160):** the #276 real-voice scoreboard (AMI and CHiME-6 test split, DER with CIs, calibration off-limits),
+  run through a Python port of the app's live speaker path. The port matches the app's Core ML run on v2.1 weights
+  (99.0% of frames, 46 of 47 final labels). It replaces the #91 clips in `docs/perf/speaker-label-stability.md`.
 
 ## Sound labels
 
