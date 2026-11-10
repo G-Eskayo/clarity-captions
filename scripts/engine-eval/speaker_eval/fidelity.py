@@ -54,6 +54,16 @@ def parse_candidates(text: str) -> list:
     return out
 
 
+def parse_excluded(items) -> dict:
+    out = {}
+    for it in items or []:
+        label, sep, reason = it.partition("=")
+        if not sep or not reason.strip():
+            raise ValueError(f"--excluded {it!r}: expected label=reason")
+        out[label.strip()] = reason.strip()
+    return out
+
+
 def choose(cands: list, expected_recordings: int | None = None) -> dict:
     if expected_recordings is not None:
         short = [c.label for c in cands if c.recordings != expected_recordings]
@@ -111,7 +121,8 @@ def run(a) -> dict:
             base_bare = base_bare + der(ref, _segs(base[r]), uems[r])
     chosen = choose(out, expected_recordings=len(recs))
     return {"set": a.set, "base": a.base, "recordings": recs, "base_bare_der_dev": base_bare.der,
-            "candidates": [c.__dict__ for c in out], "per_recording_drift": per_rec, "chosen": chosen}
+            "candidates": [c.__dict__ for c in out], "per_recording_drift": per_rec, "chosen": chosen,
+            "excluded": parse_excluded(a.excluded)}
 
 
 def markdown(s: dict) -> str:
@@ -121,6 +132,8 @@ def markdown(s: dict) -> str:
     for c in sorted(s["candidates"], key=lambda c: (-c["bits"], c["drift"])):
         mark = "**yes**" if s["chosen"].get(c["bits"]) == c["label"] else ""
         lines.append(f"| {c['label']} | {c['bits']} | {c['drift']:.2%} | {c['bare_der_dev']:.1%} | {mark} |")
+    for label, reason in s.get("excluded", {}).items():
+        lines.append(f"| {label} | | excluded: {reason} | | |")
     return "\n".join(lines) + "\n"
 
 
@@ -133,6 +146,7 @@ def main(argv=None) -> int:
     ap.add_argument("--rttm-dir", required=True)
     ap.add_argument("--uem-dir", required=True)
     ap.add_argument("--builds-dir", help="DIR/<label>/build.json gives each build's compiled size (ties)")
+    ap.add_argument("--excluded", action="append", help="label=reason: a build that couldn't run, shown, not chosen")
     ap.add_argument("--out-json")
     ap.add_argument("--out-md")
     a = ap.parse_args(argv)

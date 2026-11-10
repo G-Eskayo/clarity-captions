@@ -48,3 +48,13 @@ def test_no_choice_on_partial_data():
                                                                                recordings=6)]
     with pytest.raises(IncompleteCalibration):
         choose(cands, expected_recordings=6)
+
+
+def test_an_excluded_build_is_shown_with_its_reason_not_dropped_silently():
+    from speaker_eval.fidelity import markdown, parse_excluded
+    assert parse_excluded(["int8=aborts at load"]) == {"int8": "aborts at load"}
+    s = {"set": "ami", "base": "fp16", "recordings": ["ES2011a"], "base_bare_der_dev": 0.3, "chosen": {8: "pal8"},
+         "candidates": [{"label": "pal8", "bits": 8, "drift": 0.01, "bare_der_dev": 0.3}],
+         "excluded": {"int8": "aborts at load"}}
+    md = markdown(s)
+    assert "int8" in md and "aborts at load" in md
