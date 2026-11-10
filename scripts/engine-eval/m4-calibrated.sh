@@ -7,8 +7,8 @@
 #   4. every EdAcc shard streamed from the 2012 mini (it keeps them), one at a time: copy, run every new build on it,
 #      delete; 6-bit runs shard 1 again first so speed is compared in the same hour; machine load every 30 s
 #   5. live latency (shard 1) and memory, sizes, and the held-out report (calibration speakers never scored)
-# Needs: ~/edacc-eval/convert/ultra.nemo (calibrated_ultra.py prep), ~/edacc-eval/calib-272 (calibration clips),
-#        ~/edacc-eval/manifests (EdAcc manifests), the mobius env, and ssh to mac-mini-2012.
+# Needs: the 2012 mini running kali-calibrated-builds.sh (it holds ultra.nemo, the calibration clips and the builds'
+#        torch half), ~/edacc-eval/manifests (EdAcc manifests), the mobius env for compiling, ssh to mac-mini-2012.
 # Start: EVAL_REPO=<worktree> nohup nice -n 15 scripts/engine-eval/m4-calibrated.sh >> ~/edacc-eval/logs/272.log 2>&1 &
 set -uo pipefail
 export PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin
@@ -40,7 +40,7 @@ mkdir -p "$R/latency" "$R/memory" "$WORK/models/variants"
 MIN_FREE_GB="${EVAL_MIN_FREE_GB:-3}"
 guard() { local f; f=$(df -g / | awk 'NR==2{print $4}')
   [ "$f" -ge "$MIN_FREE_GB" ] || { status "PAUSED: $f GiB free (< $MIN_FREE_GB) before $1"; echo "LOW-DISK pause before $1"; exit 3; }; }
-for need in "$C/ultra.nemo" "$WORK/calib-272/manifest.jsonl" "$WORK/manifests/index.json" "$CPY" "$SPLIT"; do
+for need in "$WORK/manifests/index.json" "$CPY" "$SPLIT"; do
   [ -e "$need" ] || { echo "missing $need"; exit 1; }
 done
 
@@ -53,28 +53,25 @@ done
     sleep 30
   done ) &
 
-if ! grep -q SENSITIVITY-DONE "$R/sensitivity.done" 2>/dev/null; then
-  guard sensitivity; status "1/5 layer sensitivity"
-  "$CPY" "$HERE/calibrated_ultra.py" sensitivity --out "$SENS" >> "$R/sensitivity.log" 2>&1
-  grep -q SENSITIVITY-DONE "$R/sensitivity.log" && echo SENSITIVITY-DONE > "$R/sensitivity.done" \
-    || { echo "sensitivity failed; see $R/sensitivity.log"; exit 1; }
-fi
-
+# Steps 1-2 run on the 2012 mini (kali-calibrated-builds.sh: sensitivity rows from this machine, Fisher, k-means,
+# export, packing). Here: wait for each staged package, pull it, compile and assemble it.
+STAGED="$WORK/staged-272"; KW="${EVAL_KALI_WORK:-edacc-272}"
+mkdir -p "$STAGED"
 NEW=""
-IFS=';' read -ra BL <<< "$BUILDS"
-for spec in "${BL[@]}"; do
-  name="${spec%%|*}"; args="${spec#*|}"
-  guard "build $name"; status "2/5 building $name"
-  # shellcheck disable=SC2086
-  "$CPY" "$HERE/calibrated_ultra.py" build --name "$name" --sensitivity "$SENS" $args || { echo "build $name failed"; exit 1; }
+for name in ${EVAL_BUILD_NAMES:-ultra-skm4 ultra-mix46 ultra-mix46-skm}; do
+  if [ ! -e "$WORK/models/variants/$name/variant.json" ]; then
+    status "2/5 waiting for $name from $KALI"
+    until ssh "$KALI" "test -e $KW/staged/$name.variant.json"; do
+      ssh "$KALI" "grep -q 'BUILD-FAILED $name' $KW/builds.log" && { echo "Kali build $name failed"; exit 1; }
+      sleep 60
+    done
+    guard "assemble $name"; status "2/5 assembling $name"
+    rsync -a "$KALI:$KW/staged/$name.Encoder.mlpackage" "$KALI:$KW/staged/$name.variant.json" "$STAGED/" \
+      || { echo "cannot pull $name"; exit 1; }
+    "$CPY" "$HERE/calibrated_ultra.py" assemble --name "$name" --staged "$STAGED" || { echo "assemble $name failed"; exit 1; }
+  fi
   NEW="$NEW,local:$name"
 done
-if [ -n "$DEC_FROM" ]; then
-  status "3/5 decoder + joint on $DEC_FROM"
-  "$CPY" "$HERE/calibrated_ultra.py" decoder --name "$DEC_FROM-dec6" --from-build "$WORK/models/variants/$DEC_FROM" \
-    --src "$C/work-272/decoder-src" --bits 6 || { echo "decoder build failed"; exit 1; }
-  NEW="$NEW,local:$DEC_FROM-dec6"
-fi
 NEW="${NEW#,}"
 ENGINES="$REF,$NEW"
 (cd "$REPO/Packages/EngineEval" && swift build -c release 2>&1 | tail -1)
@@ -125,8 +122,16 @@ for e in "${MEMS[@]}"; do
     --license "CC BY 4.0 (attribution in NOTICE.txt)"
 done
 MODELS="parakeet-ultra-coreml,ultra-pal6,ultra-pal4,$(echo "$NEW" | sed 's/local://g')"
-"$PY" -m edacc_eval.cli heldout-report --shards "$WORK/manifests" --split "$SPLIT" \
-  --results "$WORK/results" "$R" --ref ultra-pal6 --models "$MODELS" --json-out "$R/heldout.json" | tee "$R/heldout.txt"
+# Scoring runs on the 2012 mini (owner, 2026-11-09): the same repo code, results rsynced over.
+rsync -a --include='*.jsonl' --exclude='*/' --exclude='*' "$R/" "$KALI:$KW/results/r272/" \
+  && rsync -a --delete --exclude='__pycache__' "$HERE/" "$KALI:$KW/code/" \
+  && rsync -a "$SPLIT" "$KALI:$KW/" \
+  && ssh "$KALI" bash -s <<KALI_EOF | tee "$R/heldout.txt"
+cd ~/$KW/code && python3 -I -c "import sys; sys.path.insert(0, '.'); from edacc_eval.cli import main; raise SystemExit(main())" \
+  heldout-report --shards ~/edacc-eval/shards --split ../edacc-heldout-split.json \
+  --results ../results/r150 ../results/r272 --ref ultra-pal6 --models "$MODELS" --json-out ../heldout-272.json
+KALI_EOF
+rsync -a "$KALI:$KW/heldout-272.json" "$R/heldout.json" || echo "held-out report not copied back"
 rm -rf "$S"
 status "FINISHED"
 echo "$(date '+%F %T') CALIBRATED-DONE"

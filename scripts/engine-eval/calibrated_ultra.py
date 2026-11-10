@@ -439,6 +439,8 @@ def cmd_sensitivity(a) -> None:
             for n in names:
                 put(n, a.base_bits)
     print(f"SENSITIVITY-DONE in {time.time() - t0:.0f}s", flush=True)
+    if _POOL is not None:
+        _POOL.close(); _POOL.join()
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -446,14 +448,28 @@ def cmd_sensitivity(a) -> None:
 # ---------------------------------------------------------------------------------------------------------------
 
 def _tdt_loss_fn(model):
-    """Loss for SKM's Fisher sensitivity: NeMo's own TDT loss on a calibration batch."""
+    """Loss for the Fisher sensitivity: the TDT loss on a calibration clip. NeMo's fast TDT loss is CUDA-only, so
+    this uses NeMo's pure-PyTorch TDTLossPytorch with the model's own durations and sigma, on raw joint logits."""
+    import torch
+    from nemo.collections.asr.losses.rnnt_pytorch import TDTLossPytorch
+
+    kw = dict(model.cfg.loss.get("tdt_kwargs", {}))
+    crit = TDTLossPytorch(blank=model.decoder.blank_idx, durations=list(kw.get("durations", [0, 1, 2, 3, 4])),
+                          reduction="sum", sigma=float(kw.get("sigma", 0.0)))
 
     def loss_fn(m, batch):
         signal, sig_len, tokens, tok_len = batch
         enc, enc_len = m.forward(input_signal=signal, input_signal_length=sig_len)
         dec, tgt_len, _ = m.decoder(targets=tokens, target_length=tok_len)
-        joint = m.joint(encoder_outputs=enc, decoder_outputs=dec)
-        return m.loss(log_probs=joint, targets=tokens, input_lengths=enc_len, target_lengths=tgt_len)
+        logits = m.joint.joint(enc.transpose(1, 2), dec.transpose(1, 2))      # [B, T, U+1, V+1+durations]
+        # TDTLossPytorch calls .cuda() on two of its own tensors; on the CPU those calls are made no-ops for this
+        # one call, leaving NeMo's recursion itself untouched.
+        cuda = torch.Tensor.cuda
+        torch.Tensor.cuda = lambda self, *a, **k: self
+        try:
+            return crit(acts=logits, labels=tokens, act_lens=enc_len, label_lens=tgt_len)
+        finally:
+            torch.Tensor.cuda = cuda
 
     return loss_fn
 
@@ -554,7 +570,7 @@ def split_plan(plan: dict[str, int]) -> tuple[dict[str, int], dict[str, int]]:
     return ours, {n: b for n, b in plan.items() if n not in ours}
 
 
-CT_WORKERS = 8
+CT_WORKERS = 1   # a forked pool deadlocked on Kali (8 workers asleep at 0% CPU, 2026-11-09); #150 also used 1
 FOLDED_IN_EXPORT = (".conv.depthwise_conv", ".self_attn.linear_pos")
 
 
@@ -641,10 +657,25 @@ def cmd_build(a) -> None:
 
     imp = {}
     if a.calibrated:
-        clips = calib_clips(a.calib, None, max_seconds=15.0)
-        t0 = time.time()
-        imp = fisher_importance(model, clips, list(split_plan(plan)[0]), a.fisher_clips)
-        print(f"Fisher importance from {a.fisher_clips} calibration clips: {time.time() - t0:.0f}s", flush=True)
+        names = list(split_plan(plan)[0])
+        cache = a.fisher_cache
+        if cache.exists():
+            saved = torch.load(cache)
+            if saved["clips"] != a.fisher_clips or not set(names) <= set(saved["imp"]):
+                raise ValueError(f"{cache} was made with other settings; delete it to recompute")
+            imp = {n: saved["imp"][n].float() for n in names}
+            print(f"Fisher importance from {cache} ({a.fisher_clips} calibration clips)", flush=True)
+        else:
+            clips = calib_clips(a.calib, a.fisher_clips, max_seconds=10.0)   # loss cost grows ~ length squared
+            t0 = time.time()
+            all_names = list(split_plan({n: 1 for n in mods})[0])            # every weight we may quantise
+            full = fisher_importance(model, clips, all_names, a.fisher_clips)
+            tmp = cache.with_suffix(".tmp")
+            torch.save({"clips": a.fisher_clips, "imp": {n: v.half() for n, v in full.items()}}, tmp)
+            tmp.rename(cache)
+            imp = {n: full[n] for n in names}
+            del full
+            print(f"Fisher importance from {a.fisher_clips} calibration clips: {time.time() - t0:.0f}s, cached", flush=True)
     t0 = time.time()
     if a.coreml_only:                                           # control: every weight quantised by coremltools itself
         global OURS_MAX_BITS
@@ -671,23 +702,54 @@ def cmd_build(a) -> None:
     del ml
     pkg = work / "Encoder.mlpackage"
     q.save(str(pkg))
+    del q
+    how = ("calibrated sensitive k-means (exact 1-D k-means weighted by Fisher importance from the TDT loss, "
+           f"{a.fisher_clips} held-out calibration clips)" if a.calibrated else "k-means, data-free")
+    method = (f"{plan_desc}; {how}; per grouped channel (group {GROUP}); {avg:.2f} bits per encoder weight on average "
+              f"(converter-folded weights at {max(plan.values())} bits); coremltools {ct.__version__}; encoder only, "
+              "other components as published")
+    meta = {"asr_version": "ultra", "method": method, "plan": plan}
+    if a.no_compile:                                            # Linux: hand the package to a Mac to compile
+        a.out.mkdir(parents=True, exist_ok=True)
+        staged = a.out / f"{a.name}.Encoder.mlpackage"
+        if staged.exists():
+            shutil.rmtree(staged)
+        shutil.move(str(pkg), str(staged))
+        (a.out / f"{a.name}.variant.json").write_text(json.dumps(meta, indent=2) + "\n")
+        shutil.rmtree(work)
+        print(f"{a.name}: packed, {time.time() - t0:.0f}s; staged {staged} for assemble on a Mac", flush=True)
+        if _POOL is not None:
+            _POOL.close(); _POOL.join()
+        return
     compiled = Path(ct.utils.compile_model(str(pkg)))
     print(f"export + pack + compile: {time.time() - t0:.0f}s", flush=True)
-    if dst.exists():
-        shutil.rmtree(dst)
-    shutil.copytree(a.base, dst, ignore=shutil.ignore_patterns("Encoder.mlmodelc", ".cache", "*.mlpackage"))
-    shutil.move(str(compiled), str(dst / "Encoder.mlmodelc"))
+    _assemble(a.base, dst, compiled, meta)
     shutil.rmtree(work)
-    (dst / "NOTICE.txt").write_text(NOTICE)
-    how = ("calibrated sensitive k-means (Fisher-weighted, TDT loss, "
-           f"{a.fisher_clips} held-out calibration clips)" if a.calibrated else "k-means, data-free")
-    method = (f"{plan_desc}; {how}; per grouped channel (group {GROUP}); {avg:.2f} bits per encoder weight on average; "
-              f"coremltools {ct.__version__}; encoder only, other components as published")
-    (dst / "variant.json").write_text(json.dumps({"asr_version": "ultra", "method": method,
-                                                  "plan": plan}, indent=2) + "\n")
     print(f"{a.name}: built, {method}", flush=True)
     if _POOL is not None:
         _POOL.close(); _POOL.join()
+
+
+def _assemble(base: Path, dst: Path, compiled: Path, meta: dict) -> None:
+    if dst.exists():
+        shutil.rmtree(dst)
+    shutil.copytree(base, dst, ignore=shutil.ignore_patterns("Encoder.mlmodelc", ".cache", "*.mlpackage"))
+    shutil.move(str(compiled), str(dst / "Encoder.mlmodelc"))
+    (dst / "NOTICE.txt").write_text(NOTICE)
+    (dst / "variant.json").write_text(json.dumps(meta, indent=2) + "\n")
+
+
+def cmd_assemble(a) -> None:
+    """Mac side of a Linux build: compile <name>.Encoder.mlpackage and make the drop-in FluidAudio folder."""
+    import coremltools as ct
+
+    staged = a.staged / f"{a.name}.Encoder.mlpackage"
+    meta = json.loads((a.staged / f"{a.name}.variant.json").read_text())
+    compiled = Path(ct.utils.compile_model(str(staged)))
+    _assemble(a.base, a.out / a.name, compiled, meta)
+    shutil.rmtree(staged)
+    (a.staged / f"{a.name}.variant.json").unlink()
+    print(f"{a.name}: assembled in {a.out / a.name}", flush=True)
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -779,7 +841,9 @@ def main() -> None:
             s.add_argument("--calibrated", action="store_true")
             s.add_argument("--workers", type=int, default=8)
             s.add_argument("--coreml-only", action="store_true", help="control: no torch-side quantisation")
+            s.add_argument("--no-compile", action="store_true", help="stop at the packed .mlpackage (Linux)")
             s.add_argument("--fisher-clips", type=int, default=128)
+            s.add_argument("--fisher-cache", type=Path, default=home / "convert" / "fisher-272.pt")
             s.add_argument("--check-calib", type=int, default=240)
             s.add_argument("--convert", type=Path, default=home / "convert")
             s.add_argument("--work", type=Path, default=home / "convert" / "work-272")
@@ -793,12 +857,17 @@ def main() -> None:
     d.add_argument("--bits", type=int, default=6, help="0 = no palettization (re-export check)")
     d.add_argument("--work", type=Path, default=home / "convert" / "work-272")
     d.add_argument("--out", type=Path, default=home / "models" / "variants")
+    asm = sub.add_parser("assemble")
+    asm.add_argument("--name", required=True)
+    asm.add_argument("--staged", type=Path, default=home / "staged-272")
+    asm.add_argument("--base", type=Path, default=home / "models" / "fluidaudio" / "parakeet-ultra")
+    asm.add_argument("--out", type=Path, default=home / "models" / "variants")
     ds = sub.add_parser("decoder-src")
     ds.add_argument("--nemo", type=Path, default=home / "convert" / "ultra.nemo")
     ds.add_argument("--convert", type=Path, default=home / "convert")
     ds.add_argument("--out", type=Path, default=home / "convert" / "work-272" / "decoder-src")
     a = ap.parse_args()
-    {"decoder-src": cmd_decoder_src, "prep": cmd_prep, "sensitivity": cmd_sensitivity, "build": cmd_build, "decoder": cmd_decoder}[a.cmd](a)
+    {"assemble": cmd_assemble, "decoder-src": cmd_decoder_src, "prep": cmd_prep, "sensitivity": cmd_sensitivity, "build": cmd_build, "decoder": cmd_decoder}[a.cmd](a)
 
 
 if __name__ == "__main__":
