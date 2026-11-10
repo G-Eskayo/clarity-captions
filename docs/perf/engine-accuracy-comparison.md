@@ -281,13 +281,28 @@ all 6-bit 12.41%, all 4-bit 13.72%, the same gap the test set shows.
 | ultra-pal6 (ships) | data-free 6-bit | 498 MB | 485 MB | 13.90% (12.84–15.01) | – | – | 64.9x | 57 MB |
 | **ultra-mix46** | data-free k-means, bits from step 1: 44 of 97 groups at 6, rest 4 (4.75 average) | **406 MB** | 382 MB | 14.08% (13.00–15.24) | **+0.18 (+0.11 to +0.25)** | +0.17 (+0.07 to +0.26) | 67.6x | 59 MB |
 | ultra-pal4 | data-free 4-bit | 350 MB | 320 MB | 14.85% (13.68–16.04) | +0.95 (+0.78 to +1.11) | +0.98 | – | 60 MB |
-| ultra-skm4 | calibrated 4-bit everywhere | building | | | | | | |
+| ultra-skm4 | calibrated: 4-bit everywhere, exact 1-D k-means weighted by Fisher importance (96 held-out calibration clips, 1–6 s) | 350 MB | 320 MB | 14.39% (13.23–15.56) | **+0.49 (+0.36 to +0.61)** | +0.52 (+0.35 to +0.70) | – | – |
 | ultra-mix46-skm | calibrated, step 1's bit plan | building | | | | | | |
 
 Speeds from 2026-11-10 with the Fisher step sharing the CPU: both builds slowed alike, so compare them only with each
 other. Live latency for ultra-mix46 isn't analysed yet.
 
+**Calibration alone halves 4-bit's loss** (+0.95 to +0.49 at the same 350 MB) but doesn't remove it.
+
 **Reading so far:** putting the 6-bit budget where step 1 says it matters recovers four-fifths of 4-bit's loss
 (+0.18 instead of +0.95) at 92 MB less than 6-bit. It passes the ticket's overlap rule, but the paired test says it is
 still slightly worse than 6-bit, so it is not yet "no loss". The calibrated builds test whether calibration closes
 the rest.
+
+### Step 3: decoder and joint
+
+The decoder (23 MB) and joint (12 MB) were published as fp16 and never compressed. Re-exported from the same weights
+with mobius's own script: on shard 1 the unpalettized re-export gives **548 of 548** transcripts identical to the
+published ones. They are iOS 17 packages, and grouped-channel tables need iOS 18, so they use one table per weight
+(iOS 17 supports that) rather than a changed deployment target. On the shipped 6-bit encoder:
+
+| Build | Decoder + joint | Saved | WER, test | vs 6-bit, paired |
+|---|---:|---:|---|---|
+| ultra-pal6 | 35 MB (fp16) | – | 13.90% | – |
+| ultra-pal6-dec6 | 13 MB (6-bit) | 22 MB | scoring | |
+| ultra-pal6-dec4 | 9 MB (4-bit) | 26 MB | scoring | |

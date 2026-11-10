@@ -821,8 +821,10 @@ def cmd_decoder(a) -> None:
     if dst.exists():
         shutil.rmtree(dst)
     shutil.copytree(a.from_build, dst)
+    # The published decoder and joint are iOS 17 packages; grouped-channel tables need iOS 18, so these use one table
+    # per weight (per_tensor), which iOS 17 supports, rather than changing the published deployment target.
     cfg = cto.OptimizationConfig(global_config=cto.OpPalettizerConfig(
-        mode="kmeans", nbits=a.bits, granularity="per_grouped_channel", group_size=GROUP, weight_threshold=MIN_ELEMENTS,
+        mode="kmeans", nbits=a.bits, granularity="per_tensor", weight_threshold=MIN_ELEMENTS,
         num_kmeans_workers=1)) if a.bits else None
     a.work.mkdir(parents=True, exist_ok=True)
     for comp in a.components.split(","):
@@ -839,7 +841,7 @@ def cmd_decoder(a) -> None:
     v = json.loads((a.from_build / "variant.json").read_text())
     v["method"] = v["method"].replace("encoder only, other components as published",
                                       f"encoder as {a.from_build.name}; {a.components.replace(',', ' and ')} " + (
-                                          f"{a.bits}-bit k-means per grouped channel (group {GROUP}), data-free"
+                                          f"{a.bits}-bit k-means, one table per weight (iOS 17 package), data-free"
                                           if a.bits else "re-exported from the same weights, fp16 (check build)"))
     v.pop("plan", None)
     (dst / "variant.json").write_text(json.dumps(v, indent=2) + "\n")

@@ -62,7 +62,9 @@ for name in ${EVAL_BUILD_NAMES:-ultra-skm4 ultra-mix46 ultra-mix46-skm}; do
   if [ ! -e "$WORK/models/variants/$name/variant.json" ]; then
     status "2/5 waiting for $name from $KALI"
     until ssh "$KALI" "test -e $KW/staged/$name.variant.json"; do
-      ssh "$KALI" "grep -q 'BUILD-FAILED $name' $KW/builds.log" && { echo "Kali build $name failed"; exit 1; }
+      # only the latest line for this build counts: the log keeps earlier attempts' failures
+      last=$(ssh "$KALI" "grep -aE 'BUILD-(START|STAGED|FAILED) $name\$' $KW/builds.log | tail -1")
+      case "$last" in *BUILD-FAILED*) echo "Kali build $name failed: $last"; exit 1;; esac
       sleep 60
     done
     guard "assemble $name"; status "2/5 assembling $name"
