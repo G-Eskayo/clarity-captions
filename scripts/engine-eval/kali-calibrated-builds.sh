@@ -11,7 +11,7 @@ W="$HOME/edacc-272"
 CPY="$W/convert/mobius/models/stt/parakeet-tdt-v3-0.6b/coreml/.venv/bin/python"
 STAGED="$W/staged"
 # name|calibrated_ultra.py build arguments
-BUILDS="${KALI_BUILDS:-ultra-t4k|--bits 4;ultra-skm4|--bits 4 --calibrated;ultra-mix46|--target-bits 4.75;ultra-mix46-skm|--target-bits 4.75 --calibrated}"
+BUILDS="${KALI_BUILDS:-ultra-t4k|--bits 4;ultra-skm4|--bits 4 --calibrated --fisher-clips 96;ultra-mix46|--target-bits 4.75;ultra-mix46-skm|--target-bits 4.75 --calibrated --fisher-clips 96}"
 mkdir -p "$STAGED"
 export PYTHONPATH="$W/code"
 IFS=';' read -ra BL <<< "$BUILDS"

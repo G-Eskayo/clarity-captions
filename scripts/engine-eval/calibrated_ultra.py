@@ -496,6 +496,7 @@ def fisher_importance(model, clips: list[dict], names: list[str], n: int) -> dic
     from edacc_eval.normalize import normalize
 
     used = 0
+    t_start = time.time()
     for r in clips[:n]:
         text = normalize(r["reference"])
         ids = tok.text_to_ids(text)
@@ -510,8 +511,8 @@ def fisher_importance(model, clips: list[dict], names: list[str], n: int) -> dic
         for nm, w in zip(names, ws):
             fisher[nm] += w.grad.detach() ** 2
         used += 1
-        if used % 16 == 0:
-            print(f"  fisher {used}/{n}", flush=True)
+        if used % 4 == 0:
+            print(f"  fisher {used}/{n}, {time.time() - t_start:.0f}s", flush=True)
     for w in ws:
         w.requires_grad_(False)
     torch.set_grad_enabled(False)
@@ -661,17 +662,20 @@ def cmd_build(a) -> None:
         cache = a.fisher_cache
         if cache.exists():
             saved = torch.load(cache)
-            if saved["clips"] != a.fisher_clips or not set(names) <= set(saved["imp"]):
+            if saved.get("dtype") != "bfloat16":   # an fp16 cache lost 98% of the values to underflow (2026-11-09)
+                raise ValueError(f"{cache} is not a bfloat16 cache; delete it to recompute")
+            if (saved["clips"], saved.get("max_seconds")) != (a.fisher_clips, a.fisher_max_seconds) \
+                    or not set(names) <= set(saved["imp"]):
                 raise ValueError(f"{cache} was made with other settings; delete it to recompute")
             imp = {n: saved["imp"][n].float() for n in names}
             print(f"Fisher importance from {cache} ({a.fisher_clips} calibration clips)", flush=True)
         else:
-            clips = calib_clips(a.calib, a.fisher_clips, max_seconds=10.0)   # loss cost grows ~ length squared
+            clips = calib_clips(a.calib, a.fisher_clips, max_seconds=a.fisher_max_seconds)   # cost ~ length squared
             t0 = time.time()
             all_names = list(split_plan({n: 1 for n in mods})[0])            # every weight we may quantise
             full = fisher_importance(model, clips, all_names, a.fisher_clips)
             tmp = cache.with_suffix(".tmp")
-            torch.save({"clips": a.fisher_clips, "imp": {n: v.half() for n, v in full.items()}}, tmp)
+            torch.save({"clips": a.fisher_clips, "max_seconds": a.fisher_max_seconds, "dtype": "bfloat16", "imp": {n: v.to(torch.bfloat16) for n, v in full.items()}}, tmp)
             tmp.rename(cache)
             imp = {n: full[n] for n in names}
             del full
@@ -683,7 +687,10 @@ def cmd_build(a) -> None:
     ours, _ = split_plan(plan)
     for n in ours:
         w = mods[n].weight.data
-        mods[n].weight.data.copy_(kmeans_sklearn(w, plan[n], importance=imp.get(n), workers=a.workers))
+        q = kmeans_sklearn(w, plan[n], importance=imp.get(n), workers=a.workers)
+        if not torch.isfinite(q).all():
+            raise ValueError(f"{n}: k-means produced non-finite weights")
+        mods[n].weight.data.copy_(q)
     print(f"k-means: {time.time() - t0:.0f}s", flush=True)
     imp.clear()
     if a.check_calib:
@@ -704,7 +711,7 @@ def cmd_build(a) -> None:
     q.save(str(pkg))
     del q
     how = ("calibrated sensitive k-means (exact 1-D k-means weighted by Fisher importance from the TDT loss, "
-           f"{a.fisher_clips} held-out calibration clips)" if a.calibrated else "k-means, data-free")
+           f"{a.fisher_clips} held-out calibration clips of 1-{a.fisher_max_seconds:g} s)" if a.calibrated else "k-means, data-free")
     method = (f"{plan_desc}; {how}; per grouped channel (group {GROUP}); {avg:.2f} bits per encoder weight on average "
               f"(converter-folded weights at {max(plan.values())} bits); coremltools {ct.__version__}; encoder only, "
               "other components as published")
@@ -737,6 +744,28 @@ def _assemble(base: Path, dst: Path, compiled: Path, meta: dict) -> None:
     shutil.move(str(compiled), str(dst / "Encoder.mlmodelc"))
     (dst / "NOTICE.txt").write_text(NOTICE)
     (dst / "variant.json").write_text(json.dumps(meta, indent=2) + "\n")
+
+
+def cmd_fisher(a) -> None:
+    """Fisher importance only, cached for builds elsewhere. On the 2012 mini this step ran at over 2.5 minutes a clip
+    (memory-bound beside other jobs); on the M4 about 37 s a 15 s clip, so the M4 does this one step and the 2012
+    mini does everything else with the cache."""
+    import torch
+
+    torch.set_num_threads(a.threads)
+    if a.fisher_cache.exists():
+        print(f"{a.fisher_cache} exists"); return
+    model = load_ultra(a.nemo)
+    mods = palettizable(model)
+    clips = calib_clips(a.calib, a.fisher_clips, max_seconds=a.fisher_max_seconds)
+    t0 = time.time()
+    names = list(split_plan({n: 1 for n in mods})[0])
+    full = fisher_importance(model, clips, names, a.fisher_clips)
+    tmp = a.fisher_cache.with_suffix(".tmp")
+    torch.save({"clips": a.fisher_clips, "max_seconds": a.fisher_max_seconds,
+                "dtype": "bfloat16", "imp": {n: v.to(torch.bfloat16) for n, v in full.items()}}, tmp)
+    tmp.rename(a.fisher_cache)
+    print(f"FISHER-DONE: {len(clips)} clips, {time.time() - t0:.0f}s, {a.fisher_cache}", flush=True)
 
 
 def cmd_assemble(a) -> None:
@@ -843,6 +872,7 @@ def main() -> None:
             s.add_argument("--coreml-only", action="store_true", help="control: no torch-side quantisation")
             s.add_argument("--no-compile", action="store_true", help="stop at the packed .mlpackage (Linux)")
             s.add_argument("--fisher-clips", type=int, default=128)
+            s.add_argument("--fisher-max-seconds", type=float, default=6.0)
             s.add_argument("--fisher-cache", type=Path, default=home / "convert" / "fisher-272.pt")
             s.add_argument("--check-calib", type=int, default=240)
             s.add_argument("--convert", type=Path, default=home / "convert")
@@ -857,6 +887,13 @@ def main() -> None:
     d.add_argument("--bits", type=int, default=6, help="0 = no palettization (re-export check)")
     d.add_argument("--work", type=Path, default=home / "convert" / "work-272")
     d.add_argument("--out", type=Path, default=home / "models" / "variants")
+    fi = sub.add_parser("fisher")
+    fi.add_argument("--nemo", type=Path, default=home / "convert" / "ultra.nemo")
+    fi.add_argument("--calib", type=Path, default=home / "calib-272")
+    fi.add_argument("--fisher-clips", type=int, default=96)
+    fi.add_argument("--fisher-max-seconds", type=float, default=6.0)
+    fi.add_argument("--fisher-cache", type=Path, default=home / "convert" / "fisher-272.pt")
+    fi.add_argument("--threads", type=int, default=8)
     asm = sub.add_parser("assemble")
     asm.add_argument("--name", required=True)
     asm.add_argument("--staged", type=Path, default=home / "staged-272")
@@ -867,7 +904,7 @@ def main() -> None:
     ds.add_argument("--convert", type=Path, default=home / "convert")
     ds.add_argument("--out", type=Path, default=home / "convert" / "work-272" / "decoder-src")
     a = ap.parse_args()
-    {"assemble": cmd_assemble, "decoder-src": cmd_decoder_src, "prep": cmd_prep, "sensitivity": cmd_sensitivity, "build": cmd_build, "decoder": cmd_decoder}[a.cmd](a)
+    {"fisher": cmd_fisher, "assemble": cmd_assemble, "decoder-src": cmd_decoder_src, "prep": cmd_prep, "sensitivity": cmd_sensitivity, "build": cmd_build, "decoder": cmd_decoder}[a.cmd](a)
 
 
 if __name__ == "__main__":

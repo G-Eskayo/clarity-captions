@@ -139,3 +139,23 @@ def test_converter_folded_weights_are_never_quantised_in_torch():
     ours, theirs = cu.split_plan(plan)
     assert ours == {"encoder.layers.0.self_attn.linear_q": 4}
     assert set(theirs) == {"encoder.layers.0.conv.depthwise_conv", "encoder.layers.0.self_attn.linear_pos"}
+
+
+def test_fisher_cache_dtype_keeps_real_sized_importances():
+    """Squared gradients are ~1e-12..1e-3; fp16 turned 98% of them into zeros or subnormals (2026-11-09)."""
+    v = torch.tensor([1e-12, 3e-9, 5e-7, 2e-4, 0.15])
+    back = v.to(torch.bfloat16).float()
+    assert (back > 0).all()
+    assert torch.allclose(back, v, rtol=1e-2)
+
+
+def test_importance_weighting_survives_tiny_and_huge_ratios():
+    import numpy as np
+    torch.manual_seed(7)
+    w = torch.randn(16, 1000) * 0.05
+    imp = torch.rand(16, 1000) * 1e-9
+    imp[0, :5] = 1e-2                                  # seven orders of magnitude apart, as real Fisher values
+    imp[1, :100] = 0                                   # and exact zeros
+    r = cu.kmeans_sklearn(w, 4, importance=imp, workers=2)
+    assert torch.isfinite(r).all()
+    assert len(np.unique(r[:16].numpy().astype(np.float16))) <= 16

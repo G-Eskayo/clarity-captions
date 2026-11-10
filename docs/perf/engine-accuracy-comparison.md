@@ -261,3 +261,33 @@ A control that let coremltools quantise everything through the same export gave 
 was never the problem. From attempt 4 on, the only thing a calibrated build changes is the calibration. Calibrated
 k-means is the same exact 1-D k-means, with each value weighted by its summed Fisher importance (squared gradient
 of the TDT loss on calibration clips): coremltools' sensitive k-means objective, solved exactly.
+
+### Step 1: layer sensitivity (calibration slice only)
+
+Each of 97 module groups (front end; per block: attention, convolution, two feed-forwards) dropped alone from 6 to
+4 bits, everything else at 6; damage = added encoder-output error vs full precision on 240 calibration clips
+(23.6 min). Results: `~/edacc-eval/results-272/sensitivity.json`. Calibration-slice WER: full precision 12.34%,
+all 6-bit 12.41%, all 4-bit 13.72%, the same gap the test set shows.
+
+- **Most damaging per weight:** the front end (subsampling), then the **convolution modules**, mostly in the deep
+  blocks (23, 18, 17, 19, 22). Attention in the middle blocks (5, 7, 9) barely matters.
+- By kind, total added error: convolution 0.25, first feed-forward 0.19, second feed-forward 0.15, front end 0.11,
+  attention 0.09.
+
+### Step 2: builds (in progress, 2026-11-10)
+
+| Build | How | On disk | Zipped | WER, test (95% CI) | vs 6-bit, paired | EdAcc test split, vs 6-bit | x real time, shard 1 (6-bit same window) | Peak memory |
+|---|---|---:|---:|---|---|---|---:|---:|
+| ultra-pal6 (ships) | data-free 6-bit | 498 MB | 485 MB | 13.90% (12.84–15.01) | – | – | 64.9x | 57 MB |
+| **ultra-mix46** | data-free k-means, bits from step 1: 44 of 97 groups at 6, rest 4 (4.75 average) | **406 MB** | 382 MB | 14.08% (13.00–15.24) | **+0.18 (+0.11 to +0.25)** | +0.17 (+0.07 to +0.26) | 67.6x | 59 MB |
+| ultra-pal4 | data-free 4-bit | 350 MB | 320 MB | 14.85% (13.68–16.04) | +0.95 (+0.78 to +1.11) | +0.98 | – | 60 MB |
+| ultra-skm4 | calibrated 4-bit everywhere | building | | | | | | |
+| ultra-mix46-skm | calibrated, step 1's bit plan | building | | | | | | |
+
+Speeds from 2026-11-10 with the Fisher step sharing the CPU: both builds slowed alike, so compare them only with each
+other. Live latency for ultra-mix46 isn't analysed yet.
+
+**Reading so far:** putting the 6-bit budget where step 1 says it matters recovers four-fifths of 4-bit's loss
+(+0.18 instead of +0.95) at 92 MB less than 6-bit. It passes the ticket's overlap rule, but the paired test says it is
+still slightly worse than 6-bit, so it is not yet "no loss". The calibrated builds test whether calibration closes
+the rest.
