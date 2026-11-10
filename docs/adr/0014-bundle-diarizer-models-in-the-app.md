@@ -57,3 +57,22 @@ network-dependent and contradict that promise.
 ### Subsequent work
 
 - `scripts/fetch-diarizer-models.sh` currently pulls from Hugging Face's `main` branch, not a pinned commit. Because this environment has no network access, a fixed commit SHA could not be verified. A follow-up task for a future session with network access: pin the model fetch to a specific known revision (by commit SHA) in the script so that the exact artifact being used is permanently recordable.
+
+## Our own compressed builds, measured (2026-11-09, #271 step 2)
+
+The 2026-10-02 comparison above used FluidAudio's published palettized build on synthetic voices. #271 rebuilt the
+shipped fp16 model ourselves (bit-identical), compressed it at 8 and 6 bits, chose one build per bit width on AMI
+calibration meetings, and scored both through the app's live speaker path on real voices (AMI test, CHiME-6 eval).
+Full numbers: [docs/perf/speaker-scoreboard.md § Step 2](../perf/speaker-scoreboard.md#step-2-compressed-builds).
+
+| Build | Size on disk | DER on screen, AMI | DER on screen, CHiME-6 | Line first label (AMI / CHiME-6) | Ship rule |
+|---|---|---|---|---|---|
+| fp16 (shipped) | 229.4 MB | 24.0% (20.4–27.3) | 42.5% (38.5–46.3) | 0.62 s / 0.63 s | baseline |
+| pal8 | 120.1 MB | 24.5% (19.3–29.2) | 42.3% (38.5–46.1) | 0.62 s / 0.63 s | passes |
+| pal6 | 92.6 MB | 24.5% (20.4–28.4) | 42.2% (38.5–45.9) | 0.62 s / 0.63 s | passes |
+| int8 | 120.4 MB | | | | excluded: crashes at load |
+
+**Decision:** by the ticket's rule (smallest build whose DER CI overlaps fp16's on both sets, first label within 10%),
+**pal6** is the build to ship. Until it is in the app, fp16 stays. The swap needs the exact scored files distributed
+(k-means isn't repeatable, so a rebuild is a different, unscored build), a run on a real iPhone, and NOTICE.md
+describing the change, since a compressed build is a Derivative Model under the NVIDIA Open Model License.

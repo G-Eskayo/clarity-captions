@@ -1,0 +1,493 @@
+{
+ "audio_hours": 5.205480555555555,
+ "chunk_audio_ms": 85.3125,
+ "chunk_ms_max": 86.610666,
+ "chunk_ms_p95_worst": 24.356916,
+ "der_bare": {
+  "ci95": [
+   0.38905837512387087,
+   0.4503254031042797
+  ],
+  "value": 0.4193440250074848
+ },
+ "der_floor": {
+  "ci95": [
+   0.2749792399974087,
+   0.3554140882159315
+  ],
+  "value": 0.31364072485873173
+ },
+ "der_live": {
+  "ci95": [
+   0.3848882006364128,
+   0.46120079696421407
+  ],
+  "value": 0.42251192263898746
+ },
+ "der_raw": {
+  "ci95": [
+   0.37894771869302446,
+   0.4560954831344459
+  ],
+  "value": 0.41781264660190054
+ },
+ "line_first_label_median_s": {
+  "ci95": [
+   0.6225000000000023,
+   0.6459375000000023
+  ],
+  "value": 0.6337500000000205
+ },
+ "line_first_label_p90_s": {
+  "ci95": [
+   1.428437499999987,
+   1.4609375
+  ],
+  "value": 1.4468750000000057
+ },
+ "live_components": {
+  "conf": 0.09052153147270228,
+  "fa": 0.006704966842922915,
+  "miss": 0.3252854243233622
+ },
+ "load_s_median": 0.10747599601745605,
+ "missing": [],
+ "model": "pal8",
+ "monologue_main_share_median": 0.9711179068977246,
+ "monologue_split_rate": {
+  "ci95": [
+   0.5341614906832298,
+   0.7357142857142858
+  ],
+  "value": 0.6339869281045751
+ },
+ "monologues": 153,
+ "peak_mb": {
+  "max": 117.64142608642578,
+  "median": 116.18827819824219
+ },
+ "per_recording": [
+  {
+   "audio_s": 600,
+   "der_bare": 0.386216308427158,
+   "der_floor": 0.2483255220959256,
+   "der_live": 0.3374813697498608,
+   "monologues": 6,
+   "peak_mb": 115.67265319824219,
+   "recording": "S01w00",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 2
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.3814297897123365,
+   "der_floor": 0.24907960147263764,
+   "der_live": 0.3719866048214323,
+   "monologues": 1,
+   "peak_mb": 116.82890319824219,
+   "recording": "S01w01",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 0
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.4279389206526286,
+   "der_floor": 0.28461860270534095,
+   "der_live": 0.4259343187839911,
+   "monologues": 1,
+   "peak_mb": 116.01640319824219,
+   "recording": "S01w02",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 1
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.2810311380001973,
+   "der_floor": 0.21160359056982211,
+   "der_live": 0.2645907999868477,
+   "monologues": 7,
+   "peak_mb": 116.95390319824219,
+   "recording": "S01w03",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 2
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.26588248147271437,
+   "der_floor": 0.2181030244541962,
+   "der_live": 0.25856261038984685,
+   "monologues": 3,
+   "peak_mb": 115.26642608642578,
+   "recording": "S01w04",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 1
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.24918532162085577,
+   "der_floor": 0.18415273448569,
+   "der_live": 0.22957990932275432,
+   "monologues": 5,
+   "peak_mb": 116.76640319824219,
+   "recording": "S01w05",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 1
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.30081670906413177,
+   "der_floor": 0.2943232025706253,
+   "der_live": 0.33047262016334183,
+   "monologues": 8,
+   "peak_mb": 117.64142608642578,
+   "recording": "S01w06",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 3
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.337112388749007,
+   "der_floor": 0.3174945131885443,
+   "der_live": 0.3776003446929405,
+   "monologues": 7,
+   "peak_mb": 117.12577819824219,
+   "recording": "S01w07",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 4
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.4352153744201458,
+   "der_floor": 0.33244532803180915,
+   "der_live": 0.45707090788601723,
+   "monologues": 5,
+   "peak_mb": 116.68827819824219,
+   "recording": "S01w08",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 4
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.3710328262610088,
+   "der_floor": 0.29742193755004004,
+   "der_live": 0.4044995996797438,
+   "monologues": 4,
+   "peak_mb": 116.07890319824219,
+   "recording": "S01w09",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 3
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.4990467729098414,
+   "der_floor": 0.30186758472615544,
+   "der_live": 0.435356395876136,
+   "monologues": 4,
+   "peak_mb": 116.32890319824219,
+   "recording": "S01w10",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 4
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.4919959419755201,
+   "der_floor": 0.41922818482456947,
+   "der_live": 0.48535553828113676,
+   "monologues": 1,
+   "peak_mb": 116.68827819824219,
+   "recording": "S01w11",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 0
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.540490444104902,
+   "der_floor": 0.37152769080479925,
+   "der_live": 0.5381860080655262,
+   "monologues": 4,
+   "peak_mb": 115.03202819824219,
+   "recording": "S01w12",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 3
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.4849693836840188,
+   "der_floor": 0.5479366511127687,
+   "der_live": 0.6192995541986851,
+   "monologues": 12,
+   "peak_mb": 116.36015319824219,
+   "recording": "S01w13",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 12
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.4755502439996016,
+   "der_floor": 0.4780001991833483,
+   "der_live": 0.5401553630116522,
+   "monologues": 8,
+   "peak_mb": 116.07890319824219,
+   "recording": "S01w14",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 7
+  },
+  {
+   "audio_s": 541.74,
+   "der_bare": 0.44685766594379,
+   "der_floor": 0.4955047241262818,
+   "der_live": 0.5504397197127382,
+   "monologues": 9,
+   "peak_mb": 116.25077819824219,
+   "recording": "S01w15",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 6
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.5241499192933289,
+   "der_floor": 0.2650726360040442,
+   "der_live": 0.4800716604288983,
+   "monologues": 3,
+   "peak_mb": 116.61015319824219,
+   "recording": "S21w00",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 3
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.44120801893771266,
+   "der_floor": 0.180296641515017,
+   "der_live": 0.40865882527001035,
+   "monologues": 4,
+   "peak_mb": 115.78202819824219,
+   "recording": "S21w01",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 3
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.41848773190629673,
+   "der_floor": 0.23933192480298568,
+   "der_live": 0.37495180667149886,
+   "monologues": 5,
+   "peak_mb": 116.65705108642578,
+   "recording": "S21w02",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 4
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.3079618685593799,
+   "der_floor": 0.26696463041606033,
+   "der_live": 0.3625753571110385,
+   "monologues": 2,
+   "peak_mb": 116.31327819824219,
+   "recording": "S21w03",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 2
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.565162275925956,
+   "der_floor": 0.28504331150151957,
+   "der_live": 0.5314394370317401,
+   "monologues": 5,
+   "peak_mb": 115.96955108642578,
+   "recording": "S21w04",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 3
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.42460554229647307,
+   "der_floor": 0.23710554229647307,
+   "der_live": 0.368933969769292,
+   "monologues": 6,
+   "peak_mb": 115.70390319824219,
+   "recording": "S21w05",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 2
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.34949906605535747,
+   "der_floor": 0.22983528612667686,
+   "der_live": 0.29081338087960606,
+   "monologues": 4,
+   "peak_mb": 115.82890319824219,
+   "recording": "S21w06",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 4
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.3389457258988008,
+   "der_floor": 0.2982621717190784,
+   "der_live": 0.3652333673097009,
+   "monologues": 8,
+   "peak_mb": 115.70390319824219,
+   "recording": "S21w07",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 5
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.48725675541214764,
+   "der_floor": 0.2836207019089992,
+   "der_live": 0.4378473653537263,
+   "monologues": 6,
+   "peak_mb": 116.18827819824219,
+   "recording": "S21w08",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 3
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.3928131222148478,
+   "der_floor": 0.19272462943649063,
+   "der_live": 0.3621092885812711,
+   "monologues": 6,
+   "peak_mb": 116.21952819824219,
+   "recording": "S21w09",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 4
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.31470506603973813,
+   "der_floor": 0.1968131132552938,
+   "der_live": 0.27504857063558147,
+   "monologues": 5,
+   "peak_mb": 115.18827819824219,
+   "recording": "S21w10",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 1
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.4419252312920889,
+   "der_floor": 0.2998930077412046,
+   "der_live": 0.4116055132481591,
+   "monologues": 3,
+   "peak_mb": 116.09452819824219,
+   "recording": "S21w11",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 3
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.4178057376239254,
+   "der_floor": 0.2552781528935147,
+   "der_live": 0.3499720035571951,
+   "monologues": 4,
+   "peak_mb": 115.29765319824219,
+   "recording": "S21w12",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 2
+  },
+  {
+   "audio_s": 600,
+   "der_bare": 0.4709360165998692,
+   "der_floor": 0.3714078621983457,
+   "der_live": 0.4694437338336034,
+   "monologues": 4,
+   "peak_mb": 116.12577819824219,
+   "recording": "S21w13",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 3
+  },
+  {
+   "audio_s": 797.99,
+   "der_bare": 0.5421467289924726,
+   "der_floor": 0.3513178396646696,
+   "der_live": 0.5464151688722102,
+   "monologues": 3,
+   "peak_mb": 116.56327819824219,
+   "recording": "S21w14",
+   "ref_speakers": 4,
+   "shown_speakers": 4,
+   "split": 2
+  }
+ ],
+ "recordings": 31,
+ "repeats_checked": 31,
+ "repeats_differing": [
+  "S01w00 r2",
+  "S01w01 r2",
+  "S01w02 r2",
+  "S01w03 r2",
+  "S01w04 r2",
+  "S01w05 r2",
+  "S01w06 r2",
+  "S01w07 r2",
+  "S01w08 r2",
+  "S01w09 r2",
+  "S01w10 r2",
+  "S01w11 r2",
+  "S01w12 r2",
+  "S01w13 r2",
+  "S01w14 r2",
+  "S01w15 r2",
+  "S21w00 r2",
+  "S21w01 r2",
+  "S21w02 r2",
+  "S21w03 r2",
+  "S21w04 r2",
+  "S21w05 r2",
+  "S21w06 r2",
+  "S21w07 r2",
+  "S21w08 r2",
+  "S21w09 r2",
+  "S21w10 r2",
+  "S21w11 r2",
+  "S21w12 r2",
+  "S21w13 r2",
+  "S21w14 r2"
+ ],
+ "session_first_label_s": {
+  "max": 11.3465625,
+  "median": 1.535625
+ },
+ "set": "chime6",
+ "speaker_count_exact": 31,
+ "speaker_count_mae": {
+  "ci95": [
+   0.0,
+   0.0
+  ],
+  "value": 0.0
+ },
+ "speed_x_realtime": 20.72571994328744,
+ "unlabeled_line_rate": 0.07580600968124943
+}
