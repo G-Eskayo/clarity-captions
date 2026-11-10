@@ -1,0 +1,8 @@
+1. Add `SpeakerAligner.bestSlot(_ overlap: [Int: Double], current: Int? = nil, numbering: [Int: Int] = [:]) -> Int?` in `SpeakerAligner.swift`: max value via `overlap.values.max()`, tied keys via equality filter, then `current` → lowest-numbered tied key → `tied.min()`.
+2. Write tests 6–7 (`SpeakerAlignerTests.swift`) against the still-unchanged `speaker(start:end:segments:)` signature.
+3. Change `SpeakerAligner.speaker` to resolve its tie via `bestSlot(overlap)` (defaults only) instead of `overlap.max(by:)`; keep the existing zero-length-range fallback as-is.
+4. Write tests 1–5, 8–9 (`SpeakerLabelSmootherTests.swift`) against the still-unchanged `label`/`chooseSlot` behavior.
+5. In `SpeakerLabelSmoother.chooseSlot`, replace the `overlap.max(by:)` call with `SpeakerAligner.bestSlot(overlap, current: current, numbering: displayBySlot)`, then look up `overlap[bestKey]` for the value previously read off `best.value`; update the two remaining `best.key` references to `bestKey`.
+6. Update the doc comments at the top of both files to note the deterministic tie order (current → lowest display number → lowest slot index) and reference #275, matching the existing "measured" comment style.
+7. Run `swift test --package-path Packages/CaptionCore`; confirm every new test and the full existing suite (including `SpeakerStabilityReplayTests.swift`'s non-integration parts) pass.
+8. In the PR description, state plainly that the #271 real-audio repeat-run verification is not re-run here (no model/corpora access in this environment) and is a follow-up.

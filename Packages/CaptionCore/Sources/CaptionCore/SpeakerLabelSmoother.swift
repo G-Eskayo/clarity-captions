@@ -9,7 +9,9 @@ import Foundation
 /// - keeps a live utterance on the speaker it was shown with until another slot holds `switchSeconds` of it
 ///   (a new utterance, or a final result, goes to whoever holds most of it, so real turns aren't delayed);
 /// - numbers speakers in order of first appearance, and doesn't let a live scrap (only segments shorter than
-///   `minSegmentSeconds`) of an unseen slot take a number.
+///   `minSegmentSeconds`) of an unseen slot take a number;
+/// - breaks ties in overlap deterministically: current speaker, then lowest display number (for consistency
+///   across face-to-face), then lowest slot index (#275).
 /// It does not stop the model putting a whole stretch of one voice in a new slot after a pitch or pace change:
 /// timing alone can't tell that from a second person, and a "new speakers must prove themselves" rule measured
 /// worse (it merged the next person's first words into the previous person's line).
@@ -60,15 +62,15 @@ public struct SpeakerLabelSmoother: Sendable {
         let evidence = long.isEmpty ? covering : long
         var overlap: [Int: Double] = [:]
         for s in evidence { overlap[s.speaker, default: 0] += min(end, s.end) - max(start, s.start) }
-        guard let best = overlap.max(by: { $0.value < $1.value || ($0.value == $1.value && $1.key == current) }) else {
+        guard let bestKey = SpeakerAligner.bestSlot(overlap, current: current, numbering: displayBySlot) else {
             return current
         }
         // A live scrap of a slot nobody has been shown as can't create a person (it would take the next number);
         // wait for more of it, or for the final result.
-        if long.isEmpty && !isFinal && displayBySlot[best.key] == nil { return nil }
-        guard let current, best.key != current else { return best.key }
+        if long.isEmpty && !isFinal && displayBySlot[bestKey] == nil { return nil }
+        guard let current, bestKey != current else { return bestKey }
         let sameUtterance = currentStart.map { abs($0 - start) < 0.05 } ?? false
-        if !isFinal && sameUtterance && best.value < switchSeconds { return current }
-        return best.key
+        if !isFinal && sameUtterance && overlap[bestKey]! < switchSeconds { return current }
+        return bestKey
     }
 }

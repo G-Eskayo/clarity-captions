@@ -30,4 +30,16 @@ final class SpeakerAlignerTests: XCTestCase {
         let segs = [seg(0, 0, 2), seg(1, 2, 4)]
         XCTAssertEqual(SpeakerAligner.speaker(start: 3.0, end: 3.0, segments: segs), 1)
     }
+
+    func testTieBreakingPrefersCurrent() {
+        let overlap: [Int: Double] = [0: 2.0, 1: 2.0]
+        // With current = 1, should return 1 even though 0 has equal overlap.
+        XCTAssertEqual(SpeakerAligner.bestSlot(overlap, current: 1), 1)
+    }
+
+    func testTieBreakingWithNoCurrentPrefersLowestIndex() {
+        let overlap: [Int: Double] = [0: 2.0, 2: 2.0]
+        // With no current, should pick the lowest slot index.
+        XCTAssertEqual(SpeakerAligner.bestSlot(overlap), 0)
+    }
 }

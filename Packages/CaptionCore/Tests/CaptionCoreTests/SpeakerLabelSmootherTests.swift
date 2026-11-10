@@ -152,4 +152,91 @@ final class SpeakerLabelSmootherTests: XCTestCase {
         var s = SpeakerLabelSmoother()
         XCTAssertEqual(s.label(start: 2, end: 2, segments: [seg(1, 0, 5)], isFinal: false), 0)
     }
+
+    func testTiedOverlapPrefersCurrent() {
+        var s = SpeakerLabelSmoother()
+        // Set current to slot 0 by labeling it first.
+        XCTAssertEqual(s.label(start: 0, end: 2, segments: [seg(0, 0, 2)], isFinal: true), 0)
+        // Now both slot 0 and slot 1 have 1.0s of overlap. Should stay with current (0).
+        let segs = [seg(0, 0, 2), seg(1, 2, 3), seg(0, 2, 3)]
+        XCTAssertEqual(s.label(start: 2, end: 3, segments: segs, isFinal: true), 0)
+    }
+
+    func testTiedOverlapPrefersLowestDisplayNumber() {
+        var s = SpeakerLabelSmoother()
+        var numbering: [Int: Int] = [:]
+        // Establish slots 1, 0, 2 with display numbers 0, 1, 2.
+        XCTAssertEqual(s.label(start: 0, end: 1, segments: [seg(1, 0, 1)], isFinal: true, numbering: &numbering), 0)
+        XCTAssertEqual(s.label(start: 1, end: 2, segments: [seg(1, 0, 1), seg(0, 1, 2)], isFinal: true, numbering: &numbering), 1)
+        XCTAssertEqual(s.label(start: 2, end: 3, segments: [seg(1, 0, 1), seg(0, 1, 2), seg(2, 2, 3)], isFinal: true, numbering: &numbering), 2)
+        // Current is now 2. Create a tie between slots 0 and 1 (neither is current).
+        // Both have 1.0s of overlap. Slot 0 has display 1, slot 1 has display 0.
+        // Should pick slot 1 (display 0, lower than slot 0's display 1).
+        let segs = [seg(0, 3, 4), seg(1, 3, 4)]
+        XCTAssertEqual(s.label(start: 3, end: 4, segments: segs, isFinal: true, numbering: &numbering), 0)
+    }
+
+    func testTiedOverlapWithNoCurrentOrNumberPrefersLowestSlot() {
+        var s = SpeakerLabelSmoother()
+        // Create equal overlap between slots 3 and 1, neither seen before.
+        // Slot 1 (lower index) should win and get display 0.
+        let segs = [seg(3, 0, 1), seg(1, 0, 1)]
+        XCTAssertEqual(s.label(start: 0, end: 1, segments: segs, isFinal: true), 0)
+        // Now label a caption that spans only slot 1 to confirm it got display 0.
+        // If slot 3 had won instead, slot 1 would get display 1 here.
+        let segs2 = [seg(1, 1, 2)]
+        XCTAssertEqual(s.label(start: 1, end: 2, segments: segs2, isFinal: true), 0)
+    }
+
+    func testTiedOverlapInThreeWayTiePicksCurrent() {
+        var s = SpeakerLabelSmoother()
+        // Set current to slot 1.
+        XCTAssertEqual(s.label(start: 0, end: 1, segments: [seg(1, 0, 1)], isFinal: true), 0)
+        // Three-way tie: slots 0, 1, 2 each have 0.5s. Should pick slot 1 (current).
+        let segs = [seg(0, 1, 1.5), seg(1, 1, 1.5), seg(2, 1, 1.5)]
+        XCTAssertEqual(s.label(start: 1, end: 1.5, segments: segs, isFinal: true), 0)
+    }
+
+    func testDeterministicNumberingWithTiedSlots() {
+        var s = SpeakerLabelSmoother()
+        // Slots 2 and 0 have equal overlap, neither seen; slot 0 (lower index) should win.
+        let segs = [seg(2, 0, 1), seg(0, 0, 1)]
+        XCTAssertEqual(s.label(start: 0, end: 1, segments: segs, isFinal: true), 0)
+        // Slot 0 got display 0. Now assign display numbers to the others.
+        let segs2 = segs + [seg(1, 1, 2)]
+        XCTAssertEqual(s.label(start: 1, end: 2, segments: segs2, isFinal: true), 1)
+        // Slot 1 got display 1. Now add slot 2, which gets display 2.
+        let segs3 = [seg(2, 2, 3)]
+        XCTAssertEqual(s.label(start: 2, end: 3, segments: segs3, isFinal: true), 2)
+        // Now label slot 1 again (to set current to 1) before the final tie-break test.
+        let segs4 = [seg(1, 3, 4)]
+        XCTAssertEqual(s.label(start: 3, end: 4, segments: segs4, isFinal: true), 1)
+        // Finally, tie between slots 0 (display 0) and 2 (display 2), with current = 1 (not in tie).
+        // Should prefer lowest display number: slot 0.
+        let segs5 = [seg(0, 4, 5), seg(2, 4, 5)]
+        XCTAssertEqual(s.label(start: 4, end: 5, segments: segs5, isFinal: true), 0)
+    }
+
+    func testTiedOverlapStayingWithCurrentWhileLive() {
+        var s = SpeakerLabelSmoother()
+        XCTAssertEqual(s.label(start: 0, end: 2, segments: [seg(0, 0, 2)], isFinal: false), 0)
+        // Same utterance with tied overlap: slots 0 and 1 each have 1.5s in [0, 3].
+        // Should stick with current (0) even while live.
+        let segs = [seg(0, 0, 1.5), seg(1, 1.5, 3)]
+        XCTAssertEqual(s.label(start: 0, end: 3, segments: segs, isFinal: false), 0)
+    }
+
+    func testTiedOverlapSwitchesOnFinalResultIfMostOfCaption() {
+        var s = SpeakerLabelSmoother()
+        // Label slot 1 first so it gets display 0.
+        XCTAssertEqual(s.label(start: 0, end: 1, segments: [seg(1, 0, 1)], isFinal: true), 0)
+        // Label slot 0 second so it gets display 1, and set current = 0.
+        XCTAssertEqual(s.label(start: 1, end: 2, segments: [seg(0, 1, 2)], isFinal: true), 1)
+        // Label slot 2 third so it gets display 2, and set current = 2.
+        XCTAssertEqual(s.label(start: 2, end: 3, segments: [seg(2, 2, 3)], isFinal: true), 2)
+        // Create a tie between slots 0 and 1 (current = 2, not in tie).
+        // Slot 1 (display 0) should win over slot 0 (display 1) on final result.
+        let segs = [seg(0, 3, 3.5), seg(1, 3.5, 4)]
+        XCTAssertEqual(s.label(start: 3, end: 4, segments: segs, isFinal: true), 0)
+    }
 }
