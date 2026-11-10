@@ -255,6 +255,7 @@ way and compared it with the shipped `ultra-pal4` on shard 1 (548 clips). It too
 | 2 | scikit-learn k-means, but coremltools actually uses an exact 1-D k-means (`kmeans1d`) for these weights | +0.53 (+0.13 to +0.93) | 275 / 548 |
 | 3 | `kmeans1d`, but weights the converter folds (depthwise conv with batch norm; `linear_pos`) quantised twice | +0.40 (+0.10 to +0.70) | 367 / 548 |
 | 4 | Folded weights left to coremltools, quantised once | – | **542 / 548** |
+| 4, on the 2012 mini | The same, with the torch half built on Linux (2012 mini) and compiled on the M4 | +0.02 (0.00 to +0.06) | 537 / 548 |
 
 A control that let coremltools quantise everything through the same export gave 548 / 548, so the export itself
 was never the problem. From attempt 4 on, the only thing a calibrated build changes is the calibration. Calibrated
