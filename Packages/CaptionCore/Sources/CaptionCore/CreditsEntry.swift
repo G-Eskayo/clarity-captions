@@ -15,7 +15,7 @@ public struct CreditsEntry: Identifiable, Equatable, Sendable {
         [
             CreditsEntry(name: "Apple Speech", line: String(localized: "Speech to text, on this phone."), noticeID: nil),
             CreditsEntry(name: "FluidAudio", line: String(localized: "Telling voices apart. Apache 2.0."), noticeID: "fluidaudio"),
-            CreditsEntry(name: "Sortformer (NVIDIA)", line: String(localized: "The voice model. CC BY 4.0."), noticeID: "sortformer"),
+            CreditsEntry(name: "Sortformer (NVIDIA)", line: String(localized: "The voice model. NVIDIA Open Model License."), noticeID: "sortformer"),
             CreditsEntry(name: "OpenDyslexic", line: String(localized: "Abbie Gonzalez. Bitstream Vera license."), noticeID: "opendyslexic"),
             CreditsEntry(name: "Atkinson Hyperlegible", line: String(localized: "Braille Institute. SIL Open Font License."),
                          noticeID: "atkinsonhyperlegible"),

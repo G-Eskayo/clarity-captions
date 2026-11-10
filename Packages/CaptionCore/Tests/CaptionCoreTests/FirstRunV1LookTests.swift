@@ -74,7 +74,7 @@ final class FirstRunV1LookTests: XCTestCase {
         XCTAssertEqual(CreditsEntry.all.map(\.line), [
             "Speech to text, on this phone.",
             "Telling voices apart. Apache 2.0.",
-            "The voice model. CC BY 4.0.",
+            "The voice model. NVIDIA Open Model License.",
             "Abbie Gonzalez. Bitstream Vera license.",
             "Braille Institute. SIL Open Font License.",
         ])

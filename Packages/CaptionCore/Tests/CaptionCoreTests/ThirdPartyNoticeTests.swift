@@ -15,10 +15,41 @@ final class ThirdPartyNoticeTests: XCTestCase {
     }
 
     func testSortformerNoticeExists() {
+        // NVIDIA's model card licenses Sortformer v2.1 under the NVIDIA Open Model License, not CC BY 4.0 (#271).
         let sortformer = ThirdPartyNotice.all.first { $0.id == "sortformer" }
         XCTAssertNotNil(sortformer, "Sortformer notice must be present")
-        XCTAssertEqual(sortformer?.licenseName, "CC BY 4.0")
-        XCTAssertEqual(sortformer?.licenseURL.absoluteString, "https://creativecommons.org/licenses/by/4.0/")
+        XCTAssertEqual(sortformer?.licenseName, "NVIDIA Open Model License")
+        XCTAssertEqual(sortformer?.licenseURL.absoluteString,
+                       "https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/")
+        XCTAssertTrue(sortformer?.note.contains(Self.nvidiaNotice) ?? false, "the Notice line the license requires")
+    }
+
+    /// The attribution the NVIDIA Open Model License (section 3.1) requires in a "Notice" text file, word for word.
+    static let nvidiaNotice = "Licensed by NVIDIA Corporation under the NVIDIA Open Model License"
+
+    private var repo: URL {
+        URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+    }
+
+    func testSortformerShipsTheAgreementAndANoticeFile() throws {
+        // Redistributing the model: recipients get a copy of the agreement (NOTICE.md, shown in the app) and the
+        // Notice line in a "Notice" text file, bundled in both apps beside the model.
+        let notices = try String(contentsOf: repo.appendingPathComponent("NOTICE.md"), encoding: .utf8)
+        let start = try XCTUnwrap(notices.range(of: "## Sortformer\n"), "NOTICE.md has a Sortformer section")
+        let rest = notices[start.upperBound...]
+        let section = rest.range(of: "\n## ").map { rest[..<$0.lowerBound] } ?? rest
+        XCTAssertTrue(section.contains(Self.nvidiaNotice))
+        XCTAssertTrue(section.contains("NVIDIA Open Model License Agreement"), "the agreement's own text")
+        XCTAssertTrue(section.contains("Version Release Date: October 24, 2025"), "the whole agreement, to its end")
+        XCTAssertFalse(section.contains("Creative Commons"), "the old CC BY 4.0 text is gone from this section")
+
+        let file = try String(contentsOf: repo.appendingPathComponent("Licenses/Sortformer/NOTICE.txt"), encoding: .utf8)
+        XCTAssertTrue(file.contains(Self.nvidiaNotice))
+        for app in ["Spike", "Mac"] {
+            let spec = try String(contentsOf: repo.appendingPathComponent("Apps/\(app)/project.yml"), encoding: .utf8)
+            XCTAssertTrue(spec.contains("path: ../../Licenses/Sortformer"), "\(app) bundles the Notice file")
+        }
     }
 
     func testFluidAudioNoticeExists() {
