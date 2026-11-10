@@ -14,6 +14,8 @@ import Foundation
 /// timing alone can't tell that from a second person, and a "new speakers must prove themselves" rule measured
 /// worse (it merged the next person's first words into the previous person's line).
 /// One instance per session: slot numbers mean nothing across sessions (CONTEXT.md).
+/// Time: O(k log k) in the number of overlapping segments, due to the max(by:) comparator.
+/// Space: O(k) for the overlap and numbering dictionaries. The tie-break comparator adds O(1) lookups per comparison.
 public struct SpeakerLabelSmoother: Sendable {
     public var minSegmentSeconds: Double
     public var switchSeconds: Double
@@ -60,7 +62,24 @@ public struct SpeakerLabelSmoother: Sendable {
         let evidence = long.isEmpty ? covering : long
         var overlap: [Int: Double] = [:]
         for s in evidence { overlap[s.speaker, default: 0] += min(end, s.end) - max(start, s.start) }
-        guard let best = overlap.max(by: { $0.value < $1.value || ($0.value == $1.value && $1.key == current) }) else {
+        guard let best = overlap.max(by: { a, b in
+            // Higher overlap wins.
+            if a.value != b.value { return a.value < b.value }
+            // On tie: current wins.
+            if a.key == current && b.key != current { return false } // a is current, b is not: a wins
+            if b.key == current && a.key != current { return true }  // b is current, a is not: b wins
+            // On tie (both current or neither current): display slot wins.
+            let aHasDisplay = displayBySlot[a.key] != nil
+            let bHasDisplay = displayBySlot[b.key] != nil
+            if aHasDisplay && !bHasDisplay { return false } // a has display, b doesn't: a wins
+            if bHasDisplay && !aHasDisplay { return true }  // b has display, a doesn't: b wins
+            // On tie (both have display or neither): prefer lower display number, then lower slot key.
+            if let aDisplay = displayBySlot[a.key], let bDisplay = displayBySlot[b.key] {
+                if aDisplay != bDisplay { return aDisplay > bDisplay } // lower display number wins
+            }
+            // Final tie-break: lower raw slot key wins.
+            return a.key > b.key
+        }) else {
             return current
         }
         // A live scrap of a slot nobody has been shown as can't create a person (it would take the next number);

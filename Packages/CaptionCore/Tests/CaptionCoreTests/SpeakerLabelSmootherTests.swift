@@ -152,4 +152,84 @@ final class SpeakerLabelSmootherTests: XCTestCase {
         var s = SpeakerLabelSmoother()
         XCTAssertEqual(s.label(start: 2, end: 2, segments: [seg(1, 0, 5)], isFinal: false), 0)
     }
+
+    // Tests for deterministic tie-breaking in chooseSlot.
+    func testEqualOverlapPrefersCurrent() {
+        var s = SpeakerLabelSmoother()
+        // Establish speaker 0 as current.
+        XCTAssertEqual(s.label(start: 0, end: 2, segments: [seg(0, 0, 2)], isFinal: true), 0)
+        // Now equal overlap: slot 0 (current, 1.0s) vs slot 1 (1.0s); both touch the caption 2...3.
+        let segs = [seg(0, 2, 3), seg(1, 2, 3)]
+        XCTAssertEqual(s.label(start: 2, end: 3, segments: segs, isFinal: false), 0, "current speaker wins on tie")
+    }
+
+    func testEqualOverlapPrefersExistingDisplaySlot() {
+        var s = SpeakerLabelSmoother()
+        // Establish slot 2 as display 0, slot 5 as display 1.
+        XCTAssertEqual(s.label(start: 0, end: 2, segments: [seg(2, 0, 2)], isFinal: true), 0)
+        XCTAssertEqual(s.label(start: 3, end: 5, segments: [seg(2, 0, 2), seg(5, 3, 5)], isFinal: true), 1)
+        // Both slot 2 (has display 0) and slot 7 (no display yet) have 1.0s overlap with caption 5...6.
+        // Slot 2 should win because it has an existing display.
+        let segs = [seg(2, 0, 2), seg(5, 3, 5), seg(2, 5, 6), seg(7, 5, 6)]
+        XCTAssertEqual(s.label(start: 5, end: 6, segments: segs, isFinal: true), 0, "slot with display wins on tie")
+    }
+
+    func testEqualOverlapBreaksTieByLowestSlotKey() {
+        var s = SpeakerLabelSmoother()
+        // Establish: slot 3 → display 0.
+        XCTAssertEqual(s.label(start: 0, end: 1, segments: [seg(3, 0, 1)], isFinal: true), 0)
+        // Caption 1–2 with two new slots 5 and 11 both having 1.0s overlap.
+        // Neither is current (current is slot 3), neither has a display yet.
+        // Lowest slot key (5) should win and get display 1.
+        let segs = [seg(5, 1, 2), seg(11, 1, 2)]
+        XCTAssertEqual(s.label(start: 1, end: 2, segments: segs, isFinal: true), 1, "lower slot key wins on tie")
+        // Caption 2–3 with only slot 5: if slot 5 won the tie, it's current and keeps display 1.
+        // If slot 11 won incorrectly, slot 5 here gets a new display (2).
+        XCTAssertEqual(s.label(start: 2, end: 3, segments: [seg(5, 2, 3)], isFinal: true), 1, "slot 5 must be current (won the tie)")
+        // Caption 3–4 with only slot 11: if slot 5 won, slot 11 gets display 2 (new).
+        // If slot 11 won the tie, it would be current and stay display 1.
+        XCTAssertEqual(s.label(start: 3, end: 4, segments: [seg(11, 3, 4)], isFinal: true), 2, "slot 11 did not win the tie")
+    }
+
+    func testComplexTieBreakingRanking() {
+        var s = SpeakerLabelSmoother()
+        // Establish: slot 10 → display 0, slot 20 → display 1, current is slot 10.
+        XCTAssertEqual(s.label(start: 0, end: 1, segments: [seg(10, 0, 1)], isFinal: true), 0)
+        XCTAssertEqual(s.label(start: 2, end: 3, segments: [seg(10, 0, 1), seg(20, 2, 3)], isFinal: true), 1)
+        // Now: slot 10 (current, has display 0, 1.0s) vs slot 5 (no display, 1.0s) vs slot 30 (no display, 1.0s).
+        // Slot 10 should win: current + has display.
+        let segs = [seg(10, 0, 1), seg(20, 2, 3), seg(10, 3, 4), seg(5, 3, 4), seg(30, 3, 4)]
+        XCTAssertEqual(s.label(start: 3, end: 4, segments: segs, isFinal: true), 0)
+    }
+
+    func testTieBreakingWithNoCurrentButDisplayExists() {
+        var s = SpeakerLabelSmoother()
+        // Establish: slot 7 → display 0, slot 11 → display 1.
+        XCTAssertEqual(s.label(start: 0, end: 1, segments: [seg(7, 0, 1)], isFinal: true), 0)
+        XCTAssertEqual(s.label(start: 2, end: 3, segments: [seg(7, 0, 1), seg(11, 2, 3)], isFinal: true), 1)
+        // Now: slot 7 (has display 0, 0.5s) vs slot 3 (no display, 0.5s).
+        // Slot 7 should win because it has an existing display, even without being current.
+        let segs = [seg(7, 3.5, 4), seg(3, 3, 3.5), seg(11, 2, 3)]
+        XCTAssertEqual(s.label(start: 3, end: 4, segments: segs, isFinal: false), 0)
+    }
+
+    func testDeterministicOrderingAcrossMultipleCalls() {
+        var s1 = SpeakerLabelSmoother()
+        var s2 = SpeakerLabelSmoother()
+        // Both smoothers see the same data but possibly in different internal orders.
+        // They must produce the same labeling.
+        // Caption 1.0–2.0:
+        // seg(1, 0.5, 1.5): overlaps 1.0–1.5 = 0.5s
+        // seg(3, 1.5, 2.0): overlaps 1.5–2.0 = 0.5s
+        // seg(5, 1.25, 1.75): overlaps 1.25–1.75 = 0.5s
+        // All three slots have 0.5s overlap; lowest key (1) should always win.
+        let segsA = [seg(1, 0.5, 1.5), seg(3, 1.5, 2.0), seg(5, 1.25, 1.75)]
+        let segsB = [seg(5, 1.25, 1.75), seg(1, 0.5, 1.5), seg(3, 1.5, 2.0)] // same segments, different order
+        XCTAssertEqual(s1.label(start: 1.0, end: 2.0, segments: segsA, isFinal: true), 0)
+        XCTAssertEqual(s2.label(start: 1.0, end: 2.0, segments: segsB, isFinal: true), 0)
+        // Follow-up caption 2.0–3.0 with only slot 1: both smoothers must show it as display 0 (current).
+        // If either smoother incorrectly chose slot 3 or 5 as current, slot 1 would get display 1 here.
+        XCTAssertEqual(s1.label(start: 2.0, end: 3.0, segments: [seg(1, 2.0, 3.0)], isFinal: true), 0, "s1: slot 1 must be current (lowest key won)")
+        XCTAssertEqual(s2.label(start: 2.0, end: 3.0, segments: [seg(1, 2.0, 3.0)], isFinal: true), 0, "s2: slot 1 must be current (lowest key won)")
+    }
 }
