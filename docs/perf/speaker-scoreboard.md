@@ -88,7 +88,7 @@ as shipped. When it lands, rerun the baseline once (expected: 0 repeats differin
 
 How the builds are made and chosen, fixed before any result: [design § Step 2 builds](speaker-scoreboard-design.md#step-2-builds-how-theyre-made-and-chosen-fixed-2026-11-09-before-any-calibration-result).
 In short: the shipped fp16 model is rebuilt from its own MIL (bit-identical to the shipped one: 0 of 23,232 decisions
-flip, every output differs by 0.0), then the speaker head's weights are compressed, data-free. One build per bit width
+flip, every output differs by 0.0), then the main network's weights are compressed, data-free. One build per bit width
 is chosen by its drift from fp16 on six AMI calibration meetings; test audio played no part. Choice:
 [speaker-step2-calibration.json](speaker-step2-calibration.json).
 
@@ -145,7 +145,7 @@ Reading it:
   are speeds under similar, not identical, load. Peak memory is about the same or a little lower.
 - **The build can't be remade bit for bit.** Running the same recipe again gives different weights (k-means starts
   at random), so a rebuilt pal6 is a new build that would need scoring again. Only the scored files can ship: pal6's
-  head weights sha256 `29c69b1a438fd3ee`, tree `08452c19fb78b107`; pal8's `531fc79bd6bbe2f9`, tree `4bab566edacd23da`.
+  main-network weights sha256 `29c69b1a438fd3ee`, tree `08452c19fb78b107`; pal8's `531fc79bd6bbe2f9`, tree `4bab566edacd23da`.
 - **Not done from the ticket's step 2 list:** calibrated (data-aware) palettization, and a mixed-precision build. The
   mixed build was only for a 6-bit slip, which didn't happen; data-aware builds can't be smaller at the same bit width,
   so they'd only matter if pal6 had failed.
@@ -159,7 +159,8 @@ Reading it:
   streaming config buys DER for latency is a separate measured question, scored on this board.
 - Licence: settled on #271 (NVIDIA Open Model License; credits fixed in #277). A shipped pal6 is a Derivative Model
   under that licence, so NOTICE.md must say what was changed.
-- Swapping pal6 into the app: where the scored files are fetched from, and a run on a real iPhone (see #271).
+- Swapping pal6 into the app: where the scored files are fetched from, and a run on a real iPhone. Checklist and
+  draft notice text: [sortformer-pal6-swap.md](sortformer-pal6-swap.md).
 
 ## Reproduce
 
