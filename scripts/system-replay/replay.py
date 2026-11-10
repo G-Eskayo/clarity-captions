@@ -197,6 +197,25 @@ def engine_only_logs(convs: list[dict], rows: list[dict], engine: str, model: st
     return out
 
 
+def by_fallback(results: Mapping[str, Mapping], arm: str, refs: list[str], n_boot: int = 1000) -> dict:
+    """For an arm whose sessions sometimes left Parakeet: its sessions that stayed on Parakeet and those that left,
+    each paired with every reference arm on exactly those conversations. The split comes from the arm's own run
+    record (plan, fallbacks, engines seen), never from its WER, so it is a stratification, not a selection."""
+    left = set(results[arm]["left_parakeet"])
+    if not left:
+        return {}
+    out: dict[str, dict] = {}
+    for ref in refs:
+        parts = {}
+        for label, keep in (("stayed on Parakeet", False), ("left Parakeet", True)):
+            ids = [c for c in results[arm]["counts"] if (c in left) == keep]
+            if ids:
+                parts[label] = paired_gap({c: (tuple(results[ref]["counts"][c]), tuple(results[arm]["counts"][c]))
+                                           for c in ids}, n_boot=n_boot)
+        out[ref] = parts
+    return out
+
+
 def load_sessions(d: Path) -> dict[str, dict]:
     return {p.stem: json.loads(p.read_text()) for p in sorted(d.glob("*.json"))}
 
@@ -226,11 +245,15 @@ def score(conversations: Path, arms: list[tuple[str, Path]], engine_only: Path |
         for b in names[i + 1:]:
             units = {cid: (results[a]["counts"][cid], results[b]["counts"][cid]) for cid in results[a]["counts"]}
             pairs[f"{b} minus {a}"] = paired_gap(units, n_boot=n_boot)
+    refs = [names[0]] + [n for n in names if n.startswith("engine-only")]
+    split = {a: by_fallback(results, a, [r for r in refs if r != a], n_boot=n_boot) for a in names}
+    split = {a: v for a, v in split.items() if v}
     for r in results.values():
         r["ci"] = paired_gap({cid: (v, v) for cid, v in r["counts"].items()}, n_boot=n_boot)["a_ci"]
         r["counts"] = {k: list(v) for k, v in r["counts"].items()}
     return {"conversations": len(convs), "audio_minutes": round(sum(c["audio_seconds"] for c in convs) / 60, 1),
-            "speakers": len({s for c in convs for s in c["speakers"]}), "arms": results, "paired": pairs}
+            "speakers": len({s for c in convs for s in c["speakers"]}), "arms": results, "paired": pairs,
+            "by_fallback": split}
 
 
 def markdown(res: dict) -> str:
@@ -247,6 +270,16 @@ def markdown(res: dict) -> str:
               "| Difference | WER points | 95% CI |", "|---|---|---|"]
     for name, g in res["paired"].items():
         lines.append(f"| {name} | {100 * g['gap']:+.1f} | {100 * g['lo']:+.1f} to {100 * g['hi']:+.1f} |")
+    if res.get("by_fallback"):
+        lines += ["", "Arms that left Parakeet mid-session, split by their own engine record (WER of each part, "
+                  "paired with the reference on the same conversations):", "",
+                  "| Arm | Part | Conversations | Arm WER | Reference | Reference WER | Arm minus reference | 95% CI |",
+                  "|---|---|---|---|---|---|---|---|"]
+        for arm, refs in res["by_fallback"].items():
+            for ref, parts in refs.items():
+                for part, g in parts.items():
+                    lines.append(f"| {arm} | {part} | {g['units']} | {_pct(g['b'])} | {ref} | {_pct(g['a'])} | "
+                                 f"{100 * g['gap']:+.1f} | {100 * g['lo']:+.1f} to {100 * g['hi']:+.1f} |")
     return "\n".join(lines) + "\n"
 
 

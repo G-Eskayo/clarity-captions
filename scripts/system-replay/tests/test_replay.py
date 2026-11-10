@@ -164,3 +164,21 @@ def test_engine_only_text_joins_the_same_clips_from_the_results_file():
     assert replay.session_text(logs["test-EDACC-C1"]) == "A B"   # repeat 1 only
     with pytest.raises(ValueError, match="no engine-only row"):
         replay.engine_only_logs(convs, rows[:1], engine="parakeet-fluidaudio", model="ultra-pal6")
+
+
+def test_by_fallback_splits_an_arm_by_its_own_engine_record_and_pairs_each_part():
+    # arm B left Parakeet on C2 only; the split must follow that record, and each part pairs with the reference arm
+    # on exactly those conversations (a conversation is never in both parts, none is dropped).
+    results = {"A": {"counts": {"C1": (1, 10), "C2": (2, 10), "C3": (3, 10)}, "left_parakeet": []},
+               "B": {"counts": {"C1": (0, 10), "C2": (5, 10), "C3": (1, 10)}, "left_parakeet": ["C2"]}}
+    split = replay.by_fallback(results, "B", ["A"], n_boot=200)
+    stayed, left = split["A"]["stayed on Parakeet"], split["A"]["left Parakeet"]
+    assert stayed["units"] == 2 and left["units"] == 1
+    assert stayed["gap"] == pytest.approx((1 / 20) - (4 / 20))
+    assert left["gap"] == pytest.approx(0.5 - 0.2)
+
+
+def test_by_fallback_is_empty_for_an_arm_that_never_left_parakeet():
+    results = {"A": {"counts": {"C1": (1, 10)}, "left_parakeet": []},
+               "B": {"counts": {"C1": (0, 10)}, "left_parakeet": []}}
+    assert replay.by_fallback(results, "B", ["A"]) == {}
