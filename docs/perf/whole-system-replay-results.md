@@ -138,7 +138,31 @@ language on the phone can.
 **Also found:** the Oct 31 session reports 13,558.4 minutes with no ending. That is exactly the time from its start
 to the report being sent: a captioning segment that never got its stop (the app closed while captioning and the
 conversation was never restored) keeps counting until the report is made (`ConversationRecorder.entry(now:)`). A
-reporting bug, not a 9-day session.
+reporting bug, not a 9-day session. Fixed for build 11 in #287.
+
+**Gil's decision (2026-11-10):** keep build 10's routing and fix the cause, in build 11: show the caption language on
+the caption screen (#289, look first), record caption language, face to face and each conversation's build in the
+beta report (#288), fix the minutes (#287), and guard against this coming back (below).
+
+### Regression case: a saved non-English caption language
+
+`scripts/system-replay/check-saved-language.sh NAME CONVERSATIONS_DIR OUT_DIR` replays the 8 validation
+conversations through a build's mic path with caption language en-US and with each of es-ES, pt-BR, fr-FR, de-DE
+and it-IT saved, then `replay.py gate-language` pairs each against en-US. **It fails when the gap's 95% CI lies
+wholly above +2 WER points.** The margin comes from the run above and stays fixed; the test split is never used.
+On the logs above ([whole-system-replay-language-gate-2026-11-10.json](whole-system-replay-language-gate-2026-11-10.json)):
+
+| Saved language | Build 9 gap (95% CI) | Build 10 gap (95% CI) |
+|---|---|---|
+| es-ES | +36.1 (+30.9 to +41.8) **fail** | +1.3 (−0.2 to +3.1) pass |
+| pt-BR | +51.4 (+47.0 to +56.8) **fail** | +2.2 (+0.0 to +5.2) pass |
+| fr-FR | +56.1 (+48.7 to +65.0) **fail** | +0.6 (−2.3 to +3.8) pass |
+| de-DE | +47.1 (+39.5 to +57.2) **fail** | +0.0 (−1.8 to +2.0) pass |
+| it-IT | +31.8 (+25.7 to +38.7) **fail** | +1.7 (−1.0 to +4.6) pass |
+
+Each build is compared with its own en-US run (build 9: 20.1%, Parakeet; build 10: 18.1%). Run it on every build
+before it ships. It doesn't cover Japanese, Korean, Chinese or Cantonese: those still run Apple's engine in the
+saved language by design, and #289 makes that visible instead.
 
 ## Room noise (2026-11-10)
 

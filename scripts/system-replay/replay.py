@@ -259,6 +259,25 @@ def paired_gap(units: Mapping[str, tuple[tuple[int, int], tuple[int, int]]], n_b
     return {"a": a, "b": b, "gap": b - a, "lo": lo, "hi": hi, "a_ci": ci(was), "b_ci": ci(wbs), "units": k}
 
 
+def language_gate(english: Mapping, saved: Mapping[str, Mapping], max_gap: float, n_boot: int = 1000) -> dict:
+    """#273's regression case: English speech with a non-English caption language saved in Seal. For each saved
+    language, the paired WER gap against the same build with en-US, on the same conversations. It fails when the
+    gap's 95% CI lies wholly above `max_gap` (the data is sure the saved language costs more than that), so a noisy
+    small rise doesn't fail it and a real one does. The 2-point margin was set from the published dev-split locale
+    run (build 9, Apple's engine in the saved language: CIs from +26 points up; build 10: lower bounds 0 or below)
+    and is fixed from here on; it is never set from the test split."""
+    out, passed = {}, True
+    for lang, arm in saved.items():
+        if set(arm["counts"]) != set(english["counts"]):
+            raise ValueError(f"{lang}: not the same conversations as en-US")
+        g = paired_gap({c: (tuple(english["counts"][c]), tuple(arm["counts"][c])) for c in english["counts"]},
+                       n_boot=n_boot)
+        g["failed"] = g["lo"] > max_gap
+        passed = passed and not g["failed"]
+        out[lang] = g
+    return {"passed": passed, "max_gap": max_gap, "languages": out}
+
+
 def engine_only_logs(convs: list[dict], rows: list[dict], engine: str, model: str) -> dict[str, dict]:
     """The #145 engine-only hypotheses (whole clip files, FileTranscriber) for the same clips, joined per
     conversation in segment order, shaped like a session log so the same scorer reads them. Repeat 1 only."""
@@ -387,7 +406,26 @@ def main(argv: list[str]) -> int:
     c.add_argument("--engine-only", type=Path)
     c.add_argument("--out", type=Path, required=True)
     c.add_argument("--markdown", type=Path)
+    g = sub.add_parser("gate-language", help="#273: fail if a saved non-English caption language hurts English")
+    g.add_argument("--conversations", type=Path, required=True)
+    g.add_argument("--english", type=Path, required=True, help="sessions run with caption language en-US")
+    g.add_argument("--saved", action="append", required=True, help="LANG=SESSIONS_DIR, the same build and audio")
+    g.add_argument("--max-gap", type=float, default=0.02, help="WER points as a fraction (fixed before any run)")
+    g.add_argument("--out", type=Path)
     a = p.parse_args(argv)
+    if a.cmd == "gate-language":
+        convs = [json.loads(l) for l in a.conversations.read_text().splitlines() if l.strip()]
+        english = score_arm(convs, load_sessions(a.english))
+        saved = {x.split("=", 1)[0]: score_arm(convs, load_sessions(Path(x.split("=", 1)[1]))) for x in a.saved}
+        res = language_gate(english, saved, a.max_gap)
+        if a.out:
+            a.out.write_text(json.dumps(res, indent=1, sort_keys=True))
+        print(f"en-US {_pct(english['wer'])} on {len(convs)} conversations; fails above +{100 * a.max_gap:.1f} points")
+        for lang, r in res["languages"].items():
+            print(f"  {lang}: {_pct(r['b'])}, {100 * r['gap']:+.1f} points (95% CI {100 * r['lo']:+.1f} to "
+                  f"{100 * r['hi']:+.1f}) {'FAIL' if r['failed'] else 'ok'}")
+        print("PASS" if res["passed"] else "FAIL: a saved caption language makes English captions worse")
+        return 0 if res["passed"] else 1
     if a.cmd == "stitch":
         if a.to48k and not shutil.which("afconvert"):
             print("afconvert not found (macOS only)", file=sys.stderr)

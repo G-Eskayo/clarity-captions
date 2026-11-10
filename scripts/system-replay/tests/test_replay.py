@@ -249,3 +249,38 @@ def test_mix_environment_depends_only_on_the_conversation_id():
     picks = {replay.noise_env(f"test-EDACC-C{i}", envs) for i in range(40)}
     assert picks == set(envs)                                    # all used over 40 conversations
     assert replay.noise_env("test-EDACC-C7", envs) == replay.noise_env("test-EDACC-C7", list(envs))
+
+
+# --- the saved-language gate (#273: a non-English caption language saved in Seal) -----------------------------
+
+def _arm(counts: dict[str, tuple[int, int]]) -> dict:
+    return {"counts": counts}
+
+
+def test_language_gate_fails_a_build_that_captions_english_badly_in_a_saved_language():
+    english = _arm({f"c{i}": (18, 100) for i in range(8)})
+    spanish = _arm({f"c{i}": (56, 100) for i in range(8)})      # build 9: Apple's engine hearing English as Spanish
+    res = replay.language_gate(english, {"es-ES": spanish}, max_gap=0.02)
+    assert res["passed"] is False
+    assert res["languages"]["es-ES"]["failed"] is True
+    assert res["languages"]["es-ES"]["lo"] > 0.30
+
+
+def test_language_gate_passes_a_build_that_keeps_english_in_any_saved_language():
+    english = _arm({f"c{i}": (18 + i % 3, 100) for i in range(8)})
+    same = _arm({f"c{i}": (19 - i % 3, 100) for i in range(8)})   # build 10: Parakeet hears the language itself
+    res = replay.language_gate(english, {"es-ES": same, "pt-BR": same}, max_gap=0.02)
+    assert res["passed"] is True
+    assert set(res["languages"]) == {"es-ES", "pt-BR"}
+
+
+def test_language_gate_fails_on_the_ci_not_the_mean():
+    # A small noisy rise whose CI reaches below the margin passes; only a gap the data is sure of fails.
+    english = _arm({f"c{i}": (20, 100) for i in range(8)})
+    noisy = _arm({f"c{i}": (20 + (8 if i == 0 else 0), 100) for i in range(8)})   # +1 point, all from one conversation
+    assert replay.language_gate(english, {"fr-FR": noisy}, max_gap=0.02)["passed"] is True
+
+
+def test_language_gate_refuses_mismatched_conversations():
+    with pytest.raises(ValueError):
+        replay.language_gate(_arm({"a": (1, 10)}), {"es-ES": _arm({"b": (1, 10)})}, max_gap=0.02)
