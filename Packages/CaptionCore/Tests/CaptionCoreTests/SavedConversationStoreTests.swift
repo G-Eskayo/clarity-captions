@@ -18,24 +18,59 @@ final class SavedConversationStoreTests: XCTestCase {
     }
 
     func testRetentionPolicyIsExpired29DaysAgo() {
-        let savedAt = Date().addingTimeInterval(-29 * 24 * 3600)
         let now = Date()
+        let savedAt = Calendar.current.date(byAdding: .day, value: -29, to: now)!
         let expired = RetentionPolicy.isExpired(savedAt: savedAt, now: now, retentionDays: 30)
         XCTAssertFalse(expired)
     }
 
     func testRetentionPolicyIsExpired30DaysAgo() {
-        let savedAt = Date().addingTimeInterval(-30 * 24 * 3600)
         let now = Date()
+        let savedAt = Calendar.current.date(byAdding: .day, value: -30, to: now)!
         let expired = RetentionPolicy.isExpired(savedAt: savedAt, now: now, retentionDays: 30)
         XCTAssertTrue(expired)
     }
 
     func testRetentionPolicyIsExpired31DaysAgo() {
-        let savedAt = Date().addingTimeInterval(-31 * 24 * 3600)
         let now = Date()
+        let savedAt = Calendar.current.date(byAdding: .day, value: -31, to: now)!
         let expired = RetentionPolicy.isExpired(savedAt: savedAt, now: now, retentionDays: 30)
         XCTAssertTrue(expired)
+    }
+
+    func testRetentionPolicyAcrossDaylightSavingFallBack() {
+        let savedAtComponents = DateComponents(year: 2026, month: 10, day: 2, hour: 12, minute: 0, second: 0)
+        let savedAt = Calendar.current.date(from: savedAtComponents)!
+
+        let now29Components = DateComponents(year: 2026, month: 10, day: 31, hour: 12, minute: 0, second: 0)
+        let now29 = Calendar.current.date(from: now29Components)!
+        let expiredAt29 = RetentionPolicy.isExpired(savedAt: savedAt, now: now29, retentionDays: 30)
+        XCTAssertFalse(expiredAt29, "At 29 days should not be expired")
+
+        let now30BoundaryComponents = DateComponents(year: 2026, month: 11, day: 1, hour: 11, minute: 30, second: 0)
+        let now30Boundary = Calendar.current.date(from: now30BoundaryComponents)!
+        let expiredAt30Boundary = RetentionPolicy.isExpired(savedAt: savedAt, now: now30Boundary, retentionDays: 30)
+        XCTAssertFalse(expiredAt30Boundary, "At Nov 1 11:30 EST (inside the extra hour) should not be expired")
+
+        let now30Components = DateComponents(year: 2026, month: 11, day: 1, hour: 12, minute: 0, second: 0)
+        let now30 = Calendar.current.date(from: now30Components)!
+        let expiredAt30 = RetentionPolicy.isExpired(savedAt: savedAt, now: now30, retentionDays: 30)
+        XCTAssertTrue(expiredAt30, "At Nov 1 12:00 EST (past 30 calendar days) should be expired")
+    }
+
+    func testRetentionPolicyAcrossDaylightSavingSpringForward() {
+        let savedAtComponents = DateComponents(year: 2027, month: 2, day: 12, hour: 12, minute: 0, second: 0)
+        let savedAt = Calendar.current.date(from: savedAtComponents)!
+
+        let now29Components = DateComponents(year: 2027, month: 3, day: 13, hour: 12, minute: 0, second: 0)
+        let now29 = Calendar.current.date(from: now29Components)!
+        let expiredAt29 = RetentionPolicy.isExpired(savedAt: savedAt, now: now29, retentionDays: 30)
+        XCTAssertFalse(expiredAt29, "At 29 days + DST transition should not be expired")
+
+        let now30Components = DateComponents(year: 2027, month: 3, day: 14, hour: 12, minute: 0, second: 0)
+        let now30 = Calendar.current.date(from: now30Components)!
+        let expiredAt30 = RetentionPolicy.isExpired(savedAt: savedAt, now: now30, retentionDays: 30)
+        XCTAssertTrue(expiredAt30, "At 30 days + DST transition should be expired")
     }
 
     func testSessionRetentionShouldNotSaveBlankLinesOnly() {
