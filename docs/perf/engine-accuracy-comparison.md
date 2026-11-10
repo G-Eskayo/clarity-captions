@@ -200,3 +200,63 @@ samples, `load.tsv`), with heavy spells from other work (idle under 5% in a tent
 indicative; the shard-1 ordering is the same as the full-run ordering (74.9x, 48.6x, 33.2x, 27.4x).
 
 On the 2026-11-09 held-out test split (below, #272) the same builds score the same: 3-bit 34.0%, 6-bit 13.9%.
+
+## Calibrated low-bit builds (#272)
+
+#272 "Parakeet Ultra smaller with no loss": shrink Ultra below the 498 MB 6-bit build with no loss, using
+calibration data rather than data-free k-means. Tooling: `scripts/engine-eval/calibrated_ultra.py` (sensitivity,
+builds, decoder/joint) and the chain `scripts/engine-eval/m4-calibrated.sh`, written to `~/edacc-eval/results-272`.
+
+### The held-out split
+
+Calibration must never touch a scored clip. EdAcc's own validation (62 speakers) and test (60) splits share no
+speaker, and each recording is a conversation between two speakers (`EDACC-C04-A` and `-B`). The calibration split
+is six whole **validation conversations** (both speakers, so no conversation is both calibrated on and scored),
+picked by a seeded hash, never the same accent twice and never an accent's last scored speaker
+(`edacc_eval/heldout.py`, record and clip digests in [`edacc-heldout-split.json`](edacc-heldout-split.json)):
+
+| Part | Speakers | Clips | Hours | Accents |
+|---|---:|---:|---:|---:|
+| Calibration (never scored) | 12 | 1,603 | 2.67 | 9 |
+| **Test: every other clip (primary)** | 110 | 15,926 | 28.88 | 32 |
+| EdAcc test split only (for a later fine-tuning step that trains beside validation) | 60 | 8,527 | 16.33 | 24 |
+
+### How "no loss" is judged
+
+Each build's own 95% interval (speaker bootstrap, as in #145) is wide, about ±1.1 points, because speakers differ
+far more than builds do. So builds are also compared **paired**: one speaker bootstrap draws the same speakers
+for both builds, and the interval is on the WER *difference*. That removes the speaker spread. The ticket's rule
+(the build's interval overlaps 6-bit's) is reported next to it, and here it is too loose: 4-bit's interval overlaps
+6-bit's, but the paired test shows it is a clear point worse.
+
+### Existing builds on the held-out test split
+
+Rescored from their saved transcripts (no rerun); 6-bit is the reference.
+
+| Build | On disk | WER, test (95% CI) | vs 6-bit, paired (95% CI) | WER, EdAcc test split | vs 6-bit, paired |
+|---|---:|---|---|---|---|
+| parakeet-ultra-coreml (int8, published) | 632 MB | 13.84% (12.78–14.94) | −0.06 (−0.11 to −0.01) | 14.25% | −0.04 (−0.12 to +0.02) |
+| ultra-pal6 (ships) | 498 MB | 13.90% (12.84–15.01) | – | 14.29% | – |
+| ultra-pal4 | 350 MB | 14.85% (13.68–16.04) | **+0.95 (+0.78 to +1.11)** | 15.28% | +0.98 (+0.76 to +1.19) |
+| ultra-pal3 | 276 MB | 33.96% (30.89–37.00) | +20.06 (+17.87 to +22.36) | 34.69% | +20.40 |
+| ultra-mixed246 | 253 MB | 60.37% (57.10–63.56) | +46.47 | 60.27% | +45.98 |
+| ultra-mixed24 | 216 MB | 83.51% (80.86–85.80) | +69.61 | 84.12% | +69.83 |
+| ultra-pal2 | 203 MB | 100.00% | +86.10 | 100.00% | +85.71 |
+| Apple SpeechAnalyzer | system | 17.31% (16.03–18.59) | +3.41 (+3.06 to +3.76) | 17.91% | +3.62 |
+
+### Making the builds match coremltools first
+
+The calibrated builds quantise weights in PyTorch, so before trusting them I made a *data-free* 4-bit build that
+way and compared it with the shipped `ultra-pal4` on shard 1 (548 clips). It took three fixes:
+
+| Attempt | What differed from coremltools | vs ultra-pal4, paired | Identical transcripts |
+|---|---|---|---:|
+| 1 | Own Lloyd's k-means | +0.62 (+0.11 to +1.14) | 255 / 548 |
+| 2 | scikit-learn k-means, but coremltools actually uses an exact 1-D k-means (`kmeans1d`) for these weights | +0.53 (+0.13 to +0.93) | 275 / 548 |
+| 3 | `kmeans1d`, but weights the converter folds (depthwise conv with batch norm; `linear_pos`) quantised twice | +0.40 (+0.10 to +0.70) | 367 / 548 |
+| 4 | Folded weights left to coremltools, quantised once | – | **542 / 548** |
+
+A control that let coremltools quantise everything through the same export gave 548 / 548, so the export itself
+was never the problem. From attempt 4 on, the only thing a calibrated build changes is the calibration. Calibrated
+k-means is the same exact 1-D k-means, with each value weighted by its summed Fisher importance (squared gradient
+of the TDT loss on calibration clips): coremltools' sensitive k-means objective, solved exactly.
