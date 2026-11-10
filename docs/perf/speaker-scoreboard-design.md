@@ -94,7 +94,10 @@ about 3 h) replayed by fp16 and every candidate through the app path. A candidat
 segments against fp16's segments on the same audio, pooled over the meetings: what the compression changed and
 nothing else. Lowest drift per bit width goes on; a tie goes to the smaller build; no choice on partial data. Bare
 DER against the dev reference is reported beside it, not used to choose. The rebuilt fp16 runs too, as an end-to-end
-check (its drift must be 0). CHiME-6's calibration sessions (S02, S09) aren't downloaded, so the choice is made on
+check (its drift must be 0). Amendment (2026-11-09, during the calibration run, before its scores were read): a
+build that can't run in the app's configuration (`MLModelConfiguration.computeUnits = .all`) is excluded, with the
+reason, rather than given a drift: `int8` aborts at load in Metal's graph compiler ("MLIR pass manager failed") on
+every recording, so the app would crash. CHiME-6's calibration sessions (S02, S09) aren't downloaded, so the choice is made on
 meetings only; CHiME-6 test still decides shipping.
 
 **Then the test sets**, for the chosen 8-bit and 6-bit builds only: AMI test and CHiME-6 test, twice each, scored by
