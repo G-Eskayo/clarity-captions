@@ -39,8 +39,13 @@ run_one() {
 export -f run_one; export OUT LOGS ROOT AUDIO SET LABEL THREADS REPEAT
 ENGINE_STR=$(printf '%q ' "${ENGINE[@]}"); export ENGINE_STR
 
-# Longest recordings first, so the last worker isn't left with the longest one.
-ls -S "$ROOT/ref/$SET/phrases/"*.phrases.json | xargs -n1 basename | sed 's/\.phrases\.json$//' \
+# Longest recordings first, so the last worker isn't left with the longest one. ONLY="a b" limits the list
+# (determinism repeats: REPEAT=2 ONLY="S01w00 S21w03").
+list() {
+  if [ -n "${ONLY:-}" ]; then printf '%s\n' $ONLY
+  else ls -S "$ROOT/ref/$SET/phrases/"*.phrases.json | xargs -n1 basename | sed 's/\.phrases\.json$//'; fi
+}
+list \
   | xargs -P "$JOBS" -I{} bash -c 'eval "ENGINE=($ENGINE_STR)"; run_one "$@"' _ {}
 status=$?
 echo "$(date '+%F %T') $LABEL $SET finished (xargs status $status)"
