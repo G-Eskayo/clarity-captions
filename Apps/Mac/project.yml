@@ -44,6 +44,10 @@ targets:
         buildPhase: resources
       - path: ../../NOTICE.md
         buildPhase: resources
+      # Sortformer's "Notice" text file (NVIDIA Open Model License, section 3.1), shipped with the model (#271).
+      - path: ../../Licenses/Sortformer
+        type: folder
+        buildPhase: resources
       - path: Resources/Models/Sortformer_v2.1.mlmodelc
         type: folder
         buildPhase: resources

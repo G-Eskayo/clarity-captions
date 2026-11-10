@@ -50,10 +50,27 @@ network-dependent and contradict that promise.
 ### Sortformer (via FluidAudio)
 
 - **Base model identifier:** `nvidia/diar_streaming_sortformer_4spk-v2.1` (Hugging Face).
-- **License:** CC BY 4.0 — as stated in the issue description.
+- **License:** ~~CC BY 4.0 — as stated in the issue description.~~ Wrong: see the correction below (2026-11-09).
 - **Conversion:** Converted to CoreML format by FluidInference.
 - **Note:** Did not independently re-fetch the model card from Hugging Face this session (no network access in this environment), so the `cc-by-4.0` license is accepted on the issue's authority. The open-source Sortformer base model is documented in `NOTICE.md`.
 
 ### Subsequent work
 
 - `scripts/fetch-diarizer-models.sh` currently pulls from Hugging Face's `main` branch, not a pinned commit. Because this environment has no network access, a fixed commit SHA could not be verified. A follow-up task for a future session with network access: pin the model fetch to a specific known revision (by commit SHA) in the script so that the exact artifact being used is permanently recordable.
+
+## License correction (2026-11-09, #271)
+
+The 2026-10-05 re-check took CC BY 4.0 from the CoreML conversion's README without reading NVIDIA's card. NVIDIA's
+model card for `nvidia/diar_streaming_sortformer_4spk-v2.1` licenses it under the **NVIDIA Open Model License** (on
+every card revision from 2025-12-01; evidence `2026-11-09-sortformer-v2-1-is-under-nvidia-open-model-license`). The
+owner chose (on #271): credit it correctly and keep shipping the fp16 model.
+
+- `NOTICE.md` (shown in the app as the full license texts) carries the agreement's text and the Notice line
+  "Licensed by NVIDIA Corporation under the NVIDIA Open Model License".
+- `Licenses/Sortformer/NOTICE.txt` is the "Notice" text file the agreement asks for, bundled in both apps beside the
+  model.
+- The Credits page line reads "The voice model. NVIDIA Open Model License."
+- A compressed build (#271 step 2) is a Derivative Model under the same agreement: the same notice applies, and
+  NOTICE.md must say what was changed.
+- The fetch is still unpinned (above): the model we score and ship is identified by its Hugging Face revision and
+  tree hash in the #271 scoreboard, not by the script.

@@ -2179,13 +2179,13 @@
         }
       }
     },
-    "The voice model. CC BY 4.0." : {
+    "The voice model. NVIDIA Open Model License." : {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The voice model. CC BY 4.0."
+            "value": "The voice model. NVIDIA Open Model License."
           }
         }
       }
