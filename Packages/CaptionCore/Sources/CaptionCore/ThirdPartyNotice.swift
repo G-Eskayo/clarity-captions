@@ -29,9 +29,10 @@ public struct ThirdPartyNotice: Identifiable, Equatable, Sendable {
         ThirdPartyNotice(
             id: "sortformer",
             name: "Sortformer",
-            licenseName: "CC BY 4.0",
-            licenseURL: URL(string: "https://creativecommons.org/licenses/by/4.0/")!,
-            note: String(localized: "NVIDIA speaker-diarization model converted to CoreML format by FluidInference."),
+            // NVIDIA's model card, not the CoreML conversion's README (which says CC BY 4.0): #271.
+            licenseName: "NVIDIA Open Model License",
+            licenseURL: URL(string: "https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/")!,
+            note: String(localized: "NVIDIA speaker-diarization model converted to CoreML format by FluidInference. Licensed by NVIDIA Corporation under the NVIDIA Open Model License"),
             sourceURL: URL(string: "https://huggingface.co/nvidia/diar_streaming_sortformer_4spk-v2.1")
         ),
         ThirdPartyNotice(

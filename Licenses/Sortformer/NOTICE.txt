@@ -1,0 +1,6 @@
+Licensed by NVIDIA Corporation under the NVIDIA Open Model License
+
+Sortformer streaming speaker diarization, 4 speakers, v2.1 (nvidia/diar_streaming_sortformer_4spk-v2.1),
+converted to Core ML by FluidInference, bundled in Seal Speak as the speaker-labelling model.
+The agreement's full text is in NOTICE.md, bundled in the app (Settings > Credits > Full license texts), and at
+https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/

@@ -42,7 +42,7 @@ SPEAKER-COMPARE-RESULT LS-EEND/ami              speakers: 6, DER: 0.112, time-to
 
 | Model | Variant | Speakers Found | DER | Time-to-Label | Model Size | License |
 |-------|---------|----------------|-----|---------------|------------|---------|
-| Sortformer | v2.1 (fp16) | **Untested** | **Untested** | **Untested** | 241 MB (CC BY 4.0) | CC BY 4.0 |
+| Sortformer | v2.1 (fp16) | **Untested** | **Untested** | **Untested** | 241 MB | NVIDIA Open Model License |
 | LS-EEND | dihard3 | **Untested** | **Untested** | **Untested** | ~89 MB plain / ~446 MB optimized | MIT |
 | LS-EEND | ami | **Untested** | **Untested** | **Untested** | ~89 MB plain / ~446 MB optimized | MIT |
 
