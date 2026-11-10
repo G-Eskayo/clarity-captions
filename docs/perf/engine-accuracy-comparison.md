@@ -309,5 +309,31 @@ published ones. They are iOS 17 packages, and grouped-channel tables need iOS 18
 
 **Both hold: no measurable loss.** Latency is unchanged (0.25 / 1.33 s and 0.25 / 1.37 s against 0.25 / 1.35 s) and so
 is speed (111.7x and 109.6x against 111.1x). **But peak memory rises from 58 MB to 90 MB (6-bit) and 93 MB (4-bit)**
-over 60 clips. The likely cause is iOS 17's per-tensor tables being expanded at load time; not profiled. So 22–26 MB of
-download is traded for about 33 MB of RAM.
+over 60 clips. Profiled below: that rise is a first-load cost only.
+
+#### Why memory rose (profiled 2026-11-10)
+
+Core ML prepares a model for the device the first time it is loaded from a path and caches the result, so later loads
+skip that work. The 90 MB was the first load of a new build. Measured with `phys_footprint` (the number iOS uses to
+end apps that use too much memory) on the M4, macOS, `.cpuAndNeuralEngine` (what FluidAudio uses):
+
+| Decoder + joint only (`coreml-memprobe.swift`, 3 rounds, runs agree within 0.1 MB) | ultra-pal6 (fp16) | dec6 |
+|---|---:|---:|
+| First load (fresh copy at a new path) | 15.1 MB | 46.6 MB |
+| Later loads of the same copy | 5.8 MB | 5.9 MB |
+
+| Whole engine, 60 clips (`engine-eval memory`) | After load | Peak |
+|---|---:|---:|
+| ultra-pal6, already loaded before (4 runs) | 29–36 MB | 56–61 MB |
+| ultra-pal6, fresh copy, first load (2 copies) | 37–39 MB | 60–73 MB |
+| dec6, first load (2 copies) | 67–68 MB | 94–96 MB |
+| dec6, later loads (3 runs) | 29–30 MB | 58–61 MB |
+
+- **After the first load, dec6 uses the same memory as the shipped build** (peak 58–61 against 56–61 MB).
+- **On a first load it peaks about 25–35 MB higher** (94–96 against 60–73 MB). The extra is in the decoder and joint:
+  +31.5 MB at load, close to their fp16 size (35 MB). That fits the 6-bit tables being expanded to full weights while
+  the device copy is prepared. The cause inside Core ML isn't proven; the numbers are.
+- In the app, a first load happens after install, after an app update that changes the model files, and whenever iOS
+  clears the app's caches (an OS update or low storage). **Not yet measured on an iPhone.** These are Mac numbers, and
+  iOS's cache rules may differ.
+- Either way the peak stays under 100 MB, far below what iOS allows a foreground app.
