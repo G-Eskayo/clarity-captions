@@ -50,11 +50,12 @@ struct SettingsPage: View {
                         // top, with the same shape, so buying it changes what's in the space, never the layout. It sits
                         // above the sample so the sample and the buttons that change it stay together (owner, #171).
                         // The Mac hides Translate captions and Caption language until #213 wires them there (owner, #230):
-                        // until then their rows would show but do nothing when clicked.
-                        #if !os(macOS)
-                        section("Translate captions", first: true, note: language.translationOwned ? translationNote : translationOfferNote) { translationRows }
-                            .id("translation")
-                        #endif
+                        // until then their rows would show but do nothing when clicked. On the Mac it shows only once
+                        // there's a Calls language (#213's Room / Calls rows): today only the screenshot mock-up sets one.
+                        if showsTranslation {
+                            section("Translate captions", first: true, note: language.translationOwned ? translationNote : translationOfferNote) { translationRows }
+                                .id("translation")
+                        }
                         preview
                             .overlay(alignment: .top) { Rectangle().fill(rule).frame(height: 1) }
                         section("Colors", first: true) { colorsRow }
@@ -314,13 +315,23 @@ struct SettingsPage: View {
         .accessibilityLabel(label + value)
     }
 
+    /// Translate captions: always on the iPhone and iPad; on the Mac only with #213's Calls language set (owner, #230:
+    /// hidden there until it's wired, so its rows never show doing nothing).
+    private var showsTranslation: Bool {
+        #if os(macOS)
+        language.callCaptions != nil
+        #else
+        true
+        #endif
+    }
+
     private var translationOfferNote: String {
         String(format: String(localized: "Read what people say in your own language, translated on this %@ with no internet. Each caption shows its translation on top, with what was said underneath. One-time purchase."), LanguageSettingsState.deviceWord)
     }
 
     private var translationNote: String {
         if language.callCaptions != nil {
-            return String(localized: "Room is the language people near your Mac speak; Calls is what the other people on your calls speak. On a call only their words are translated, not yours. Each caption shows its translation on top, with what was said in smaller text underneath.")
+            return String(localized: "Room is the language people near your Mac speak; Calls is what the other people on your calls speak. On a call only their words are translated, not yours. Each caption shows its translation; click it to see what was said.")
         }
         return String(localized: "From is the language people around you speak. Each caption shows its translation on top, with what was said in smaller text underneath. The first time, the language pack downloads once (about 200 MB); after that it works with no internet.")
     }
