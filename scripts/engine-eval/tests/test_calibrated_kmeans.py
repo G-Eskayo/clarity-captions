@@ -159,3 +159,18 @@ def test_importance_weighting_survives_tiny_and_huge_ratios():
     r = cu.kmeans_sklearn(w, 4, importance=imp, workers=2)
     assert torch.isfinite(r).all()
     assert len(np.unique(r[:16].numpy().astype(np.float16))) <= 16
+
+
+def test_importance_with_many_exact_zeros_beside_large_values_stays_finite():
+    """The real failure: pre_encode.out groups with ~3,700 exact-zero importances beside values near 0.09 gave NaN
+    centroids in 30 of 64 groups under an absolute 1e-30 floor."""
+    import numpy as np
+    torch.manual_seed(8)
+    w = torch.randn(64, 4096) * 0.03
+    imp = torch.rand(64, 4096) ** 8 * 0.09            # heavy-tailed, like squared gradients
+    imp[torch.rand(64, 4096) < 0.06] = 0.0             # ~6% exact zeros, as measured
+    imp[imp > 0] = imp[imp > 0].clamp_min(2e-20)
+    r = cu.kmeans_sklearn(w, 4, importance=imp, workers=2)
+    assert torch.isfinite(r).all()
+    for s in range(0, 64, cu.GROUP):
+        assert len(np.unique(r[s:s + cu.GROUP].numpy().astype(np.float16))) <= 16

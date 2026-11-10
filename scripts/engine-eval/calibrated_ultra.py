@@ -232,7 +232,13 @@ def kmeans_sklearn(w, nbits: int, importance=None, workers: int = 8, group: int 
     a = w.detach().cpu().numpy().astype(np.float16).reshape(shape[0], -1)   # coremltools clusters the fp16 export
     imp = None if importance is None else importance.detach().cpu().numpy().astype(np.float64).reshape(shape[0], -1)
     k = 1 << nbits
-    jobs = [(a[s:s + group].reshape(-1), None if imp is None else np.maximum(imp[s:s + group].reshape(-1), 1e-30), k)
+    def floored(g):
+        # Floor relative to the group's mean importance: an absolute 1e-30 floor beside values near 0.1 made kmeans1d's
+        # running-sum means cancel to 0/0 in 30 of 64 groups of pre_encode.out (2026-11-10).
+        g = g.reshape(-1)
+        return np.maximum(g, max(float(g.mean()) * 1e-6, 1e-30))
+
+    jobs = [(a[s:s + group].reshape(-1), None if imp is None else floored(imp[s:s + group]), k)
             for s in range(0, shape[0], group)]
     out = np.empty(a.shape, dtype=np.float32)
     for j, (lut, lab) in enumerate(_POOL.imap(_sk_group, jobs, chunksize=4)):
