@@ -274,25 +274,25 @@ all 6-bit 12.41%, all 4-bit 13.72%, the same gap the test set shows.
 - By kind, total added error: convolution 0.25, first feed-forward 0.19, second feed-forward 0.15, front end 0.11,
   attention 0.09.
 
-### Step 2: builds (in progress, 2026-11-10)
+### Step 2: builds (2026-11-10)
 
 | Build | How | On disk | Zipped | WER, test (95% CI) | vs 6-bit, paired | EdAcc test split, vs 6-bit | x real time, shard 1 (6-bit same window) | Peak memory |
 |---|---|---:|---:|---|---|---|---:|---:|
 | ultra-pal6 (ships) | data-free 6-bit | 498 MB | 485 MB | 13.90% (12.84–15.01) | – | – | 64.9x | 57 MB |
 | **ultra-mix46** | data-free k-means, bits from step 1: 44 of 97 groups at 6, rest 4 (4.75 average) | **406 MB** | 382 MB | 14.08% (13.00–15.24) | **+0.18 (+0.11 to +0.25)** | +0.17 (+0.07 to +0.26) | 67.6x | 59 MB |
 | ultra-pal4 | data-free 4-bit | 350 MB | 320 MB | 14.85% (13.68–16.04) | +0.95 (+0.78 to +1.11) | +0.98 | – | 60 MB |
-| ultra-skm4 | calibrated: 4-bit everywhere, exact 1-D k-means weighted by Fisher importance (96 held-out calibration clips, 1–6 s) | 350 MB | 320 MB | 14.39% (13.23–15.56) | **+0.49 (+0.36 to +0.61)** | +0.52 (+0.35 to +0.70) | – | – |
-| ultra-mix46-skm | calibrated, step 1's bit plan | building | | | | | | |
+| ultra-skm4 | calibrated: 4-bit everywhere, exact 1-D k-means weighted by Fisher importance (96 held-out calibration clips, 1–6 s) | 350 MB | 327 MB | 14.39% (13.23–15.56) | **+0.49 (+0.36 to +0.61)** | +0.52 (+0.35 to +0.70) | 109.6x (107.7x) | 58 MB |
+| **ultra-mix46-skm** | calibrated, step 1's bit plan (44 of 97 groups at 6) | **406 MB** | 387 MB | 13.98% (12.91–15.12) | **+0.08 (+0.03 to +0.13)** | +0.11 (+0.04 to +0.19) | 105.4x (109.5x) | 59 MB |
 
-Speeds from 2026-11-10 with the Fisher step sharing the CPU: both builds slowed alike, so compare them only with each
-other. Live latency for ultra-mix46 isn't analysed yet.
+x real time is shard 1, with 6-bit run in the same chain in brackets (ultra-mix46's run shared the CPU with the Fisher
+step, so both read low). Correct-word latency, median / p95 (6-bit in the same run): ultra-mix46 0.26 / 1.38 s
+(0.28 / 1.38), ultra-skm4 0.26 / 1.41 s (0.25 / 1.35), ultra-mix46-skm 0.25 / 1.34 s (0.25 / 1.35): all within 10%.
 
 **Calibration alone halves 4-bit's loss** (+0.95 to +0.49 at the same 350 MB) but doesn't remove it.
 
-**Reading so far:** putting the 6-bit budget where step 1 says it matters recovers four-fifths of 4-bit's loss
-(+0.18 instead of +0.95) at 92 MB less than 6-bit. It passes the ticket's overlap rule, but the paired test says it is
-still slightly worse than 6-bit, so it is not yet "no loss". The calibrated builds test whether calibration closes
-the rest.
+**Result: no encoder build below 498 MB is loss-free by the paired test.** The bit plan does most of the work and
+calibration most of the rest: at 406 MB, data-free +0.18, calibrated +0.08 (about one extra error per 1,250 words).
+Every one of them passes the ticket's overlap rule. Which trade to take is the owner's call (Decision on #272).
 
 ### Step 3: decoder and joint
 
@@ -304,5 +304,10 @@ published ones. They are iOS 17 packages, and grouped-channel tables need iOS 18
 | Build | Decoder + joint | Saved | WER, test | vs 6-bit, paired |
 |---|---:|---:|---|---|
 | ultra-pal6 | 35 MB (fp16) | – | 13.90% | – |
-| ultra-pal6-dec6 | 13 MB (6-bit) | 22 MB | scoring | |
-| ultra-pal6-dec4 | 9 MB (4-bit) | 26 MB | scoring | |
+| ultra-pal6-dec6 | 13 MB (6-bit) | 22 MB (476 MB total) | 13.88% (12.82–14.99) | **−0.02 (−0.05 to +0.01)** |
+| ultra-pal6-dec4 | 9 MB (4-bit) | 26 MB (471 MB total) | 13.93% (12.88–15.06) | **+0.03 (−0.03 to +0.08)** |
+
+**Both hold: no measurable loss.** Latency is unchanged (0.25 / 1.33 s and 0.25 / 1.37 s against 0.25 / 1.35 s) and so
+is speed (111.7x and 109.6x against 111.1x). **But peak memory rises from 58 MB to 90 MB (6-bit) and 93 MB (4-bit)**
+over 60 clips. The likely cause is iOS 17's per-tensor tables being expanded at load time; not profiled. So 22–26 MB of
+download is traded for about 33 MB of RAM.
