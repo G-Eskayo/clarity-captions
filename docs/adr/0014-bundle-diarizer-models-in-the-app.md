@@ -74,3 +74,22 @@ owner chose (on #271): credit it correctly and keep shipping the fp16 model.
   NOTICE.md must say what was changed.
 - The fetch is still unpinned (above): the model we score and ship is identified by its Hugging Face revision and
   tree hash in the #271 scoreboard, not by the script.
+
+## Our own compressed builds, measured (2026-11-09, #271 step 2)
+
+The 2026-10-02 comparison above used FluidAudio's published palettized build on synthetic voices. #271 rebuilt the
+shipped fp16 model ourselves (bit-identical), compressed it at 8 and 6 bits, chose one build per bit width on AMI
+calibration meetings, and scored both through the app's live speaker path on real voices (AMI test, CHiME-6 eval).
+Full numbers: [docs/perf/speaker-scoreboard.md § Step 2](../perf/speaker-scoreboard.md#step-2-compressed-builds).
+
+| Build | Size on disk | DER on screen, AMI | DER on screen, CHiME-6 | Line first label (AMI / CHiME-6) | Ship rule |
+|---|---|---|---|---|---|
+| fp16 (shipped) | 229.4 MB | 24.0% (20.4–27.3) | 42.5% (38.5–46.3) | 0.62 s / 0.63 s | baseline |
+| pal8 | 120.1 MB | 24.5% (19.3–29.2) | 42.3% (38.5–46.1) | 0.62 s / 0.63 s | passes |
+| pal6 | 92.6 MB | 24.5% (20.4–28.4) | 42.2% (38.5–45.9) | 0.62 s / 0.63 s | passes |
+| int8 | 120.4 MB | | | | excluded: crashes at load |
+
+**Decision:** by the ticket's rule (smallest build whose DER CI overlaps fp16's on both sets, first label within 10%),
+**pal6** is the build to ship. Until it is in the app, fp16 stays. The swap needs the exact scored files distributed
+(k-means isn't repeatable, so a rebuild is a different, unscored build), a run on a real iPhone, and NOTICE.md
+describing the change, since a compressed build is a Derivative Model under the NVIDIA Open Model License.
