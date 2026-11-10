@@ -81,6 +81,61 @@ def test_wide_weights_go_to_coremltools_and_low_ones_to_ours():
     assert theirs == {"encoder.layers.0.self_attn.linear_q": 6, "encoder.pre_encode.conv.0": 8}
 
 
-def test_coreml_const_names():
-    assert cu.coreml_const("encoder.layers.11.self_attn.linear_q") == "layers_11_self_attn_linear_q_weight_to_fp16"
-    assert cu.coreml_const("encoder.pre_encode.conv.0") == "pre_encode_conv_0_weight_to_fp16"
+def test_weight_key_matches_by_content_not_name():
+    import numpy as np
+    w = torch.randn(32, 64)
+    assert cu.weight_key(w.numpy()) == cu.weight_key(w.numpy().astype(np.float16))   # export stores fp16
+    assert cu.weight_key(w.numpy()) != cu.weight_key((w + 1e-2).numpy())
+    assert cu.weight_key(w.numpy()) != cu.weight_key(w.numpy().T.copy())
+
+
+def test_identical_weights_are_refused():
+    lin = torch.nn.Linear(64, 64)
+    twin = torch.nn.Linear(64, 64)
+    twin.weight.data.copy_(lin.weight.data)
+    with pytest.raises(ValueError):
+        cu.torch_keys({"a": lin, "b": twin})
+
+
+@pytest.mark.parametrize("bits", [3, 4])
+def test_data_free_build_clustering_is_coremltools_exactly(bits):
+    """A data-free build must reproduce the shipped builds' clustering value for value (same algorithm, same seed),
+    so any difference in a calibrated build comes from calibration alone. Measured 2026-11-09: our own Lloyd's
+    k-means had the same MSE yet scored 0.62 points worse than ultra-pal4 on shard 1."""
+    import numpy as np
+    from coremltools.optimize.coreml._quantization_passes import palettize_weights as pw
+
+    torch.manual_seed(5)
+    w = torch.randn(48, 1000) * 0.05                  # 16,000 per group: coremltools' kmeans1d branch, as real weights
+    w[3, 7] = 0.9                                      # an outlier, as real weights have
+    ours = cu.kmeans_sklearn(w, bits, workers=2).numpy()
+    a = w.numpy().astype(np.float16)
+    for s in range(0, 48, cu.GROUP):
+        g = a[s:s + cu.GROUP]
+        lut, idx = pw._get_lut_and_indices(g, "KMEANS", bits, None)
+        ref = lut.reshape(-1)[idx.reshape(g.shape)].astype(np.float32)
+        assert np.allclose(ours[s:s + cu.GROUP], ref, atol=1e-3), s
+    small = torch.randn(32, 300) * 0.05               # 4,800 per group: the sklearn branch
+    ours = cu.kmeans_sklearn(small, bits, workers=2).numpy()
+    a = small.numpy().astype(np.float16)
+    for s in range(0, 32, cu.GROUP):
+        lut, idx = pw._get_lut_and_indices(a[s:s + cu.GROUP], "KMEANS", bits, None)
+        assert np.allclose(ours[s:s + cu.GROUP], lut.reshape(-1)[idx.reshape(16, -1)].astype(np.float32), atol=1e-3)
+
+
+def test_sample_weights_change_the_clustering():
+    torch.manual_seed(6)
+    w = torch.randn(16, 400)
+    imp = torch.ones_like(w)
+    imp[0, :3] = 1e6
+    plain = cu.kmeans_sklearn(w, 2, workers=2)
+    weighted = cu.kmeans_sklearn(w, 2, importance=imp, workers=2)
+    assert float(((weighted - w)[0, :3] ** 2).sum()) < float(((plain - w)[0, :3] ** 2).sum())
+
+
+def test_converter_folded_weights_are_never_quantised_in_torch():
+    plan = {"encoder.layers.0.conv.depthwise_conv": 4, "encoder.layers.0.self_attn.linear_pos": 4,
+            "encoder.layers.0.self_attn.linear_q": 4}
+    ours, theirs = cu.split_plan(plan)
+    assert ours == {"encoder.layers.0.self_attn.linear_q": 4}
+    assert set(theirs) == {"encoder.layers.0.conv.depthwise_conv", "encoder.layers.0.self_attn.linear_pos"}

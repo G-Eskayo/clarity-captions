@@ -36,6 +36,10 @@ export PYTHONPATH="$HERE"
 STATUS="$WORK/status-272.txt"
 status() { printf 'Calibrated Ultra (#272)\nStage: %s\nUpdated: %s\n' "$1" "$(date '+%F %T')" > "$STATUS.tmp" && mv "$STATUS.tmp" "$STATUS"; }
 mkdir -p "$R/latency" "$R/memory" "$WORK/models/variants"
+# The Mini runs other sessions too; never be the job that fills its disk. Paused runs resume where they stopped.
+MIN_FREE_GB="${EVAL_MIN_FREE_GB:-3}"
+guard() { local f; f=$(df -g / | awk 'NR==2{print $4}')
+  [ "$f" -ge "$MIN_FREE_GB" ] || { status "PAUSED: $f GiB free (< $MIN_FREE_GB) before $1"; echo "LOW-DISK pause before $1"; exit 3; }; }
 for need in "$C/ultra.nemo" "$WORK/calib-272/manifest.jsonl" "$WORK/manifests/index.json" "$CPY" "$SPLIT"; do
   [ -e "$need" ] || { echo "missing $need"; exit 1; }
 done
@@ -50,7 +54,7 @@ done
   done ) &
 
 if ! grep -q SENSITIVITY-DONE "$R/sensitivity.done" 2>/dev/null; then
-  status "1/5 layer sensitivity"
+  guard sensitivity; status "1/5 layer sensitivity"
   "$CPY" "$HERE/calibrated_ultra.py" sensitivity --out "$SENS" >> "$R/sensitivity.log" 2>&1
   grep -q SENSITIVITY-DONE "$R/sensitivity.log" && echo SENSITIVITY-DONE > "$R/sensitivity.done" \
     || { echo "sensitivity failed; see $R/sensitivity.log"; exit 1; }
@@ -60,7 +64,7 @@ NEW=""
 IFS=';' read -ra BL <<< "$BUILDS"
 for spec in "${BL[@]}"; do
   name="${spec%%|*}"; args="${spec#*|}"
-  status "2/5 building $name"
+  guard "build $name"; status "2/5 building $name"
   # shellcheck disable=SC2086
   "$CPY" "$HERE/calibrated_ultra.py" build --name "$name" --sensitivity "$SENS" $args || { echo "build $name failed"; exit 1; }
   NEW="$NEW,local:$name"
@@ -93,14 +97,14 @@ for k in $(seq 1 "$N"); do
   name=$(printf 'shard-%03d' "$k")
   marker="$R/done-$name"
   [ -e "$marker" ] && continue
-  status "4/5 accuracy, $name of $N: $NEW"
+  guard "$name"; status "4/5 accuracy, $name of $N: $NEW"
   [ -d "$S/$name" ] || fetch_shard "$name" || { echo "cannot fetch $name"; exit 1; }
   "$BIN" run --shard-dir "$S/$name" --results "$R/apple-$name.jsonl" --engines "$NEW" --repeats 1 \
     --models-dir "$WORK/models" --status "$WORK/status-engine.json" && touch "$marker"
   if [ "$k" != 1 ]; then rm -rf "$S"; fi       # shard 1 stays for latency and memory
 done
 
-status "5/5 live latency (shard 1) and memory"
+guard latency; status "5/5 live latency (shard 1) and memory"
 [ -d "$S/shard-001" ] || fetch_shard shard-001 || { echo "cannot fetch shard-001"; exit 1; }
 "$BIN" latency --shard-dir "$S/shard-001" --out "$R/latency/latency-shard-001.jsonl" \
   --engines "$ENGINES" --models-dir "$WORK/models" --status "$WORK/status-engine.json"

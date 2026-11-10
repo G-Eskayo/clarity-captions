@@ -182,8 +182,67 @@ def decode_codes(lut, idx, shape, group: int = GROUP):
     return rec.reshape(lut.shape[0] * group, -1)[: shape[0]].reshape(shape)
 
 
+def _sk_group(args):
+    """One 16-channel group, clustered exactly as coremltools does it: on fp16 groups of 10,000+ weights the optimal
+    1-D k-means (kmeans1d, over unique values weighted by their counts), otherwise sklearn k-means++ (tol 1e-2, one
+    init, seed 0). With importance, the unique values are weighted by their summed importance instead: exact weighted
+    k-means (coremltools' SKMPalettizer objective). Measured 2026-11-09: copying only the sklearn branch scored 0.53
+    points worse than ultra-pal4 on shard 1, because coremltools takes the kmeans1d branch for these weights."""
+    import numpy as np
+    from coremltools.models.neural_network import quantization_utils as qu
+
+    vals, wts, k = args
+    if vals.dtype == np.float16 and vals.size >= 10_000 and qu._HAS_KMEANS1D:
+        uniq, inv, counts = np.unique(vals, return_inverse=True, return_counts=True)
+        inv = inv.reshape(-1)
+        w = counts.astype(np.float64) if wts is None else np.bincount(inv, weights=wts, minlength=len(uniq))
+        n = min(len(uniq), k)
+        res = qu._kmeans1d.cluster(uniq, n, weights=w)
+        lut = np.zeros(k, dtype=np.float32)
+        lut[:n] = res.centroids
+        return lut, np.asarray(res.clusters, dtype=np.uint8)[inv]
+    from sklearn.cluster import KMeans
+
+    x = vals.reshape(-1, 1)
+    n = min(len(x), k)
+    km = KMeans(n, init="k-means++", tol=1e-2, n_init=1, random_state=0).fit(x, sample_weight=wts)
+    lut = np.zeros(k, dtype=np.float32)
+    lut[:n] = km.cluster_centers_[:, 0]
+    return lut, km.labels_.astype(np.uint8)
+
+
+_POOL = None
+
+
+def kmeans_sklearn(w, nbits: int, importance=None, workers: int = 8, group: int = GROUP):
+    """Reconstruction of w with per-grouped-channel k-means exactly as coremltools palettizes (sklearn, fp16 input).
+
+    Data-free (importance None) reproduces the shipped builds' clustering; with importance it is coremltools'
+    sensitive k-means (SKMPalettizer: Fisher-weighted sklearn k-means). Groups run in a process pool.
+    """
+    import multiprocessing as mp
+
+    import numpy as np
+    import torch
+
+    global _POOL
+    if _POOL is None:
+        _POOL = mp.get_context("spawn").Pool(workers)
+    shape = w.shape
+    a = w.detach().cpu().numpy().astype(np.float16).reshape(shape[0], -1)   # coremltools clusters the fp16 export
+    imp = None if importance is None else importance.detach().cpu().numpy().astype(np.float64).reshape(shape[0], -1)
+    k = 1 << nbits
+    jobs = [(a[s:s + group].reshape(-1), None if imp is None else np.maximum(imp[s:s + group].reshape(-1), 1e-30), k)
+            for s in range(0, shape[0], group)]
+    out = np.empty(a.shape, dtype=np.float32)
+    for j, (lut, lab) in enumerate(_POOL.imap(_sk_group, jobs, chunksize=4)):
+        s = j * group
+        out[s:s + group] = lut[lab].reshape(-1, a.shape[1])
+    return torch.from_numpy(out.reshape(shape)).to(w.dtype)
+
+
 def kmeans_groups(w, nbits: int, group: int = GROUP, iters: int = 150, importance=None):
-    """The k-means reconstruction of w (same shape and dtype)."""
+    """The k-means reconstruction of w (same shape and dtype); fast Lloyd's, used by the sensitivity sweep only."""
     lut, idx = kmeans_codes(w, nbits, group, iters, importance)
     return decode_codes(lut, idx, w.shape).to(w.dtype)
 
@@ -306,8 +365,8 @@ def cmd_sensitivity(a) -> None:
     """Every palettizable weight at the base width (6), then each module group alone at each probe width (4, 3).
 
     Encoder outputs are compared with the full-precision model's on the same clips (pooled relative L2), and the
-    greedy WER on the calibration slice is recorded beside it. k-means codes are kept, not dense copies: ~0.6 GB per
-    width. Resumable: finished rows are kept in --out.
+    greedy WER on the calibration slice is recorded beside it. Clustering is the builds' own (kmeans_sklearn), kept as
+    fp16 reconstructions (~1.2 GB per width). Resumable: finished rows are kept in --out.
     """
     import torch
 
@@ -319,28 +378,26 @@ def cmd_sensitivity(a) -> None:
     minutes = sum(c["audio_seconds"] for c in clips) / 60
     print(f"{len(mods)} palettizable encoder weights; {len(clips)} calibration clips ({minutes:.1f} min)", flush=True)
     cs = CalibSet(model, clips)
-    model.encoder.to(dev)                                       # decoder and joint stay on the CPU
     shapes = {n: tuple(m.weight.shape) for n, m in mods.items()}
-    ref = encode_all(model, cs, dev)
-    base_wer = greedy_wer(model, ref, clips)
-    print(f"full-precision calibration WER {base_wer[0]:.4f}", flush=True)
 
     codes: dict[int, dict] = {}
     for b in sorted({a.base_bits, *a.probe_bits}, reverse=True):
         t0 = time.time()
         codes[b] = {}
         for j, (n, m) in enumerate(mods.items()):
-            lut, idx = kmeans_codes(m.weight.data, b)
-            codes[b][n] = (lut, idx)
+            codes[b][n] = kmeans_sklearn(m.weight.data, b, workers=a.workers).half()   # the builds' clustering
             if j % 50 == 49:
                 print(f"  k-means {b}-bit: {j + 1}/{len(mods)} weights, {time.time() - t0:.0f}s", flush=True)
-        if dev == "mps":
-            torch.mps.synchronize()
         print(f"k-means {b}-bit for every weight: {time.time() - t0:.0f}s", flush=True)
+    # k-means on the CPU (many small kernels starve on a shared GPU; measured), the encoder on `dev`, the decoder
+    # and joint on the CPU.
+    model.encoder.to(dev)
+    ref = encode_all(model, cs, dev)
+    base_wer = greedy_wer(model, ref, clips)
+    print(f"full-precision calibration WER {base_wer[0]:.4f}", flush=True)
 
     def put(n, b):
-        lut, idx = codes[b][n]
-        mods[n].weight.data.copy_(decode_codes(lut, idx, shapes[n]))
+        mods[n].weight.data.copy_(codes[b][n].to(mods[n].weight.device, torch.float32))
 
     groups: dict[str, list[str]] = {}
     for n in mods:
@@ -490,35 +547,74 @@ OURS_MAX_BITS = 4   # our k-means matches coremltools' at 3-4 bits (tests); wide
 
 def split_plan(plan: dict[str, int]) -> tuple[dict[str, int], dict[str, int]]:
     """(weights we quantise in torch, calibrated or not; weights coremltools palettizes from the fp16 export)."""
-    ours = {n: b for n, b in plan.items() if b <= OURS_MAX_BITS}
-    return ours, {n: b for n, b in plan.items() if b > OURS_MAX_BITS}
+    # Weights the converter folds (depthwise conv + batch norm; linear_pos into the position term) are left at full
+    # precision in torch and quantised once, by coremltools, after folding; quantising them in torch as well
+    # quantised them twice (measured: 0.4 points worse than ultra-pal4 on shard 1).
+    ours = {n: b for n, b in plan.items() if b <= OURS_MAX_BITS and not n.endswith(FOLDED_IN_EXPORT)}
+    return ours, {n: b for n, b in plan.items() if n not in ours}
 
 
-def coreml_const(torch_name: str) -> str:
-    """encoder.layers.11.self_attn.linear_q -> layers_11_self_attn_linear_q_weight_to_fp16 (the mobius export's names)."""
-    return torch_name.removeprefix("encoder.").replace(".", "_") + "_weight_to_fp16"
+CT_WORKERS = 8
+FOLDED_IN_EXPORT = (".conv.depthwise_conv", ".self_attn.linear_pos")
 
 
-def _pack(mlmodel, plan: dict[str, int]):
+def weight_key(arr) -> tuple:
+    """(shape, sha1 of the fp16 bytes): identifies a weight in the Core ML export by content, since the exporter's
+    const names are not stable (a modified model exported as const_248_to_fp16, not layers_0_..._weight)."""
+    import hashlib
+    import numpy as np
+
+    a = np.ascontiguousarray(np.asarray(arr, dtype=np.float16))
+    return tuple(a.shape), hashlib.sha1(a.tobytes()).hexdigest()
+
+
+def torch_keys(mods: dict) -> dict:
+    """weight_key -> torch module name, from the weights as they are now (call just before export)."""
+    keys = {}
+    for n, m in mods.items():
+        k = weight_key(m.weight.detach().cpu().numpy())
+        if k in keys:
+            raise ValueError(f"{n} and {keys[k]} hold identical weights; cannot map the export by content")
+        keys[k] = n
+    return keys
+
+
+def _pack(mlmodel, plan: dict[str, int], keys: dict):
     """Low-bit weights already hold <= 2**b values per 16-channel group: 'unique' packs them exactly. Wider ones get
-    coremltools' data-free k-means, the same as the shipping 6-bit build. Every planned weight must be found."""
+    coremltools' data-free k-means, the same as the shipping 6-bit build. Every export weight must map to a planned
+    torch weight and back, or nothing is built."""
     import coremltools.optimize.coreml as cto
 
     meta = cto.get_weights_metadata(mlmodel, weight_threshold=MIN_ELEMENTS)
     ours, theirs = split_plan(plan)
-    cfg = {}
-    for n, b in ours.items():
-        cfg[coreml_const(n)] = cto.OpPalettizerConfig(mode="unique", granularity="per_grouped_channel",
-                                                      group_size=GROUP, weight_threshold=MIN_ELEMENTS)
-    for n, b in theirs.items():
-        cfg[coreml_const(n)] = cto.OpPalettizerConfig(mode="kmeans", nbits=b, granularity="per_grouped_channel",
-                                                      group_size=GROUP, num_kmeans_workers=1,
-                                                      weight_threshold=MIN_ELEMENTS)
-    missing = sorted(set(cfg) - set(meta))
-    unplanned = sorted(set(meta) - set(cfg))
-    if missing or unplanned:
-        raise KeyError(f"plan/export mismatch: {len(missing)} planned weights not in the export (e.g. {missing[:2]}), "
-                       f"{len(unplanned)} export weights not planned (e.g. {unplanned[:2]})")
+    cfg, seen, unmatched = {}, set(), []
+    for const, m in meta.items():
+        n = keys.get(weight_key(m.val))
+        if n is None:
+            unmatched.append(f"{const} {tuple(m.val.shape)}"); continue
+        seen.add(n)
+        if n in ours:
+            cfg[const] = cto.OpPalettizerConfig(mode="unique", granularity="per_grouped_channel", group_size=GROUP,
+                                                weight_threshold=MIN_ELEMENTS)
+        else:
+            cfg[const] = cto.OpPalettizerConfig(mode="kmeans", nbits=theirs[n], granularity="per_grouped_channel",
+                                                group_size=GROUP, num_kmeans_workers=CT_WORKERS, weight_threshold=MIN_ELEMENTS)
+    missing = sorted(set(plan) - seen)
+    bad = [n for n in missing if not n.endswith(FOLDED_IN_EXPORT)]
+    if bad:
+        raise KeyError(f"plan/export mismatch: {len(bad)} planned weights not found in the export and not a kind the "
+                       f"converter is known to fold (e.g. {bad[:2]}); {len(unmatched)} unmatched export consts")
+    # Folded weights (depthwise conv with batch norm fused in; linear_pos folded into the position term) and the
+    # non-weight consts the shipped builds palettize too (biases, position tables): coremltools' k-means at the
+    # plan's widest width, as the shipped uniform builds do.
+    wide = max(plan.values())
+    for const, m in meta.items():
+        if const not in cfg:
+            cfg[const] = cto.OpPalettizerConfig(mode="kmeans", nbits=wide, granularity="per_grouped_channel",
+                                                group_size=GROUP, num_kmeans_workers=CT_WORKERS, weight_threshold=MIN_ELEMENTS)
+    print(f"mapped {len(seen)} of {len(plan)} planned weights by content ({len(set(ours) & seen)} packed as-is); "
+          f"{len(missing)} folded by the converter and {len(unmatched)} unmatched consts in all go to "
+          f"coremltools k-means at {wide} bits", flush=True)
     return cto.palettize_weights(mlmodel, config=cto.OptimizationConfig(op_name_configs=cfg))
 
 
@@ -550,11 +646,13 @@ def cmd_build(a) -> None:
         imp = fisher_importance(model, clips, list(split_plan(plan)[0]), a.fisher_clips)
         print(f"Fisher importance from {a.fisher_clips} calibration clips: {time.time() - t0:.0f}s", flush=True)
     t0 = time.time()
+    if a.coreml_only:                                           # control: every weight quantised by coremltools itself
+        global OURS_MAX_BITS
+        OURS_MAX_BITS = 0
     ours, _ = split_plan(plan)
     for n in ours:
         w = mods[n].weight.data
-        mods[n].weight.data.copy_(kmeans_groups(w.to(a.device), plan[n], importance=
-                                                (imp[n].to(a.device) if n in imp else None)).cpu())
+        mods[n].weight.data.copy_(kmeans_sklearn(w, plan[n], importance=imp.get(n), workers=a.workers))
     print(f"k-means: {time.time() - t0:.0f}s", flush=True)
     imp.clear()
     if a.check_calib:
@@ -566,9 +664,10 @@ def cmd_build(a) -> None:
     work = a.work / a.name
     work.mkdir(parents=True, exist_ok=True)
     t0 = time.time()
+    keys = torch_keys(mods)
     ml = _export_fp16(model, a.convert, work)
-    del model
-    q = _pack(ml, plan)
+    del model, mods
+    q = _pack(ml, plan, keys)
     del ml
     pkg = work / "Encoder.mlpackage"
     q.save(str(pkg))
@@ -587,6 +686,8 @@ def cmd_build(a) -> None:
     (dst / "variant.json").write_text(json.dumps({"asr_version": "ultra", "method": method,
                                                   "plan": plan}, indent=2) + "\n")
     print(f"{a.name}: built, {method}", flush=True)
+    if _POOL is not None:
+        _POOL.close(); _POOL.join()
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -665,8 +766,9 @@ def main() -> None:
         if name == "sensitivity":
             s.add_argument("--clips", type=int, default=240)
             s.add_argument("--base-bits", type=int, default=6)
-            s.add_argument("--probe-bits", type=lambda x: [int(v) for v in x.split(",")], default=[4, 3])
+            s.add_argument("--probe-bits", type=lambda x: [int(v) for v in x.split(",")], default=[4])
             s.add_argument("--out", type=Path, required=True)
+            s.add_argument("--workers", type=int, default=8)
         else:
             s.add_argument("--name", required=True)
             s.add_argument("--bits", type=int, help="uniform width; else a plan from --sensitivity")
@@ -675,6 +777,8 @@ def main() -> None:
             s.add_argument("--low", type=int, default=4)
             s.add_argument("--high", type=int, default=6)
             s.add_argument("--calibrated", action="store_true")
+            s.add_argument("--workers", type=int, default=8)
+            s.add_argument("--coreml-only", action="store_true", help="control: no torch-side quantisation")
             s.add_argument("--fisher-clips", type=int, default=128)
             s.add_argument("--check-calib", type=int, default=240)
             s.add_argument("--convert", type=Path, default=home / "convert")
