@@ -697,7 +697,7 @@ struct ContentView: View {
             model.runDemo()
             if DemoMode.faceToFace { Task { await model.runFaceToFaceFlow() } }
             if DemoMode.opensDeveloperPanel { developerTools = true }
-            if DemoMode.opensSettings || DemoMode.settingsPush != nil {
+            if DemoMode.opensSettings || DemoMode.settingsPush != nil || DemoMode.betaPreview {
                 // Debug only: open straight on Settings (or one of its pages) for screenshots, no fade.
                 nav.gearTapped()
                 switch DemoMode.settingsPush {
@@ -710,7 +710,9 @@ struct ContentView: View {
                 case "credits": nav.open(.credits)
                 case "language": nav.open(.captionLanguage)   // #37 / #53: the caption language list
                 case "license": nav.open(.credits); nav.open(.licenseText)
-                default: break
+                default:
+                    // -ClarityDemoBetaPreview: Settings' "What will be sent" (mock-up 04), once beta has resolved.
+                    if DemoMode.betaPreview { await beta.ensureResolved(); nav.open(.feedbackPreview) }
                 }
                 shownScreen = nav.current
             }

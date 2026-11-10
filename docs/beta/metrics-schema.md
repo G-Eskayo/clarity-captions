@@ -41,6 +41,7 @@ the tester's own optional note.
 
 | Field | Meaning | Source in the app |
 |---|---|---|
+| `minutes` | Time captions were running, summed over the conversation's stretches; pauses never count. The conversation on screen counts up to the send. Any other stretch left open was cut off when she left Seal (no background audio): it ends at that moment with `ending.kind` `appClosed`, and with no recorded leave time (saved by 1.1 build 10 or earlier) it counts 0 rather than up to the send (#287) | `ConversationRecorder` stretches, `leftMidConversation(at:)` |
 | `rating` | Answer to "How well could you follow the conversation?" (1–10), or `null` if skipped | rating card |
 | `note` | The tester's optional note; `null` if none | rating card |
 | `lag` | Seconds from a word being spoken to its caption appearing | `WordLagTracker` / `CaptionUpdate.lagSeconds` |
