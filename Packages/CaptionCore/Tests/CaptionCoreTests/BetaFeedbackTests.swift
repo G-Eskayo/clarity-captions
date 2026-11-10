@@ -346,7 +346,7 @@ final class BetaFeedbackTests: XCTestCase {
 
     private func report(_ conversations: [ConversationReport]) -> FeedbackReport {
         FeedbackReport(app: .init(version: "1.0", build: "42", environment: .sandbox),
-                       device: .init(model: "iPhone15,4", os: "iOS 26.1", lowPowerModeSeen: false),
+                       device: .init(model: "iPhone15,4", os: "iOS 26.1", lowPowerModeSeen: false, language: "en-US"),
                        settings: .init(theme: "paper", lettering: "openDyslexic", textSize: "medium", quietStop: "fiveMinutes"),
                        sentAt: at(9000), conversations: conversations)
     }
@@ -355,6 +355,8 @@ final class BetaFeedbackTests: XCTestCase {
         var r = conversation()
         r.captionUpdate(text: "hello there", isFinal: true, speaker: 0, lagSeconds: 0.6, at: at(1.8))
         r.audioLevel(-40); r.thermal(.fair)
+        r.captioningIn(.init(captionLanguage: "en-US", captionLanguageChosen: false,
+                             faceToFace: .init(owner: "en-US", partner: "es-ES"), build: "11"))
         r.rate(8, note: "Lost it when the waiter talked fast")
         r.captioningStopped(at: at(1400), battery: BatterySample(level: 0.74, charging: false), ending: .userStop)
         let data = try report([r.entry(now: at(1500))]).json(timeZone: TimeZone(identifier: "America/Denver")!)
@@ -373,7 +375,8 @@ final class BetaFeedbackTests: XCTestCase {
         let ours = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
         let schema = try XCTUnwrap(JSONSerialization.jsonObject(with: Self.schemaExample()) as? [String: Any])
         // `ending.reason` only exists for failures and `launch` may be null; everything else is always there.
-        let expected = Self.keyPaths(schema).subtracting(["conversations[].launch.fullDance", "conversations[].launch.barShown"])
+        let expected = Self.keyPaths(schema).subtracting(["conversations[].launch.fullDance", "conversations[].launch.barShown",
+                                                          "conversations[].faceToFace.owner", "conversations[].faceToFace.partner"])
         XCTAssertEqual(Self.keyPaths(ours).subtracting(["conversations[].ending.kind"]), expected.subtracting(["conversations[].ending.kind"]))
         XCTAssertTrue(String(decoding: data, as: UTF8.self).contains("\"medianDBFS\" : null"))
     }
@@ -401,6 +404,66 @@ final class BetaFeedbackTests: XCTestCase {
         json.removeValue(forKey: "engine"); json.removeValue(forKey: "engineFallback")
         let old = try JSONDecoder().decode(ConversationRecorder.self, from: JSONSerialization.data(withJSONObject: json))
         XCTAssertNil(old.entry(now: at(1)).engine)
+    }
+
+    // MARK: which language, which mode, which build (#288)
+
+    func testEachConversationSaysItsCaptionLanguageModeAndBuild() {
+        // The demo phone (#273): en-US phone, a Spanish caption language saved in Seal, recorded on build 9.
+        var r = conversation()
+        r.captioningIn(.init(captionLanguage: "es-ES", captionLanguageChosen: true, faceToFace: nil, build: "9"))
+        let e = r.entry(now: at(60))
+        XCTAssertEqual(e.captionLanguage, "es-ES")
+        XCTAssertEqual(e.captionLanguageChosen, true, "picked in Seal, not following the phone")
+        XCTAssertNil(e.faceToFace)
+        XCTAssertEqual(e.build, "9", "the build that recorded it, not the one that sends it")
+    }
+
+    func testFaceToFaceWithOneHalfPickedSaysWhichHalf() throws {
+        var r = conversation()
+        r.captioningIn(.init(captionLanguage: "en-US", captionLanguageChosen: false,
+                             faceToFace: .init(owner: nil, partner: "es-ES"), build: "11"))
+        let e = r.entry(now: at(60))
+        XCTAssertEqual(e.faceToFace, .init(owner: nil, partner: "es-ES"))
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: report([e]).json()) as? [String: Any])
+        let conv = try XCTUnwrap((json["conversations"] as? [[String: Any]])?.first)
+        let f2f = try XCTUnwrap(conv["faceToFace"] as? [String: Any])
+        XCTAssertTrue(f2f["owner"] is NSNull, "a half not picked is null, not missing")
+        XCTAssertEqual(f2f["partner"] as? String, "es-ES")
+    }
+
+    func testTheLatestStretchSaysWhatItRanIn() {
+        var r = conversation()
+        r.captioningIn(.init(captionLanguage: "en-US", captionLanguageChosen: false, faceToFace: nil, build: "11"))
+        r.captioningStopped(at: at(30), battery: nil, ending: .userStop)
+        r.captioningStarted(at: at(40), battery: nil)
+        r.captioningIn(.init(captionLanguage: "fr-FR", captionLanguageChosen: true, faceToFace: nil, build: "11"))
+        XCTAssertEqual(r.entry(now: at(50)).captionLanguage, "fr-FR", "like the engine: the last one used")
+    }
+
+    func testLanguageModeAndBuildSurviveARelaunch() throws {
+        var r = conversation()
+        r.captioningIn(.init(captionLanguage: "ja-JP", captionLanguageChosen: true,
+                             faceToFace: .init(owner: "en-US", partner: "ja-JP"), build: "11"))
+        let back = try JSONDecoder().decode(ConversationRecorder.self, from: JSONEncoder().encode(r))
+        XCTAssertEqual(back.entry(now: at(5)), r.entry(now: at(5)))
+    }
+
+    func testARecorderSavedByBuildTenHasNullsRatherThanGuesses() throws {
+        var r = conversation()
+        r.captioningIn(.init(captionLanguage: "es-ES", captionLanguageChosen: true, faceToFace: nil, build: "10"))
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(r)) as? [String: Any])
+        json.removeValue(forKey: "captioningIn")
+        let old = try JSONDecoder().decode(ConversationRecorder.self, from: JSONSerialization.data(withJSONObject: json))
+        let e = old.entry(now: at(5))
+        XCTAssertNil(e.captionLanguage); XCTAssertNil(e.captionLanguageChosen); XCTAssertNil(e.faceToFace); XCTAssertNil(e.build)
+        let data = try report([e]).json()
+        XCTAssertTrue(String(decoding: data, as: UTF8.self).contains("\"build\" : null"), "every key written, null when unknown")
+    }
+
+    func testThePhonesOwnLanguageIsInTheReport() throws {
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: report([]).json()) as? [String: Any])
+        XCTAssertEqual((json["device"] as? [String: Any])?["language"] as? String, "en-US")
     }
 
     func testFileName() {
