@@ -92,6 +92,54 @@ Lag: the engine's own word lag (ADR 0015). Apple's is negative on the replay pat
 at its start (design doc, Scores); compare replay arms with each other. Finished-line lag (mic path only): p50
 1.01 s, p95 1.99 s.
 
+## The owner's session data (2026-11-10): the caption language, not the engine
+
+The owner shared the demo phone's beta report and the saved transcript of the bad conversation (kept private;
+summarised here). The report says **1.1.0 (9)**, TestFlight, iPhone18,1, iOS 27.2; the phone's language and region
+are English (United States). Quiet jazz in the background, two people taking turns.
+
+- **All six sessions (Oct 30 to Nov 6) ran Apple's engine with `engineFallback = "locale"`.** Parakeet never ran,
+  and no session fell back for memory. In build 9, `locale` means the caption language's language code wasn't
+  English (`EngineFallbackPolicy.engine`), so Apple's engine was told to hear another language.
+- **The report's build is the build when it was sent** (`CFBundleVersion` at send time); sessions don't record their
+  own. The phone was on build 9 on Nov 10, so the bad Nov 6 session was very likely build 9, not build 10.
+- **The transcript has the shape of English heard as another language**: English-like fragments with consonants and
+  whole words missing, under half the words recognisable, rated 1 of 10.
+
+**Reproduced on the Mac** (8 validation conversations, 4.2 min, mic path; `scripts/system-replay/run-locale.sh`;
+[whole-system-replay-locale-2026-11-10.json](whole-system-replay-locale-2026-11-10.json)): English speech with the
+caption language set to another language.
+
+| Caption language | Build 9 (Apple, `locale`) | Build 10 (Parakeet) |
+|---|---|---|
+| en-US | 18.2% (Apple forced) / 20.1% (Parakeet) | 18.1% |
+| es-ES | 56.2% | 19.4% |
+| pt-BR | 71.5% | 20.3% |
+| fr-FR | 76.2% | 18.6% |
+| de-DE | 67.2% | 18.1% |
+| it-IT | 52.0% | 19.7% |
+
+A wrong caption language costs build 9 **34 to 58 points** (paired against English, every CI excludes 0) and gives
+the same kind of text as the phone's: English-shaped words with letters missing ("somime", "mywe"). Build 10 is
+unaffected (0.0 to +2.2 points), because since #234 it sends every language Parakeet covers to Parakeet, and Parakeet
+takes no language setting: it hears the language. Dutch and Czech couldn't be tested (Apple has no transcription
+model for them on this Mac). The jazz was not mixed in; the pattern matches without it.
+
+**How a non-English caption language gets there on an en-US phone (build 9 code):** following the device would give
+en-US, so it was **saved**. Only two things save it: a pick in Settings › Caption language
+(`CaptionLanguageCenter.choose`) and first run's language question (`FirstRunView.chooseLanguage`, asked only when the
+device's language doesn't settle it). It is kept in `UserDefaults` (`captionLanguage`), which survives every TestFlight
+and App Store update, so a pick made while trying another language in any build since #37 stays in force until it is
+changed or the app is deleted. Nothing on the caption screen shows it. A second path: face to face with one half
+picked runs one-way captions in that half's language (#208, `ContentView` `.one(_, locale)`), in memory only. The
+report records neither the caption language nor face to face, so it can't say which; Seal › Settings › Caption
+language on the phone can.
+
+**Also found:** the Oct 31 session reports 13,558.4 minutes with no ending. That is exactly the time from its start
+to the report being sent: a captioning segment that never got its stop (the app closed while captioning and the
+conversation was never restored) keeps counting until the report is made (`ConversationRecorder.entry(now:)`). A
+reporting bug, not a 9-day session.
+
 ## Room noise (2026-11-10)
 
 The same 40 conversations mixed into real rooms (DEMAND: restaurant, cafeteria, living room, car; one room per
@@ -160,6 +208,6 @@ difference is paired on the same conversations.
 - **Noise: done** (above). It doesn't explain the demo.
 - **The device run** (design doc): build 10 on the demo phone, with translation, ear and voice match as the owner
   had them, the beta report's `engine` and `engineFallback` logged.
-- **The owner's session data** (design doc slot).
+- **The owner's session data: done** (above). The demo was the caption language.
 - **Separate tickets worth opening:** a memory warning switches the whole session to Apple silently; the live path's
   chunk boundaries cost Parakeet 2.6–3.4 points; FluidAudio is not pinned for the app (design doc, Builds).

@@ -150,7 +150,8 @@ The owner's report is about an iPhone, so the Mac result can only narrow it down
 
 ## Owner's build 10 session data (slot)
 
-> To be filled when Gil shares it. Wanted, per session: the beta report JSON (it carries `engine` and
+> Received 2026-11-10; findings in [whole-system-replay-results.md](whole-system-replay-results.md) ("The owner's session
+> data"). Originally: Wanted, per session: the beta report JSON (it carries `engine` and
 > `engineFallback`, ADR 0023), the device, iOS version, caption language, translation / ear / voice-match settings,
 > and, if there is one, a recording of the room. With a recording: replay it through 1.0 (5), 1.1.0 (9), 1.1.0 (10)
 > and the engines alone with `run-ab.sh`, and find where the accuracy went.
