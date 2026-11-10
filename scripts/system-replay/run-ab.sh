@@ -17,6 +17,7 @@ set -eu
 CONV="$1"
 SPLIT="$2"
 OUT="$3"
+ARMS="${SEAL_ARMS:-A B C D}"   # e.g. SEAL_ARMS="A C D" for the noise runs
 TREES="${SEAL_REPLAY_TREES:-$HOME/seal-replay/trees}"
 P="${SEAL_PARAKEET:-$HOME/edacc-eval/models/release/ultra-pal6/ParakeetUltra}"
 D="${SEAL_DIARIZER:-$HOME/Developer/clarity-captions/Apps/Spike/Resources/Models/Sortformer_v2.1.mlmodelc}"
@@ -36,17 +37,28 @@ for l in open(sys.argv[1]):
 
 # One process per session, every arm: a session that doesn't give everything back at Stop (1.0's Stop takes minutes on
 # a Mac with no microphone) can't hold a speech recognizer into the next one. Resumable: a finished session is skipped.
+# Before each session, wait until the kernel's memory pressure is normal (1): a warning-level host makes build 10 leave
+# Parakeet (memoryWarning), which on this Mac says more about the other jobs running than about the app. The gate
+# looks only at the host, never at a result.
+calm() {
+    while [ "$(sysctl -n kern.memorystatus_vm_pressure_level 2>/dev/null || echo 1)" != 1 ]; do
+        echo "run-ab: memory pressure not normal, waiting" >&2; sleep 60
+    done
+}
 arm() {
+    case " $ARMS " in *" ${1} "*) ;; *) return 0 ;; esac
+    shift
     bin="$1"; dir="$OUT/$2"; shift 2
     mkdir -p "$dir"
     python3 -I -c 'import json,sys; [print(json.loads(l)["id"], json.loads(l)["file"]) for l in open(sys.argv[1])]' "$LIST" |
     while read -r id file; do
         [ -f "$dir/$id.json" ] && continue
+        calm
         "$bin" run --audio "$CONV/$file" --out "$dir/$id.json" "$@" 2>/dev/null | grep SYSTEM-REPLAY || echo "run-ab: $2 $id failed" >&2
     done
 }
-arm "$B1"  A-1.0-apple             --diarizer "$D" --path replaying --label "build-1.0-5@4e7f55a"
-arm "$B10" B-10-parakeet           --diarizer "$D" --parakeet "$P" --path replaying --label "build-1.1.0-10@be128a5"
-arm "$B10" C-10-apple              --diarizer "$D" --parakeet "$P" --engine apple --path replaying --label "build-1.1.0-10@be128a5"
-arm "$B10" D-10-parakeet-source    --diarizer "$D" --parakeet "$P" --path source --tail 0 --label "build-1.1.0-10@be128a5"
+arm A "$B1"  A-1.0-apple             --diarizer "$D" --path replaying --label "build-1.0-5@4e7f55a"
+arm B "$B10" B-10-parakeet           --diarizer "$D" --parakeet "$P" --path replaying --label "build-1.1.0-10@be128a5"
+arm C "$B10" C-10-apple              --diarizer "$D" --parakeet "$P" --engine apple --path replaying --label "build-1.1.0-10@be128a5"
+arm D "$B10" D-10-parakeet-source    --diarizer "$D" --parakeet "$P" --path source --tail 0 --label "build-1.1.0-10@be128a5"
 echo "run-ab: done" >&2
