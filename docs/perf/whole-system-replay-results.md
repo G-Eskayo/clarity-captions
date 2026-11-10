@@ -25,9 +25,9 @@ Raw scores: [whole-system-replay-results-2026-11-09.json](whole-system-replay-re
    The switched sessions did not lose measurably more text than 1.0 (B: +1.4, CI −2.0 to +5.8; D: +2.0, CI −1.7
    to +10.3; 8 and 4 conversations, too few to say more).
 
-So the Mac rules out, for clean audio: build 10's code outside the engine, and a Parakeet that is plainly worse
+So the Mac rules out, for clean audio (and, below, for room noise): build 10's code outside the engine, and a Parakeet that is plainly worse
 than Apple on the live path. It leaves the things only the phone and the room have (see the design doc's device-run
-list): room noise, the phone's mic and audio session, translation into the ear, voice match, real memory pressure.
+list): the phone's mic and audio session, translation into the ear, voice match, real memory pressure.
 
 ## What the live path gets wrong (one conversation, a lead, not a result)
 
@@ -92,10 +92,72 @@ Lag: the engine's own word lag (ADR 0015). Apple's is negative on the replay pat
 at its start (design doc, Scores); compare replay arms with each other. Finished-line lag (mic path only): p50
 1.01 s, p95 1.99 s.
 
+## Room noise (2026-11-10)
+
+The same 40 conversations mixed into real rooms (DEMAND: restaurant, cafeteria, living room, car; one room per
+conversation by a hash of its id) at 10 dB and 0 dB SNR, the design fixed before the run (design doc, Noise). Arms
+A, C, D, each session started only at normal memory pressure. Scores in
+[whole-system-replay-noise-10db-2026-11-10.json](whole-system-replay-noise-10db-2026-11-10.json) and
+[…-0db-…](whole-system-replay-noise-0db-2026-11-10.json); the clean A and D runs are scored alongside, so every
+difference is paired on the same conversations.
+
+1. **Noise doesn't make build 10 worse than 1.0; it makes 1.0 worse faster.** Build 10 (mic path) minus 1.0:
+   −1.6 points at 10 dB (CI −3.3 to +0.2), **−3.8 at 0 dB (CI −5.5 to −1.9)**. The room-noise explanation for the
+   demo, Parakeet's live path falling apart in a room where Apple's holds, is ruled out on this data.
+2. **Build 10 on Apple's engine gives 1.0's text word for word** at both levels (40 of 40 each).
+3. **Both are poor in a loud room.** 0 dB costs 1.0 21.1 points and build 10 17.3. By room at 0 dB: restaurant
+   76.8% (1.0) vs 68.6% (10), cafeteria 49.6% vs 48.2%, living room 32.6% vs 28.5%, car 16.3% vs 14.3% (8, 8, 16
+   and 8 conversations; read as direction, not as per-room results).
+4. **No session left Parakeet** at either level: with the memory gate on, the clean run's `memoryWarning` switches
+   did not recur, which supports reading them as this Mac's swap.
+5. **Build 10's finished lines come later in noise:** p95 1.99 s clean, 2.76 s at 10 dB, 4.32 s at 0 dB (p50 1.01,
+   1.03, 1.21 s). Apple's line lag isn't measured on the replay path, so this has no 1.0 comparison yet.
+
+### 10 dB
+
+| Arm | WER | 95% CI | Words | Left Parakeet | Fallbacks | Word lag p50 / p95 | Finished-line lag p50 / p95 |
+|---|---|---|---|---|---|---|---|
+| A 1.0 Apple, clean | 18.3% | 15.7% to 20.9% | 4922 | 0 | none | -0.07 s / -0.04 s | n/a / n/a |
+| D 10 Parakeet mic path, clean | 18.3% | 15.9% to 21.1% | 4922 | 4 | memoryWarning x4 | 0.28 s / 0.96 s | 1.01 s / 1.99 s |
+| A 1.0 Apple, 10 dB | 23.5% | 19.4% to 27.8% | 4922 | 0 | none | -0.06 s / -0.01 s | n/a / n/a |
+| C 10 Apple, 10 dB | 23.5% | 19.4% to 27.8% | 4922 | 0 | none | -0.07 s / -0.01 s | n/a / n/a |
+| D 10 Parakeet mic path, 10 dB | 21.9% | 18.4% to 25.3% | 4922 | 0 | none | 0.32 s / 0.98 s | 1.03 s / 2.76 s |
+| Difference | WER points | 95% CI |
+|---|---|---|
+| D 10 Parakeet mic path, clean minus A 1.0 Apple, clean | +0.1 | -1.2 to +1.6 |
+| A 1.0 Apple, 10 dB minus A 1.0 Apple, clean | +5.3 | +2.8 to +7.6 |
+| C 10 Apple, 10 dB minus A 1.0 Apple, clean | +5.3 | +2.8 to +7.6 |
+| D 10 Parakeet mic path, 10 dB minus A 1.0 Apple, clean | +3.6 | +1.5 to +6.0 |
+| A 1.0 Apple, 10 dB minus D 10 Parakeet mic path, clean | +5.2 | +2.2 to +8.2 |
+| C 10 Apple, 10 dB minus D 10 Parakeet mic path, clean | +5.2 | +2.2 to +8.2 |
+| D 10 Parakeet mic path, 10 dB minus D 10 Parakeet mic path, clean | +3.6 | +1.2 to +5.7 |
+| C 10 Apple, 10 dB minus A 1.0 Apple, 10 dB | +0.0 | +0.0 to +0.0 |
+| D 10 Parakeet mic path, 10 dB minus A 1.0 Apple, 10 dB | -1.6 | -3.3 to +0.2 |
+| D 10 Parakeet mic path, 10 dB minus C 10 Apple, 10 dB | -1.6 | -3.3 to +0.2 |
+### 0 dB
+
+| Arm | WER | 95% CI | Words | Left Parakeet | Fallbacks | Word lag p50 / p95 | Finished-line lag p50 / p95 |
+|---|---|---|---|---|---|---|---|
+| A 1.0 Apple, clean | 18.3% | 15.7% to 20.9% | 4922 | 0 | none | -0.07 s / -0.04 s | n/a / n/a |
+| D 10 Parakeet mic path, clean | 18.3% | 15.9% to 21.1% | 4922 | 4 | memoryWarning x4 | 0.28 s / 0.96 s | 1.01 s / 1.99 s |
+| A 1.0 Apple, 0 dB | 39.4% | 30.1% to 50.7% | 4922 | 0 | none | -0.06 s / -0.01 s | n/a / n/a |
+| C 10 Apple, 0 dB | 39.4% | 30.1% to 50.7% | 4922 | 0 | none | -0.06 s / -0.05 s | n/a / n/a |
+| D 10 Parakeet mic path, 0 dB | 35.6% | 26.4% to 45.4% | 4922 | 0 | none | 0.35 s / 1.09 s | 1.21 s / 4.32 s |
+| Difference | WER points | 95% CI |
+|---|---|---|
+| D 10 Parakeet mic path, clean minus A 1.0 Apple, clean | +0.1 | -1.2 to +1.6 |
+| A 1.0 Apple, 0 dB minus A 1.0 Apple, clean | +21.1 | +13.0 to +30.4 |
+| C 10 Apple, 0 dB minus A 1.0 Apple, clean | +21.1 | +13.0 to +30.4 |
+| D 10 Parakeet mic path, 0 dB minus A 1.0 Apple, clean | +17.4 | +9.6 to +25.5 |
+| A 1.0 Apple, 0 dB minus D 10 Parakeet mic path, clean | +21.1 | +12.5 to +31.2 |
+| C 10 Apple, 0 dB minus D 10 Parakeet mic path, clean | +21.1 | +12.5 to +31.2 |
+| D 10 Parakeet mic path, 0 dB minus D 10 Parakeet mic path, clean | +17.3 | +9.2 to +26.2 |
+| C 10 Apple, 0 dB minus A 1.0 Apple, 0 dB | +0.0 | +0.0 to +0.0 |
+| D 10 Parakeet mic path, 0 dB minus A 1.0 Apple, 0 dB | -3.8 | -5.5 to -1.9 |
+| D 10 Parakeet mic path, 0 dB minus C 10 Apple, 0 dB | -3.8 | -5.5 to -1.9 |
 ## Next
 
-- **Noise.** Mix room noise (restaurant, TV, car) into these same recordings and rerun A, C, D: the cheapest test of
-  whether Parakeet's live path degrades faster than Apple's in a room. Needs a noise set with a licence that allows it.
+- **Noise: done** (above). It doesn't explain the demo.
 - **The device run** (design doc): build 10 on the demo phone, with translation, ear and voice match as the owner
   had them, the beta report's `engine` and `engineFallback` logged.
 - **The owner's session data** (design doc slot).
