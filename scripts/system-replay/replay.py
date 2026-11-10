@@ -11,6 +11,8 @@ number for the same clips are scored by one rule. Stdlib only, plus edacc_eval.
 from __future__ import annotations
 
 import argparse
+import array
+import hashlib
 import json
 import math
 import random
@@ -101,6 +103,83 @@ def stitch(shard: Path, out: Path, split: str, gap_seconds: float, tail_seconds:
         convs.append(c)
     (out / f"conversations-{split}.jsonl").write_text("".join(json.dumps(c) + "\n" for c in convs))
     return convs
+
+
+# --- noise --------------------------------------------------------------------------------------------------------
+
+def noise_env(conversation_id: str, envs: list[str], seed: int = 273) -> str:
+    """Which room a conversation is mixed into: a hash of its id, so it never depends on WER, order or the run."""
+    h = hashlib.sha256(f"{seed}:{conversation_id}".encode()).digest()
+    return envs[int.from_bytes(h[:8], "big") % len(envs)]
+
+
+def _pcm16(path: Path) -> array.array:
+    with wave.open(str(path)) as w:
+        if w.getnchannels() != 1 or w.getsampwidth() != 2 or w.getframerate() != RATE:
+            raise ValueError(f"{path}: want 16 kHz 16-bit mono")
+        a = array.array("h", w.readframes(w.getnframes()))
+    if sys.byteorder == "big":
+        a.byteswap()
+    return a
+
+
+def mix(conversations: Path, noise_dir: Path, envs: list[str], out: Path, snr_db: float, split: str,
+        seed: int = 273) -> list[dict]:
+    """Each stitched conversation mixed with real room noise (noise_dir/<ENV>.wav, 16 kHz mono) at `snr_db`, the
+    speech power measured over its segments only and the noise power over the whole excerpt. The noise runs through
+    the gaps and tail too, so a room is never digitally silent. The excerpt starts at a seeded offset and loops if
+    the recording is longer. References and segment times are unchanged. Writes <id>.16k.wav and the conversations
+    file; `to48k` makes the replay copies on a Mac. Levels and rooms are fixed before any scored run (design doc)."""
+    src = conversations.parent
+    convs = [json.loads(l) for l in conversations.read_text().splitlines() if l.strip()]
+    noises = {e: _pcm16(noise_dir / f"{e}.wav") for e in envs}
+    out.mkdir(parents=True, exist_ok=True)
+    result = []
+    for c in convs:
+        x = _pcm16(src / c["file16k"])
+        env = noise_env(c["id"], envs, seed)
+        n = noises[env]
+        offset = random.Random(f"{seed}:{c['id']}:offset").randrange(len(n))
+        excerpt = [n[(offset + i) % len(n)] for i in range(len(x))]
+        idx = [i for s in c["segments"] for i in range(int(s["start"] * RATE), min(len(x), int(s["end"] * RATE)))]
+        ps = sum(x[i] * x[i] for i in idx) / len(idx)
+        pn = sum(v * v for v in excerpt) / len(excerpt)
+        if ps == 0 or pn == 0:
+            raise ValueError(f"{c['id']}: silent speech or noise, can't set an SNR")
+        g = math.sqrt(ps / (pn * 10 ** (snr_db / 10)))
+        y = array.array("h")
+        clipped = 0
+        for a, b in zip(x, excerpt):
+            v = round(a + g * b)
+            if v > 32767 or v < -32768:
+                clipped += 1
+                v = max(-32768, min(32767, v))
+            y.append(v)
+        if sys.byteorder == "big":
+            y.byteswap()
+        with wave.open(str(out / c["file16k"]), "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(RATE)
+            w.writeframes(y.tobytes())
+        c = dict(c, noise={"env": env, "snr_db": snr_db, "offset_seconds": round(offset / RATE, 3),
+                           "gain": round(g, 6), "clipped_samples": clipped})
+        result.append(c)
+    (out / f"conversations-{split}.jsonl").write_text("".join(json.dumps(c) + "\n" for c in result))
+    return result
+
+
+def to48k(conversations: Path) -> int:
+    """The 48 kHz Float32 replay copy of every conversation's 16 kHz file (afconvert, macOS), as the stitcher does."""
+    d = conversations.parent
+    k = 0
+    for l in conversations.read_text().splitlines():
+        if l.strip():
+            c = json.loads(l)
+            subprocess.run(["afconvert", "-f", "WAVE", "-d", "LEF32@48000", "-c", "1", str(d / c["file16k"]),
+                            str(d / c["file"])], check=True)
+            k += 1
+    return k
 
 
 # --- scoring ----------------------------------------------------------------------------------------------------
@@ -293,6 +372,15 @@ def main(argv: list[str]) -> int:
     s.add_argument("--gap", type=float, default=1.0)
     s.add_argument("--tail", type=float, default=3.0)
     s.add_argument("--48k", dest="to48k", action="store_true")
+    m = sub.add_parser("mix")
+    m.add_argument("--conversations", type=Path, required=True)
+    m.add_argument("--noise", type=Path, required=True, help="dir of <ENV>.wav, 16 kHz mono")
+    m.add_argument("--env", action="append", required=True)
+    m.add_argument("--snr", type=float, required=True)
+    m.add_argument("--split", choices=["test", "validation"], required=True)
+    m.add_argument("--out", type=Path, required=True)
+    t = sub.add_parser("to48k")
+    t.add_argument("--conversations", type=Path, required=True)
     c = sub.add_parser("score")
     c.add_argument("--conversations", type=Path, required=True)
     c.add_argument("--arm", action="append", default=[], help="NAME=SESSIONS_DIR")
@@ -306,6 +394,18 @@ def main(argv: list[str]) -> int:
             return 2
         convs = stitch(a.shard, a.out, a.split, a.gap, a.tail, to48k=a.to48k)
         print(f"{len(convs)} conversations, {sum(c['audio_seconds'] for c in convs) / 60:.1f} min -> {a.out}")
+        return 0
+    if a.cmd == "mix":
+        convs = mix(a.conversations, a.noise, a.env, a.out, a.snr, a.split)
+        print(f"{len(convs)} conversations at {a.snr:+.0f} dB -> {a.out}; "
+              f"rooms {dict(Counter(c['noise']['env'] for c in convs))}; "
+              f"clipped samples {sum(c['noise']['clipped_samples'] for c in convs)}")
+        return 0
+    if a.cmd == "to48k":
+        if not shutil.which("afconvert"):
+            print("afconvert not found (macOS only)", file=sys.stderr)
+            return 2
+        print(f"{to48k(a.conversations)} files converted")
         return 0
     arms = [(x.split("=", 1)[0], Path(x.split("=", 1)[1])) for x in a.arm]
     res = score(a.conversations, arms, a.engine_only)

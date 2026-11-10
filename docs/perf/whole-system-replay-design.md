@@ -112,6 +112,23 @@ python3 -I scripts/system-replay/replay.py score --conversations ~/seal-replay/c
 Tests: `swift test --package-path Packages/SystemReplay` (pacing, session log) and
 `python -m pytest scripts/system-replay` (stitching, scoring, paired bootstrap).
 
+## Noise (fixed 2026-11-10, before any noisy run was scored)
+
+The clean run left room noise as the first untested difference between the Mac and the demo. `replay.py mix` puts
+each stitched conversation into a real room:
+
+- **Noise:** DEMAND (Thiemann, Ito, Vincent; [Zenodo 1227121](https://zenodo.org/records/1227121); the page states
+  CC BY-SA 3.0 in its description and CC BY 4.0 under Rights; either allows mixing for an internal test with
+  credit, and nothing mixed is published). Channel 1 of the 16-channel array (one mic, as a phone has), 16 kHz.
+- **Rooms:** PRESTO (restaurant), PCAFETER (cafeteria), DLIVING (living room), TCAR (car). One room per
+  conversation, from a seeded hash of its id (`noise_env`), so the room never depends on a result.
+- **Levels:** 10 dB and 0 dB SNR: speech power over the conversation's segments, noise power over the whole
+  excerpt. The noise also fills the gaps and the tail, which removes the digital-silence limit above.
+- **Excerpt:** starts at a seeded offset per conversation, loops if the recording is longer. Clipped samples are
+  counted in the conversations file.
+- **Arms:** A (1.0, Apple), C (10, forced Apple) and D (10, Parakeet, mic path) at each level, with
+  `run-ab.sh`'s binaries and flags. B is left out: D is the path the phone uses.
+
 ## What the device run needs
 
 The owner's report is about an iPhone, so the Mac result can only narrow it down. On a device:

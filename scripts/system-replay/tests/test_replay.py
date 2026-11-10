@@ -182,3 +182,70 @@ def test_by_fallback_is_empty_for_an_arm_that_never_left_parakeet():
     results = {"A": {"counts": {"C1": (1, 10)}, "left_parakeet": []},
                "B": {"counts": {"C1": (0, 10)}, "left_parakeet": []}}
     assert replay.by_fallback(results, "B", ["A"]) == {}
+
+
+# --- noise mixing -----------------------------------------------------------------------------------------------
+
+def _read(path: Path) -> list[int]:
+    with wave.open(str(path)) as w:
+        raw = w.readframes(w.getnframes())
+    return list(struct.unpack(f"<{len(raw) // 2}h", raw))
+
+
+def _power(xs: list[int]) -> float:
+    return sum(x * x for x in xs) / len(xs)
+
+
+def _mix_fixture(tmp_path: Path, noise_seconds: float = 3.0):
+    src, noise = tmp_path / "src", tmp_path / "noise"
+    src.mkdir(); noise.mkdir()
+    rate = 16_000
+    # speech 0-1 s and 2-3 s, digital silence between and after: the stitcher's shape
+    tone = [int(8000 * math.sin(2 * math.pi * 220 * i / rate)) for i in range(rate)]
+    write_wav(src / "test-EDACC-C1.16k.wav", tone + [0] * rate + tone + [0] * rate)
+    write_wav(src / "test-EDACC-C2.16k.wav", tone + [0] * rate)
+    import random as _r
+    g = _r.Random(1)
+    for env in ("PRESTO", "TCAR"):
+        write_wav(noise / f"{env}.wav", [int(g.gauss(0, 3000)) for _ in range(int(noise_seconds * rate))])
+    convs = [{"id": "test-EDACC-C1", "file16k": "test-EDACC-C1.16k.wav", "file": "test-EDACC-C1.48k.wav",
+              "reference": "a b", "audio_seconds": 4.0,
+              "segments": [{"clip_id": "x-1", "start": 0.0, "end": 1.0}, {"clip_id": "x-2", "start": 2.0, "end": 3.0}]},
+             {"id": "test-EDACC-C2", "file16k": "test-EDACC-C2.16k.wav", "file": "test-EDACC-C2.48k.wav",
+              "reference": "c", "audio_seconds": 2.0, "segments": [{"clip_id": "y-1", "start": 0.0, "end": 1.0}]}]
+    (src / "conversations-test.jsonl").write_text("".join(json.dumps(c) + "\n" for c in convs))
+    return src, noise, tone
+
+
+def test_mix_hits_the_snr_on_the_speech_and_fills_the_gaps_with_noise(tmp_path):
+    src, noise, tone = _mix_fixture(tmp_path)
+    out = tmp_path / "out"
+    convs = replay.mix(src / "conversations-test.jsonl", noise, ["PRESTO", "TCAR"], out, snr_db=5.0, split="test")
+    mixed = _read(out / "test-EDACC-C1.16k.wav")
+    clean = _read(src / "test-EDACC-C1.16k.wav")
+    added = [m - c for m, c in zip(mixed, clean)]
+    speech = [x for i, x in enumerate(clean) if i < 16_000 or 32_000 <= i < 48_000]
+    speech_noise = [x for i, x in enumerate(added) if i < 16_000 or 32_000 <= i < 48_000]
+    assert 10 * math.log10(_power(speech) / _power(speech_noise)) == pytest.approx(5.0, abs=0.3)
+    assert _power(mixed[16_000:32_000]) > 0          # the gap is a room now, not digital silence
+    assert len(mixed) == len(clean)
+    c = convs[0]
+    assert c["noise"]["env"] in ("PRESTO", "TCAR") and c["noise"]["snr_db"] == 5.0
+    assert c["reference"] == "a b" and c["segments"][1]["start"] == 2.0   # scoring inputs untouched
+    assert (out / "conversations-test.jsonl").exists()
+
+
+def test_mix_is_deterministic_and_loops_noise_shorter_than_the_recording(tmp_path):
+    src, noise, _ = _mix_fixture(tmp_path, noise_seconds=1.5)   # shorter than C1's 4 s
+    a = replay.mix(src / "conversations-test.jsonl", noise, ["PRESTO", "TCAR"], tmp_path / "a", snr_db=0.0, split="test")
+    b = replay.mix(src / "conversations-test.jsonl", noise, ["PRESTO", "TCAR"], tmp_path / "b", snr_db=0.0, split="test")
+    assert [c["noise"] for c in a] == [c["noise"] for c in b]
+    assert _read(tmp_path / "a" / "test-EDACC-C1.16k.wav") == _read(tmp_path / "b" / "test-EDACC-C1.16k.wav")
+    assert _power(_read(tmp_path / "a" / "test-EDACC-C1.16k.wav")[-8000:]) > 0   # noise still there at the end
+
+
+def test_mix_environment_depends_only_on_the_conversation_id():
+    envs = ["PRESTO", "PCAFETER", "DLIVING", "TCAR"]
+    picks = {replay.noise_env(f"test-EDACC-C{i}", envs) for i in range(40)}
+    assert picks == set(envs)                                    # all used over 40 conversations
+    assert replay.noise_env("test-EDACC-C7", envs) == replay.noise_env("test-EDACC-C7", list(envs))
