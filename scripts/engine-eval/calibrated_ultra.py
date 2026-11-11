@@ -653,7 +653,12 @@ def cmd_build(a) -> None:
     model = load_ultra(a.nemo)
     mods = palettizable(model)
     sizes = {n: int(m.weight.numel()) for n, m in mods.items()}
-    if a.bits:
+    pre = None
+    if a.prequantized:                                          # step 4: QAT weights (qat_ultra.py export)
+        pre = torch.load(a.prequantized, map_location="cpu", weights_only=False)
+        plan = pre["plan"]
+        plan_desc = f"QAT ({pre['meta'].get('plan_desc')}, step {pre['meta'].get('step')}, {pre['meta'].get('data')})"
+    elif a.bits:
         plan = {n: a.bits for n in mods}
         plan_desc = f"{a.bits}-bit everywhere"
     else:
@@ -691,6 +696,24 @@ def cmd_build(a) -> None:
         global OURS_MAX_BITS
         OURS_MAX_BITS = 0
     ours, _ = split_plan(plan)
+    if pre is not None:
+        from qat_ultra import check_packable
+
+        if set(pre["weights"]) != set(ours) or set(plan) != set(mods):
+            raise KeyError(f"{a.prequantized}: its weights/plan don't match this model's plan "
+                           f"({len(pre['weights'])} weights for {len(ours)} quantised in torch)")
+        for n, w in pre["weights"].items():
+            if tuple(w.shape) != tuple(mods[n].weight.shape):
+                raise ValueError(f"{n}: shape {tuple(w.shape)} != {tuple(mods[n].weight.shape)}")
+            check_packable(n, w, plan[n])
+            mods[n].weight.data.copy_(w.to(mods[n].weight.dtype))
+        params = dict(model.named_parameters())
+        for n, v in pre.get("free", {}).items():                 # trained, unquantised in torch (biases, norms, ...)
+            if tuple(v.shape) != tuple(params[n].shape):
+                raise ValueError(f"{n}: shape {tuple(v.shape)} != {tuple(params[n].shape)}")
+            params[n].data.copy_(v.to(params[n].dtype))
+        ours = {}                                               # already table values: nothing to cluster
+        print(f"loaded {len(pre['weights'])} QAT weights from {a.prequantized}", flush=True)
     for n in ours:
         w = mods[n].weight.data
         q = kmeans_sklearn(w, plan[n], importance=imp.get(n), workers=a.workers)
@@ -716,7 +739,8 @@ def cmd_build(a) -> None:
     pkg = work / "Encoder.mlpackage"
     q.save(str(pkg))
     del q
-    how = ("calibrated sensitive k-means (exact 1-D k-means weighted by Fisher importance from the TDT loss, "
+    how = ("quantisation-aware training on LibriSpeech (CC BY 4.0), packed as trained" if pre is not None else
+           "calibrated sensitive k-means (exact 1-D k-means weighted by Fisher importance from the TDT loss, "
            f"{a.fisher_clips} held-out calibration clips of 1-{a.fisher_max_seconds:g} s)" if a.calibrated else "k-means, data-free")
     method = (f"{plan_desc}; {how}; per grouped channel (group {GROUP}); {avg:.2f} bits per encoder weight on average "
               f"(converter-folded weights at {max(plan.values())} bits); coremltools {ct.__version__}; encoder only, "
@@ -876,6 +900,7 @@ def main() -> None:
             s.add_argument("--low", type=int, default=4)
             s.add_argument("--high", type=int, default=6)
             s.add_argument("--calibrated", action="store_true")
+            s.add_argument("--prequantized", type=Path, help="QAT weights from qat_ultra.py export (step 4)")
             s.add_argument("--workers", type=int, default=8)
             s.add_argument("--coreml-only", action="store_true", help="control: no torch-side quantisation")
             s.add_argument("--no-compile", action="store_true", help="stop at the packed .mlpackage (Linux)")
