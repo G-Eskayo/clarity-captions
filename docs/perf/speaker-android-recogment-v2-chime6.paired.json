@@ -1,0 +1,28 @@
+{
+ "base": "fp16",
+ "der_bare_diff": {
+  "ci95": [
+   0.05592673064155951,
+   0.09913993227398232
+  ],
+  "value": 0.07621106430327707
+ },
+ "der_live_diff": {
+  "ci95": [
+   0.008853943253136987,
+   0.038381305846273084
+  ],
+  "value": 0.0234412166160215
+ },
+ "engine": "recogment-v2",
+ "method": "paired percentile bootstrap over recordings, 1000 resamples, seed 271",
+ "monologue_split_rate_diff": {
+  "ci95": [
+   -0.06578947368421051,
+   0.04929577464788737
+  ],
+  "value": 0.0
+ },
+ "recordings": 31,
+ "set": "chime6"
+}

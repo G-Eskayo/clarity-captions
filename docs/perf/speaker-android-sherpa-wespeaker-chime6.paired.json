@@ -1,0 +1,28 @@
+{
+ "base": "fp16",
+ "der_bare_diff": {
+  "ci95": [
+   0.2081287083887442,
+   0.2651243360032528
+  ],
+  "value": 0.2364546326789928
+ },
+ "der_live_diff": {
+  "ci95": [
+   0.1879536367689732,
+   0.25610098437365514
+  ],
+  "value": 0.2216623093733277
+ },
+ "engine": "sherpa-wespeaker",
+ "method": "paired percentile bootstrap over recordings, 1000 resamples, seed 271",
+ "monologue_split_rate_diff": {
+  "ci95": [
+   0.021126760563380254,
+   0.25625
+  ],
+  "value": 0.15032679738562094
+ },
+ "recordings": 31,
+ "set": "chime6"
+}

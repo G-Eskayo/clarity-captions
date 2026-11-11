@@ -54,6 +54,9 @@ the comparison test in its ticket. Confidence follows the evidence log (E14–E1
 - **Test (#160):** the #276 real-voice scoreboard (AMI and CHiME-6 test split, DER with CIs, calibration off-limits),
   run through a Python port of the app's live speaker path. The port matches the app's Core ML run on v2.1 weights
   (99.0% of frames, 46 of 47 final labels). It replaces the #91 clips in `docs/perf/speaker-label-stability.md`.
+- **Result (2026-11-11):** Sortformer v2 ONNX is within the CI of the shipped v2.1 on AMI (−1.0 points, −3.2 to
+  +1.0) and 2.3 points worse on CHiME-6 (+0.9 to +3.8). Untuned sherpa-onnx is far behind (about 65% DER). Phone speed
+  not measured. `docs/perf/speaker-android-engines.md`.
 
 ## Sound labels
 
