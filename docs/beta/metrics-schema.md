@@ -12,7 +12,7 @@ the tester's own optional note.
 {
   "schema": 1,
   "app": { "version": "1.0", "build": "42", "environment": "sandbox" },
-  "device": { "model": "iPhone15,4", "os": "iOS 26.1", "lowPowerModeSeen": false },
+  "device": { "model": "iPhone15,4", "os": "iOS 26.1", "lowPowerModeSeen": false, "language": "en-US" },
   "settings": { "theme": "paper", "lettering": "openDyslexic", "textSize": "large", "quietStop": "fiveMinutes" },
   "sentAt": "2026-10-12T18:04:00-06:00",
   "conversations": [
@@ -33,7 +33,11 @@ the tester's own optional note.
       "micLevel": { "medianDBFS": -38.0, "quietFraction": 0.12 },
       "launch": { "fullDance": false, "barShown": false },
       "engine": "parakeet-ultra-pal6",
-      "engineFallback": null
+      "engineFallback": null,
+      "captionLanguage": "en-US",
+      "captionLanguageChosen": false,
+      "faceToFace": { "owner": "en-US", "partner": "es-ES" },
+      "build": "11"
     }
   ]
 }
@@ -54,6 +58,10 @@ the tester's own optional note.
 | `battery` | Battery drop scaled to 30 minutes; highest `ProcessInfo.thermalState` | `UIDevice.batteryLevel`, `ProcessInfo` |
 | `micLevel` | Room loudness summary, never audio | `AudioLevel`, `ListeningActivityTracker` |
 | `engine`, `engineFallback` | Which recognizer captioned the conversation (`parakeet-ultra-pal6` or `apple-speechanalyzer`; the last one used, if it switched) and why it left Parakeet (`loadFailed`, `memoryWarning`, `thermalCritical`, `noWordsFromSpeech`, `lowMemory`, `locale`, `repeatedFallbacks`, `modelMissing`), else `null`. Added for 1.1 build 7 (ADR 0025); additive, still schema 1 | `TranscriptionEngine.engineName` / `fallbackReason` via `CaptionUpdate` |
+| `captionLanguage`, `captionLanguageChosen` | The caption language setting (BCP-47) the latest stretch ran with, and whether it was picked in Seal (Settings › Caption language or first run) rather than following the phone. Added for 1.1 build 11 (#288); additive, still schema 1; `null` for conversations recorded by build 10 or earlier | `CaptionLanguageCenter.current` / `followsDevice` |
+| `faceToFace` | Face to face: each half's picked language (`owner` is her half), `null` for a half not picked; the whole field is `null` when face to face was off. With one half picked, that half's language captions everything (#208). Build 11 (#288) | `FaceToFaceSplit.captions` |
+| `build` | The build that recorded this conversation. `app.build` is the build that sent the report, which can be later (#288) | `CFBundleVersion` at Start |
+| `device.language` | The phone's first preferred language (BCP-47), to set beside `captionLanguage`. Build 11 (#288) | `Locale.preferredLanguages` |
 
 Size: about 1 KB per conversation, with no cap until sent (ADR 0023), so even 1,000 unsent conversations make a
 report of about 1 MB, well within an iMessage attachment.

@@ -161,7 +161,9 @@ final class CaptionModel: ObservableObject {
             stream.breakLine()
         case .listening:
             startActivityLoop()
-            beta.captioningStarted(session)
+            beta.captioningStarted(session, captionLanguage: CaptionLanguageCenter.shared.current,
+                                   chosen: !CaptionLanguageCenter.shared.followsDevice,
+                                   faceToFace: faceToFace ? (split.language(of: .owner), split.language(of: .partner)) : nil)
         case .idle, .failed, .pausedQuiet:
             if faceToFace {
                 // #208: the session's lines keep their halves. Captions that stopped on their own (the quiet stop, an

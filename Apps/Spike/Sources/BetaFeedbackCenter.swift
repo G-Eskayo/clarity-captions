@@ -118,9 +118,22 @@ final class BetaFeedbackCenter: ObservableObject {
         update(session) { $0.startPressed(at: Date(), sinceLaunch: sinceLaunch, launch: launchFacts) }
     }
 
-    func captioningStarted(_ session: ConversationSession) {
-        update(session) { $0.captioningStarted(at: Date(), battery: Self.battery()) }
+    /// Captions are running, in this language and mode (#288: the report says which, and which build recorded it).
+    func captioningStarted(_ session: ConversationSession, captionLanguage: Locale, chosen: Bool,
+                           faceToFace halves: (owner: Locale?, partner: Locale?)?) {
+        guard isOn else { return }
+        let context = CaptioningContext(
+            captionLanguage: CaptionLanguage.bcp47(captionLanguage), captionLanguageChosen: chosen,
+            faceToFace: halves.map { FaceToFaceLanguages(owner: $0.owner.map(CaptionLanguage.bcp47),
+                                                         partner: $0.partner.map(CaptionLanguage.bcp47)) },
+            build: Self.build)
+        update(session) {
+            $0.captioningStarted(at: Date(), battery: Self.battery())
+            $0.captioningIn(context)
+        }
     }
+
+    private static var build: String { Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?" }
 
     func captionUpdate(_ session: ConversationSession, _ u: CaptionUpdate) {
         guard isOn else { return }
@@ -223,9 +236,10 @@ final class BetaFeedbackCenter: ObservableObject {
         let info = Bundle.main.infoDictionary ?? [:]
         let report = FeedbackReport(
             app: .init(version: info["CFBundleShortVersionString"] as? String ?? "?",
-                       build: info["CFBundleVersion"] as? String ?? "?", environment: environment),
+                       build: Self.build, environment: environment),
             device: .init(model: Self.deviceModel(), os: "iOS " + UIDevice.current.systemVersion,
-                          lowPowerModeSeen: stored.contains { $0.recorder.lowPowerModeSeen } || live?.lowPowerModeSeen == true),
+                          lowPowerModeSeen: stored.contains { $0.recorder.lowPowerModeSeen } || live?.lowPowerModeSeen == true,
+                          language: Locale.preferredLanguages.first.map { CaptionLanguage.bcp47(Locale(identifier: $0)) }),
             settings: .init(theme: style.preset?.id ?? "custom", lettering: style.font.rawValue,
                             textSize: String(describing: style.size), quietStop: idleStop.rawValue),
             sentAt: now,

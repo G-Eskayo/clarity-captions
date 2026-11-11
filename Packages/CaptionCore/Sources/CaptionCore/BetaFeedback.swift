@@ -169,6 +169,9 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
     /// The recognizer that captioned (the last one, if it switched) and why it left Parakeet (ADR 0025).
     public private(set) var engine: String?
     public private(set) var engineFallback: String?
+    /// What the latest stretch ran in: caption language, face to face, build (#288). Nil if saved by build 10 or
+    /// earlier, which didn't record it.
+    public private(set) var context: CaptioningContext?
 
     private var captioningSeconds = 0.0
     private var segmentStart: Date?
@@ -209,6 +212,7 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
         case maxThermal, launchToStartSeconds, startToFirstCaptionSeconds, launch
         case captioningSeconds, segmentStart, startPressedAt, lag, micLevel, changedWords, finalWords, relabels
         case speakers, batteryDrop, batteryMinutes, segmentBattery, engine, engineFallback, leftAt
+        case context = "captioningIn"
     }
 
     public init(id: UUID) { self.id = id }
@@ -235,6 +239,9 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
         shownWordHashes = []
         utteranceSpeaker = nil
     }
+
+    /// What this stretch runs in. Like the engine, the last one is kept.
+    public mutating func captioningIn(_ context: CaptioningContext) { self.context = context }
 
     public mutating func engineUsed(_ name: String, fallback: String?) {
         if !name.isEmpty { engine = name }
@@ -361,7 +368,11 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
                             quietFraction: micLevel.fraction(below: Self.quietThresholdDBFS).map { Self.round($0, 2) }),
             launch: launch.map { .init(fullDance: $0.fullDance, barShown: $0.barShown) },
             engine: engine,
-            engineFallback: engineFallback)
+            engineFallback: engineFallback,
+            captionLanguage: context?.captionLanguage,
+            captionLanguageChosen: context?.captionLanguageChosen,
+            faceToFace: context?.faceToFace,
+            build: context?.build)
     }
 
     /// The report's conversations: every stored one, with the copy on screen (if it has started) in place of its
@@ -385,6 +396,43 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
     private static func round(_ value: Double, _ places: Int) -> Double {
         let p = pow(10, Double(places))
         return (value * p).rounded() / p
+    }
+}
+
+/// What a stretch of captioning ran in (#288), so a report says which language, which mode and which build without
+/// asking the tester. Language codes only (BCP-47); never caption text.
+public struct CaptioningContext: Codable, Equatable, Sendable {
+    /// The caption language setting (Settings › Caption language), e.g. "en-US".
+    public var captionLanguage: String
+    /// Picked in Seal (Settings or first run) rather than following the phone's language.
+    public var captionLanguageChosen: Bool
+    /// Face to face: each half's picked language, nil for a half not picked. Nil when face to face is off.
+    public var faceToFace: FaceToFaceLanguages?
+    /// The app build that recorded the stretch (CFBundleVersion).
+    public var build: String
+
+    public init(captionLanguage: String, captionLanguageChosen: Bool, faceToFace: FaceToFaceLanguages?, build: String) {
+        self.captionLanguage = captionLanguage
+        self.captionLanguageChosen = captionLanguageChosen
+        self.faceToFace = faceToFace
+        self.build = build
+    }
+}
+
+public struct FaceToFaceLanguages: Codable, Equatable, Sendable {
+    public var owner: String?
+    public var partner: String?
+    public init(owner: String?, partner: String?) {
+        self.owner = owner
+        self.partner = partner
+    }
+
+    private enum CodingKeys: String, CodingKey { case owner, partner }
+    /// A half not picked is written as null, so every report has the same shape.
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(owner, forKey: .owner)
+        try c.encode(partner, forKey: .partner)
     }
 }
 
@@ -431,10 +479,16 @@ public struct ConversationReport: Codable, Equatable, Sendable {
     public var launch: Launch?
     public var engine: String? = nil
     public var engineFallback: String? = nil
+    public var captionLanguage: String? = nil
+    public var captionLanguageChosen: Bool? = nil
+    public var faceToFace: FaceToFaceLanguages? = nil
+    /// The build that recorded this conversation; `app.build` is the one that sent the report.
+    public var build: String? = nil
 
     private enum CodingKeys: String, CodingKey {
         case id, startedAt, minutes, rating, ratingSkipped, note, lag, rewriteRate, speakers, launchToStartSeconds
         case startToFirstCaptionSeconds, ending, battery, micLevel, launch, engine, engineFallback
+        case captionLanguage, captionLanguageChosen, faceToFace, build
     }
 
     /// Every schema key is written, `null` when unknown, so every report has the same shape for MARVIN to read.
@@ -457,6 +511,10 @@ public struct ConversationReport: Codable, Equatable, Sendable {
         try c.encode(launch, forKey: .launch)
         try c.encode(engine, forKey: .engine)
         try c.encode(engineFallback, forKey: .engineFallback)
+        try c.encode(captionLanguage, forKey: .captionLanguage)
+        try c.encode(captionLanguageChosen, forKey: .captionLanguageChosen)
+        try c.encode(faceToFace, forKey: .faceToFace)
+        try c.encode(build, forKey: .build)
     }
 }
 
@@ -512,10 +570,22 @@ public struct FeedbackReport: Codable, Equatable, Sendable {
         public var model: String
         public var os: String
         public var lowPowerModeSeen: Bool
-        public init(model: String, os: String, lowPowerModeSeen: Bool) {
+        /// The phone's own first language (BCP-47), to set beside each conversation's caption language (#288).
+        public var language: String?
+        public init(model: String, os: String, lowPowerModeSeen: Bool, language: String?) {
             self.model = model
             self.os = os
             self.lowPowerModeSeen = lowPowerModeSeen
+            self.language = language
+        }
+
+        private enum CodingKeys: String, CodingKey { case model, os, lowPowerModeSeen, language }
+        public func encode(to encoder: Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode(model, forKey: .model)
+            try c.encode(os, forKey: .os)
+            try c.encode(lowPowerModeSeen, forKey: .lowPowerModeSeen)
+            try c.encode(language, forKey: .language)
         }
     }
     public struct Settings: Codable, Equatable, Sendable {
