@@ -52,14 +52,15 @@ public enum SpeakerPathReplay {
         return zip(phrases, phrases.dropFirst()).allSatisfy { $1.start >= $0.end }
     }
 
+    /// Factory-based run: accepts a diarizer factory for alternative models (Nemotron3, LS-EEND, etc).
     /// `next` returns the next run of 16 kHz mono samples (any length), or nil at the end of the recording.
     /// `onChunk` runs after each buffer with the audio seconds fed so far (the eval samples memory there).
-    public static func run(next: () throws -> [Float]?, phrases: [SpeakerReplayPhrase], modelURL: URL,
-                           config: SortformerConfig = .default, volatileEvery: Double = 0.5, finalDelay: Double = 1.0,
+    public static func run(next: () throws -> [Float]?, phrases: [SpeakerReplayPhrase],
+                           diarizer: () async throws -> LiveDiarizer, volatileEvery: Double = 0.5, finalDelay: Double = 1.0,
                            onChunk: ((Double) -> Void)? = nil) async throws -> SpeakerReplayResult {
         guard isStream(phrases) else { throw SpeakerReplayError.phrasesNotAStream }
         let t0 = Date()
-        let d = LiveDiarizer(modelURL: modelURL, config: config)
+        let d = try await diarizer()
         try await d.prepare()
         let loadSeconds = Date().timeIntervalSince(t0)
 
@@ -117,5 +118,14 @@ public enum SpeakerPathReplay {
         d.finish()
         return SpeakerReplayResult(emissions: emissions, finalSegments: d.segments, audioSeconds: audioSeconds,
                                    loadSeconds: loadSeconds, chunkMillis: chunkMillis)
+    }
+
+    /// Convenience overload for Sortformer: modelURL and config → factory.
+    public static func run(next: () throws -> [Float]?, phrases: [SpeakerReplayPhrase], modelURL: URL,
+                           config: SortformerConfig = .default, volatileEvery: Double = 0.5, finalDelay: Double = 1.0,
+                           onChunk: ((Double) -> Void)? = nil) async throws -> SpeakerReplayResult {
+        return try await run(next: next, phrases: phrases,
+                           diarizer: { LiveDiarizer(modelURL: modelURL, config: config) },
+                           volatileEvery: volatileEvery, finalDelay: finalDelay, onChunk: onChunk)
     }
 }

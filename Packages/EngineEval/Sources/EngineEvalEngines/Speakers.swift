@@ -8,11 +8,25 @@ import Foundation
 /// one JSON object for scripts/engine-eval/speaker_eval to score. One process per recording, so the peak memory it
 /// reports is that recording's alone.
 public enum SpeakerEval {
+    public enum DiarizerBackend: String, CaseIterable {
+        case sortformer
+        case lseendAmi = "lseend-ami"
+
+        public var description: String {
+            switch self {
+            case .sortformer: "Sortformer (bundled)"
+            case .lseendAmi: "LS-EEND/ami (downloaded)"
+            }
+        }
+    }
+
     public enum Failure: Error, CustomStringConvertible {
         case notSixteenKMono(Double, UInt32)
+        case unknownDiarizer(String)
         public var description: String {
             switch self {
             case .notSixteenKMono(let sr, let ch): "audio must be 16 kHz mono (got \(sr) Hz, \(ch) channels)"
+            case .unknownDiarizer(let name): "unknown diarizer: \(name) (expected: \(DiarizerBackend.allCases.map(\.rawValue).joined(separator: ", ")))"
             }
         }
     }
@@ -54,14 +68,30 @@ public enum SpeakerEval {
     }
 
     public static func run(audio: URL, phrasesFile: URL, model: URL, modelLabel: String, recording: String,
-                           fluidAudio: String, out: URL) async throws {
+                           fluidAudio: String, out: URL, diarizer: DiarizerBackend = .sortformer) async throws {
+        guard let _ = DiarizerBackend(rawValue: diarizer.rawValue) else {
+            throw Failure.unknownDiarizer(diarizer.rawValue)
+        }
+
         let phrases = try JSONDecoder().decode([SpeakerReplayPhrase].self, from: Data(contentsOf: phrasesFile))
         let source = try FileSource(audio)
         let before = MemoryFootprint.current() ?? 0
         var peak = before
         var loaded: UInt64?
         let wall0 = Date()
-        let r = try await SpeakerPathReplay.run(next: source.next, phrases: phrases, modelURL: model, onChunk: { _ in
+
+        let diarizerFactory: () async throws -> LiveDiarizer = {
+            switch diarizer {
+            case .sortformer:
+                return LiveDiarizer(modelURL: model)
+            case .lseendAmi:
+                ModelHub.offlineMode = false
+                let lseendDiarizer = try await LSEENDDiarizer(variant: .ami)
+                return LiveDiarizer(diarizer: LSEENDDiarizerAdapter(lseendDiarizer))
+            }
+        }
+
+        let r = try await SpeakerPathReplay.run(next: source.next, phrases: phrases, diarizer: diarizerFactory, onChunk: { _ in
             let now = MemoryFootprint.current() ?? 0
             if loaded == nil { loaded = now }
             peak = max(peak, now)
@@ -90,5 +120,31 @@ public enum SpeakerEval {
         print(String(format: "SPEAKER-EVAL-RESULT %@ %@ audio %.0fs wall %.0fs (x%.0f) peak %.0f MB emissions %d",
                      recording, modelLabel, r.audioSeconds, wall, r.audioSeconds / max(wall, 0.001), mb(peak),
                      r.emissions.count))
+    }
+}
+
+/// Adapter wrapping LSEENDDiarizer to conform to CaptionCore's Diarizer protocol.
+final class LSEENDDiarizerAdapter: CaptionCore.Diarizer {
+    private let lseend: LSEENDDiarizer
+
+    init(_ lseend: LSEENDDiarizer) {
+        self.lseend = lseend
+    }
+
+    func addAudio(_ samples: [Float]) throws {
+        try lseend.addAudio(samples)
+    }
+
+    func process() throws -> DiarizerTimelineUpdate? {
+        guard let update = try lseend.process() else { return nil }
+        // Convert LSEENDDiarizer's timeline to DiarizerTimelineUpdate format.
+        let allSegments = lseend.timeline.speakers.values.flatMap { speaker in
+            speaker.finalizedSegments + speaker.tentativeSegments
+        }
+        return DiarizerTimelineUpdate(finalizedSegments: [], tentativeSegments: allSegments)
+    }
+
+    func finalizeSession() throws {
+        try lseend.finalizeSession()
     }
 }

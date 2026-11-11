@@ -67,11 +67,27 @@ To complete the comparison and consider a model switch in a future session:
 
 Until then, the harness remains opt-in, Sortformer is the default, and the 4-speaker limit is the status quo.
 
+## Amendment (2026-11-11)
+
+Issue #214 reopened the question for the Mac specifically: Sortformer's 4-speaker cap becomes more pressing if users want to use the app for larger family dinners or professional meetings. The harness has been extended to support:
+
+1. **Parametrized test cases:** 6-voice (original) and 10-voice (new), showing Sortformer's ceiling.
+2. **Additional model coverage:** Nemotron3Diarizer and OfflineDiarizer/VBx added as test-local adapters and evaluated on the 10-voice case. Both found to be batch-only (unsuitable for live captions per streaming architecture constraint) and stubbed in the harness pending real measurements on networked Mac M4+.
+3. **Factory-based diarizer support:** `LiveDiarizer.init(diarizer:)` and `SpeakerPathReplay.run(diarizer:factory)` generalized to wrap any adapter. `engine-eval speakers --diarizer sortformer|lseend-ami` enables CLI measurement on arbitrary recordings.
+4. **Memory and efficiency metrics:** `SpeakerModelComparisonReport` now includes optional peak memory (MB) and wall-seconds-per-audio-second fields for profiling on measured systems.
+5. **Corpus coverage gap identified:** No licensed >4-speaker real corpus is currently available in this pipeline (AMI/CHiME-6 are bounded). This is a blocker for defensible >4-speaker adoption, independent of model choice.
+
+**No model switch is made this session:** Sortformer remains bundled. The harness is now ready for future runs on networked Mac M4+ with `CAPTION_SPEAKER_COMPARE=1`, and the decision to adopt >4-speaker capability awaits both corpus coverage (legal/contractual) and actual measurements (network + device). See [[0017]] for complete decision rationale.
+
 ## References
 
 - `docs/perf/speaker-model-comparison.md` — benchmark harness, run instructions, and acceptance criteria status.
-- `Packages/CaptionCore/Tests/CaptionCoreTests/SpeakerModelComparisonTests.swift` — opt-in test implementation.
+- `Packages/CaptionCore/Tests/CaptionCoreTests/SpeakerModelComparisonTests.swift` — opt-in test implementation (parametrized by voice count, multi-model support).
 - `Packages/CaptionCore/Tests/CaptionCoreTests/SpeakerModelComparisonReportTests.swift` — unit tests for the report type.
+- `Packages/CaptionCore/Sources/CaptionCore/LiveDiarizer.swift` — generalized diarizer wrapping and factory support.
+- `Packages/CaptionCore/Sources/CaptionCore/SpeakerPathReplay.swift` — factory-based run overload.
+- `Packages/EngineEval/Sources/EngineEvalEngines/Speakers.swift` — CLI `--diarizer` option and LSEENDDiarizerAdapter.
 - [[0014]] — offline model bundling decision.
 - [[0008]] — speaker-turn labeling (Sortformer selected).
 - [[0015]] — latency budget (baseline implementation incomplete, issue #25).
+- Issue #214 — Mac-specific speaker-count question reopened; harness generalized in response.

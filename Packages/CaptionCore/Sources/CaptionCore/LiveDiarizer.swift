@@ -13,13 +13,20 @@ public enum SpeakerModelError: Error, Equatable, CustomStringConvertible {
     }
 }
 
+/// Protocol for streaming speaker diarization adapters that can be wrapped by LiveDiarizer.
+protocol Diarizer: AnyObject, Sendable {
+    func addAudio(_ samples: [Float]) throws
+    func process() throws -> DiarizerTimelineUpdate?
+    func finalizeSession() throws
+}
+
 /// Streaming speaker diarization (ADR 0008) on FluidAudio's Sortformer: 16 kHz mono Float32 in,
 /// speaker segments out. The model is a pre-compiled folder shipped inside the app (ADR 0014);
 /// nothing is ever downloaded at runtime.
 final class LiveDiarizer: @unchecked Sendable {
-    private let modelURL: URL
-    private let config: SortformerConfig
-    private let diarizer: SortformerDiarizer
+    private let modelURL: URL?
+    private let config: SortformerConfig?
+    private let diarizer: Diarizer
     private let queue = DispatchQueue(label: "caption.diarizer")
     private let lock = NSLock()
     private var finalized: [SpeakerSegment] = []
@@ -34,26 +41,38 @@ final class LiveDiarizer: @unchecked Sendable {
     init(modelURL: URL, config: SortformerConfig = .default) {
         self.modelURL = modelURL
         self.config = config
-        self.diarizer = SortformerDiarizer(config: config)
+        let sortformer = SortformerDiarizer(config: config)
+        self.diarizer = SortformerDiarizerAdapter(sortformer)
         // Any code path that still tries to download a model must throw, not reach the network.
         ModelHub.offlineMode = true
     }
 
+    /// Wrap any Diarizer-conforming instance (for testing and measurement with alternative models).
+    init(diarizer: Diarizer) {
+        self.modelURL = nil
+        self.config = nil
+        self.diarizer = diarizer
+    }
+
     func prepare() async throws {
-        guard FileManager.default.fileExists(atPath: modelURL.path) else {
-            throw SpeakerModelError.modelMissing(modelURL)
+        if let modelURL = modelURL {
+            guard FileManager.default.fileExists(atPath: modelURL.path) else {
+                throw SpeakerModelError.modelMissing(modelURL)
+            }
+            let configuration = MLModelConfiguration()
+            configuration.computeUnits = .all
+            let model = try await MLModel.load(contentsOf: modelURL, configuration: configuration)
+            if let adapter = diarizer as? SortformerDiarizerAdapter {
+                try adapter.initialize(config: config!, model: model)
+            }
         }
-        let configuration = MLModelConfiguration()
-        configuration.computeUnits = .all
-        let model = try await MLModel.load(contentsOf: modelURL, configuration: configuration)
-        diarizer.initialize(models: try SortformerModels(config: config, main: model))
     }
 
     /// Never blocks the audio thread: inference runs on a serial queue.
     func feed(_ samples: [Float]) {
         queue.async { [self] in
             do {
-                diarizer.addAudio(samples)
+                try diarizer.addAudio(samples)
                 if let update = try diarizer.process() { merge(update) }
             } catch {
                 lock.lock(); failure = error; lock.unlock()
@@ -92,5 +111,39 @@ final class LiveDiarizer: @unchecked Sendable {
         finalized += update.finalizedSegments.map(convert)
         tentative = update.tentativeSegments.map(convert)
         for seg in finalized + tentative { speakersSeen.insert(seg.speaker); latestEnd = max(latestEnd, seg.end) }
+    }
+}
+
+/// Adapter wrapping SortformerDiarizer to conform to Diarizer protocol.
+final class SortformerDiarizerAdapter: Diarizer {
+    private let sortformer: SortformerDiarizer
+    private let queue = DispatchQueue(label: "caption.sortformer.adapter")
+
+    init(_ sortformer: SortformerDiarizer) {
+        self.sortformer = sortformer
+    }
+
+    func addAudio(_ samples: [Float]) throws {
+        try queue.sync {
+            sortformer.addAudio(samples)
+        }
+    }
+
+    func process() throws -> DiarizerTimelineUpdate? {
+        try queue.sync {
+            try sortformer.process()
+        }
+    }
+
+    func finalizeSession() throws {
+        try queue.sync {
+            try sortformer.finalizeSession()
+        }
+    }
+
+    func initialize(config: SortformerConfig, model: MLModel) throws {
+        try queue.sync {
+            sortformer.initialize(models: try SortformerModels(config: config, main: model))
+        }
     }
 }
