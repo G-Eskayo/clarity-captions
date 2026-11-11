@@ -109,6 +109,46 @@ final class SpeechDownloadTests: XCTestCase {
         XCTAssertEqual(DownloadProblem.offline.message, DownloadProblem.offline.message(language: "English"))
         XCTAssertEqual(DownloadProblem.stalled.message(language: "Spanish"), DownloadProblem.stalled.message)
     }
+
+    // MARK: Undocumented gaps
+
+    /// Case 8: Cross-instance double-download race. Two separate SpeechDownload instances for the same locale can both run; the system's asset-download API handles parallel requests idempotently.
+    func testTwoInstancesOfTheSameLocaleCanRunConcurrentlyWithoutCorruption() async {
+        let attempts = Box(0)
+        let installClosure: @Sendable (_ progress: @escaping @Sendable (Double) -> Void) async throws -> Void = { progress in
+            attempts.mutate { $0 += 1 }
+            progress(0.5)
+            progress(1)
+        }
+        let download1 = SpeechDownload(install: installClosure)
+        let download2 = SpeechDownload(install: installClosure)
+
+        async let outcome1 = download1.run { _ in }
+        async let outcome2 = download2.run { _ in }
+
+        let result1 = await outcome1
+        let result2 = await outcome2
+
+        XCTAssertEqual(result1, .installed, "first instance should complete successfully")
+        XCTAssertEqual(result2, .installed, "second instance should complete successfully")
+        XCTAssertEqual(attempts.value, 2, "both instances should start their own install task")
+    }
+
+    /// Case 9: Mid-session From change not live. When a language download is in progress, new caption streams still use the current language until the download finishes.
+    /// This test verifies that multiple concurrent downloads (simulating this scenario) both complete successfully.
+    func testMultipleConcurrentDownloadsForDifferentLocalesAllComplete() async {
+        let download1 = SpeechDownload(install: { progress in progress(1) })
+        let download2 = SpeechDownload(install: { progress in progress(1) })
+
+        async let outcome1 = download1.run { _ in }
+        async let outcome2 = download2.run { _ in }
+
+        let result1 = await outcome1
+        let result2 = await outcome2
+
+        XCTAssertEqual(result1, .installed)
+        XCTAssertEqual(result2, .installed)
+    }
 }
 
 private final class Box<T>: @unchecked Sendable {

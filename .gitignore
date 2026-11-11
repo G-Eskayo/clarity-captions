@@ -17,3 +17,6 @@ Packages/EngineEval/.build/
 *.parquet
 edacc/
 Apps/Mac/Resources/Models/
+
+# Scratch files for `gh issue create --body-file` (not committed; updated once then stale)
+.gh-issue-body.txt
