@@ -7,7 +7,9 @@ final class SpeakerModelComparisonReportTests: XCTestCase {
             modelName: "Sortformer",
             speakersFound: 2,
             der: 0.12,
-            timeToFirstLabel: 0.05
+            timeToFirstLabel: 0.05,
+            timeToFinish: 0.45,
+            peakMemory: 128.5
         )
         XCTAssertEqual(report.modelName, "Sortformer")
         XCTAssertEqual(report.speakersFound, 2)
@@ -15,6 +17,14 @@ final class SpeakerModelComparisonReportTests: XCTestCase {
         XCTAssertNotNil(report.timeToFirstLabelSeconds)
         if let ttf = report.timeToFirstLabelSeconds {
             XCTAssertEqual(ttf, 0.05, accuracy: 0.001)
+        }
+        XCTAssertNotNil(report.timeToFinishSeconds)
+        if let ttf = report.timeToFinishSeconds {
+            XCTAssertEqual(ttf, 0.45, accuracy: 0.001)
+        }
+        XCTAssertNotNil(report.peakMemoryMB)
+        if let mem = report.peakMemoryMB {
+            XCTAssertEqual(mem, 128.5, accuracy: 0.1)
         }
     }
 
@@ -32,13 +42,18 @@ final class SpeakerModelComparisonReportTests: XCTestCase {
             modelName: "Sortformer",
             speakersFound: 2,
             der: 0.12,
-            timeToFirstLabel: 0.05
+            timeToFirstLabel: 0.05,
+            timeToFinish: 0.45,
+            peakMemory: 128.5
         )
         let summary = report.summaryLine()
         XCTAssertTrue(summary.contains("Sortformer"))
         XCTAssertTrue(summary.contains("speakers: 2"))
         XCTAssertTrue(summary.contains("DER:"))
         XCTAssertTrue(summary.contains("0.120"))
+        XCTAssertTrue(summary.contains("first-label:"))
+        XCTAssertTrue(summary.contains("finish:"))
+        XCTAssertTrue(summary.contains("peak-mem:"))
     }
 
     func testSummaryLineWithoutTimeToFirstLabel() {

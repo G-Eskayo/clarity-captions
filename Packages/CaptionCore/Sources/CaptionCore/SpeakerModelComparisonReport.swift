@@ -2,7 +2,7 @@ import Foundation
 
 /// Aggregated metrics from comparing speaker-diarization models on a synthetic test.
 public struct SpeakerModelComparisonReport: Sendable {
-    /// Model name (e.g., "Sortformer", "LS-EEND/dihard3").
+    /// Model name (e.g., "Sortformer", "LS-EEND/dihard3", "OfflineDializer").
     public let modelName: String
     /// Number of distinct speakers detected by this model on the test audio.
     public let speakersFound: Int
@@ -11,24 +11,41 @@ public struct SpeakerModelComparisonReport: Sendable {
     public let der: Double
     /// Wall-clock time from audio start to the first speaker label, in seconds.
     public let timeToFirstLabelSeconds: Double?
+    /// Total wall-clock time to finish processing the complete audio, in seconds.
+    public let timeToFinishSeconds: Double?
+    /// Peak memory footprint during processing, in megabytes.
+    public let peakMemoryMB: Double?
 
-    public init(modelName: String, speakersFound: Int, der: Double, timeToFirstLabel: Double? = nil) {
+    public init(
+        modelName: String,
+        speakersFound: Int,
+        der: Double,
+        timeToFirstLabel: Double? = nil,
+        timeToFinish: Double? = nil,
+        peakMemory: Double? = nil
+    ) {
         self.modelName = modelName
         self.speakersFound = speakersFound
         self.der = der
         self.timeToFirstLabelSeconds = timeToFirstLabel
+        self.timeToFinishSeconds = timeToFinish
+        self.peakMemoryMB = peakMemory
     }
 
     /// Human-readable summary line, suitable for logging or test output.
     public func summaryLine() -> String {
         let paddedName = modelName.padding(toLength: 30, withPad: " ", startingAt: 0)
         let timeLabel = timeToFirstLabelSeconds.map { String(format: "%.3f s", $0) } ?? "N/A"
+        let finishLabel = timeToFinishSeconds.map { String(format: "%.3f s", $0) } ?? "N/A"
+        let memoryLabel = peakMemoryMB.map { String(format: "%.1f MB", $0) } ?? "N/A"
         return String(
-            format: "%@ speakers: %d, DER: %.3f, time-to-label: %@",
+            format: "%@ speakers: %d, DER: %.3f, first-label: %@, finish: %@, peak-mem: %@",
             paddedName,
             speakersFound,
             der,
-            timeLabel
+            timeLabel,
+            finishLabel,
+            memoryLabel
         )
     }
 }
