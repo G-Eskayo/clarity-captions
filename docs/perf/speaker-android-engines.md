@@ -20,7 +20,7 @@ v1 (CC BY-NC, out for a paid app) and Rev's reverb-diarization (gated, own licen
 live speaker path (`SpeakerPathReplay`, `SpeakerLabelSmoother`, `SpeakerAligner`) and of FluidAudio's Sortformer
 streaming host, at the app's config (fastV2_1: chunk 6, left 1, right 7, FIFO 40, speaker cache 188). Code:
 `scripts/engine-eval/speaker_onnx/`, driver `scripts/engine-eval/box-speakers.sh`, scoring
-`box-speakers-score.sh`.
+`box-speakers-score.sh` (`speaker_eval.cli score`, and `speaker_eval.compare` for the paired difference, both #271's).
 
 **The port is checked against the app.** soniqo's v2.1 ONNX (the shipped weights) through the port, against #276's
 Core ML fp16 run on EN2002a's first 110 s: the same 256 caption requests at the same moments, 99.0% of 10 ms frames
@@ -68,6 +68,9 @@ each).
 - **Sortformer v2 (CC BY 4.0) is close to the shipped v2.1 on what the screen shows.** On AMI the difference
   includes zero (−1.0, −3.2 to +1.0). On CHiME-6 it is 2.3 points worse (+0.9 to +3.8), mostly missed speech, and
   it leaves more lines unlabelled (13.8% vs 7.5%). Monologue splitting and first-label time are the same.
+- **It passes #271's ship rule on both sets**, the rule a compressed build of the shipped model has to meet: its
+  DER-on-screen CI overlaps fp16's, and its line first-label median is within 10% (paired: −0.001 s on AMI, +0.009 s
+  on CHiME-6). sherpa-onnx fails it on both.
 - **NVIDIA's 10-point gap between v2 and v2.1 does not show on this path.** NVIDIA reports AMI test DER 31.3% (v2) vs
   20.6% (v2.1) at 1.04 s latency; here the bare v2 model is *better* on AMI (−3.4) and worse on CHiME-6 (+7.6). Our
   setup differs (no collar, word-level reference, the app's FIFO 40 config, AMI's dev meetings held out), and we have
@@ -82,4 +85,5 @@ each).
   would need a quantised build or an NPU/GPU delegate, and a measurement on a phone. First-label times are not
   affected: the replay runs on audio time, so they measure the streaming config, not CPU speed.
 
-Full numbers: `speaker-android-<engine>-<set>.json` (scores, per recording) and `.paired.json` (differences).
+Full numbers: `speaker-android-<engine>-<set>.json` (scores, per recording) and `.paired.json` (differences and the
+ship-rule verdict).
