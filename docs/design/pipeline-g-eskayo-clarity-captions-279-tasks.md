@@ -1,0 +1,8 @@
+1. Draft the full behavior table (above, filled out in prose per row with file/issue citations) as the body of a new GitHub issue, titled e.g. *"Spec: From/Into behavior in every case (owner approval before more is built)"*, linking #37, #53, #245, #251, #252, PR #256, and ADR 0031, labeled `needs-info` (not `ready-for-agent` — it can't be worked until approved) plus `feature:translation`, `feature:languages`.
+2. Include the `same-language-display` and `spec-approve` Decisions block from above in that new issue, validated against `bin/gh`'s parser before filing.
+3. Re-run the idempotency and freshness checks (duplicate-issue search, re-fetch PR #256 state) immediately before filing/posting.
+4. File the issue via `gh issue create`; capture its number.
+5. Post a reply on PR #256 carrying `<!-- marvin:decisions-addressed -->`: states the `spec` decision was carried out by filing issue #N (linked), that no code changed on `fix/252-swap-languages` because this decision asked for a ticket rather than a code change, and that screenshots stand unchanged (nothing visual changed).
+6. If step 4 or 5 fails for any reason (auth, network, gate refusal), stop and report the failure plainly in the final summary rather than treating it as "nothing to change."
+
+No Swift/test changes: this ticket does not touch `Packages/CaptionCore` or `Apps/Spike`, so `swift test` and the app build are unaffected and are not re-run as part of this ticket's own verification — the untested-behavior note for this ticket is "all of it," since there is no behavior change, only a documentation/process artifact.
