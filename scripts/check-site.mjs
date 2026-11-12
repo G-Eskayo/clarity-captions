@@ -34,6 +34,23 @@ const pages = [...new Set([...built.map((b) => b.file), ...readdirSync(SITE).fil
 const read = (f) => readFileSync(path.join(SITE, f), 'utf-8')
 const langOf = (f) => (f.includes('/') ? f.split('/')[0] : 'en')
 
+// Every Hebrew string is in Hebrew (#235, owner 2026-11-03: translate, then review). The Hebrew pages are live, and an
+// English string there is an untranslated placeholder. Only these stay in Latin script: product and engine names,
+// numbers, a citation title, and a system version.
+export const HE_LATIN_OK = new Set(['index.seal-speak', 'index.aa', 'index.psychophysics-of-reading-xi', 'index.apple', 'index.parakeet',
+  'index.wer', 'index.parakeet-ultra-6-bit', 'index.parakeet-v2', 'index.sherpa-onnx', 'index.apple-speechanalyzer-1-0', 'index.iphone-12',
+  'index.70-ms', 'index.opus-mt', 'index.google-ml-kit', 'index.facetime', 'index.zoom', 'index.teams', 'index.google-meet', 'index.whatsapp',
+  'index.github', 'index.f-dev-iphone', 'index.f-dev-ipad', 'index.f-dev-duo', 'index.f-dev-mac', 'index.f-t-need-duo'])
+{
+  const he = JSON.parse(readFileSync(path.join(ROOT, 'site-src', 'lang', 'he.json'), 'utf-8'))
+  const strings = (o, pre = '') => Object.entries(o).flatMap(([k, v]) => (typeof v === 'string' ? [[pre + k, v]] : v && typeof v === 'object' ? strings(v, `${pre}${k}.`) : []))
+  for (const [k, v] of strings(he)) {
+    if (HE_LATIN_OK.has(k) || k.startsWith('_prices.')) continue   // prices are checked with the pages below
+    check(/[֐-׿]/.test(v), `he.json ${k}: no Hebrew in it ("${v.slice(0, 60)}"); translate it, or add it to HE_LATIN_OK if it's a name or a number`)
+  }
+  for (const k of HE_LATIN_OK) check(k in he && !/[֐-׿]/.test(he[k]), `HE_LATIN_OK ${k}: gone or now Hebrew; take it off the list`)
+}
+
 // 1. local only
 const isLocal = (u) => !/^(https?:)?\/\//i.test(u) || /^data:/i.test(u)
 for (const f of pages) {
@@ -58,17 +75,24 @@ const visible = (html) => html.replace(/<style[\s\S]*?<\/style>/g, ' ').replace(
 // and iPhone Duo, and $1.99 on the Mac, which is its own app (ADR 0028). Pages name no other price, and $1.99 only for
 // the Mac. The StoreKit file and the app's debug fake store use the iOS price (section 10).
 export const PRICES = { app: '4.99', translationIOS: '4.99', translationMac: '1.99' }
-export const OTHER_PRICE = /\$\s?(?!(4|1)\.99\b)\d|\d+(\.\d+)? ?(usd|dollars|דולר|ש"ח|ש״ח|₪)/i
+// Each storefront shows its own prices (owner, 2026-11-03): the English pages in dollars, the Hebrew pages in shekels,
+// from one _prices table per language file (Israel: ₪14.90 is Seal Speak's live App Store price, the $4.99 point;
+// ₪4.90 is the $1.99 point on all 59 sampled apps). Every amount on a page is one of its language's prices, in its currency.
+export const CURRENCY = { en: "$", he: "\u20aa" }
+export const ANY_AMOUNT = /(?:\$|\u20aa|US\$)\s?\d[\d.,]*|\d[\d.,]*\s?(?:\u20aa|ש"ח|ש״ח|דולר|שקל|usd|dollars|ils|nis)(?![A-Za-z])/gi
+export const pricesOf = (code) => JSON.parse(readFileSync(path.join(ROOT, "site-src", "lang", `${code}.json`), "utf-8"))._prices || {}
+export const amountsIn = (text) => [...text.matchAll(ANY_AMOUNT)].map((m) => m[0].replace(/[.,]+$/, ""))
 // Each $1.99 must be said of the Mac: the devices named in its clause are all the Mac, or, when its clause names none,
 // the first device after it in its sentence (else the last one before it) is. Returns the sentences that break this.
 const DEVICE_WORDS = /\b(iPhone|iPad|Duo|Mac)\b/g
-export function macPriceProblems(text) {
+export function macPriceProblems(text, macPrice = "$1.99") {
+  const MAC = new RegExp(macPrice.replace(/[$.]/g, (c) => "\\" + c) + "(?![\\d])", "g")
   const bad = []
   for (const sentence of text.split(/(?<=[.!?])\s+/)) {
     let at = 0
     for (const clause of sentence.split(/(?<=[,;:])\s+/)) {
       at = sentence.indexOf(clause, at)
-      for (const m of clause.matchAll(/\$\s?1\.99\b/g)) {
+      for (const m of clause.matchAll(MAC)) {
         const named = [...clause.matchAll(DEVICE_WORDS)].map((d) => d[1])
         const i = at + m.index
         const device = named.length ? (named.every((d) => d === 'Mac') ? 'Mac' : 'other')
@@ -139,7 +163,8 @@ for (const lang of LANGS.filter((l) => l.code === 'he')) {
   const strings = JSON.parse(readFileSync(path.join(ROOT, 'site-src', 'lang', 'he.json'), 'utf-8'))
   for (const [k, v] of Object.entries(strings)) {
     if (typeof v !== 'string' || k.startsWith('index.source-') || !HEBREW.test(v)) continue
-    const m = v.replace(/<[^>]+>|&[a-z]+;/g, ' ').match(MIXED_ENGLISH)
+    // The app's own English labels, marked <bdi lang="en">, are quoted on purpose (the app is in English).
+    const m = v.replace(/<bdi lang="en">[\s\S]*?<\/bdi>/g, ' ').replace(/<[^>]+>|&[a-z]+;/g, ' ').match(MIXED_ENGLISH)
     check(!m, `he.json ${k}: mixes an English sentence into the Hebrew ("${m?.[2]}"); translate it`)
   }
   // The "Coming in 1.1" pills on the Hebrew page are Hebrew too.
@@ -150,17 +175,28 @@ check(MIXED_ENGLISH.test('For iPhone 12 or newer. האפליקציה') && !MIXED
 check(BANNED[0][0].test('Seal shows who is speaking') && !BANNED[0][0].test("It doesn't know who anyone is"), 'BANNED[0] self-test')
 check(BANNED[4][0].test('Free for everyone') && !BANNED[4][0].test('freedom'), 'BANNED[4] self-test')
 // Prices, on every page in every language (#228): only $4.99 and $1.99, and $1.99 only for the Mac.
-check(OTHER_PRICE.test('Only $2.99') && OTHER_PRICE.test('$4.999') && OTHER_PRICE.test('$1.999') && OTHER_PRICE.test('רק $2.99') && OTHER_PRICE.test('5 דולר'), 'OTHER_PRICE catches other prices')
-check(!OTHER_PRICE.test('$4.99 once') && !OTHER_PRICE.test('$1.99 on the Mac') && !OTHER_PRICE.test('$4.99 פעם אחת'), 'OTHER_PRICE allows the real prices')
+check(JSON.stringify(amountsIn('Only $2.99, or $4.999. רק 5 דולר, 14.90 ₪ או ₪14.90.')) === JSON.stringify(['$2.99', '$4.999', '5 דולר', '14.90 ₪', '₪14.90']), 'amountsIn finds every amount, either currency, either side')
+check(macPriceProblems('ו-₪4.90 ב-Mac.', '₪4.90').length === 0 && macPriceProblems('₪4.90 ב-iPhone.', '₪4.90').length === 1, 'macPriceProblems works in shekels')
 check(macPriceProblems('An optional add-on: $4.99 on iPhone, iPad and iPhone Duo, and $1.99 on the Mac.').length === 0, 'macPriceProblems: $1.99 on the Mac is fine')
 check(macPriceProblems('On the Mac it is $1.99, on the iPhone $4.99.').length === 0 && macPriceProblems('$1.99, once, in the Mac app.').length === 0, 'macPriceProblems: the Mac before or after, in another clause')
 check(macPriceProblems('Live translation, right on your phone. An add-on: $1.99, once, on your iPhone.').length === 1, 'macPriceProblems: $1.99 for the iPhone is caught')
 check(macPriceProblems('It is an optional add-on: $1.99, once.').length === 1 && macPriceProblems('$1.99 on iPad and Mac.').length === 1, 'macPriceProblems: no device, or not only the Mac, is caught')
 for (const f of pages) {
-  const text = visible(read(f))
-  const m = text.match(OTHER_PRICE)
-  check(!m, `${f} names a price other than $${PRICES.app} or Live Translation's $${PRICES.translationIOS} (iPhone, iPad, Duo) and $${PRICES.translationMac} (Mac): "${m?.[0]}"`)
-  for (const s of macPriceProblems(text)) check(false, `${f} says $${PRICES.translationMac} for something other than the Mac: "${s}"`)
+  const text = visible(read(f)), code = langOf(f), table = pricesOf(code), allowed = Object.values(table)
+  for (const a of amountsIn(text)) {
+    check(a.startsWith(CURRENCY[code]), `${f} shows "${a}"; ${code} pages show prices in ${CURRENCY[code]}`)
+    check(allowed.includes(a), `${f} names "${a}", not one of ${code}.json's _prices (${allowed.join(', ')})`)
+  }
+  for (const s of macPriceProblems(text, table.translationMac)) check(false, `${f} says ${table.translationMac} for something other than the Mac: "${s}"`)
+  if (f === pages[0]) {
+    // The US table is the StoreKit price (section 10); every language has a whole table in its own currency.
+    const us = pricesOf('en')
+    check(us.app === `$${PRICES.app}` && us.translationIOS === `$${PRICES.translationIOS}` && us.translationMac === `$${PRICES.translationMac}` && us.macApp === `$${PRICES.app}`, `en.json _prices don't match PRICES (${JSON.stringify(us)})`)
+    for (const l of LANGS) {
+      const t = pricesOf(l.code)
+      check(['app', 'translationIOS', 'translationMac', 'macApp'].every((k) => (t[k] || '').startsWith(CURRENCY[l.code] || '?')), `${l.code}.json _prices: needs app, translationIOS, translationMac and macApp, all in ${CURRENCY[l.code]}`)
+    }
+  }
 }
 check(!SCRIPT.some((s) => s.speaker !== undefined && s.speaker > 1), 'demo uses only Speaker 1 and 2')
 
