@@ -1,0 +1,9 @@
+1. [ ] Add tests 1–2 (new) to `SpeakerAlignerTests.swift`.
+2. [ ] Add tests 3–8 (new) to `SpeakerLabelSmootherTests.swift`.
+3. [ ] Confirm all new tests fail against current code (red), run `swift test --package-path Packages/CaptionCore`.
+4. [ ] Implement the tie-break in `SpeakerAligner.speaker`: compute `maxValue = overlap.values.max()`, then `overlap.keys.filter { overlap[$0] == maxValue }.min()`, replacing the `overlap.max(by: { $0.value < $1.value })` call; keep the existing zero-length-range fallback unchanged.
+5. [ ] Implement the tie-break in `SpeakerLabelSmoother.chooseSlot`: extract a small static helper (e.g. `bestSlot(overlap:current:numbering:)`) that finds `maxValue`, then among the tied keys returns `current` if present, else the tied key with the lowest value in `displayBySlot` (if any are numbered), else the lowest raw key; call it in place of the current `overlap.max(by:)` line, and use the returned slot's own `overlap[...]` value where the old code used `best.value` (for the `switchSeconds` check).
+6. [ ] Run `swift test --package-path Packages/CaptionCore` — all new and existing tests green.
+7. [ ] Update the comment block atop `SpeakerLabelSmoother.swift` (currently documents the smoothing rules but not the tie-break) to note the deterministic tie order, so a future reader doesn't reintroduce `max(by:)`.
+8. [ ] In the PR description, note as a follow-up (not done by this change): once merged, #271's owner should rerun the AMI/CHiME-6 baseline once on the Mac Mini and confirm 0 repeats differ, DER unchanged (per `docs/perf/speaker-scoreboard.md` "Follow-ups") — this needs the real datasets/model and can't be run from this worktree.
+9. [ ] State plainly in the PR which behavior is untested here: the fix itself is fully covered by `swift test` (pure logic, no UI), but the real-world "0 repeats differ" claim from the ticket's evidence section can only be confirmed by the #271 baseline rerun in step 8, not by this agent.

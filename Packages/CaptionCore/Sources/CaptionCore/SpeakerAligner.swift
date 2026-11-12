@@ -23,7 +23,9 @@ public enum SpeakerAligner {
             let o = min(end, s.end) - max(start, s.start)
             if o > 0 { overlap[s.speaker, default: 0] += o }
         }
-        if let best = overlap.max(by: { $0.value < $1.value }) { return best.key }
+        if let maxValue = overlap.values.max() {
+            return overlap.keys.filter { overlap[$0] == maxValue }.min()
+        }
         // A zero-length caption range has no overlap; fall back to the segment containing it.
         if end <= start { return segments.last(where: { $0.start <= start && start < $0.end })?.speaker }
         return nil

@@ -152,4 +152,91 @@ final class SpeakerLabelSmootherTests: XCTestCase {
         var s = SpeakerLabelSmoother()
         XCTAssertEqual(s.label(start: 2, end: 2, segments: [seg(1, 0, 5)], isFinal: false), 0)
     }
+
+    func testTieBreakPreservesCurrentSlot() {
+        var s = SpeakerLabelSmoother()
+        // Establish speaker 0 as current.
+        XCTAssertEqual(s.label(start: 0, end: 2, segments: [seg(0, 0, 2)], isFinal: true), 0)
+        // Next caption has equal overlap from slots 0 and 1; since 0 is current, it should stay 0.
+        let segs = [seg(0, 0, 2), seg(0, 2, 2.5), seg(1, 2, 2.5)]
+        XCTAssertEqual(s.label(start: 2, end: 2.5, segments: segs, isFinal: false), 0)
+    }
+
+    func testTieBreakPrefersPreviouslyNumberedSlot() {
+        var s = SpeakerLabelSmoother()
+        // Establish speakers: slot 2 becomes Speaker 0, slot 1 becomes Speaker 1.
+        let history = [seg(2, 0, 2), seg(1, 2.5, 4)]
+        XCTAssertEqual(s.label(start: 0, end: 2, segments: history, isFinal: true), 0)
+        XCTAssertEqual(s.label(start: 2.5, end: 4, segments: history, isFinal: true), 1)
+        // Move current away: label slot 5 so current becomes 5.
+        let with_5 = history + [seg(5, 4, 4.5)]
+        _ = s.label(start: 4, end: 4.5, segments: with_5, isFinal: true)
+        // Now caption 4.5-5 overlaps slots 1 and 3 equally (both 0.5s each).
+        // Slot 1 is Speaker 1 (already numbered), slot 3 is unseen.
+        // Current is slot 5 (not in the tie), so slot 1 should win due to being previously numbered.
+        let segs = history + [seg(5, 4, 4.5), seg(1, 4.5, 5), seg(3, 4.5, 5)]
+        XCTAssertEqual(s.label(start: 4.5, end: 5, segments: segs, isFinal: true), 1)
+    }
+
+    func testTieBreakChoosesLowestRawSlotWhenNothingElseMatches() {
+        var s = SpeakerLabelSmoother()
+        // Two new, unseen slots tie for equal overlap; lowest raw ID should win.
+        let segs = [seg(3, 0, 1), seg(5, 0, 1)]
+        XCTAssertEqual(s.label(start: 0, end: 1, segments: segs, isFinal: true), 0)
+        // Verify the picked slot is 3 (not 5) by labeling only slot 3 next: it should still be Speaker 0.
+        XCTAssertEqual(s.label(start: 1, end: 2, segments: [seg(3, 1, 2)], isFinal: true), 0)
+        // If we had picked slot 5, a caption with only slot 3 would get a new number.
+    }
+
+    func testThreeWayTiePicksCurrentAmongThree() {
+        var s = SpeakerLabelSmoother()
+        let init_segs = [seg(0, 0, 2), seg(2, 2, 2.5)]
+        _ = s.label(start: 0, end: 2, segments: init_segs, isFinal: true)
+        _ = s.label(start: 2, end: 2.5, segments: init_segs, isFinal: true)
+        // Now slots 0, 2, and 5 all have equal overlap; 2 is current, should stay 2.
+        let segs = init_segs + [seg(0, 2.5, 3), seg(2, 2.5, 3), seg(5, 2.5, 3)]
+        XCTAssertEqual(s.label(start: 2.5, end: 3, segments: segs, isFinal: false), 1)
+    }
+
+    func testThreeWayTiePicksLowestNumberedWhenCurrentNotPresent() {
+        var s = SpeakerLabelSmoother()
+        let init_segs = [seg(3, 0, 2), seg(5, 2, 2.5)]
+        _ = s.label(start: 0, end: 2, segments: init_segs, isFinal: true)
+        _ = s.label(start: 2, end: 2.5, segments: init_segs, isFinal: true)
+        // Move current away: label a third segment with slot 7 so current becomes 7.
+        let with_new = init_segs + [seg(7, 2.5, 3)]
+        _ = s.label(start: 2.5, end: 3, segments: with_new, isFinal: true)
+        // Now slots 3 (Speaker 0) and 5 (Speaker 1) are known and numbered, current is 7 (not in the tie).
+        // Slots 1, 3, 5 all tie; prefer slot 3 (Speaker 0, lowest display number) over slot 1 (unseen) and slot 5.
+        let segs = init_segs + [seg(7, 2.5, 3), seg(1, 3, 3.5), seg(3, 3, 3.5), seg(5, 3, 3.5)]
+        XCTAssertEqual(s.label(start: 3, end: 3.5, segments: segs, isFinal: false), 0)
+    }
+
+    func testTieBreakWithOnlyLowestSlotNumbered() {
+        var s = SpeakerLabelSmoother()
+        // Establish slot 1 as Speaker 0.
+        XCTAssertEqual(s.label(start: 0, end: 1, segments: [seg(1, 0, 1)], isFinal: true), 0)
+        // Move current away: label something with slot 2, so current becomes 2.
+        var segs = [seg(1, 0, 1), seg(2, 1, 1.5)]
+        _ = s.label(start: 1, end: 1.5, segments: segs, isFinal: true)
+        // Now slots 1 (Speaker 0) and 3 (unseen) tie, current is 2 (not in the tie).
+        // Slot 1 is already numbered, should win over unseen slot 3.
+        segs = [seg(1, 0, 1), seg(2, 1, 1.5), seg(1, 1.5, 2), seg(3, 1.5, 2)]
+        XCTAssertEqual(s.label(start: 1.5, end: 2, segments: segs, isFinal: false), 0)
+    }
+
+    func testTieBreakPicksLowestDisplayNumberWhenCurrentAbsent() {
+        var s = SpeakerLabelSmoother()
+        // Establish slots in reverse order: slot 5 becomes Speaker 0, slot 1 becomes Speaker 1.
+        let baseSegs = [seg(5, 0, 1), seg(1, 1.5, 2)]
+        XCTAssertEqual(s.label(start: 0, end: 1, segments: baseSegs, isFinal: true), 0)
+        XCTAssertEqual(s.label(start: 1.5, end: 2, segments: baseSegs, isFinal: true), 1)
+        // Move current away: label slot 7.
+        var segs = baseSegs + [seg(7, 2, 2.5)]
+        _ = s.label(start: 2, end: 2.5, segments: segs, isFinal: true)
+        // Now slots 5 (Speaker 0, display 0) and 1 (Speaker 1, display 1) tie, current is 7 (absent).
+        // Should pick slot 5 because it has the lowest display number (0 < 1).
+        segs = baseSegs + [seg(7, 2, 2.5), seg(5, 2.5, 3), seg(1, 2.5, 3)]
+        XCTAssertEqual(s.label(start: 2.5, end: 3, segments: segs, isFinal: true), 0)
+    }
 }

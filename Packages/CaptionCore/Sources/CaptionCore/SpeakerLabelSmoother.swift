@@ -13,6 +13,10 @@ import Foundation
 /// It does not stop the model putting a whole stretch of one voice in a new slot after a pitch or pace change:
 /// timing alone can't tell that from a second person, and a "new speakers must prove themselves" rule measured
 /// worse (it merged the next person's first words into the previous person's line).
+/// When multiple slots tie for the most overlap, the tie-break is deterministic and applied by `bestSlot`:
+/// - if current slot is among the tied, pick current;
+/// - else if any tied slots are already numbered (in `displayBySlot`), pick the one with the lowest display number;
+/// - else pick the tied slot with the lowest raw ID.
 /// One instance per session: slot numbers mean nothing across sessions (CONTEXT.md).
 public struct SpeakerLabelSmoother: Sendable {
     public var minSegmentSeconds: Double
@@ -48,6 +52,15 @@ public struct SpeakerLabelSmoother: Sendable {
         return shown
     }
 
+    private static func bestSlot(overlap: [Int: Double], current: Int?, numbering displayBySlot: [Int: Int]) -> Int? {
+        guard let maxValue = overlap.values.max() else { return nil }
+        let tied = overlap.keys.filter { overlap[$0] == maxValue }
+        if let current, tied.contains(current) { return current }
+        let numbered = tied.filter { displayBySlot[$0] != nil }
+        if !numbered.isEmpty { return numbered.min(by: { displayBySlot[$0]! < displayBySlot[$1]! }) }
+        return tied.min()
+    }
+
     private func chooseSlot(start: Double, end: Double, segments: [SpeakerSegment], isFinal: Bool,
                             numbering displayBySlot: [Int: Int]) -> Int? {
         let covering = segments.filter { min(end, $0.end) - max(start, $0.start) > 0 }
@@ -60,15 +73,16 @@ public struct SpeakerLabelSmoother: Sendable {
         let evidence = long.isEmpty ? covering : long
         var overlap: [Int: Double] = [:]
         for s in evidence { overlap[s.speaker, default: 0] += min(end, s.end) - max(start, s.start) }
-        guard let best = overlap.max(by: { $0.value < $1.value || ($0.value == $1.value && $1.key == current) }) else {
+        guard let best = Self.bestSlot(overlap: overlap, current: current, numbering: displayBySlot) else {
             return current
         }
+        let bestValue = overlap[best] ?? 0
         // A live scrap of a slot nobody has been shown as can't create a person (it would take the next number);
         // wait for more of it, or for the final result.
-        if long.isEmpty && !isFinal && displayBySlot[best.key] == nil { return nil }
-        guard let current, best.key != current else { return best.key }
+        if long.isEmpty && !isFinal && displayBySlot[best] == nil { return nil }
+        guard let current, best != current else { return best }
         let sameUtterance = currentStart.map { abs($0 - start) < 0.05 } ?? false
-        if !isFinal && sameUtterance && best.value < switchSeconds { return current }
-        return best.key
+        if !isFinal && sameUtterance && bestValue < switchSeconds { return current }
+        return best
     }
 }
