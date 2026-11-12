@@ -1,0 +1,16 @@
+**Data side (CaptionCore + plumbing — proceeds now):**
+1. Add `EarDelayTracker` (`Packages/CaptionCore/Sources/CaptionCore/EarDelayTracking.swift`): three `PercentileHistogram`s (translate delay, voice-start delay, behind-by), bounded open-instance tracking, `phraseSpoken`/`translationReady`/`voiceStarted`/`voiceFinished`/`voiceCutOff`/`translationFailed`, delay-flooring at 0, `repeats`/`translationMisses`/`voiceCutOffs` counters (per the Decisions above), and an `EarDelayReport` value with `{p50, p95, max, samples}` per metric reusing `value(at:)`.
+2. Write tests 1–12 above against `EarDelayTracker` directly (no app-layer code needed yet).
+3. Add `earDelay: EarDelayTracker?` (optional, for safe decode of pre-existing stored conversations) to `ConversationRecorder` in `BetaFeedback.swift`, plus the six forwarding mutating methods, and include `earDelay: EarDelayTracker.report` in `entry(now:)`.
+4. Add `earDelay: EarDelayReport?` to `ConversationReport`, with its own `CodingKeys`/`encode(to:)` entry (matching the manual-encode style already there).
+5. Write tests 13–15 above.
+6. Update `docs/beta/metrics-schema.md`: new `earDelay` block in the shape example and the field table, marked additive/still schema 1, `null` for conversations recorded before this build (matching the `#288`/`captionLanguage` row's wording style).
+7. Add the six new event methods to `BetaFeedbackCenter.swift` (`earPhraseSpoken` returning an instance ID, `earTranslationReady`, `earVoiceStarted`, `earVoiceFinished`, `earVoiceCutOff`, `earTranslationFailed`), each a thin `isOn`-gated forward into `ConversationRecorder`, matching `captionUpdate`/`audioLevel`'s existing shape.
+8. `EarCenter.swift`: add `instanceID: Int` to `Queued` and as a parameter to `speak(_:translation:instanceID:)`; add `var onVoiceEvent: ((Int, VoiceEvent, Date) -> Void)?` fired in `speakNext()` (started), `finished(_:)` (finished), and from `stopAll()` for whatever was `current` or still `queue`d (cut off) — matching the existing `onCheck` injection pattern.
+9. `TranslationCenter.swift`: at both `ear.take()` sites (`demoFill` and `run(_:)`), capture the phrase-end `Date` (`arrivalDate − lagSeconds`, threaded from `ContentView.onUpdate` the same way `speakers[phrase.lineID]` is already threaded in `EarCenter.take`), call the new `BetaFeedbackCenter` methods around `session.translate(...)` and `ear.speak(...)`, and get the live `ConversationSession` via an injected closure (matching `idleStopSetting`'s existing pattern) rather than a stored copy.
+10. `ContentView.swift`'s `onUpdate`: compute and pass along the phrase-end `Date` derived from `u.lagSeconds`.
+11. Build-verify (`swift test` + the app-build stage); state plainly that the real on-device timing and the Translation-framework round trip remain untested by this attempt.
+
+**Gated, separate (owner approval required before wiring, not before this PR exists):**
+12. Mock-up PR for the live readout ("ear 1.8 s · behind 0.4 s" or whatever it becomes) with Decisions, matching the `#238`/`#255` mock-up-first precedent — no live wiring until approved.
+13. Once approved: wire the readout to read `earDelay`'s live, in-progress numbers (not the finalized report) under the captions while "Speak it in my ear" is on, TestFlight builds only.

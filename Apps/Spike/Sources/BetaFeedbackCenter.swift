@@ -148,6 +148,42 @@ final class BetaFeedbackCenter: ObservableObject {
         update(session) { $0.audioLevel(dbfs) }
     }
 
+    /// "Speak it in my ear" event: phrase was spoken for translation.
+    func earPhraseSpoken(_ session: ConversationSession, instanceID: Int) {
+        guard isOn else { return }
+        update(session) { $0.earPhraseSpoken(instanceID: instanceID, at: Date()) }
+    }
+
+    /// "Speak it in my ear" event: translation arrived.
+    func earTranslationReady(_ session: ConversationSession, instanceID: Int) {
+        guard isOn else { return }
+        update(session) { $0.earTranslationReady(instanceID: instanceID, at: Date()) }
+    }
+
+    /// "Speak it in my ear" event: voice started speaking.
+    func earVoiceStarted(_ session: ConversationSession, instanceID: Int) {
+        guard isOn else { return }
+        update(session) { $0.earVoiceStarted(instanceID: instanceID, at: Date()) }
+    }
+
+    /// "Speak it in my ear" event: voice finished speaking.
+    func earVoiceFinished(_ session: ConversationSession, instanceID: Int, speakerSpokeThen: Date) {
+        guard isOn else { return }
+        update(session) { $0.earVoiceFinished(instanceID: instanceID, at: Date(), speakerSpokeThen: speakerSpokeThen) }
+    }
+
+    /// "Speak it in my ear" event: voice was cut off (stopped before finishing).
+    func earVoiceCutOff(_ session: ConversationSession, instanceID: Int) {
+        guard isOn else { return }
+        update(session) { $0.earVoiceCutOff(instanceID: instanceID) }
+    }
+
+    /// "Speak it in my ear" event: translation failed.
+    func earTranslationFailed(_ session: ConversationSession, instanceID: Int) {
+        guard isOn else { return }
+        update(session) { $0.earTranslationFailed(instanceID: instanceID) }
+    }
+
     /// About once a second while captioning.
     func tick(_ session: ConversationSession) {
         guard isOn else { return }

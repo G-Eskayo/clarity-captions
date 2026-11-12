@@ -37,7 +37,15 @@ the tester's own optional note.
       "captionLanguage": "en-US",
       "captionLanguageChosen": false,
       "faceToFace": { "owner": "en-US", "partner": "es-ES" },
-      "build": "11"
+      "build": "11",
+      "earDelay": {
+        "translateDelay": { "p50Seconds": 0.42, "p95Seconds": 0.89, "maxSeconds": 1.23, "samples": 156 },
+        "voiceStartDelay": { "p50Seconds": 0.05, "p95Seconds": 0.15, "maxSeconds": 0.42, "samples": 156 },
+        "behindBy": { "p50Seconds": 0.38, "p95Seconds": 1.14, "maxSeconds": 2.05, "samples": 156 },
+        "repeats": 0,
+        "translationMisses": 2,
+        "voiceCutOffs": 1
+      }
     }
   ]
 }
@@ -62,6 +70,7 @@ the tester's own optional note.
 | `faceToFace` | Face to face: each half's picked language (`owner` is her half), `null` for a half not picked; the whole field is `null` when face to face was off. With one half picked, that half's language captions everything (#208). Build 11 (#288) | `FaceToFaceSplit.captions` |
 | `build` | The build that recorded this conversation. `app.build` is the build that sent the report, which can be later (#288) | `CFBundleVersion` at Start |
 | `device.language` | The phone's first preferred language (BCP-47), to set beside `captionLanguage`. Build 11 (#288) | `Locale.preferredLanguages` |
+| `earDelay` | "Speak it in my ear" latencies (#294): delay from phrase spoken to translation received (`translateDelay`), from translation ready to voice starting (`voiceStartDelay`), distance behind the speaker when voice finishes (`behindBy`), each as p50/p95/max and sample count; plus counters for repeats, translation misses, and voice cut-offs. Added build TBD (#294); additive, still schema 1; `null` for conversations recorded before this build | `EarDelayTracker`, `BetaFeedbackCenter.earX()` |
 
 Size: about 1 KB per conversation, with no cap until sent (ADR 0023), so even 1,000 unsent conversations make a
 report of about 1 MB, well within an iMessage attachment.

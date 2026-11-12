@@ -45,6 +45,11 @@ final class TranslationCenter: ObservableObject {
     private var product: Product?
     private var updates: Task<Void, Never>?
     private var wake: AsyncStream<Void>.Continuation?
+    private var nextInstanceID = 0
+    /// Maps from instance ID to the phrase text for tracking.
+    private var instancePhrases: [Int: String] = [:]
+    /// Injected closure to get the live conversation session for beta feedback.
+    var getCurrentSession: (() -> ConversationSession?)? = nil
 
     init(store: CaptionLanguageStore = CaptionLanguageStore()) {
         self.store = store
@@ -56,6 +61,19 @@ final class TranslationCenter: ObservableObject {
         #endif
         ear.targetChanged(target)
         ear.onCheck = { [weak self] in self?.earCheck() }
+
+        let beta = BetaFeedbackCenter.shared
+        ear.onVoiceEvent = { [weak self] instanceID, event, date in
+            guard let session = self?.getCurrentSession?() else { return }
+            switch event {
+            case .started:
+                beta.earVoiceStarted(session, instanceID: instanceID)
+            case .finished:
+                beta.earVoiceFinished(session, instanceID: instanceID, speakerSpokeThen: date)
+            case .cutOff:
+                beta.earVoiceCutOff(session, instanceID: instanceID)
+            }
+        }
     }
 
     /// #233: the translation spoken into her headphones, from the same session and the same finished words.
@@ -336,15 +354,35 @@ final class TranslationCenter: ObservableObject {
             preparing = false
         }
         continuation.yield()
+        let beta = BetaFeedbackCenter.shared
         for await _ in stream {
             if Task.isCancelled { return }
             // #233 first: the voice is the part where every millisecond shows.
             for phrase in ear.take(from: latest, active: earActive) {
+                let instanceID = nextInstanceID
+                nextInstanceID += 1
+                instancePhrases[instanceID] = phrase.text
+                guard let betaSession = getCurrentSession?() else {
+                    // No session: skip beta tracking
+                    do {
+                        ear.speak(phrase, translation: try await session.translate(phrase.text).targetText, instanceID: instanceID)
+                    } catch {
+                        if Task.isCancelled { return }
+                    }
+                    continue
+                }
                 do {
-                    ear.speak(phrase, translation: try await session.translate(phrase.text).targetText)
+                    beta.earPhraseSpoken(betaSession, instanceID: instanceID)
+                    let response = try await session.translate(phrase.text)
+                    beta.earTranslationReady(betaSession, instanceID: instanceID)
+                    ear.speak(phrase, translation: response.targetText, instanceID: instanceID)
                 } catch {
+                    if !Task.isCancelled {
+                        beta.earTranslationFailed(betaSession, instanceID: instanceID)
+                    }
                     if Task.isCancelled { return }
                 }
+                instancePhrases.removeValue(forKey: instanceID)
             }
             for work in translations.take(from: latest) {
                 do {

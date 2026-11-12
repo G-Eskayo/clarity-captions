@@ -45,12 +45,12 @@ final class EarCenter: NSObject, ObservableObject {
     private let warmer = AVSpeechSynthesizer()
     private var phrases = EarPhrases()
     private var echo = EchoGuard()
-    private struct Queued { let phrase: EarPhrases.Phrase; let text: String; let speaker: Int? }
+    private struct Queued { let phrase: EarPhrases.Phrase; let text: String; let speaker: Int?; let instanceID: Int }
     private let recorder: SpeakerVoiceRecorder
     private var chooser = EarVoiceChooser(voices: [], normalSyllablesPerSecond: nil, defaultVoiceID: nil)
     private var chooserSession = -1
     private var queue: [Queued] = []
-    private var current: (item: Queued, utterance: ObjectIdentifier, start: Double)?
+    private var current: (item: Queued, utterance: ObjectIdentifier, start: Double, instanceID: Int)?
     private var target: Locale?
     private var check: Task<Void, Never>?
     private var foreground = true
@@ -180,17 +180,27 @@ final class EarCenter: NSObject, ObservableObject {
 
     /// Whose line each phrase came from, so it's said in that speaker's voice.
     private var speakers: [Int: Int] = [:]
+    /// When each phrase (by lineID) was finalized on screen (for behind-by metric).
+    private var phraseEndDates: [Int: Date] = [:]
+
+    /// Called when voice events happen: instanceID, event type, timestamp.
+    var onVoiceEvent: ((Int, VoiceEvent, Date) -> Void)?
+    private var nextInstanceID = 0
+
+    /// Voice event types for ear-delay tracking.
+    enum VoiceEvent { case started, finished, cutOff }
 
     /// A phrase came back translated: say it after what's already queued ("behind" A: never skipped).
-    func speak(_ phrase: EarPhrases.Phrase, translation: String) {
+    func speak(_ phrase: EarPhrases.Phrase, translation: String, instanceID: Int) {
         let text = translation.trimmingCharacters(in: .whitespacesAndNewlines)
         guard state.speaks, foreground, !text.isEmpty else { return }
         spokenTranslations[phrase.lineID] = [spokenTranslations[phrase.lineID], text].compactMap { $0 }.joined(separator: " ")
         #if DEBUG
         if DemoMode.ear == "mark" { demoHold(phrase); return }
         #endif
-        queue.append(Queued(phrase: phrase, text: text, speaker: speakers[phrase.lineID]))
+        queue.append(Queued(phrase: phrase, text: text, speaker: speakers[phrase.lineID], instanceID: instanceID))
         if speakers.count > 200 { speakers = speakers.filter { $0.key >= phrase.lineID - 50 } }
+        if phraseEndDates.count > 200 { phraseEndDates = phraseEndDates.filter { $0.key >= phrase.lineID - 50 } }
         speakNext()
     }
 
@@ -211,10 +221,12 @@ final class EarCenter: NSObject, ObservableObject {
             utterance.rate = min(AVSpeechUtteranceMaximumSpeechRate, matched.rate(catchUp: catchUp))
         }
         let start = Self.now
-        current = (item, ObjectIdentifier(utterance), start)
+        let instanceID = item.instanceID
+        current = (item, ObjectIdentifier(utterance), start, instanceID)
         // Counted as said from now, with a generous end, so its echo is caught while it's still playing.
         echo.spoke(item.text, from: start, to: start + 0.6 * Double(item.text.split(separator: " ").count) + 1)
         speaking = Speaking(lineID: item.phrase.lineID, words: item.phrase.words, share: 0)
+        onVoiceEvent?(instanceID, .started, Date())
         synthesizer.speak(utterance)
     }
 
@@ -223,6 +235,9 @@ final class EarCenter: NSObject, ObservableObject {
         let now = Self.now
         echo.spoke(current.item.text, from: current.start, to: now)
         echo.forget(before: now - 30)
+        if let phraseEndDate = phraseEndDates[current.item.phrase.lineID] {
+            onVoiceEvent?(current.instanceID, .finished, phraseEndDate)
+        }
         self.current = nil
         speaking = nil
         speakNext()
@@ -230,6 +245,8 @@ final class EarCenter: NSObject, ObservableObject {
 
     /// Stops at once and drops what's queued: turned off, headphones gone, the app left, or a new language.
     func stopAll() {
+        if let current { onVoiceEvent?(current.instanceID, .cutOff, Date()) }
+        for item in queue { onVoiceEvent?(item.instanceID, .cutOff, Date()) }
         queue = []
         current = nil
         speaking = nil
@@ -240,6 +257,11 @@ final class EarCenter: NSObject, ObservableObject {
     func foregroundChanged(_ active: Bool) {
         foreground = active
         if !active { stopAll() }
+    }
+
+    /// Record when a phrase was finalized on screen, for computing behind-by metric.
+    func recordPhraseEnd(lineID: Int, at date: Date) {
+        phraseEndDates[lineID] = date
     }
 
     // MARK: headphones

@@ -172,6 +172,8 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
     /// What the latest stretch ran in: caption language, face to face, build (#288). Nil if saved by build 10 or
     /// earlier, which didn't record it.
     public private(set) var context: CaptioningContext?
+    /// Ear delays (#294): nil for conversations recorded before this build.
+    public private(set) var earDelay: EarDelayTracker? = EarDelayTracker()
 
     private var captioningSeconds = 0.0
     private var segmentStart: Date?
@@ -212,7 +214,7 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
         case maxThermal, launchToStartSeconds, startToFirstCaptionSeconds, launch
         case captioningSeconds, segmentStart, startPressedAt, lag, micLevel, changedWords, finalWords, relabels
         case speakers, batteryDrop, batteryMinutes, segmentBattery, engine, engineFallback, leftAt
-        case context = "captioningIn"
+        case context = "captioningIn", earDelay
     }
 
     public init(id: UUID) { self.id = id }
@@ -279,6 +281,37 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
     public mutating func thermal(_ level: ThermalLevel) { maxThermal = max(maxThermal ?? level, level) }
 
     public mutating func lowPowerMode(_ on: Bool) { if on { lowPowerModeSeen = true } }
+
+    /// Forwards to earDelay tracker.
+    public mutating func earPhraseSpoken(instanceID: Int, at date: Date) {
+        if earDelay == nil { earDelay = EarDelayTracker() }
+        earDelay?.phraseSpoken(instanceID: instanceID, at: date)
+    }
+
+    public mutating func earTranslationReady(instanceID: Int, at date: Date) {
+        if earDelay == nil { earDelay = EarDelayTracker() }
+        earDelay?.translationReady(instanceID: instanceID, at: date)
+    }
+
+    public mutating func earVoiceStarted(instanceID: Int, at date: Date) {
+        if earDelay == nil { earDelay = EarDelayTracker() }
+        earDelay?.voiceStarted(instanceID: instanceID, at: date)
+    }
+
+    public mutating func earVoiceFinished(instanceID: Int, at date: Date, speakerSpokeThen: Date) {
+        if earDelay == nil { earDelay = EarDelayTracker() }
+        earDelay?.voiceFinished(instanceID: instanceID, at: date, speakerSpokeThen: speakerSpokeThen)
+    }
+
+    public mutating func earVoiceCutOff(instanceID: Int) {
+        if earDelay == nil { earDelay = EarDelayTracker() }
+        earDelay?.voiceCutOff(instanceID: instanceID)
+    }
+
+    public mutating func earTranslationFailed(instanceID: Int) {
+        if earDelay == nil { earDelay = EarDelayTracker() }
+        earDelay?.translationFailed(instanceID: instanceID)
+    }
 
     /// Captions stopped. A second stop for the same stretch changes nothing.
     public mutating func captioningStopped(at date: Date, battery: BatterySample?, ending newEnding: ConversationEnding) {
@@ -372,7 +405,8 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
             captionLanguage: context?.captionLanguage,
             captionLanguageChosen: context?.captionLanguageChosen,
             faceToFace: context?.faceToFace,
-            build: context?.build)
+            build: context?.build,
+            earDelay: earDelay?.report)
     }
 
     /// The report's conversations: every stored one, with the copy on screen (if it has started) in place of its
@@ -484,11 +518,13 @@ public struct ConversationReport: Codable, Equatable, Sendable {
     public var faceToFace: FaceToFaceLanguages? = nil
     /// The build that recorded this conversation; `app.build` is the one that sent the report.
     public var build: String? = nil
+    /// Ear delays (#294): nil for conversations recorded before this build.
+    public var earDelay: EarDelayReport? = nil
 
     private enum CodingKeys: String, CodingKey {
         case id, startedAt, minutes, rating, ratingSkipped, note, lag, rewriteRate, speakers, launchToStartSeconds
         case startToFirstCaptionSeconds, ending, battery, micLevel, launch, engine, engineFallback
-        case captionLanguage, captionLanguageChosen, faceToFace, build
+        case captionLanguage, captionLanguageChosen, faceToFace, build, earDelay
     }
 
     /// Every schema key is written, `null` when unknown, so every report has the same shape for MARVIN to read.
@@ -515,6 +551,7 @@ public struct ConversationReport: Codable, Equatable, Sendable {
         try c.encode(captionLanguageChosen, forKey: .captionLanguageChosen)
         try c.encode(faceToFace, forKey: .faceToFace)
         try c.encode(build, forKey: .build)
+        try c.encode(earDelay, forKey: .earDelay)
     }
 }
 

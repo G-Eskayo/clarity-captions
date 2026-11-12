@@ -103,6 +103,9 @@ final class CaptionModel: ObservableObject {
             return try CaptionEngineFactory.make(micMode: self.micMode)
         }, idleStopSetting: { [weak self] in self?.idleStop ?? .default })
 
+        // Wire up ear delay tracking: inject the session provider to TranslationCenter
+        TranslationCenter.shared.getCurrentSession = { [weak self] in self?.session }
+
         if let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
             let conversationsDir = appSupportURL.appendingPathComponent("SavedConversations")
             self.store = try? SavedConversationStore(directory: conversationsDir)
@@ -135,7 +138,15 @@ final class CaptionModel: ObservableObject {
             self.diag = u.diagnostics
             if !u.text.trimmingCharacters(in: .whitespaces).isEmpty {
                 self.tracker.recordSpeech(at: Date())
-                if u.isFinal { self.reportCaptionShown() }
+                if u.isFinal {
+                    if let lagSeconds = u.lagSeconds {
+                        let phraseEndDate = Date().addingTimeInterval(-lagSeconds)
+                        for line in self.stream.lines.filter({ $0.speaker == u.speaker && $0.id >= (self.stream.lines.last?.id ?? 0) - 10 }) {
+                            EarCenter.shared.recordPhraseEnd(lineID: line.id, at: phraseEndDate)
+                        }
+                    }
+                    self.reportCaptionShown()
+                }
             }
             // After the caption is on screen: measurements never sit in front of it (ADR 0015).
             self.beta.captionUpdate(self.session, u)
