@@ -167,41 +167,173 @@ Result lines read: 152287; corrupt lines skipped: 0; duplicates ignored: 0.
 
 ## Low-bit builds (#203)
 
-#203 "[E] 2-bit north star, English first": data-free 3-bit, 2-bit and mixed 2/4/6-bit builds of Parakeet Ultra
-(`compress_parakeet.py --variants ultra-pal3,ultra-pal2,ultra-mixed246`), scored on all of EdAcc like #150. Chain:
-`scripts/engine-eval/m4-low-bit.sh` (written to `~/edacc-eval/results-203`, not by the 2012 scorer).
+#203 "[E] 2-bit north star, English first": data-free 3-bit, 2-bit and two mixed builds of Parakeet Ultra
+(`compress_parakeet.py --variants ultra-pal3,ultra-pal2,ultra-mixed246,ultra-mixed24`), scored on all of EdAcc like
+#150. Chain: `scripts/engine-eval/m4-low-bit.sh`, run on the M4 on 2026-10-30 (accuracy 08:37–11:58 UTC), written to
+`~/edacc-eval/results-203` (now parked on the 2012 mini), not by the 2012 scorer. Every build ran all 17,529 clips
+(31.55 h), the same clips as #150 (`match-shards`: 0 moved, 0 missing).
 
-**Status, 2026-10-29: the three new builds have not been made yet, so there are no WER, size or speed rows for
-them.** The fp16 Ultra encoder they're cut from has to be exported again (#150's export was deleted to save disk),
-and that needs the mobius conversion env (torch, NeMo, coremltools 9.0b1). Installing it was refused on the
-unattended run. Everything after the export is ready and was tested: the build code, the EdAcc shards (rebuilt on
-the M4, every one of #150's 17,529 clips in the same shard) and the scoring.
+**Result: data-free k-means below 4 bits breaks the model.** 3-bit more than doubles the error, the mixed builds are
+worse, and 2-bit outputs nothing at all (every word deleted). The errors are almost all deletions: the model drops
+words rather than mishearing them. None of these can ship, and none is a 2-bit north star; reaching that needs data:
+calibration first, then fine-tuning (#272).
 
-| Build | Bits per encoder weight | On disk | WER (95% CI) | Speed (x real time) |
-|---|---|---:|---|---:|
-| ultra-pal3 | 3 | not built | not run | not run |
-| ultra-pal2 | 2 | not built | not run | not run |
-| ultra-mixed246 | 6 front end and first/last block, 4 attention, 2 the rest (about 2.7 on average) | not built | not run | not run |
+| Build | Bits per encoder weight | On disk | Zipped | WER (95% CI) | Deletions | x real time, shard 1 | Correct word, median / p95 | Words right in final | Peak memory |
+|---|---|---:|---:|---|---:|---:|---|---:|---:|
+| ultra-pal6 (ships; #150) | 6 | 498 MB | 485 MB | 13.8% (12.8%–14.8%) | 15,046 | 109.6x | 0.25 s / 1.35 s | 87.1% | 50 MB |
+| ultra-pal4 (#150) | 4 | 350 MB | 320 MB | 14.8% (13.7%–15.8%) | 18,663 | – | 0.27 s / 1.44 s | 85.9% | 60 MB |
+| ultra-pal3 | 3 | 276 MB | 263 MB | 33.6% (30.8%–36.5%) | 62,693 | 81.3x | 0.38 s / 2.10 s | 63.9% | 50 MB |
+| ultra-mixed246 | 2.73 (6 front end and first/last block, 4 attention, 2 the rest) | 253 MB | 235 MB | 60.5% (57.4%–63.5%) | 140,165 | 46.5x | 0.46 s / 3.20 s | 38.5% | 50 MB |
+| ultra-mixed24 | 2.21 (4 front end and first/last block, 2 the rest) | 216 MB | 198 MB | 83.4% (80.9%–85.6%) | 229,946 | 33.3x | 0.61 s / 3.60 s | 16.4% | 49 MB |
+| ultra-pal2 | 2 | 203 MB | 187 MB | 100.0% (100.0%–100.0%) | 298,964 (all) | 16.3x | no words | 0.0% | 50 MB |
 
-### Speed check on a quiet machine (shard 1, the builds that exist)
+WER over all 17,529 clips (298,964 reference words); the #150 rows are over the 17,528 clips every #150 engine shared.
+Latency and memory: shard 1 (526 clips up to 30 s, 60 clips for memory), 6-bit measured again in the same chain.
 
-The same 548 clips, one run each, M4 Mac mini at nice +15, 2026-10-29 23:32–23:50 UTC. Load was sampled every 30 s
-(37 samples): 1-minute load average median 3.8 on 10 cores, CPU idle median 63% (lowest 29%, while the Neural
-Engine compiler and Spotlight ran during the first model load). Another session's test suite (one Python process,
-about one core) ran for part of the window. Nothing else heavy ran.
+**Did fewer bits run faster than 6-bit? No, slower.** On shard 1, 6-bit ran at 109.6x real time just before the new
+builds; 3-bit at 81.3x, the mixed builds at 46.5x and 33.3x, and 2-bit at 16.3x. The per-clip median barely moved
+(48.5 ms for 6-bit, 47.0 ms for 3-bit, 51.5 and 55.3 ms mixed): the time goes on long clips. The likely cause is the
+decoder rather than the encoder: with a damaged encoder output the TDT decoder takes many more steps per clip. That
+is an inference from the medians, not a profile. Either way, below 4 bits these builds are slower *and* far less
+accurate. Load during the accuracy run: 1-minute load average median 3.9 on 10 cores, CPU idle median 66% (400
+samples, `load.tsv`), with heavy spells from other work (idle under 5% in a tenth of samples), so treat the speeds as
+indicative; the shard-1 ordering is the same as the full-run ordering (74.9x, 48.6x, 33.2x, 27.4x).
 
-| Build | WER on shard 1 (95% CI) | x real time, today | x real time, #150 (same shard) | Median per clip | Correct word, median / p95 |
-|---|---|---:|---:|---:|---|
-| parakeet-ultra-coreml (int8, published) | 13.3% (11.8%–15.0%) | 122.5x | 121.6x | 43.2 ms | 0.24 s / 1.34 s |
-| ultra-pal6 (ships) | 13.4% (11.9%–15.0%) | 108.3x | 113.4x | 49.1 ms | 0.24 s / 1.35 s |
-| ultra-pal4 | 14.1% (12.6%–15.8%) | 108.2x | 112.6x | 47.6 ms | 0.27 s / 1.43 s |
+On the 2026-11-09 held-out test split (below, #272) the same builds score the same: 3-bit 34.0%, 6-bit 13.9%.
 
-**Did fewer bits run faster than 6-bit?** No. 4-bit ran at the same speed as 6-bit (108.2x vs 108.3x), and both
-were about 12% slower than the published 8-bit build (122.5x). That repeats #150's ordering on the same shard.
-3-bit and 2-bit haven't been measured; the chain runs 6-bit again next to them, in the same hour, so that
-comparison will be like for like.
+## Calibrated low-bit builds (#272)
 
-- The rebuilt audio gives the same transcripts as #150's: 1,642 of 1,644 clip results are identical. The two that
-  differ are one clip each for 6-bit and 8-bit, with small wording changes at the end of a phrase.
-- Correct-word latency barely moves between builds, because the 0.5 s hop sets it, not decode time.
+#272 "Parakeet Ultra smaller with no loss": shrink Ultra below the 498 MB 6-bit build with no loss, using
+calibration data rather than data-free k-means. Tooling: `scripts/engine-eval/calibrated_ultra.py` (sensitivity,
+builds, decoder/joint) and the chain `scripts/engine-eval/m4-calibrated.sh`, written to `~/edacc-eval/results-272`.
 
+### The held-out split
+
+Calibration must never touch a scored clip. EdAcc's own validation (62 speakers) and test (60) splits share no
+speaker, and each recording is a conversation between two speakers (`EDACC-C04-A` and `-B`). The calibration split
+is six whole **validation conversations** (both speakers, so no conversation is both calibrated on and scored),
+picked by a seeded hash, never the same accent twice and never an accent's last scored speaker
+(`edacc_eval/heldout.py`, record and clip digests in [`edacc-heldout-split.json`](edacc-heldout-split.json)):
+
+| Part | Speakers | Clips | Hours | Accents |
+|---|---:|---:|---:|---:|
+| Calibration (never scored) | 12 | 1,603 | 2.67 | 9 |
+| **Test: every other clip (primary)** | 110 | 15,926 | 28.88 | 32 |
+| EdAcc test split only (for a later fine-tuning step that trains beside validation) | 60 | 8,527 | 16.33 | 24 |
+
+### How "no loss" is judged
+
+Each build's own 95% interval (speaker bootstrap, as in #145) is wide, about ±1.1 points, because speakers differ
+far more than builds do. So builds are also compared **paired**: one speaker bootstrap draws the same speakers
+for both builds, and the interval is on the WER *difference*. That removes the speaker spread. The ticket's rule
+(the build's interval overlaps 6-bit's) is reported next to it, and here it is too loose: 4-bit's interval overlaps
+6-bit's, but the paired test shows it is a clear point worse.
+
+### Existing builds on the held-out test split
+
+Rescored from their saved transcripts (no rerun); 6-bit is the reference.
+
+| Build | On disk | WER, test (95% CI) | vs 6-bit, paired (95% CI) | WER, EdAcc test split | vs 6-bit, paired |
+|---|---:|---|---|---|---|
+| parakeet-ultra-coreml (int8, published) | 632 MB | 13.84% (12.78–14.94) | −0.06 (−0.11 to −0.01) | 14.25% | −0.04 (−0.12 to +0.02) |
+| ultra-pal6 (ships) | 498 MB | 13.90% (12.84–15.01) | – | 14.29% | – |
+| ultra-pal4 | 350 MB | 14.85% (13.68–16.04) | **+0.95 (+0.78 to +1.11)** | 15.28% | +0.98 (+0.76 to +1.19) |
+| ultra-pal3 | 276 MB | 33.96% (30.89–37.00) | +20.06 (+17.87 to +22.36) | 34.69% | +20.40 |
+| ultra-mixed246 | 253 MB | 60.37% (57.10–63.56) | +46.47 | 60.27% | +45.98 |
+| ultra-mixed24 | 216 MB | 83.51% (80.86–85.80) | +69.61 | 84.12% | +69.83 |
+| ultra-pal2 | 203 MB | 100.00% | +86.10 | 100.00% | +85.71 |
+| Apple SpeechAnalyzer | system | 17.31% (16.03–18.59) | +3.41 (+3.06 to +3.76) | 17.91% | +3.62 |
+
+### Making the builds match coremltools first
+
+The calibrated builds quantise weights in PyTorch, so before trusting them I made a *data-free* 4-bit build that
+way and compared it with the shipped `ultra-pal4` on shard 1 (548 clips). It took three fixes:
+
+| Attempt | What differed from coremltools | vs ultra-pal4, paired | Identical transcripts |
+|---|---|---|---:|
+| 1 | Own Lloyd's k-means | +0.62 (+0.11 to +1.14) | 255 / 548 |
+| 2 | scikit-learn k-means, but coremltools actually uses an exact 1-D k-means (`kmeans1d`) for these weights | +0.53 (+0.13 to +0.93) | 275 / 548 |
+| 3 | `kmeans1d`, but weights the converter folds (depthwise conv with batch norm; `linear_pos`) quantised twice | +0.40 (+0.10 to +0.70) | 367 / 548 |
+| 4 | Folded weights left to coremltools, quantised once | – | **542 / 548** |
+| 4, on the 2012 mini | The same, with the torch half built on Linux (2012 mini) and compiled on the M4 | +0.02 (0.00 to +0.06) | 537 / 548 |
+
+A control that let coremltools quantise everything through the same export gave 548 / 548, so the export itself
+was never the problem. From attempt 4 on, the only thing a calibrated build changes is the calibration. Calibrated
+k-means is the same exact 1-D k-means, with each value weighted by its summed Fisher importance (squared gradient
+of the TDT loss on calibration clips): coremltools' sensitive k-means objective, solved exactly.
+
+### Step 1: layer sensitivity (calibration slice only)
+
+Each of 97 module groups (front end; per block: attention, convolution, two feed-forwards) dropped alone from 6 to
+4 bits, everything else at 6; damage = added encoder-output error vs full precision on 240 calibration clips
+(23.6 min). Results: `~/edacc-eval/results-272/sensitivity.json`. Calibration-slice WER: full precision 12.34%,
+all 6-bit 12.41%, all 4-bit 13.72%, the same gap the test set shows.
+
+- **Most damaging per weight:** the front end (subsampling), then the **convolution modules**, mostly in the deep
+  blocks (23, 18, 17, 19, 22). Attention in the middle blocks (5, 7, 9) barely matters.
+- By kind, total added error: convolution 0.25, first feed-forward 0.19, second feed-forward 0.15, front end 0.11,
+  attention 0.09.
+
+### Step 2: builds (2026-11-10)
+
+| Build | How | On disk | Zipped | WER, test (95% CI) | vs 6-bit, paired | EdAcc test split, vs 6-bit | x real time, shard 1 (6-bit same window) | Peak memory |
+|---|---|---:|---:|---|---|---|---:|---:|
+| ultra-pal6 (ships) | data-free 6-bit | 498 MB | 485 MB | 13.90% (12.84–15.01) | – | – | 64.9x | 57 MB |
+| **ultra-mix46** | data-free k-means, bits from step 1: 44 of 97 groups at 6, rest 4 (4.75 average) | **406 MB** | 382 MB | 14.08% (13.00–15.24) | **+0.18 (+0.11 to +0.25)** | +0.17 (+0.07 to +0.26) | 67.6x | 59 MB |
+| ultra-pal4 | data-free 4-bit | 350 MB | 320 MB | 14.85% (13.68–16.04) | +0.95 (+0.78 to +1.11) | +0.98 | – | 60 MB |
+| ultra-skm4 | calibrated: 4-bit everywhere, exact 1-D k-means weighted by Fisher importance (96 held-out calibration clips, 1–6 s) | 350 MB | 327 MB | 14.39% (13.23–15.56) | **+0.49 (+0.36 to +0.61)** | +0.52 (+0.35 to +0.70) | 109.6x (107.7x) | 58 MB |
+| **ultra-mix46-skm** | calibrated, step 1's bit plan (44 of 97 groups at 6) | **406 MB** | 387 MB | 13.98% (12.91–15.12) | **+0.08 (+0.03 to +0.13)** | +0.11 (+0.04 to +0.19) | 105.4x (109.5x) | 59 MB |
+
+x real time is shard 1, with 6-bit run in the same chain in brackets (ultra-mix46's run shared the CPU with the Fisher
+step, so both read low). Correct-word latency, median / p95 (6-bit in the same run): ultra-mix46 0.26 / 1.38 s
+(0.28 / 1.38), ultra-skm4 0.26 / 1.41 s (0.25 / 1.35), ultra-mix46-skm 0.25 / 1.34 s (0.25 / 1.35): all within 10%.
+
+**Calibration alone halves 4-bit's loss** (+0.95 to +0.49 at the same 350 MB) but doesn't remove it.
+
+**Result: no encoder build below 498 MB is loss-free by the paired test.** The bit plan does most of the work and
+calibration most of the rest: at 406 MB, data-free +0.18, calibrated +0.08 (about one extra error per 1,250 words).
+Every one of them passes the ticket's overlap rule. Which trade to take is the owner's call (Decision on #272).
+
+### Step 3: decoder and joint
+
+The decoder (23 MB) and joint (12 MB) were published as fp16 and never compressed. Re-exported from the same weights
+with mobius's own script: on shard 1 the unpalettized re-export gives **548 of 548** transcripts identical to the
+published ones. They are iOS 17 packages, and grouped-channel tables need iOS 18, so they use one table per weight
+(iOS 17 supports that) rather than a changed deployment target. On the shipped 6-bit encoder:
+
+| Build | Decoder + joint | Saved | WER, test | vs 6-bit, paired |
+|---|---:|---:|---|---|
+| ultra-pal6 | 35 MB (fp16) | – | 13.90% | – |
+| ultra-pal6-dec6 | 13 MB (6-bit) | 22 MB (476 MB total) | 13.88% (12.82–14.99) | **−0.02 (−0.05 to +0.01)** |
+| ultra-pal6-dec4 | 9 MB (4-bit) | 26 MB (471 MB total) | 13.93% (12.88–15.06) | **+0.03 (−0.03 to +0.08)** |
+
+**Both hold: no measurable loss.** Latency is unchanged (0.25 / 1.33 s and 0.25 / 1.37 s against 0.25 / 1.35 s) and so
+is speed (111.7x and 109.6x against 111.1x). **But peak memory rises from 58 MB to 90 MB (6-bit) and 93 MB (4-bit)**
+over 60 clips. Profiled below: that rise is a first-load cost only.
+
+#### Why memory rose (profiled 2026-11-10)
+
+Core ML prepares a model for the device the first time it is loaded from a path and caches the result, so later loads
+skip that work. The 90 MB was the first load of a new build. Measured with `phys_footprint` (the number iOS uses to
+end apps that use too much memory) on the M4, macOS, `.cpuAndNeuralEngine` (what FluidAudio uses):
+
+| Decoder + joint only (`coreml-memprobe.swift`, 3 rounds, runs agree within 0.1 MB) | ultra-pal6 (fp16) | dec6 |
+|---|---:|---:|
+| First load (fresh copy at a new path) | 15.1 MB | 46.6 MB |
+| Later loads of the same copy | 5.8 MB | 5.9 MB |
+
+| Whole engine, 60 clips (`engine-eval memory`) | After load | Peak |
+|---|---:|---:|
+| ultra-pal6, already loaded before (4 runs) | 29–36 MB | 56–61 MB |
+| ultra-pal6, fresh copy, first load (2 copies) | 37–39 MB | 60–73 MB |
+| dec6, first load (2 copies) | 67–68 MB | 94–96 MB |
+| dec6, later loads (3 runs) | 29–30 MB | 58–61 MB |
+
+- **After the first load, dec6 uses the same memory as the shipped build** (peak 58–61 against 56–61 MB).
+- **On a first load it peaks about 25–35 MB higher** (94–96 against 60–73 MB). The extra is in the decoder and joint:
+  +31.5 MB at load, close to their fp16 size (35 MB). That fits the 6-bit tables being expanded to full weights while
+  the device copy is prepared. The cause inside Core ML isn't proven; the numbers are.
+- In the app, a first load happens after install, after an app update that changes the model files, and whenever iOS
+  clears the app's caches (an OS update or low storage). **Not yet measured on an iPhone.** These are Mac numbers, and
+  iOS's cache rules may differ.
+- Either way the peak stays under 100 MB, far below what iOS allows a foreground app.
