@@ -1,0 +1,10 @@
+1. Decide `ci-job-shape` (owner, via the Decision above) — proceed with "append to existing jobs" as the default if unanswered, since it's cheaper and reversible later.
+2. Write `scripts/check-fluidaudio-pin.test.mjs` with tests 1–9 above (red).
+3. Write `scripts/check-fluidaudio-pin.mjs`: globs `Packages/*/Package.swift`, extracts the FluidAudio dependency requirement and version, cross-checks against sibling `Package.resolved` files and against each other, optionally checks a `--app-resolved <path>` file, notes (non-failing) transitive drift, and ends any failure's output with the #273-replay sentence (AC4) (green).
+4. Edit `Packages/CaptionCore/Package.swift:15`: `from: "0.17.5"` → `exact: "0.17.5"` (AC1).
+5. Trim the now-stale "gap" comment in `Packages/SystemReplay/Package.swift` (lines 19–21) and `Packages/EngineEval/Package.swift` (line 17), since the gap they describe is closed.
+6. Add the `fluidaudio-pin` entry to `.github/required-checks.json` (`cwd: "."`, `command: ["node", "scripts/check-fluidaudio-pin.mjs"]`, `paths: ["Packages/*", "scripts/check-fluidaudio-pin*"]`) and a matching job in `.github/workflows/ci.yml` (ubuntu-latest + Node 22, like `site`).
+7. Per the `ci-job-shape` decision, wire AC3: either extend `spike-app`'s and `mac-app`'s `command` in `required-checks.json` with a post-build `xcodebuild -resolvePackageDependencies` + `node scripts/check-fluidaudio-pin.mjs --app-resolved <path>` call, or add the separate `fluidaudio-app-resolve` check/job and its `.yml` entry.
+8. Add one line to `NOTICE.md`'s FluidAudio section stating the shipped version is the one pinned in the commit (AC's "say so in NOTICE.md").
+9. Run `swift test --package-path Packages/CaptionCore`, `node --test scripts/check-fluidaudio-pin.test.mjs`, and `node --test scripts/required-checks.test.mjs` locally; confirm all pass.
+10. Open the PR naming #286, stating plainly that the AC3 app-resolve step is verified by the pipeline's own CI run, not locally in this session.

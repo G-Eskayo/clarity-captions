@@ -16,9 +16,6 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../CaptionCore"),
-        // Pinned to the app's FluidAudio (CaptionCore's Package.resolved). CaptionCore says `from: "0.17.5"`, so a
-        // root package that doesn't pin resolves the newest 0.x (0.18.3 on 2026-11-09) and replays code the app
-        // never shipped. at-build.sh rewrites this pin from the build's own Package.resolved.
         .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.17.5"),
     ],
     targets: [

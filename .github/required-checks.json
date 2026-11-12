@@ -33,12 +33,13 @@
       "command": [
         "bash",
         "-c",
-        "D=$(mktemp -d \"${TMPDIR:-/tmp}/clarity-derived.XXXXXX\"); trap 'rm -rf \"$D\"' EXIT; xcodegen generate && xcodebuild -project CaptionSpike.xcodeproj -scheme CaptionSpike -destination 'generic/platform=iOS Simulator' -derivedDataPath \"$D\" CODE_SIGNING_ALLOWED=NO build"
+        "D=$(mktemp -d \"${TMPDIR:-/tmp}/clarity-derived.XXXXXX\"); trap 'rm -rf \"$D\"' EXIT; xcodegen generate && xcodebuild -project CaptionSpike.xcodeproj -scheme CaptionSpike -destination 'generic/platform=iOS Simulator' -derivedDataPath \"$D\" CODE_SIGNING_ALLOWED=NO build && xcodebuild -project CaptionSpike.xcodeproj -scheme CaptionSpike -destination 'generic/platform=iOS Simulator' -derivedDataPath \"$D\" -resolvePackageDependencies && node ../../scripts/check-fluidaudio-pin.mjs --app-resolved \"CaptionSpike.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved\""
       ],
       "parser": "xcodebuild",
       "requires": [
         "xcodegen",
-        "xcode"
+        "xcode",
+        "node"
       ],
       "timeout_s": 2400
     },
@@ -56,14 +57,31 @@
       "command": [
         "bash",
         "-c",
-        "D=$(mktemp -d \"${TMPDIR:-/tmp}/clarity-mac-derived.XXXXXX\"); trap 'rm -rf \"$D\"' EXIT; M=Resources/Models/Sortformer_v2.1.mlmodelc; if [ ! -d \"$M\" ]; then sh ../../scripts/fetch-diarizer-models.sh && mkdir -p Resources/Models && cp -cR ../Spike/Resources/Models/Sortformer_v2.1.mlmodelc Resources/Models/; fi; xcodegen generate && xcodebuild -project CaptionMac.xcodeproj -scheme CaptionMac -configuration Debug -destination 'platform=macOS' -derivedDataPath \"$D\" CODE_SIGNING_ALLOWED=NO build"
+        "D=$(mktemp -d \"${TMPDIR:-/tmp}/clarity-mac-derived.XXXXXX\"); trap 'rm -rf \"$D\"' EXIT; M=Resources/Models/Sortformer_v2.1.mlmodelc; if [ ! -d \"$M\" ]; then sh ../../scripts/fetch-diarizer-models.sh && mkdir -p Resources/Models && cp -cR ../Spike/Resources/Models/Sortformer_v2.1.mlmodelc Resources/Models/; fi; xcodegen generate && xcodebuild -project CaptionMac.xcodeproj -scheme CaptionMac -configuration Debug -destination 'platform=macOS' -derivedDataPath \"$D\" CODE_SIGNING_ALLOWED=NO build && xcodebuild -project CaptionMac.xcodeproj -scheme CaptionMac -configuration Debug -destination 'platform=macOS' -derivedDataPath \"$D\" -resolvePackageDependencies && node ../../scripts/check-fluidaudio-pin.mjs --app-resolved \"CaptionMac.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved\""
       ],
       "parser": "xcodebuild",
       "requires": [
         "xcodegen",
-        "xcode"
+        "xcode",
+        "node"
       ],
       "timeout_s": 2400
+    },
+    {
+      "id": "fluidaudio-pin",
+      "name": "FluidAudio pin check",
+      "cwd": ".",
+      "paths": [
+        "Packages/*"
+      ],
+      "command": [
+        "node",
+        "scripts/check-fluidaudio-pin.mjs"
+      ],
+      "requires": [
+        "node"
+      ],
+      "timeout_s": 30
     },
     {
       "id": "site",

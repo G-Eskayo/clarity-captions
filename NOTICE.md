@@ -139,6 +139,8 @@ Version Release Date: October 24, 2025
 
 **Source:** [FluidAudio GitHub](https://github.com/fluidinference/fluidaudio)
 
+**Version:** This app is built against FluidAudio 0.17.5 (pinned in Packages/CaptionCore/Package.swift).
+
 **Note:** This library includes bundled components licensed under compatible open-source licenses (see subsections below).
 
 ### Apache License 2.0 Text
