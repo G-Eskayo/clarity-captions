@@ -111,6 +111,11 @@ enum DemoMode {
     static var translate: String? { value(after: "-ClarityDemoTranslate") }
     static var translateProgress: Double? { value(after: "-ClarityDemoTranslateProgress").flatMap(Double.init) }
     static var translationOwned: Bool { flag("-ClarityDemoTranslationOwned") }
+    /// #252: `-ClarityDemoCaptionDownload fr-FR:0.4`: a caption language pick still downloading, for screenshots.
+    static var captionDownload: (String, Double)? {
+        guard let v = value(after: "-ClarityDemoCaptionDownload"), let i = v.firstIndex(of: ":"), let p = Double(v[v.index(after: i)...]) else { return nil }
+        return (String(v[..<i]), p)
+    }
     /// `-ClarityDemoEar <variant>`: Live Translation in your ear (#233), on, in one of its states.
     static var ear: String? { value(after: "-ClarityDemoEar") }
     /// `-ClarityDemoSaidOpen`: #246, one translated line starts opened (screenshots).
