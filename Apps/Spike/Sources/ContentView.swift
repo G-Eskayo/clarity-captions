@@ -30,6 +30,7 @@ final class CaptionModel: ObservableObject {
         didSet { CaptionStyleStore().save(style) }
     }
     @Published var latencyReport: String?
+    @Published var localesReport: String?
     @Published var speakerNames = SpeakerNames()
     @Published var activity: ListeningActivity?
     @Published var roomLevelDBFS: Double?
@@ -487,6 +488,38 @@ final class CaptionModel: ObservableObject {
                 latencyReport = "Error: \(error)"
             }
             task = nil
+        }
+    }
+
+    func measureSpeechLocales() {
+        Task { @MainActor in
+            do {
+                let speechTranscriberSupported = await SpeechTranscriber.supportedLocales
+                let speechTranscriberInstalled = await SpeechTranscriber.installedLocales
+                let dictationSupported = await DictationTranscriber.supportedLocales
+                let dictationInstalled = await DictationTranscriber.installedLocales
+                let sfSpeechSupported = Array(SFSpeechRecognizer.supportedLocales())
+
+                let os = UIDevice.current.systemName + " " + UIDevice.current.systemVersion
+                let json = SpeechLocaleReport.json(
+                    os: os,
+                    date: Date(),
+                    speechTranscriberSupported: speechTranscriberSupported,
+                    speechTranscriberInstalled: speechTranscriberInstalled,
+                    dictationSupported: dictationSupported,
+                    dictationInstalled: dictationInstalled,
+                    sfSpeechSupported: sfSpeechSupported
+                )
+
+                UIPasteboard.general.string = json
+                localesReport = SpeechLocaleReport.summary(
+                    os: os,
+                    speechTranscriberSupported: speechTranscriberSupported,
+                    dictationSupported: dictationSupported
+                ) + " (copied)"
+            } catch {
+                localesReport = "Error: \(error)"
+            }
         }
     }
 }
@@ -1756,9 +1789,12 @@ struct ContentView: View {
             Button("Measure latency") { model.measureLatency() }
                 .font(.footnote)
                 .disabled(model.state == .listening || model.state == .preparing)
+            Button("Speech locales") { model.measureSpeechLocales() }
+                .font(.footnote)
             if let lag = model.lag { Text("lag \(String(format: "%.1f", lag))s").font(.caption2) }
             if !model.startup.isEmpty { Text("startup: \(model.startup)").font(.caption2) }
             if let report = model.latencyReport { Text("LATENCY \(report)").font(.caption2) }
+            if let report = model.localesReport { Text("LOCALES \(report)").font(.caption2) }
             if !model.diag.isEmpty { Text(model.diag).font(.caption2).opacity(0.7) }
         }
         .padding(8)

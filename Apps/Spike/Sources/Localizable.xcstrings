@@ -1574,6 +1574,17 @@
         }
       }
     },
+    "Speech locales" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speech locales"
+          }
+        }
+      }
+    },
     "Serif" : {
       "extractionState": "manual",
       "localizations": {

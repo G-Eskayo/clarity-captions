@@ -78,7 +78,8 @@ Notes: [`languages-batch/apple-27.md`](languages-batch/apple-27.md).
 
 **To close this:** run the probe on the macOS 27 laptop to commit the real 45-locale list
 (`swift scripts/speech-locales/probe.swift > docs/research/apple-speech-locales-macos-27.0.1.json`). An iPhone on 27
-needs a debug-build log of the same two lists. Neither needs a microphone.
+needs the same two lists; get them via the developer panel's "Speech locales" button (see [[launch-languages]] §3 for
+the step-by-step). Neither needs a microphone.
 
 ## 3. The gap table
 
