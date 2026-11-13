@@ -19,7 +19,7 @@ recording (48 kHz Float32, the iPhone mic's shape)
   -> CaptionSessionController           start, listening, Stop, cleanup: the app's own controller
   -> CaptionStream.apply                CaptionModel.onUpdate's own call: the lines she reads
   -> SessionLog (JSON)                  plan + reason, every engine seen, every FallbackReason, every update with
-                                        wall and audio times, the final lines
+                                        wall and audio times, the final lines, decodeWindows (#285) for language drift
 ```
 
 Two ways in, because 1.0 has no `AudioSource` (its mic is wired into the engine):
@@ -111,6 +111,26 @@ python3 -I scripts/system-replay/replay.py score --conversations ~/seal-replay/c
 
 Tests: `swift test --package-path Packages/SystemReplay` (pacing, session log) and
 `python -m pytest scripts/system-replay` (stitching, scoring, paired bootstrap).
+
+## Decode window tracking (#285: language-specific accuracy)
+
+Parakeet's inline language setting allows future variants to pin the decoder to a specific script (Cyrillic, CJK,
+etc.) rather than letting it drift across turns. To measure whether this helps, `SessionLog` records every Parakeet
+decode window's start time (audio seconds), in order. Per-language analysis can then:
+
+- **Boundary positions**: count finalized words before each boundary (how many captions each decode window produced).
+- **Boundary errors**: measure WER before and after each boundary, to catch where a script drift occurs.
+- **Script consistency**: within a conversation, detect when Parakeet's inferred language changes (marked in the beta
+  report, #288 merged).
+
+This is collected automatically from both the on-device harness (beta report, iOS app) and the system-replay
+simulation (every arm, every level). Empty for Apple's engine (it has no decode windows) and for sessions planned on
+Apple from the start. Example: if a conversation stays on Parakeet and has 15 decode windows, `decodeWindows` contains
+15 timestamps.
+
+Caveat: FluidAudio 0.17.5 passes the language setting (`Locale`) to Parakeet but does not expose the
+script/character-set filtering we hoped to measure later. The field is ready for when FluidAudio or a future decoder
+variant does expose it, or for measuring whether the language-awareness reduces drift as a side effect.
 
 ## Noise (fixed 2026-11-10, before any noisy run was scored)
 

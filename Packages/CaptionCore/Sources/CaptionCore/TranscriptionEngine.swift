@@ -156,6 +156,8 @@ public final class TranscriptionEngine {
     public private(set) var fallbackReason: FallbackReason?
     /// Called once when Parakeet falls back to Apple, so the app can count it toward the daily pin.
     public var onFallback: (@Sendable (FallbackReason) -> Void)?
+    /// Parakeet decode window boundaries (#285): audio time when each decode starts. Called on the decode task.
+    public var onDecodeWindow: (@Sendable (Double) -> Void)?
     private var fallbackCounted = false
 
     /// `diarizerModelURL` has no default on purpose: the app must say where its bundled speaker model
@@ -209,10 +211,13 @@ public final class TranscriptionEngine {
         switch setup {
         case .apple: return AppleSpeechBackend(locale: locale, model: speechModel)
         case .parakeet(let url):
-            let backend = ParakeetBackend(modelURL: url)
+            let backend = ParakeetBackend(modelURL: url, locale: locale)
             backend.onDecode = { [weak self] seconds in
                 guard let self else { return }
                 self.decodeLock.withLock { self.lastDecodeSeconds = seconds; self.decodeTimes.add(seconds) }
+            }
+            backend.onWindow = { [weak self] time in
+                self?.onDecodeWindow?(time)
             }
             return backend
         case .zipformer(let url):

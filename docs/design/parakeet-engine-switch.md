@@ -113,6 +113,9 @@ struct RecognizedPiece: Sendable, Equatable {
   third converter and both models see the same samples and the same clock.
 - `startReplaying(fileURL:)` (the ADR 0015 benchmark) goes through the same backend, so the latency test measures
   whichever engine is selected.
+- `ParakeetBackend.onWindow` fires at both real-decode sites (not silence-gated, not finalize) with the audio time
+  of each window start, so `TranscriptionEngine.onDecodeWindow` and `system-replay` can record boundaries for
+  language-specific analysis (#285).
 - `EngineWarmup.steps` stays 3 for the Apple path. For Parakeet, step 1 is "speech model" = `loadLocal` + one warm
   decode of 1 s of silence, so the first real decode is not the slow one.
 - The Mac app (`Apps/Mac`) gets the same seam for free. Whether it bundles Parakeet in 1.1 is a decision (D6).

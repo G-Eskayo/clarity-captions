@@ -96,6 +96,81 @@ def test_a_session_with_an_error_is_refused_not_scored_as_silence():
 
 # --- paired scoring ---------------------------------------------------------------------------------------------
 
+# --- decode window analysis (#285) -------------------------
+
+def test_update_spans_maps_updates_to_windows():
+    windows = [0.0, 1.5, 3.0, 5.0]
+    updates = [
+        {"at": 0.0, "start": 0.5},
+        {"at": 0.5, "start": 1.0},
+        {"at": 1.0, "start": 2.0},
+        {"at": 1.5, "start": 4.0}
+    ]
+    spans = replay.update_spans(windows, updates)
+    assert spans[0] == (0.0, 1.5)
+    assert spans[1] == (0.0, 1.5)
+    assert spans[2] == (1.5, 3.0)
+    assert spans[3] == (3.0, 5.0)
+
+
+def test_boundary_positions_counts_finals_per_window():
+    windows = [0.0, 1.0, 2.0]
+    updates = [
+        {"start": 0.2, "isFinal": True},
+        {"start": 0.5, "isFinal": True},
+        {"start": 1.2, "isFinal": True},
+        {"start": 1.8, "isFinal": True},
+    ]
+    pos = replay.boundary_positions(windows, updates)
+    assert pos == [2, 4]
+
+
+def test_boundary_positions_empty_when_no_windows():
+    assert replay.boundary_positions([], []) == []
+    assert replay.boundary_positions([0.0], []) == []
+
+
+def test_boundary_positions_guards_against_none_start():
+    windows = [0.0, 1.0, 2.0]
+    updates = [
+        {"start": 0.2, "isFinal": True},
+        {"start": None, "isFinal": True},  # None start should be skipped
+        {"start": 1.5, "isFinal": True},
+    ]
+    pos = replay.boundary_positions(windows, updates)
+    assert pos == [1, 2]  # only counts non-None starts
+
+
+def test_boundary_errors_splits_text_at_window_boundaries():
+    windows = [0.0, 2.0, 4.0]
+    reference = "one two three four five"
+    hypothesis = "one TWO three FOUR five"  # Different words to test error detection
+    updates = [
+        {"start": 0.5, "isFinal": True},  # "one"
+        {"start": 1.2, "isFinal": True},  # "two"
+        {"start": 2.1, "isFinal": True},  # "three"
+        {"start": 3.0, "isFinal": True},  # "four"
+        {"start": 3.8, "isFinal": True},  # "five"
+    ]
+    errs = replay.boundary_errors(windows, reference, hypothesis, updates)
+    assert 0 in errs  # Boundary at 2.0 s
+    assert 1 in errs  # Boundary at 4.0 s
+    assert errs[0]["window"] == 2.0
+    assert errs[1]["window"] == 4.0
+    # At 2.0 s: "one two" are final (2 words before boundary)
+    assert errs[0]["before_words"] == 2
+    # After 2.0 s: "three four five" remain
+    assert errs[1]["after_words"] == 3
+
+
+def test_boundary_errors_handles_empty_text():
+    windows = [0.0, 1.0]
+    assert replay.boundary_errors([], "", "") == {}
+    assert replay.boundary_errors([0.0], "text", "") == {}
+
+
+# --- paired scoring ---------------------------------------------------------------------------------------------
+
 def test_paired_gap_is_zero_when_both_arms_are_identical():
     units = {f"c{i}": ((i % 3, 10), (i % 3, 10)) for i in range(30)}
     g = replay.paired_gap(units, n_boot=200)

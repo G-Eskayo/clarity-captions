@@ -2,6 +2,43 @@ import AVFoundation
 import FluidAudio
 import Foundation
 
+/// Map a locale to Parakeet's supported language for script-aware decoding, or nil if unsupported.
+/// FluidAudio's Language enum supports 25 European languages; others get no language hint.
+func parakeetLanguage(for locale: Locale) -> Language? {
+    let langCode = locale.language.languageCode?.identifier ?? locale.identifier
+    switch langCode.prefix(2).lowercased() {
+    case "en": return .english
+    case "es": return .spanish
+    case "fr": return .french
+    case "de": return .german
+    case "it": return .italian
+    case "pt": return .portuguese
+    case "ro": return .romanian
+    case "nl": return .dutch
+    case "da": return .danish
+    case "sv": return .swedish
+    case "fi": return .finnish
+    case "hu": return .hungarian
+    case "et": return .estonian
+    case "lv": return .latvian
+    case "lt": return .lithuanian
+    case "mt": return .maltese
+    case "pl": return .polish
+    case "cs": return .czech
+    case "sk": return .slovak
+    case "sl": return .slovenian
+    case "hr": return .croatian
+    case "bs": return .bosnian
+    case "ru": return .russian
+    case "uk": return .ukrainian
+    case "be": return .belarusian
+    case "bg": return .bulgarian
+    case "sr": return .serbian
+    case "el": return .greek
+    default: return nil
+    }
+}
+
 /// Turns the committer's output into pieces CaptionStream already understands (design §2 "Mapping"). Pure.
 /// - Newly final words: one final piece, split where they span a pause of `pauseSeconds` or more, so a new line starts
 ///   in the same place it would with Apple's engine.
@@ -107,8 +144,11 @@ final class ParakeetBackend: SpeechRecognizerBackend, @unchecked Sendable {
     var onTrigger: (@Sendable (FallbackTrigger) -> Void)?
     /// Each decode's seconds, for the developer panel. Called on the decode task.
     var onDecode: (@Sendable (Double) -> Void)?
+    /// Audio window boundaries for language-specific decode tracking (#285). Called on the decode task.
+    var onWindow: (@Sendable (Double) -> Void)?
 
     private let modelURL: URL
+    private let locale: Locale
     private let lock = NSLock()
     private var manager: AsrManager?
     private var window = SampleWindow()
@@ -121,8 +161,9 @@ final class ParakeetBackend: SpeechRecognizerBackend, @unchecked Sendable {
     private var watchdog = SilentEngineWatchdog()
     private var decodeTimes: [Double] = []
 
-    init(modelURL: URL) {
+    init(modelURL: URL, locale: Locale = Locale(identifier: "en-US")) {
         self.modelURL = modelURL
+        self.locale = locale
         ModelHub.offlineMode = true
     }
 
@@ -137,7 +178,8 @@ final class ParakeetBackend: SpeechRecognizerBackend, @unchecked Sendable {
         try await manager.loadModels(models)
         // One warm decode, so the first real one is not the slow one.
         var state = TdtDecoderState.make(decoderLayers: AsrModelVersion.ultra.decoderLayers)
-        _ = try await manager.transcribe([Float](repeating: 0, count: Int(SampleWindow.rate)), decoderState: &state)
+        let language = parakeetLanguage(for: locale)
+        _ = try await manager.transcribe([Float](repeating: 0, count: Int(SampleWindow.rate)), decoderState: &state, language: language)
         lock.withLock { self.manager = manager }
     }
 
@@ -182,6 +224,7 @@ final class ParakeetBackend: SpeechRecognizerBackend, @unchecked Sendable {
             let shot = lock.withLock { window.take(from: committer.windowStart(audioEnd: audioEnd)) }
             if lock.withLock({ () -> Bool in defer { settleRequested = false }; return settleRequested }), !committer.isSettled {
                 let words = await decode(shot.samples, start: shot.start, manager: manager) ?? []
+                onWindow?(shot.start)
                 let final = committer.finish(decode: words.map { TimedWord(text: $0.text, start: $0.start - shot.start, end: $0.end - shot.start) },
                                              windowStart: shot.start)
                 for piece in emitter.pieces(final: final, volatile: []) { yield(piece) }
@@ -193,6 +236,7 @@ final class ParakeetBackend: SpeechRecognizerBackend, @unchecked Sendable {
                 // Silence gate: a quiet table with nothing open costs no decode.
                 _ = committer.ingest(decode: [], windowStart: shot.start, audioEnd: shot.end)
             } else if let words = await decode(shot.samples, start: shot.start, manager: manager) {
+                onWindow?(shot.start)
                 let out = committer.ingest(decode: words.map { TimedWord(text: $0.text, start: $0.start - shot.start, end: $0.end - shot.start) },
                                            windowStart: shot.start, audioEnd: shot.end)
                 heard = out.final.count + out.volatile.count
@@ -218,7 +262,8 @@ final class ParakeetBackend: SpeechRecognizerBackend, @unchecked Sendable {
         let padded = samples.count >= minimum ? samples : samples + [Float](repeating: 0, count: minimum - samples.count)
         let began = ContinuousClock.now
         var state = TdtDecoderState.make(decoderLayers: AsrModelVersion.ultra.decoderLayers)
-        guard let result = try? await manager.transcribe(padded, decoderState: &state) else { return nil }
+        let language = parakeetLanguage(for: locale)
+        guard let result = try? await manager.transcribe(padded, decoderState: &state, language: language) else { return nil }
         let d = ContinuousClock.now - began
         let seconds = Double(d.components.seconds) + Double(d.components.attoseconds) / 1e18
         decodeTimes.append(seconds)

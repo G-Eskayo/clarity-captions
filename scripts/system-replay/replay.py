@@ -182,6 +182,110 @@ def to48k(conversations: Path) -> int:
     return k
 
 
+# --- decode window analysis (#285) ---------------------------------------------------------------------------------
+
+def update_spans(windows: list[float], updates: list[dict]) -> dict[int, tuple[float, float]]:
+    """For each update, the decode window its text came from (by update time). Windows are ordered; lookup is binary."""
+    if not windows or not updates:
+        return {}
+    spans = {}
+    for i, u in enumerate(updates):
+        start = u.get("start")
+        if start is None:
+            continue
+        # Binary search: find the window that contains this update's start time.
+        # If start < windows[0], map to window 0. Otherwise find j where windows[j] <= start < windows[j+1].
+        j = 0
+        if start >= windows[0]:
+            left, right = 0, len(windows) - 1
+            while left < right:
+                mid = (left + right + 1) // 2
+                if windows[mid] <= start:
+                    left = mid
+                else:
+                    right = mid - 1
+            j = left
+        spans[i] = (windows[j], windows[j + 1] if j + 1 < len(windows) else math.inf)
+    return spans
+
+
+def boundary_positions(windows: list[float], updates: list[dict]) -> list[float]:
+    """Decode window boundaries as update positions: how many finals before each boundary."""
+    if not windows or not updates:
+        return []
+    finals = [u for u in updates if u.get("isFinal")]
+    result = []
+    for w in windows[1:]:
+        count = 0
+        for f in finals:
+            start = f.get("start")
+            if start is not None and start < w:
+                count += 1
+        result.append(count)
+    return result
+
+
+def boundary_errors(windows: list[float], reference: str, hypothesis: str, updates: list[dict]) -> dict[int, dict]:
+    """For each decode window boundary, the word alignment error rates before and after it.
+
+    Uses update positions to find where each window boundary falls in the text.
+    When one side is empty, counts all words in the other side as errors.
+    """
+    if not windows or not reference or not hypothesis or not updates:
+        return {}
+    ref_words = normalize(reference).split()
+    hyp_words = normalize(hypothesis).split()
+    if not ref_words or not hyp_words:
+        return {}
+
+    # Find which hypothesis word comes before each window boundary time
+    # by counting finals up to that boundary.
+    finals = [u for u in updates if u.get("isFinal")]
+    out = {}
+    for b, boundary_time in enumerate(windows[1:]):
+        # Count finals before this boundary
+        split_idx = sum(1 for f in finals if f.get("start") is not None and f["start"] < boundary_time)
+        split_idx = min(split_idx, len(hyp_words))
+
+        ref_before = " ".join(ref_words[:split_idx])
+        hyp_before = " ".join(hyp_words[:split_idx])
+        # When one side is empty, count all words on the other side as errors
+        if ref_before and hyp_before:
+            before = align_counts(ref_before, hyp_before)
+            before_errors = before.errors
+            before_words = before.n
+        elif not ref_before and not hyp_before:
+            before_errors = 0
+            before_words = 0
+        else:
+            # One side is empty: count all words in the other as errors
+            before_errors = len(ref_words[:split_idx]) + len(hyp_words[:split_idx])
+            before_words = len(ref_words[:split_idx]) + len(hyp_words[:split_idx])
+
+        ref_after = " ".join(ref_words[split_idx:])
+        hyp_after = " ".join(hyp_words[split_idx:])
+        if ref_after and hyp_after:
+            after = align_counts(ref_after, hyp_after)
+            after_errors = after.errors
+            after_words = after.n
+        elif not ref_after and not hyp_after:
+            after_errors = 0
+            after_words = 0
+        else:
+            # One side is empty: count all words in the other as errors
+            after_errors = len(ref_words[split_idx:]) + len(hyp_words[split_idx:])
+            after_words = len(ref_words[split_idx:]) + len(hyp_words[split_idx:])
+
+        out[b] = {
+            "window": boundary_time,
+            "before_errors": before_errors,
+            "before_words": before_words,
+            "after_errors": after_errors,
+            "after_words": after_words
+        }
+    return out
+
+
 # --- scoring ----------------------------------------------------------------------------------------------------
 
 def session_text(log: Mapping) -> str:
@@ -206,6 +310,7 @@ def score_arm(convs: list[dict], logs: Mapping[str, Mapping]) -> dict:
     Parakeet, every fallback reason, and the engine's own word lag (ADR 0015) pooled over sessions."""
     counts: dict[str, tuple[int, int]] = {}
     left, reasons, lags, line_lags = [], Counter(), [], []
+    windows_per_session = {}
     for c in convs:
         log = logs.get(c["id"])
         if log is None:
@@ -223,12 +328,15 @@ def score_arm(convs: list[dict], logs: Mapping[str, Mapping]) -> dict:
                 lags.append(u["lag"])
             if u.get("isFinal") and u.get("end") is not None and log.get("path") == "source":
                 line_lags.append(u["at"] - u["end"])
+        windows = log.get("decodeWindows", [])
+        if windows and plan.get("engine") == "parakeet" and c["id"] not in left:
+            windows_per_session[c["id"]] = boundary_positions(windows, log.get("updates", []))
     e = sum(v[0] for v in counts.values())
     n = sum(v[1] for v in counts.values())
     return {"counts": counts, "wer": e / n if n else math.nan, "errors": e, "words": n, "left_parakeet": left,
             "fallback_reasons": dict(reasons), "word_lag_p50": percentile(lags, 0.5), "word_lag_p95": percentile(lags, 0.95),
             "line_lag_p50": percentile(line_lags, 0.5), "line_lag_p95": percentile(line_lags, 0.95),
-            "lag_samples": len(lags)}
+            "lag_samples": len(lags), "decode_windows": windows_per_session}
 
 
 def paired_gap(units: Mapping[str, tuple[tuple[int, int], tuple[int, int]]], n_boot: int = 1000, seed: int = 273,

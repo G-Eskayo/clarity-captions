@@ -97,6 +97,8 @@ public struct SessionLog: Codable, Sendable {
     public var updates: [Update] = []
     /// The caption lines as the app's CaptionStream built them, which is what she reads.
     public var lines: [Line] = []
+    /// Audio time of Parakeet decode window starts (#285), for language-specific analysis. Empty on Apple's engine.
+    public var decodeWindows: [Double] = []
     public var wallSeconds: Double = 0
     /// The session ended with a Stop tap at the end of the recording (replaying path), not by its stream ending.
     public var stoppedByTap = false
