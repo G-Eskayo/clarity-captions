@@ -33,6 +33,7 @@ struct SettingsPage: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     /// Beta installs only (ADR 0023): the "Test version" section.
     @ObservedObject private var beta = BetaFeedbackCenter.shared
+    @State private var sampleOpen = false
 
     private var showsTourReplay: Bool { onShowTour != nil }
 
@@ -145,15 +146,14 @@ struct SettingsPage: View {
                     .foregroundStyle(palette[0])
                 let original = LanguageSettingsState.sample(language.captions) ?? String(localized: "Let's book a table for seven.")
                 if language.translationOn, let target = language.target, let line = LanguageSettingsState.sample(target) {
-                    translatedLine(line)
-                    originalUnderTranslation(original)
+                    TranslatedCaptionView(translated: line, said: original, font: style.font(for: SystemTextSizeCategory(dynamicTypeSize)), text: style.text.color, muted: muted, mark: style.gear.color, volatileOpacity: style.volatileOpacity, isOpen: sampleOpen, onTap: { sampleOpen.toggle() })
                 } else {
                     Text(original)
                         .font(style.font(for: SystemTextSizeCategory(dynamicTypeSize)))
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel(String(localized: "Sample caption: Speaker 1, Let's book a table for seven."))
                 }
             }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(String(localized: "Sample caption: Speaker 1, Let's book a table for seven."))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 4)
@@ -161,24 +161,6 @@ struct SettingsPage: View {
         .padding(.bottom, 6)
     }
 
-    /// #53 (owner, PR #171 decisions): the translation is the line that gets read, so it sits on top at caption size,
-    /// behind a translate mark so nobody takes it for what was said. The original stays, smaller, underneath.
-    private func translatedLine(_ text: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Image(systemName: "translate").font(scaled(15, .bold)).foregroundStyle(muted)
-            Text(text).font(style.font(for: SystemTextSizeCategory(dynamicTypeSize)))
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(String(localized: "Translated: ") + text)
-    }
-
-    private func originalUnderTranslation(_ text: String) -> some View {
-        Text(text)
-            .font(scaled(17))
-            .foregroundStyle(muted)
-            .padding(.top, 2)
-            .accessibilityLabel(String(localized: "Said: ") + text)
-    }
 
     private var captionLanguageRow: some View {
         Button { onChooseCaptionLanguage?() } label: {
@@ -304,11 +286,11 @@ struct SettingsPage: View {
     }
 
     private var translationOfferNote: String {
-        String(format: String(localized: "Read what people say in your own language, translated on this %@ with no internet. Each caption shows its translation on top, with what was said underneath. One-time purchase."), LanguageSettingsState.deviceWord)
+        String(format: String(localized: "Read what people say in your own language, translated on this %@ with no internet. Each caption shows its translation; tap to see what was said. One-time purchase."), LanguageSettingsState.deviceWord)
     }
 
     private var translationNote: String {
-        String(localized: "From is the language people around you speak. Each caption shows its translation on top, with what was said in smaller text underneath. The first time, the language pack downloads once (about 200 MB); after that it works with no internet.")
+        String(localized: "From is the language people around you speak. Each caption shows its translation; tap to see what was said in its original language. The first time, the language pack downloads once (about 200 MB); after that it works with no internet.")
     }
 
     private func section<C: View>(_ title: LocalizedStringKey, first: Bool = false, note: String? = nil, @ViewBuilder _ content: () -> C) -> some View {
