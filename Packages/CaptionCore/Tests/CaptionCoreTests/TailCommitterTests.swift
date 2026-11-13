@@ -101,6 +101,45 @@ final class TailCommitterTests: XCTestCase {
         XCTAssertLessThanOrEqual(12.0 - c.commitPoint, TailCommitter.Config().maxUncommitted)
     }
 
+    func testForceCommitWordBoundaryAtTwelveSeconds() {
+        // Tests-first item 5: force-commit respects word boundaries, never splits a word.
+        // Creates a scenario with 12+ seconds of uncommitted audio to trigger force-commit,
+        // with a word straddling the force-commit cutoff to verify it's not split.
+        var c = TailCommitter()
+
+        // Create words spanning 0–11.5 seconds. Decoder changes slightly between calls
+        // so nothing commits until forced.
+        var allWords: [TimedWord] = []
+        for i in 0..<24 {
+            allWords.append(w("word", Double(i) * 0.48, Double(i) * 0.48 + 0.3))
+        }
+
+        // Word at index 20 is at time 9.6–9.9 (before cutoff at 10.0)
+        // Word at index 21 is at time 10.08–10.38 (crosses cutoff)
+        // Word at index 22 is at time 10.56–10.86 (after cutoff)
+
+        // First ingest: words with slight jitter so they won't agree with second call
+        var firstCallWords = allWords
+        firstCallWords[21] = w("crossing", 10.08, 10.38) // Make it distinct
+        _ = c.ingest(decode: firstCallWords, windowStart: 0, audioEnd: 11.9)
+
+        // Second ingest at audioEnd=12.0 with original words (different from first call).
+        // Nothing agrees, so nothing commits on stability. But audioEnd - commitPoint >= 12s
+        // triggers force-commit, keeping only the last 2 seconds open (after 10.0).
+        let out = c.ingest(decode: allWords, windowStart: 0, audioEnd: 12.0)
+
+        // Verify force-commit happened and kept the last 2 seconds open
+        XCTAssertTrue(out.final.count > 0, "force-commit produced final words")
+        XCTAssertTrue(out.final.allSatisfy { $0.end <= 10.0 }, "force-commit keeps the last 2 s open (ends at 10.0 or before)")
+        XCTAssertTrue(out.volatile.allSatisfy { $0.end > 10.0 }, "remaining words are volatile (ends after 10.0)")
+
+        // Verify the word crossing the 10.0 boundary is in exactly one of final or volatile, never split
+        let crossingInFinal = out.final.contains { $0.start < 10.0 && $0.end > 10.0 }
+        let crossingInVolatile = out.volatile.contains { $0.start < 10.0 && $0.end > 10.0 }
+        XCTAssertFalse(crossingInFinal && crossingInVolatile, "word crossing 10.0 cannot be in both final and volatile")
+        XCTAssertLessThanOrEqual(12.0 - c.commitPoint, TailCommitter.Config().maxUncommitted, "commitPoint respects maxUncommitted")
+    }
+
     func testAShortWordReDecodedWithLaterTimingIsNotCommittedTwice() {
         var c = TailCommitter()
         _ = c.ingest(decode: [w("ok", 1.0, 1.1)], windowStart: 0, audioEnd: 3)

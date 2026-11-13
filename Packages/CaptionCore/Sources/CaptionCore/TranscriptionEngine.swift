@@ -173,7 +173,7 @@ public final class TranscriptionEngine {
         self.faceToFace = faceToFace.map { FaceToFaceRouting(setup: $0) { setup, locale in
             switch setup {
             case .apple: return AppleSpeechBackend(locale: locale, model: speechModel)
-            case .parakeet(let url): return ParakeetBackend(modelURL: url)
+            case .parakeet(let url): return ParakeetBackend(modelURL: url, captionLocale: locale)
             case .zipformer(let url): return ZipformerBackend(modelURL: url)
             }
         } }
@@ -209,7 +209,7 @@ public final class TranscriptionEngine {
         switch setup {
         case .apple: return AppleSpeechBackend(locale: locale, model: speechModel)
         case .parakeet(let url):
-            let backend = ParakeetBackend(modelURL: url)
+            let backend = ParakeetBackend(modelURL: url, captionLocale: locale)
             backend.onDecode = { [weak self] seconds in
                 guard let self else { return }
                 self.decodeLock.withLock { self.lastDecodeSeconds = seconds; self.decodeTimes.add(seconds) }

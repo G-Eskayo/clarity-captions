@@ -2,6 +2,22 @@ import AVFoundation
 import FluidAudio
 import Foundation
 
+extension Language {
+    /// Maps a Locale to a FluidAudio Language for Parakeet, if one exists. Backed by CaptionEngineRouting.parakeetLanguages.
+    static func language(for locale: Locale) -> Language? {
+        guard let code = locale.language.languageCode?.identifier else { return nil }
+        switch code {
+        case "en": return .english
+        case "es": return .spanish
+        case "fr": return .french
+        case "de": return .german
+        case "it": return .italian
+        case "pt": return .portuguese
+        default: return nil
+        }
+    }
+}
+
 /// Turns the committer's output into pieces CaptionStream already understands (design §2 "Mapping"). Pure.
 /// - Newly final words: one final piece, split where they span a pause of `pauseSeconds` or more, so a new line starts
 ///   in the same place it would with Apple's engine.
@@ -107,8 +123,15 @@ final class ParakeetBackend: SpeechRecognizerBackend, @unchecked Sendable {
     var onTrigger: (@Sendable (FallbackTrigger) -> Void)?
     /// Each decode's seconds, for the developer panel. Called on the decode task.
     var onDecode: (@Sendable (Double) -> Void)?
+    /// Decode window: audio start time, end time, and louder sample in the window. Called on the decode task.
+    var onDecodeWindow: (@Sendable (_ start: Double, _ end: Double, _ loudest: Double) -> Void)?
+    /// Commit point (seconds of audio up to which all words have been finalized). Called on the decode task.
+    var onCommitPoint: (@Sendable (Double) -> Void)?
+    /// Language resolved from captionLocale before transcribe (test seam). Called on the decode task.
+    var onLanguageResolved: (@Sendable (Language?) -> Void)?
 
     private let modelURL: URL
+    let captionLocale: Locale
     private let lock = NSLock()
     private var manager: AsrManager?
     private var window = SampleWindow()
@@ -121,8 +144,9 @@ final class ParakeetBackend: SpeechRecognizerBackend, @unchecked Sendable {
     private var watchdog = SilentEngineWatchdog()
     private var decodeTimes: [Double] = []
 
-    init(modelURL: URL) {
+    init(modelURL: URL, captionLocale: Locale = Locale(identifier: "en-US")) {
         self.modelURL = modelURL
+        self.captionLocale = captionLocale
         ModelHub.offlineMode = true
     }
 
@@ -189,6 +213,7 @@ final class ParakeetBackend: SpeechRecognizerBackend, @unchecked Sendable {
             }
             var heard = 0
             var failed = false
+            onDecodeWindow?(shot.start, shot.end, shot.loudest)
             if shot.loudest < Self.silenceGateDBFS && committer.isSettled {
                 // Silence gate: a quiet table with nothing open costs no decode.
                 _ = committer.ingest(decode: [], windowStart: shot.start, audioEnd: shot.end)
@@ -196,6 +221,7 @@ final class ParakeetBackend: SpeechRecognizerBackend, @unchecked Sendable {
                 let out = committer.ingest(decode: words.map { TimedWord(text: $0.text, start: $0.start - shot.start, end: $0.end - shot.start) },
                                            windowStart: shot.start, audioEnd: shot.end)
                 heard = out.final.count + out.volatile.count
+                onCommitPoint?(committer.commitPoint)
                 for piece in emitter.pieces(final: out.final, volatile: out.volatile) { yield(piece) }
             } else {
                 failed = true
@@ -218,7 +244,9 @@ final class ParakeetBackend: SpeechRecognizerBackend, @unchecked Sendable {
         let padded = samples.count >= minimum ? samples : samples + [Float](repeating: 0, count: minimum - samples.count)
         let began = ContinuousClock.now
         var state = TdtDecoderState.make(decoderLayers: AsrModelVersion.ultra.decoderLayers)
-        guard let result = try? await manager.transcribe(padded, decoderState: &state) else { return nil }
+        let language = Language.language(for: captionLocale)
+        onLanguageResolved?(language)
+        guard let result = try? await manager.transcribe(padded, decoderState: &state, language: language) else { return nil }
         let d = ContinuousClock.now - began
         let seconds = Double(d.components.seconds) + Double(d.components.attoseconds) / 1e18
         decodeTimes.append(seconds)
