@@ -1,6 +1,7 @@
 #if os(macOS)
 import AudioToolbox
 import AVFoundation
+import os
 
 /// One microphone on the Mac, by device (#172): the Mac's own mic for the room, or a headset's (AirPods Max). Built on an
 /// AudioQueue, not AVAudioEngine: with AirPods as the input AVAudioEngine delivered only zeros, and its echo-cancelled
@@ -9,6 +10,7 @@ import AVFoundation
 public final class DeviceMicAudioSource: AudioSource {
     public static let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000, channels: 1, interleaved: false)!
     private static let bufferFrames: UInt32 = 1_600   // 0.1 s; three in flight
+    private static let signposter = OSSignposter(subsystem: "com.sealspeak.battery", category: "mic-capture")
 
     /// The Core Audio UID of the device to record from; nil means the Mac's default input.
     private let deviceUID: String?
@@ -25,6 +27,8 @@ public final class DeviceMicAudioSource: AudioSource {
         var asbd = Self.format.streamDescription.pointee
         var newQueue: AudioQueueRef?
         let status = AudioQueueNewInputWithDispatchQueue(&newQueue, &asbd, 0, DispatchQueue(label: "captions.device-mic")) { queue, buffer, _, packets, _ in
+            let state = Self.signposter.beginInterval("capture", id: .exclusive)
+            defer { Self.signposter.endInterval("capture", state) }
             if packets > 0, let pcm = AVAudioPCMBuffer(pcmFormat: Self.format, frameCapacity: packets), let ch = pcm.floatChannelData {
                 pcm.frameLength = packets
                 memcpy(ch[0], buffer.pointee.mAudioData, Int(packets) * MemoryLayout<Float>.size)

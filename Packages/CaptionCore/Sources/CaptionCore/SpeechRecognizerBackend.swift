@@ -1,6 +1,7 @@
 import AVFoundation
 import Foundation
 import Speech
+import os
 
 /// One word as a recognizer reported it. `range` is nil when the recognizer gave no time for it.
 public struct RecognizedWord: Sendable, Equatable {
@@ -68,6 +69,7 @@ final class AppleSpeechBackend: SpeechRecognizerBackend, @unchecked Sendable {
     let name = "apple-speechanalyzer"
     let choice = CaptionEngineChoice.apple
     var onTrigger: (@Sendable (FallbackTrigger) -> Void)?
+    private static let signposter = OSSignposter(subsystem: "com.sealspeak.battery", category: "apple-decode")
     private let locale: Locale
     private let lock = NSLock()
     private var transcriber: SpeechTranscriber?
@@ -131,6 +133,8 @@ final class AppleSpeechBackend: SpeechRecognizerBackend, @unchecked Sendable {
             let task = Task {
                 do {
                     for try await result in transcriber.results {
+                        let signpostState = Self.signposter.beginInterval("process", id: .exclusive)
+                        defer { Self.signposter.endInterval("process", signpostState) }
                         continuation.yield(Self.piece(from: result.text, isFinal: result.isFinal))
                     }
                     continuation.finish()

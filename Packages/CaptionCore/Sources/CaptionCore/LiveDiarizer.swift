@@ -1,6 +1,7 @@
 import CoreML
 import FluidAudio
 import Foundation
+import os
 
 public enum SpeakerModelError: Error, Equatable, CustomStringConvertible {
     case modelMissing(URL)
@@ -17,6 +18,7 @@ public enum SpeakerModelError: Error, Equatable, CustomStringConvertible {
 /// speaker segments out. The model is a pre-compiled folder shipped inside the app (ADR 0014);
 /// nothing is ever downloaded at runtime.
 final class LiveDiarizer: @unchecked Sendable {
+    private static let signposter = OSSignposter(subsystem: "com.sealspeak.battery", category: "diarization")
     private let modelURL: URL
     private let config: SortformerConfig
     private let diarizer: SortformerDiarizer
@@ -54,6 +56,8 @@ final class LiveDiarizer: @unchecked Sendable {
         queue.async { [self] in
             do {
                 diarizer.addAudio(samples)
+                let signpostState = Self.signposter.beginInterval("process", id: .exclusive)
+                defer { Self.signposter.endInterval("process", signpostState) }
                 if let update = try diarizer.process() { merge(update) }
             } catch {
                 lock.lock(); failure = error; lock.unlock()

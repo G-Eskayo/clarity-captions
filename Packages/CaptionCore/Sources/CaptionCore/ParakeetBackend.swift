@@ -1,6 +1,7 @@
 import AVFoundation
 import FluidAudio
 import Foundation
+import os
 
 /// Turns the committer's output into pieces CaptionStream already understands (design §2 "Mapping"). Pure.
 /// - Newly final words: one final piece, split where they span a pause of `pauseSeconds` or more, so a new line starts
@@ -107,6 +108,7 @@ final class ParakeetBackend: SpeechRecognizerBackend, @unchecked Sendable {
     var onTrigger: (@Sendable (FallbackTrigger) -> Void)?
     /// Each decode's seconds, for the developer panel. Called on the decode task.
     var onDecode: (@Sendable (Double) -> Void)?
+    private static let signposter = OSSignposter(subsystem: "com.sealspeak.battery", category: "parakeet-decode")
 
     private let modelURL: URL
     private let lock = NSLock()
@@ -218,6 +220,8 @@ final class ParakeetBackend: SpeechRecognizerBackend, @unchecked Sendable {
         let padded = samples.count >= minimum ? samples : samples + [Float](repeating: 0, count: minimum - samples.count)
         let began = ContinuousClock.now
         var state = TdtDecoderState.make(decoderLayers: AsrModelVersion.ultra.decoderLayers)
+        let signpostState = Self.signposter.beginInterval("decode", id: .exclusive)
+        defer { Self.signposter.endInterval("decode", signpostState) }
         guard let result = try? await manager.transcribe(padded, decoderState: &state) else { return nil }
         let d = ContinuousClock.now - began
         let seconds = Double(d.components.seconds) + Double(d.components.attoseconds) / 1e18

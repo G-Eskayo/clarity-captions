@@ -1,11 +1,13 @@
 import AVFoundation
 import Foundation
 import SoundAnalysis
+import os
 
 /// On-device ambient sound recognition (ADR 0016) using the system-provided SNClassifySoundRequest.
 /// Runs on its own serial queue, never blocks the audio thread. Emits SoundLabelKind events
 /// through an async stream, applying confidence threshold and debounce before yielding.
 final class SoundLabeler: NSObject, @unchecked Sendable, SNResultsObserving {
+    private static let signposter = OSSignposter(subsystem: "com.sealspeak.battery", category: "sound-inference")
     private let queue = DispatchQueue(label: "caption.sound-labeler")
     private let lock = NSLock()
     private var analyzer: SNAudioStreamAnalyzer?
@@ -70,6 +72,8 @@ final class SoundLabeler: NSObject, @unchecked Sendable, SNResultsObserving {
             guard let channel = buffer.floatChannelData else { return }
             channel[0].update(from: samples, count: samples.count)
             buffer.frameLength = AVAudioFrameCount(samples.count)
+            let signpostState = Self.signposter.beginInterval("analyze", id: .exclusive)
+            defer { Self.signposter.endInterval("analyze", signpostState) }
             analyzer.analyze(buffer, atAudioFramePosition: 0)
         }
     }

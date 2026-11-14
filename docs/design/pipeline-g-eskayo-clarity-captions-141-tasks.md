@@ -1,0 +1,19 @@
+1. Add `os_signpost` begin/end intervals (new `OSSignposter`, one subsystem/category e.g. `"com.sealspeak.battery"`) around: `DeviceMicAudioSource` capture loop, the active caption-engine backend's decode call (`ParakeetBackend.swift` / `SpeechRecognizerBackend.swift`), `LiveDiarizer`'s diarization step, `SoundLabeler`'s inference step. No behavior change — existing `CaptionCoreTests` for each must still pass unchanged (this is the regression check; the signposts' actual attribution correctness is the one thing this session cannot verify without a real Instruments capture — stated plainly as untested).
+2. Write `scripts/battery-report/report.py` (+ `scripts/battery-report/tests/` with pytest, matching `scripts/system-replay`'s convention): parses an `xctrace export` XML/plist for a labeled 60-minute window and a `seal-feedback-*.json` beta report (schema per `docs/beta/metrics-schema.md`), and computes per-hour battery %, per-stage energy share, and a beta-vs-Instruments delta.
+3. Tests for `report.py` first (fixtures, no hardware needed), covering:
+   - Charging or Low Power Mode active at any point in the window → run discarded, not averaged (ticket's break-it #1).
+   - `.serious`/`.critical` thermal transition inside the window (hop doubling) → reported separately, never folded into the headline number (break-it #2).
+   - Start-charge outside 80–90%, or the two engine runs' start charge/room-temp fields disagreeing beyond a stated tolerance → comparison flagged invalid (break-it #3).
+   - Display-energy near zero for a stretch inside the window (screen dimmed/locked) → run flagged invalid (break-it #4).
+   - Malformed/missing/wrong-schema xctrace export or beta-report JSON → clear error, never a silent `0`/`null` treated as a real measurement (bad/malformed input).
+   - An export spanning more than the labeled 60-minute window, or multiple conversations → script isolates only the labeled window, never averages across it (huge/oversized input).
+   - Zero signpost intervals present (older build without instrumentation) → "component split unavailable," not an invented split (dependency failure).
+   - Beta report present but every conversation's `battery.dropPercentPer30Min` is `null` → "no comparable beta data," not a false "they agree" (dependency failure).
+   - Re-running the script twice on the same two inputs is idempotent (repeats).
+   - xctrace file tagged Apple-engine paired with a beta report tagged Parakeet (via each file's own `engine` field) → refuses the mismatched pairing (wrong order / person's mistake).
+   - Device-model string in either input doesn't match a known SE-3rd-gen or 17-Pro identifier → refuses silently-wrong pairing (person's mistake).
+   - Running against an existing dated `docs/perf/battery-<date>.md` without `--force` never overwrites it (protects a prior real run).
+4. Implement `report.py` to green against the above tests.
+5. Write `docs/perf/battery-<date>.md`: the protocol (cites `docs/design/parakeet-engine-switch.md` §7 C4, the dev-panel engine toggle, 80–90% start charge, same room temp, speaker at 1 m, screen on per ADR 0019) and the 4-row table, all `TBD`, with a `Status:` line stating plainly that real-device runs are pending and naming exactly what command to run (`xcrun xctrace record …` + `python3 scripts/battery-report/report.py …`) once the hardware session happens.
+6. `swift test --package-path Packages/CaptionCore` green (regression only — confirms step 1 added no behavior change).
+7. **Blocked on the hardware-run-owner decision above:** once real captures exist, run `report.py` against them, fill in `docs/perf/battery-<date>.md`'s real numbers, name the biggest single cost with 1–3 candidate fixes (each costed against #25's 10% caption-speed budget), and only then write the new `docs/research/evidence/YYYY-MM-DD-<slug>.md` entry and run `node scripts/check-evidence.mjs`.
