@@ -95,3 +95,8 @@ test('every page in a second language has the switcher, the offer, and links bac
     assert.ok(!/href="\.\.\/\.\.\//.test(html), `${f}: a link went up two folders`)
   }
 })
+
+test('17. versions.live-captions-of-what no longer mentions 1.0.1', () => {
+  const str = strings('en')['versions.live-captions-of-what']
+  assert.ok(!str.includes('1.0.1'), `versions.live-captions-of-what should not mention 1.0.1; got: "${str}"`)
+})

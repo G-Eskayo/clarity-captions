@@ -79,6 +79,32 @@ export function macPriceProblems(text) {
   }
   return bad
 }
+// Branch link check: GitHub URLs must use main or a 40-hex-char SHA, never a feature branch
+// (features branch links drift when branches are deleted; using commit SHA is stable).
+// Matches blob/, tree/, or raw.githubusercontent URLs; requires first segment after repo path to be main or 40-char SHA.
+export const BRANCH_LINK = /(?:github\.com\/G-Eskayo\/clarity-captions|raw\.githubusercontent\.com\/G-Eskayo\/clarity-captions)\/(blob|tree|raw)\/([a-zA-Z0-9._-]+)/g
+export function branchLinkProblems(text) {
+  const bad = []
+  for (const m of text.matchAll(BRANCH_LINK)) {
+    const [, , segment] = m
+    if (segment !== 'main' && !/^[0-9a-f]{40}$/i.test(segment)) {
+      bad.push({ ref: segment, full: m[0] })
+    }
+  }
+  return bad
+}
+// Self-tests for BRANCH_LINK and branchLinkProblems (items 1–10).
+check(branchLinkProblems('.../blob/main/docs/...').length === 0, 'branchLinkProblems: main is OK')
+check(branchLinkProblems('.../blob/abcdef0123456789abcdef0123456789abcdef01/docs/...').length === 0, 'branchLinkProblems: 40-hex SHA is OK')
+check(branchLinkProblems('.../blob/feature/159-translation-eval/docs/...').length === 1, 'branchLinkProblems: feature/159 branch is caught')
+check(branchLinkProblems('.../blob/v1.2/docs/...').length === 1, 'branchLinkProblems: tag v1.2 is caught')
+check(branchLinkProblems('.../tree/main-old/...').length === 1, 'branchLinkProblems: main-old is not main, caught')
+check(branchLinkProblems('.../blob/abc123/...').length === 1, 'branchLinkProblems: short SHA is caught')
+check(branchLinkProblems('.../blob/abcdef0123456789abcdef0123456789abcdef0/...').length === 1 && branchLinkProblems('.../blob/abcdef0123456789abcdef0123456789abcdef010/...').length === 1, 'branchLinkProblems: 39-char and 41-char hex caught')
+check(branchLinkProblems('raw.githubusercontent.com/G-Eskayo/clarity-captions/feature-branch/assets/x.png').length === 1, 'branchLinkProblems: raw.github branch link is caught')
+check(branchLinkProblems('.../blob/Main/...').length === 1, 'branchLinkProblems: capitalized Main is caught (case-sensitive)')
+check(branchLinkProblems('github.com/other-org/other-repo/blob/some-branch/...').length === 0, 'branchLinkProblems: other repos ignored (no false positive)')
+
 const BANNED = [
   [/(?<!(n't|not|never) )(shows|tells|see|knows?) who|(?<!(n't|not|never) .{0,20})who('s| is) (speaking|talking)/i, 'claims to know who is speaking'],
   [/name (each|the|a|your) (speaker|voice)|naming speakers|give .{0,20} a name/i, 'mentions naming speakers (removed in v1)'],
@@ -414,6 +440,16 @@ for (const tag of labels) {
 for (const feat of RELEASE_11_ONLY) check(labels.some((t) => t.includes(`data-feat="${feat}"`)), `${f}: ${feat} isn't in App Store 1.0 but has no "Coming in 1.1" label`)
 }
 
+// 9. Branch link check: refs must use main or 40-char SHA, never feature branches (which drift when deleted)
+for (const f of pages) {
+  const text = read(f)
+  for (const { ref, full } of branchLinkProblems(text)) check(false, `${f}: branch link ${ref}: ${full}`)
+}
+for (const f of ['seal-data.js', 'devices.js']) {
+  const text = read(f)
+  for (const { ref, full } of branchLinkProblems(text)) check(false, `${f}: branch link ${ref}: ${full}`)
+}
+
 // 10. The app's prices (#228): the StoreKit file sells Live Translation at the iOS price, not shared with family (the
 // owner, 2026-10-30: each person buys their own); the debug fake store shows the same price; no other Swift or string
 // file hard-codes a price, so the app shows StoreKit's.
@@ -432,7 +468,7 @@ for (const feat of RELEASE_11_ONLY) check(labels.some((t) => t.includes(`data-fe
   }
 }
 
-// 9. The CSS mirrors itself (#207): logical properties, so dir="rtl" flips a page. Physical left/right stays only where
+// 11. The CSS mirrors itself (#207): logical properties, so dir="rtl" flips a page. Physical left/right stays only where
 // it is direction-neutral (centring with left: 50% and translateX(-50%)), inside a [dir="rtl"] override, or where a
 // script places the element by physical coordinates; that last kind has a "physical:" comment on the line above.
 const PHYSICAL = /(?:^|[\s;{])(?:(?:margin|padding|border)-(?:left|right)(?:-[a-z]+)?|left|right)\s*:|text-align:\s*(?:left|right)|float:\s*(?:left|right)/
