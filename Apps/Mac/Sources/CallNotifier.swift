@@ -11,8 +11,15 @@ final class CallNotifier: NSObject, UNUserNotificationCenterDelegate {
     static let notNowAction = "seal.call.notnow"
     static let requestID = "seal.call.ringing"
 
+    static let secondCallCategory = "seal.call.second"
+    static let holdAndAcceptAction = "seal.call.hold"
+    static let endAndAcceptAction = "seal.call.end"
+    static let secondCallRequestID = "seal.call.second.ringing"
+
     var onCaption: () -> Void = {}
     var onNotNow: () -> Void = {}
+    var onHoldAndAccept: (String) -> Void = { _ in }
+    var onEndAndAccept: () -> Void = {}
 
     private var center: UNUserNotificationCenter { .current() }
 
@@ -21,7 +28,12 @@ final class CallNotifier: NSObject, UNUserNotificationCenterDelegate {
         center.delegate = self
         let caption = UNNotificationAction(identifier: Self.captionAction, title: String(localized: "Caption call"), options: [.foreground])
         let notNow = UNNotificationAction(identifier: Self.notNowAction, title: String(localized: "Not now"), options: [])
-        center.setNotificationCategories([UNNotificationCategory(identifier: Self.category, actions: [caption, notNow], intentIdentifiers: [])])
+        let holdAccept = UNNotificationAction(identifier: Self.holdAndAcceptAction, title: String(localized: "Hold & Accept"), options: [.foreground])
+        let endAccept = UNNotificationAction(identifier: Self.endAndAcceptAction, title: String(localized: "End & Accept"), options: [.foreground])
+        center.setNotificationCategories([
+            UNNotificationCategory(identifier: Self.category, actions: [caption, notNow], intentIdentifiers: []),
+            UNNotificationCategory(identifier: Self.secondCallCategory, actions: [holdAccept, endAccept, notNow], intentIdentifiers: [])
+        ])
         center.requestAuthorization(options: [.alert, .sound]) { granted, error in
             NSLog("[calls] notifications %@%@", granted ? "allowed" : "not allowed", error.map { " (\($0))" } ?? "")
         }
@@ -44,9 +56,27 @@ final class CallNotifier: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
+    func showSecondCall(app: String) {
+        let content = UNMutableNotificationContent()
+        content.title = String(localized: "Another call is ringing")
+        content.body = String(localized: "From \(app)")
+        content.categoryIdentifier = Self.secondCallCategory
+        content.sound = .default
+        // Store the app name in user info so the action handler can access it
+        content.userInfo = ["app": app]
+        center.add(UNNotificationRequest(identifier: Self.secondCallRequestID, content: content, trigger: nil)) { error in
+            NSLog("[calls] second call notification %@", error.map { "failed: \($0)" } ?? "posted")
+        }
+    }
+
     func remove() {
         center.removePendingNotificationRequests(withIdentifiers: [Self.requestID])
         center.removeDeliveredNotifications(withIdentifiers: [Self.requestID])
+    }
+
+    func removeSecondCall() {
+        center.removePendingNotificationRequests(withIdentifiers: [Self.secondCallRequestID])
+        center.removeDeliveredNotifications(withIdentifiers: [Self.secondCallRequestID])
     }
 
     /// Brings the window forward, unhiding the app (⌘H) if need be, so the call's captions are in view.
@@ -64,6 +94,8 @@ final class CallNotifier: NSObject, UNUserNotificationCenterDelegate {
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
                                             withCompletionHandler completionHandler: @escaping () -> Void) {
         let action = response.actionIdentifier
+        let userInfo = response.notification.request.content.userInfo
+        let app = userInfo["app"] as? String ?? "Unknown"
         Task { @MainActor in
             switch action {
             case Self.captionAction:
@@ -71,6 +103,12 @@ final class CallNotifier: NSObject, UNUserNotificationCenterDelegate {
                 self.onCaption()
             case Self.notNowAction:
                 self.onNotNow()
+            case Self.holdAndAcceptAction:
+                Self.bringWindowForward()
+                self.onHoldAndAccept(app)
+            case Self.endAndAcceptAction:
+                Self.bringWindowForward()
+                self.onEndAndAccept()
             default:
                 // A click on the notification itself: show the window with the banner, choice still open.
                 Self.bringWindowForward()

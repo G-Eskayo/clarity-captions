@@ -89,6 +89,36 @@ final class CallAppNameTests: XCTestCase {
     }
 }
 
+/// #178: second-call detection edge cases.
+final class SecondCallDetectionTests: XCTestCase {
+    private func p(_ id: String, input: Bool = false, output: Bool = false) -> CallAudioActivity {
+        CallAudioActivity(name: id, isRunningInput: input, isRunningOutput: output)
+    }
+
+    func testAContinuityCallAnsweredOnThePhoneNeverReachesTheMac() {
+        // A call is live on the iPhone, not routed through the Mac. Core Audio never sees a call app using the mic.
+        XCTAssertFalse(CallSignal.isCallLive([p("com.apple.CoreSpeech", input: true)]),
+                       "iPhone-only call has no Mac presence; captioning the room continues")
+    }
+
+    func testMicHeldByDictationOrVoiceMemosIsNotACall() {
+        // Dictation or voice recording uses the mic but isn't a call
+        let activities = [
+            p("com.apple.CoreSpeech", input: true),
+            p("com.apple.VoiceMemos", input: true),
+            p("com.gileskayo.marvin-voice", input: true)
+        ]
+        XCTAssertFalse(CallSignal.isCallLive(activities), "mic use by non-call apps doesn't mean a call is live")
+    }
+
+    func testNotificationsOffOrFocusOnStillDetectsTheCall() {
+        // Core Audio reports calls the same way whether notifications are on or the Focus is muted.
+        // The notification decision is at the CallNotifier/CallFlow layer, not here.
+        XCTAssertTrue(CallSignal.isCallLive([p("com.apple.FaceTime", input: true, output: true)]),
+                      "call detection is independent of notification settings")
+    }
+}
+
 /// A real FaceTime call to the owner's MacBook Pro (2026-10-28 20:43–20:44 UTC), as the probe saw Core Audio report it,
 /// replayed through the rule. Evidence E24.
 final class RealFaceTimeCallReplayTests: XCTestCase {

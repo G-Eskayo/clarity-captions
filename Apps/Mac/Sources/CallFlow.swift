@@ -21,10 +21,20 @@ final class CallFlow: ObservableObject {
     private unowned let model: CaptionMacModel
     private let watcher = CallWatcher()
     private let notifier = CallNotifier()
-    @Published private var pausedRoom: (stream: CaptionStream, names: SpeakerNames, session: ConversationSession)?
-    /// A conversation with words was set aside for the call (an empty window has nothing to come back to).
-    var hasPausedRoom: Bool { pausedRoom.map { ConversationSession.hasContent($0.stream.lines) } ?? false }
+    /// Stack of paused conversations, mirroring CallArrival's paused stack: rooms and held calls.
+    @Published private var pausedFrames: [(stream: CaptionStream, names: SpeakerNames, session: ConversationSession, frame: CallArrival.Frame, startedAt: Date?)] = []
+    /// A conversation with words was set aside for a call (an empty window has nothing to come back to).
+    var hasPausedRoom: Bool {
+        // True if there's a paused room frame (not a heldCall) with content
+        for paused in pausedFrames {
+            if case .room = paused.frame {
+                return ConversationSession.hasContent(paused.stream.lines)
+            }
+        }
+        return false
+    }
     private var callStartedAt = Date()
+    private var previousCallApp: String?
     private var queue: Task<Void, Never>?
     init(model: CaptionMacModel) { self.model = model }
 
@@ -35,14 +45,29 @@ final class CallFlow: ObservableObject {
             model.listenOverride = .roomOnly
             notifier.onCaption = { [weak self] in self?.send(.captionCall) }
             notifier.onNotNow = { [weak self] in self?.send(.notNow) }
+            notifier.onHoldAndAccept = { [weak self] _ in
+                guard let self, let heldApp = self.previousCallApp else { return }
+                self.send(.holdAndAccept(heldApp: heldApp))
+            }
+            notifier.onEndAndAccept = { [weak self] in self?.send(.endAndAccept) }
             notifier.setUp()
         }
         watcher.onChange = { [weak self] app in
             guard let self else { return }
             let wasLive = self.callApp != nil
+            self.previousCallApp = self.callApp  // Save before updating
             self.callApp = app
-            guard Self.isEnabled, wasLive != (app != nil) else { return }
-            self.send(app != nil ? .callStarted : .callEnded)
+            guard Self.isEnabled else { return }
+            if app != nil, wasLive, app != self.previousCallApp {
+                // A different call app is now live (second call scenario)
+                self.send(.secondCallStarted(app: app))
+            } else if app != nil, !wasLive {
+                // A call started (first call)
+                self.send(.callStarted)
+            } else if app == nil, wasLive {
+                // Call ended
+                self.send(.callEnded)
+            }
         }
         watcher.start()
         #if DEBUG
@@ -54,9 +79,8 @@ final class CallFlow: ObservableObject {
         let captioning = model.state == .listening || model.state == .preparing
         let wasRinging = arrival.banner == .ringing
         let effects = arrival.handle(event, captioning: captioning)
-        // The notification: up when the call starts ringing and she isn't looking at the window, gone once it's answered
-        // either way or the call ends.
-        if arrival.banner == .ringing, !wasRinging, !CallNotifier.windowInFront { notifier.show(detail: ringingDetail) }
+        // Announcements (first call and second call) always go through notifications.
+        if arrival.banner == .ringing, !wasRinging { notifier.show(detail: ringingDetail) }
         if wasRinging, arrival.banner != .ringing { notifier.remove() }
         NSLog("[calls] %@ while %@ -> %@ %@", "\(event)", captioning ? "captioning" : "not captioning", "\(arrival.step)", "\(effects)")
         guard !effects.isEmpty else { return }
@@ -90,7 +114,13 @@ final class CallFlow: ObservableObject {
         switch effect {
         case .pauseRoom:
             await model.stopAndWait()
-            pausedRoom = (model.stream, model.speakerNames, model.session)
+            pausedFrames.append((model.stream, model.speakerNames, model.session, .room(captioning: model.state == .listening || model.state == .preparing), nil))
+        case .holdCall:
+            await model.stopAndWait()
+            // The current call is being held; push it onto the stack with its start time
+            if let currentApp = callApp {
+                pausedFrames.append((model.stream, model.speakerNames, model.session, .heldCall(app: currentApp), callStartedAt))
+            }
         case .startCall:
             withAnimation(Self.fade) {
                 model.stream = CaptionStream()
@@ -112,25 +142,40 @@ final class CallFlow: ObservableObject {
                 try? await model.store?.save(SavedConversation.from(sessionStart: callStartedAt, lines: lines, speakerNames: model.speakerNames))
             }
         case .resumeRoom:
-            finishCall()
+            finishCallAndResume()
             model.start()
         case .restoreRoom:
-            finishCall()
+            finishCallAndResume()
+        case .resumeHeldCall:
+            // Resume a held call from the stack, restoring its start time
+            let startedAt = pausedFrames.last?.startedAt ?? Date()
+            finishCallAndResume()
+            callStartedAt = startedAt
+            model.listenOverride = .both
+            NSLog("[calls] resuming held call")
+            model.start()
+        case .announceSecondCall(let app):
+            notifier.showSecondCall(app: app)
         }
     }
 
-    /// Puts the room's conversation back (or an empty one, if the call interrupted nothing).
-    private func finishCall() {
-        let room = pausedRoom
-        pausedRoom = nil
+    /// Pops the last paused frame and restores it (or an empty one if nothing is paused).
+    private func finishCallAndResume() {
+        let popped = pausedFrames.popLast()
         // The call view fades back to the conversation it interrupted (owner, 2026-10-28).
         withAnimation(Self.fade) {
-            model.stream = room?.stream ?? CaptionStream()
-            model.speakerNames = room?.names ?? SpeakerNames()
-            model.session = room?.session ?? ConversationSession()
+            model.stream = popped?.stream ?? CaptionStream()
+            model.speakerNames = popped?.names ?? SpeakerNames()
+            model.session = popped?.session ?? ConversationSession()
             conversationToken += 1
         }
-        model.listenOverride = .roomOnly
+        // If popped frame is a room (or nothing), set roomOnly mode
+        if popped == nil {
+            model.listenOverride = .roomOnly
+        } else if case .room = popped?.frame {
+            model.listenOverride = .roomOnly
+        }
+        // If popped frame is a heldCall, keep .both mode (will be set by resumeHeldCall effect)
     }
 }
 
@@ -143,6 +188,7 @@ struct CallBannerSlot: View {
         Group {
             switch calls.arrival.banner {
             case .ringing:
+                // Show in-window ringing banner as fallback when notifications aren't available.
                 CallBannerView(kind: .ringing, style: style, detailOverride: calls.ringingDetail, onPrimary: { calls.send(.captionCall) }, onSecondary: { calls.send(.notNow) })
             case .ended:
                 CallBannerView(kind: .ended, style: style, onPrimary: { calls.send(.saveTranscript) }, onSecondary: { calls.send(.returnToConversation) })

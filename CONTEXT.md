@@ -85,6 +85,12 @@ domain understanding only.
   minutes; 15, 30 or Never in Settings). A gentle pause, not a failure. The only behavior setting;
   every other setting is caption display. See [[0019]].
 
+## Call handling on Mac
+
+- **Mac calls behavior**: the complete state × event table for multiple concurrent calls, with all
+  transitions and effects. See `docs/mac-calls-behavior.md` for the full reference; [[0178]] for the
+  product decisions (announcement channel, hold/accept rules, stack depth, missed-call aftermath).
+
 - **Saved conversation**: the transcript of one captioning session, saved automatically on the phone
   when captioning stops and deleted after 30 days. Never backed up or synced. Distinct from the live
   caption stream, which is what's on screen now. See [[0022]].

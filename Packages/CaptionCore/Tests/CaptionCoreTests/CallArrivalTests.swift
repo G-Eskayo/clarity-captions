@@ -133,4 +133,131 @@ final class CallArrivalTests: XCTestCase {
             }
         }
     }
+
+    // MARK: - Multiple concurrent calls (#178 second-call handling)
+
+    func testSecondCallRingsDuringACaptionedCallAnnouncesButDoesNotPauseOrSwitch() {
+        // The owner's bug: a second call ringing while the first is captioned.
+        let (flow, effects) = run([(.callStarted, true), (.captionCall, true), (.secondCallStarted(app: "Zoom"), true)])
+        XCTAssertEqual(flow.step, .call, "call1 unchanged")
+        XCTAssertEqual(effects.last, .announceSecondCall(app: "Zoom"))
+        XCTAssertEqual(effects.count, 3, "pauseRoom, startCall, announceSecondCall")
+    }
+
+    func testSecondCallDeclinedOrIgnoredLeavesCall1Untouched() {
+        // secondCallEnded without any answer: nothing happens
+        let (flow, effects) = run([(.callStarted, true), (.captionCall, true), (.secondCallStarted(app: "Zoom"), true), (.secondCallEnded, true)])
+        XCTAssertEqual(flow.step, .call)
+        XCTAssertEqual(effects.suffix(1), [.announceSecondCall(app: "Zoom")], "only the announcement")
+    }
+
+    func testSecondCallMissedLeavesNothingBehind() {
+        // secondCallStarted then secondCallEnded with no answer: no persisted "missed" state
+        let (flow, effects) = run([(.callStarted, true), (.captionCall, true), (.secondCallStarted(app: "Teams"), true), (.secondCallEnded, true)])
+        XCTAssertEqual(flow.step, .call)
+        XCTAssertEqual(effects.filter { if case .announceSecondCall = $0 { return true } else { return false } }.count, 1, "only the announcement effect")
+    }
+
+    func testHoldAndAcceptPausesCall1KeepsItsTranscriptAndStartsCall2() {
+        // User taps [ Hold & Accept ] on the second-call notification
+        let (flow, effects) = run([(.callStarted, true), (.captionCall, true), (.secondCallStarted(app: "Zoom"), true), (.holdAndAccept(heldApp: "FaceTime"), true)])
+        XCTAssertEqual(flow.step, .call, "now captioning call2")
+        XCTAssertEqual(effects.suffix(2), [.holdCall, .startCall])
+    }
+
+    func testCall2EndingAfterHoldOffersToSaveCall2ThenResumesCall1() {
+        // call2 ends; save/return; then call1 is active again
+        let (flow, effects) = run([
+            (.callStarted, true), (.captionCall, true),
+            (.secondCallStarted(app: "Zoom"), true), (.holdAndAccept(heldApp: "FaceTime"), true),
+            (.callEnded, true), (.saveTranscript, false)
+        ])
+        XCTAssertEqual(flow.step, .call, "call1 is now active")
+        XCTAssertEqual(effects.last, .resumeHeldCall)
+    }
+
+    func testEndAndAcceptOffersToSaveCall1BeforeCall2EverStartsCapturing() {
+        // [ End & Accept ] goes to .ended (save prompt) with call2 pending; [ Save ] then starts call2
+        let (flow, effects) = run([
+            (.callStarted, true), (.captionCall, true),
+            (.secondCallStarted(app: "Zoom"), true), (.endAndAccept, true)
+        ])
+        XCTAssertEqual(flow.step, .ended, "save call1 first")
+        XCTAssertEqual(effects.last, .stopCall, "call2 not started yet")
+    }
+
+    func testThreeDeepStackUnwindsWithASaveOfferAtEachStep() {
+        // room -> call1 -> call2 -> call3; each call ends and unwinds with a save offer
+        let (flow, effects) = run([
+            // room -> call1
+            (.callStarted, true), (.captionCall, true),
+            // call1 -> call2 (hold call1)
+            (.secondCallStarted(app: "call2"), true), (.holdAndAccept(heldApp: "call1"), true),
+            // call2 -> call3 (hold call2)
+            (.secondCallStarted(app: "call3"), true), (.holdAndAccept(heldApp: "call2"), true),
+            // call3 ends, save call3, resume call2
+            (.callEnded, true), (.saveTranscript, false),
+            // call2 ends, save call2, resume call1
+            (.callEnded, true), (.saveTranscript, false),
+            // call1 ends, save call1, resume room
+            (.callEnded, true), (.saveTranscript, false)
+        ])
+        XCTAssertEqual(flow.step, .room, "back to room after 3 levels")
+        // Count the save/resume effect pairs: should have 3 saveCall + 3 resume effects
+        let saveCalls = effects.filter { if case .saveCall = $0 { return true } else { return false } }.count
+        let resumeEffects = effects.filter { if case .resumeHeldCall = $0 { return true } else if case .resumeRoom = $0 { return true } else { return false } }.count
+        XCTAssertEqual(saveCalls, 3)
+        XCTAssertEqual(resumeEffects, 3)
+    }
+
+    func testPlainHoldPausesTheCurrentCallLikeTheRoomPausesForACall() {
+        // [ Hold ] without a second call involved
+        let (flow, effects) = run([(.callStarted, true), (.captionCall, true), (.callHeld, true)])
+        XCTAssertEqual(flow.step, .call)
+        XCTAssertEqual(effects.last, .holdCall)
+    }
+
+    func testPlainHoldResumedFromHoldBringsCallBack() {
+        // [ Resume ] after [ Hold ]
+        let (flow, effects) = run([(.callStarted, true), (.captionCall, true), (.callHeld, true), (.callResumedFromHold, true)])
+        XCTAssertEqual(flow.step, .call)
+        XCTAssertEqual(effects.last, .resumeHeldCall)
+    }
+
+    func testANotificationTappedAfterItsCallAlreadyEndedDoesNothing() {
+        // Stale notification action after the call ended
+        let (flow, effects) = run([(.callStarted, true), (.captionCall, true), (.callEnded, true), (.holdAndAccept(heldApp: "FaceTime"), true)])
+        XCTAssertEqual(flow.step, .ended, "save prompt is still up, action ignored")
+        XCTAssertEqual(effects, [.pauseRoom, .startCall, .stopCall])
+    }
+
+    func testTheSameCallAnnouncedOnlyOnceEvenIfCoreAudioReportsItTwice() {
+        // Repeated secondCallStarted for the same app before it's resolved: no duplicate announcements
+        let (flow, effects) = run([
+            (.callStarted, true), (.captionCall, true),
+            (.secondCallStarted(app: "Zoom"), true), (.secondCallStarted(app: "Zoom"), true)
+        ])
+        XCTAssertEqual(flow.step, .call)
+        let announcements = effects.filter { if case .announceSecondCall = $0 { return true } else { return false } }.count
+        XCTAssertEqual(announcements, 1, "only one announcement for the same app")
+    }
+
+    func testACallDuringTheSaveQuestionForAnEarlierCallWaitsForTheAnswer() {
+        // Extends existing test to the stacked case: a third call ringing while call2's save-prompt is still up
+        let (flow, _) = run([
+            (.callStarted, true), (.captionCall, true),
+            (.secondCallStarted(app: "Zoom"), true), (.holdAndAccept(heldApp: "FaceTime"), true),
+            (.callEnded, true),
+            (.secondCallStarted(app: "Teams"), true) // Third call while call2 save prompt is up
+        ])
+        XCTAssertEqual(flow.step, .ended, "save question not answered yet; queue call3")
+    }
+
+    func testNoRingNoCallDroppedInZoomTeamsMeetJoinedFromALink() {
+        // Joining by link: no callStarted ring, straight to liveCallApp becoming non-nil
+        // We need a callStarted event to move from room to ringing, then captionCall to start the call
+        let (flow, effects) = run([(.callStarted, true), (.captionCall, true)])
+        XCTAssertEqual(flow.step, .call, "link-joined call can be captioned once detected")
+        XCTAssertEqual(effects, [.pauseRoom, .startCall])
+    }
 }
