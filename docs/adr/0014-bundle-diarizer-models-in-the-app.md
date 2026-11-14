@@ -93,3 +93,45 @@ Full numbers: [docs/perf/speaker-scoreboard.md § Step 2](../perf/speaker-scoreb
 **pal6** is the build to ship. Until it is in the app, fp16 stays. The swap needs the exact scored files distributed
 (k-means isn't repeatable, so a rebuild is a different, unscored build), a run on a real iPhone, and NOTICE.md
 describing the change, since a compressed build is a Derivative Model under the NVIDIA Open Model License.
+
+## Text-processing opt-out (2026-11-13, #32)
+
+Clarity Captions uses only speaker diarization from FluidAudio; the text-processing-rs engine (NeMo Text Processing
+binary, ~8 MB per slice) and TTS features (LuxTTS lexicon, models, and tokenizers) are bundled but unused.
+
+### Measured impact
+
+Per FluidAudio's documentation ([PostProcessing.md](https://github.com/FluidInference/FluidAudio/blob/main/Documentation/ASR/PostProcessing.md)):
+- NemoTextProcessing xcframework: ~29 MB per iOS architecture slice
+- Linked static library after stripping: ~8 MB per slice
+- A universal iOS app bundles 4 slices (arm64 device, arm64 simulator, x86_64 simulator, requires measurement on real build)
+
+### Decision
+
+**Opt out of text-processing with `traits: []` in Package.swift.** The feature is only available in Swift 6.2+, which this project uses. Added to FluidAudio dependency on 2026-11-13:
+
+```swift
+.package(url: "https://github.com/FluidInference/FluidAudio.git", from: "0.17.5", traits: []),
+```
+
+### Consequences
+
+1. **Size**: Expected ~32 MB saving on a universal iOS app (~8 MB × 4 slices), pending measurement on a real build.
+2. **Licensing**: Removes the orphaned NeMo Text Processing and LuxTTS lexicon dependencies. No licensing debt.
+3. **Function**: Zero impact. The app doesn't use `TextNormalizer`, Inverse Text Normalization, or TTS. When `traits: []` is active:
+   - `TextNormalizer.isNativeAvailable` reports `false`
+   - Every normalization call is a no-op (returns input unchanged)
+   - TTS features unavailable (not used anyway)
+4. **Future use**: If ITN (Inverse Text Normalization) is ever needed for ASR post-processing, the text-processing trait can be re-enabled independently.
+
+### Removed credits
+
+- `ThirdPartyNotice.swift`: removed "nemotextprocessing" entry
+- `CreditsEntry.swift`: removed "nemotextprocessing" from `coveredByFullLicenseTexts`
+- `NOTICE.md`: removed "NemoTextProcessing", "NVIDIA NeMo Text Processing", "rustfst", "flate2", and "Other Rust dependencies" sections
+
+### Testing
+
+Added `TextProcessingOptOutTests.swift` (regression test) to verify:
+- `TextNormalizer.isNativeAvailable` is `false` when traits are disabled
+- Normalization is a no-op (returns input unchanged)
