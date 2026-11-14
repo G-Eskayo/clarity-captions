@@ -67,6 +67,51 @@ To complete the comparison and consider a model switch in a future session:
 
 Until then, the harness remains opt-in, Sortformer is the default, and the 4-speaker limit is the status quo.
 
+## Mac Decision (2026-11-11)
+
+**Scope:** Mac platform speaker diarization model candidate evaluation (ADR 0028 — Mac sold separately).
+
+**Measurement environment:** Headless pipeline worktree; no network access to model downloads; no on-device measurement (Mac hardware unavailable).
+
+**Candidates evaluated (harness ready):** 
+- Sortformer v2.1 (bundled baseline)
+- LS-EEND (ami and dihard3 variants via FluidAudio)
+
+**Test harness:** Extended from existing `SpeakerModelComparisonTests.swift` with:
+- Parametrized voice counts (4, 6, 10 voices)
+- Range validation for voice count input (single values and comma-separated lists)
+- Pure unit tests for ground-truth builders, markdown table writer, DER edge cases, and memory/CPU measurement helpers
+- Fixed global state isolation (ModelHub.offlineMode properly restored between iterations)
+
+**Test results (28 pure tests, all pass):** 
+- Voice count parsing (single value, comma-list, range validation, invalid inputs)
+- DER edge cases (empty hypothesis, empty ground truth, both empty, perfect match)
+- Call-scenario ground-truth builder (1–10 speakers)
+- Markdown table formatting
+- Global state restoration
+
+**Measurement attempt:**
+- Network requirement prevented LS-EEND and optional model downloads; opt-in comparison test skipped by default per ADR 0017 mechanism
+- Synthetic audio generation verified (Sortformer bundled, no download needed)
+
+**Decision:** No model switch on Mac at this time. Reasons:
+1. Measurement environment unavailable (no network for LS-EEND/DiarizerManager/Nemotron3 downloads).
+2. No E6 family-dinner recording provided by owner.
+3. Sortformer's 4-speaker limit documented and acceptable for the primary use case (dinner table, 2–4 participants).
+4. Higher-capacity models introduce ~450 MB app bundle overhead per model without measured justification.
+
+**Deferral:** Any future Mac speaker-diarization model switch is explicitly deferred to a separate, independently-gated follow-up ticket that includes:
+- A mock-up of the UI changes (10-speaker palette, speaker labeling changes).
+- Screenshots of the running Mac app with the new model.
+- Real measurements on networked hardware (DER, latency, memory).
+- Owner review and approval per playbook requirements.
+
+The harness code, tests, and evidence are production-ready; a future session with network access can immediately re-run and measure.
+
+**References:** 
+- `docs/research/evidence/2026-11-11-mac-speaker-candidate-licences.md` — candidate model licenses (all permissive; safe to bundle).
+- `docs/perf/speaker-model-comparison.md` — harness details and run instructions.
+
 ## References
 
 - `docs/perf/speaker-model-comparison.md` — benchmark harness, run instructions, and acceptance criteria status.

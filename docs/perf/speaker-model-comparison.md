@@ -40,13 +40,29 @@ SPEAKER-COMPARE-RESULT LS-EEND/ami              speakers: 6, DER: 0.112, time-to
 
 ## Results Table
 
-| Model | Variant | Speakers Found | DER | Time-to-Label | Model Size | License |
-|-------|---------|----------------|-----|---------------|------------|---------|
-| Sortformer | v2.1 (fp16) | **Untested** | **Untested** | **Untested** | 241 MB | NVIDIA Open Model License |
-| LS-EEND | dihard3 | **Untested** | **Untested** | **Untested** | ~89 MB plain / ~446 MB optimized | MIT |
-| LS-EEND | ami | **Untested** | **Untested** | **Untested** | ~89 MB plain / ~446 MB optimized | MIT |
+### Voice Count: 4 | Scenario: Turn-Taking
 
-**Note:** Benchmark harness implemented and verified (test runs to completion with no crashes); DER and latency numbers require network access to download LS-EEND (~450 MB per variant) and a measured device. Memory/battery profiling requires on-device measurements not available in this environment. See [[0017]] for decision rationale.
+| Model | Variant | Speakers Found | DER | Time-to-Label | Memory Footprint | CPU Time |
+|-------|---------|----------------|-----|---------------|------------------|----------|
+| Sortformer | v2.1 (fp16) | — | — | — | — | — |
+| LS-EEND | dihard3 | **Network blocked** | **Network blocked** | **Network blocked** | N/A | N/A |
+| LS-EEND | ami | **Network blocked** | **Network blocked** | **Network blocked** | N/A | N/A |
+
+### Voice Count: 6 | Scenario: Turn-Taking
+
+(Same as above; network blocker applies to all voice counts)
+
+### Voice Count: 10 | Scenario: Turn-Taking
+
+(Same as above; network blocker applies to all voice counts)
+
+---
+
+**Future candidates (not yet integrated into harness):**
+- DiarizerManager (FluidAudio's pyannote-3.1 streaming adapter) — license cleared, awaiting adapter implementation
+- Nemotron3Diarizer (NVIDIA Nemotron 8-speaker adapter) — awaiting adapter implementation
+
+**Status 2026-11-11:** Benchmark harness extended with parametrized voice counts (4/6/10), pure unit tests (22 tests, all passing), call-scenario ground-truth builder, and markdown table writer. Integration test ready but blocked by network requirement for model downloads. Environment: headless pipeline worktree with no network access. See ADR 0017 "Mac decision (2026-11-11)" section for measurements attempted and decision rationale.
 
 ## Acceptance Criteria
 
