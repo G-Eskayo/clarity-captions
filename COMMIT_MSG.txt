@@ -1,0 +1,11 @@
+Spec: how From, Into and face to face behave
+
+Document intended behavior of caption language selection across three UIs:
+- From table: install-immediately through change-while-captioning cases
+- Into table: same language passthrough through mid-captioning language change
+- Face to face: ready pairs, downloads managed upfront, per-half status
+- Known gaps flagged but not fixed (two-download bug, same-language reveal)
+- One open decision: duplicate-reveal redundancy for same-language lines
+
+Refs #279
+Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>
