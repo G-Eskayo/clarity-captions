@@ -1,5 +1,6 @@
 import XCTest
 @testable import CaptionCore
+import FluidAudio
 
 final class ThirdPartyNoticeTests: XCTestCase {
     func testThirdPartyNoticesAreComplete() {
@@ -109,5 +110,34 @@ final class ThirdPartyNoticeTests: XCTestCase {
         let notices = try String(contentsOf: repo.appendingPathComponent("NOTICE.md"), encoding: .utf8)
         XCTAssertTrue(notices.contains("## Hebrew speech model (ivrit.ai zipformer)"))
         XCTAssertTrue(notices.contains("compressed to 4 bits"), "NOTICE.md notes the change")
+    }
+
+    func testTextNormalizerIsNotNativeWithTheTraitDisabled() {
+        // Regression guard for the NemoTextProcessing trait opt-out (traits: ["Diarizer"] in Package.swift disables it).
+        // If someone re-enables the default NemoTextProcessing trait, NemoTextProcessing would be linked
+        // into the binary again, and this test would fail (isNativeAvailable / isTnAvailable would be true).
+        let normalizer = TextNormalizer()
+        XCTAssertFalse(normalizer.isNativeAvailable, "TextNormalizer should not have NemoTextProcessing linked (trait opt-out disables it)")
+        XCTAssertFalse(normalizer.isTnAvailable, "TextNormalizer should not have NemoTextProcessing available (trait opt-out disables it)")
+    }
+
+    func testThirdPartyNoticesHaveNoEntryForUnshippedNemoTextProcessing() {
+        // Data-consistency check: verify the hand-maintained ThirdPartyNotice.all has no entry
+        // for NemoTextProcessing. Note: this test alone does not guard the trait; it would stay green
+        // even if someone re-enabled NemoTextProcessing in Package.swift, leaving the component linked
+        // but uncredited. The real guard is testTextNormalizerIsNotNativeWithTheTraitDisabled (above).
+        let nemoEntry = ThirdPartyNotice.all.first { $0.id == "nemotextprocessing" }
+        XCTAssertNil(nemoEntry, "NemoTextProcessing should not be present in ThirdPartyNotice.all")
+    }
+
+    func testNoticeMdHasNoNemoTextProcessingSection() throws {
+        // Data-consistency check: verify NOTICE.md has no NemoTextProcessing section.
+        // Like testThirdPartyNoticesHaveNoEntryForUnshippedNemoTextProcessing, this would stay green
+        // if the trait were re-enabled (the component would be linked but its license still wouldn't be
+        // mentioned). The real guard is testTextNormalizerIsNotNativeWithTheTraitDisabled (above).
+        let repo = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let notices = try String(contentsOf: repo.appendingPathComponent("NOTICE.md"), encoding: .utf8)
+        XCTAssertFalse(notices.contains("## NemoTextProcessing"), "NOTICE.md should no longer document the unshipped NemoTextProcessing component")
     }
 }

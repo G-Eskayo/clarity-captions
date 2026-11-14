@@ -93,3 +93,38 @@ Full numbers: [docs/perf/speaker-scoreboard.md § Step 2](../perf/speaker-scoreb
 **pal6** is the build to ship. Until it is in the app, fp16 stays. The swap needs the exact scored files distributed
 (k-means isn't repeatable, so a rebuild is a different, unscored build), a run on a real iPhone, and NOTICE.md
 describing the change, since a compressed build is a Derivative Model under the NVIDIA Open Model License.
+
+## NemoTextProcessing trait opt-out (2026-11-14)
+
+FluidAudio ships a default trait that includes the NemoTextProcessing component for text normalization. Seal only uses
+speaker diarization and never calls text normalization, so the component adds binary size with no value to the product.
+
+**Changes made:**
+- `Packages/CaptionCore/Package.swift`: added `traits: ["Diarizer"]` to the FluidAudio dependency, keeping the diarizer
+  while opting out of the default `NemoTextProcessing` and `TTS` traits.
+- `ThirdPartyNotice.swift` and `CreditsEntry.swift`: removed the `"nemotextprocessing"` entry from both (no longer linked
+  in the binary).
+- `NOTICE.md`: deleted the `## NemoTextProcessing (statically linked through FluidAudio)` section and all subsections
+  (`## NVIDIA NeMo Text Processing`, `## rustfst`, `## flate2`, `## Other Rust dependencies`).
+- Added regression guards: `testTextNormalizerIsNotNativeWithTheTraitDisabled()` (instantiates `FluidAudio.TextNormalizer()` and asserts `isNativeAvailable == false` and `isTnAvailable == false` — if the trait is re-enabled, this test fails). `testThirdPartyNoticesHaveNoEntryForUnshippedNemoTextProcessing()` and `testNoticeMdHasNoNemoTextProcessingSection()` are data-consistency checks that verify hand-maintained lists, but they do not detect the trait being re-enabled — the real regression guard is the first test alone.
+
+**Measured (2026-11-14):** app-size delta is untested in this session (requires an actual Simulator or device build; the
+trait opt-out is a compile-time decision that will show in the CI pipeline's App-build stage). The trait selection is
+a no-op to behavior — the app never calls text normalization — so the only observable change is binary size.
+
+**FluidAudio component structure:** FluidAudio's `Package.swift` defines traits that control optional components. Single
+trait bundles cannot be partially excluded (either include the whole component or none), so there is no smaller
+alternative. The Sortformer (diarizer) model required by Seal is not subject to a separate trait and must always be
+linked.
+
+## LuxTTS lexicon license status (2026-11-14)
+
+FluidAudio's text-processing component includes a lexicon from [LuxTTS](https://github.com/FluidInference/FluidAudio)
+(per `LuxTtsG2p.swift` doc comment in the public FluidInference/FluidAudio repo). The license status of this lexicon
+could not be determined from the repository's visible documentation.
+
+**Options:** (A) credit it in `ThirdPartyNotice.all` and `NOTICE.md` with available documentation; (B) vendor only the
+diarizer component (large, separate work).
+
+**Deferred:** this decision awaits the owner's answer and is tracked as a follow-up ticket. The NemoTextProcessing
+opt-out (above) does not affect this status; once resolved, the LuxTTS decision can be implemented independently.

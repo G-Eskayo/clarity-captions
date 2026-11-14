@@ -1,0 +1,42 @@
+## North-star fit
+
+**Reuses:** the existing third-party-credit pattern end to end — `ThirdPartyNotice.swift` (`Packages/CaptionCore/Sources/CaptionCore/ThirdPartyNotice.swift`) for the structured notice + Credits-page tap-through, `NOTICE.md` for the full license text, `CreditsEntry.coveredByFullLicenseTexts` (`Packages/CaptionCore/Sources/CaptionCore/CreditsEntry.swift:29`) for notices that don't get their own Credits-page line yet, and `ThirdPartyNoticeTests.swift`'s per-notice assertion style (e.g. `testFluidAudioNoticeExists`, `testSortformerNoticeExists`) for the "credits check." For the size/decision record, it reuses ADR 0014's own established pattern of dated addenda appended in place (it already has three: 2026-10-05, 2026-11-09 #271, 2026-11-09 #271 step 2) rather than a new ADR.
+
+**Why simplest sufficient:** I read FluidAudio's actual checked-out manifest (`Packages/CaptionCore/.build/checkouts/FluidAudio/Package@swift-6.2.swift`, pinned revision `0b1f462`, v0.17.5 — matches `Package.resolved`). It already ships exactly the opt-out the issue is asking about for half the problem: a `NemoTextProcessing` trait, default-enabled, that — when disabled via `.package(url:..., traits: [])` — drops the ~5,000-symbol Rust static lib entirely and makes `TextNormalizer.isNativeAvailable` a compile-time `false` (`ITN/TextNormalizer.swift:36-40`, gated on `#if canImport(CNemoTextProcessing)`). CaptionCore never calls `TextNormalizer`/`NemoTextNormalizer` anywhere — grep confirms zero references — so this is a pure size cut with no behavior change. That's the smallest sufficient fix for the NemoTextProcessing half of the issue.
+
+The LuxTTS lexicon half is different and smaller in scope than it looks: `TTS/LuxTts/G2p/Resources/luxtts_en_us_lexicon.tsv.zz` (0.96 MB) is `.process`d into the main `FluidAudio` target **unconditionally** in both manifest files — no trait gates it, and FluidAudio exposes only one library product, so "a smaller product" doesn't exist today. Per `LuxTtsG2p.swift`'s own doc comment, the lexicon is "offline-harvested" by probing **espeak-ng** (GPL-3.0) pronunciations via `piper_phonemize` — and FluidAudio ships no `ThirdPartyLicenses/LuxTTS-LICENSE.md` for it (unlike NemoTextProcessing, fastcluster, vbx, which all have one). That's a real gap upstream too, not just in our NOTICE.md. I have no network access in this session to pin down espeak-ng's exact license terms or whether a probed-output lexicon counts as a derivative work — that's a genuine open question, not something to guess at (this repo requires `docs/research/evidence/` entries for exactly this kind of claim).
+
+**Tension with the per-ticket "do not change ... package dependencies or ADRs" instruction:** this ticket's own acceptance criteria explicitly ask for a trait change on the existing FluidAudio dependency (not a new package, not a version bump) and an ADR 0014 addendum (the file's own established pattern, not a rewrite of its Decision). I'm treating the ticket's specific, explicit ask as the authoritative instruction for this unit of work and proceeding — flagging it here rather than silently either overriding the blanket rule or silently refusing the ticket's literal acceptance criteria.
+
+**Token/compute cost:** cheap — one dependency-declaration line, one deleted-now-false NOTICE.md section, a handful of new/removed table rows, 2-4 new unit tests. No new infra.
+
+**Phone-OS direction:** neutral — hygiene/compliance work, not a capability.
+
+**User capability:** neutral for the end user (mom); this is entirely a build-hygiene/legal-compliance fix with no UI change — correctly scoped as not needing a mock-up or screenshots (no look change).
+
+## Decisions
+
+<!-- marvin:decisions -->
+### luxtts-lexicon-remedy: The LuxTTS lexicon (`luxtts_en_us_lexicon.tsv.zz`, ~0.96 MB) has no upstream trait to exclude it and its license is unconfirmed (derived from espeak-ng/GPL-3.0 via piper_phonemize, uncredited even by FluidAudio itself). How should we handle it?
+- [ ] Credit it now with best-available facts (derived from espeak-ng via piper_phonemize; license noted as unconfirmed/GPL-3.0-derived pending a dedicated research pass) and keep shipping it as-is
+- [ ] Same as above, plus file an issue against FluidInference/FluidAudio asking them to gate the LuxTTS G2P resource behind a trait the way NemoTextProcessing already is
+- [ ] Treat the unconfirmed GPL-3.0 provenance as a blocking risk: stop depending on FluidAudio's TTS code by vendoring only the Diarizer sources into CaptionCore (drops the SPM dependency on FluidAudio's TTS tree; larger effort, deviates from ADR 0010/0008's "use FluidAudio directly" choice, loses upstream bugfixes)
+
+### luxtts-credits-page-line: If the lexicon gets a notice entry, does it also get its own line on the in-app Credits page, or only the full license text in NOTICE.md (the existing precedent for NemoTextProcessing/Parakeet Ultra/Hebrew zipformer, per `CreditsEntry.swift`'s own comment: "whether it gets its own line is a Decision on the PR")?
+- [ ] Full license text only (NOTICE.md), no Credits-page line — matches current precedent for the other three
+- [ ] Give it its own Credits-page line now
+
+## Task List
+
+1. `Packages/CaptionCore/Package.swift`: add `traits: []` to the FluidAudio dependency declaration, opting out of the default `NemoTextProcessing` trait (zero behavior change — CaptionCore never calls `TextNormalizer`/`NemoTextNormalizer`).
+2. Add `testTextNormalizerIsNotNativeWithTheTraitDisabled` to `ThirdPartyNoticeTests.swift` (or a new small test file): instantiate `FluidAudio.TextNormalizer()` and assert `isNativeAvailable == false` / `isTnAvailable == false` — the regression guard that also catches a future FluidAudio version silently re-enabling or renaming the trait. (Fixes the exact bug the prior failed attempt had: it called `isNativeAvailable` on the type instead of an instance.)
+3. Remove the now-inaccurate `"nemotextprocessing"` entry from `ThirdPartyNotice.all` (`ThirdPartyNotice.swift`) and from `CreditsEntry.coveredByFullLicenseTexts` (`CreditsEntry.swift:29`), since the component will no longer be linked into the binary.
+4. Delete the `## NemoTextProcessing (statically linked through FluidAudio)` section and its `## NVIDIA NeMo Text Processing` / `## rustfst` / `## flate2` / `## Other Rust dependencies` subsections from `NOTICE.md` (they describe a component that will no longer ship).
+5. Add two tests asserting the stale credit is really gone: `testThirdPartyNoticesHaveNoEntryForUnshippedNemoTextProcessing` (checks `ThirdPartyNotice.all` has no `"nemotextprocessing"` id) and `testNoticeMdHasNoNemoTextProcessingSection` (checks `NOTICE.md` no longer contains `"## NemoTextProcessing"`) — this is the literal "re-run the credits check" acceptance criterion.
+6. Resolve `luxtts-lexicon-remedy` per the owner's answer:
+   - If "credit it" (either option): add a `"luxttslexicon"` entry to `ThirdPartyNotice.all`, the matching `## LuxTTS lexicon` section to `NOTICE.md` (source: `https://github.com/FluidInference/FluidAudio`, path `Sources/FluidAudio/TTS/LuxTts/G2p/`, provenance note per `LuxTtsG2p.swift`'s doc comment), and a `testLuxTtsLexiconNoticeExists` test mirroring `testFluidAudioNoticeExists`. Add a `CreditsEntry` line only if `luxtts-credits-page-line` picks that option.
+   - If "vendor only the diarizer": out of scope for this PR — large, separate piece of work; record the decision and open a follow-up ticket instead of attempting it here.
+7. Append a new dated section to `docs/adr/0014-bundle-diarizer-models-in-the-app.md` (following its existing addendum pattern) recording: the `NemoTextProcessing` trait change and its measured size effect (measure the Spike `.app` bundle size before/after via the pipeline's App-build step — **untested in this planning session**, no simulator build available here), FluidAudio's single-product/no-smaller-product finding, the LuxTTS lexicon's unresolved license status, and the owner's decision from `luxtts-lexicon-remedy`.
+8. Run `swift test --package-path Packages/CaptionCore` and confirm green.
+
+**Untested in this session:** the actual app-size delta (needs a real Simulator/device `.app` build, which I cannot run here — the pipeline's App-build stage should capture it); whether FluidAudio's own CI/release process could reintroduce `NemoTextProcessing` on a future version bump in a way our trait opt-out doesn't survive (guarded only by test #2 at the next `swift test` run, not continuously).
