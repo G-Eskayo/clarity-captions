@@ -30,6 +30,7 @@ final class CaptionModel: ObservableObject {
         didSet { CaptionStyleStore().save(style) }
     }
     @Published var latencyReport: String?
+    @Published var localeDumpConfirmation: String?
     @Published var speakerNames = SpeakerNames()
     @Published var activity: ListeningActivity?
     @Published var roomLevelDBFS: Double?
@@ -1756,9 +1757,32 @@ struct ContentView: View {
             Button("Measure latency") { model.measureLatency() }
                 .font(.footnote)
                 .disabled(model.state == .listening || model.state == .preparing)
+            Button("Copy speech locales") {
+                Task {
+                    let report = await SpeechLocaleDump.current()
+                    if let json = try? JSONSerialization.data(withJSONObject: report.asJSON(), options: [.prettyPrinted, .sortedKeys]),
+                       let jsonString = String(data: json, encoding: .utf8) {
+                        UIPasteboard.general.string = jsonString
+                        let localeCount = report.supportedLocales.count + report.installedLocales.count + report.dictionarySupported.count + report.dictionaryInstalled.count
+                        let os = report.osVersion
+                        model.localeDumpConfirmation = "Copied \(localeCount) locales, \(os)"
+                        #if DEBUG
+                        if !DemoMode.showsLocaleDumpCopied {
+                            try? await Task.sleep(nanoseconds: 2_000_000_000)
+                            model.localeDumpConfirmation = nil
+                        }
+                        #else
+                        try? await Task.sleep(nanoseconds: 2_000_000_000)
+                        model.localeDumpConfirmation = nil
+                        #endif
+                    }
+                }
+            }
+            .font(.footnote)
             if let lag = model.lag { Text("lag \(String(format: "%.1f", lag))s").font(.caption2) }
             if !model.startup.isEmpty { Text("startup: \(model.startup)").font(.caption2) }
             if let report = model.latencyReport { Text("LATENCY \(report)").font(.caption2) }
+            if let confirmation = model.localeDumpConfirmation { Text(confirmation).font(.caption2) }
             if !model.diag.isEmpty { Text(model.diag).font(.caption2).opacity(0.7) }
         }
         .padding(8)
