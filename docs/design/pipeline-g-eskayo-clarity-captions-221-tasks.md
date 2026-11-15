@@ -1,0 +1,6 @@
+1. Add `Packages/CaptionCore/Sources/CaptionCore/LanguagePack.swift`: the `LanguagePack` struct (`Kind`, `Engine`, `FileEntry` nested types), `Codable`, a `LanguagePackError` enum, and a `validate()`/`decode(_:)` entry point enforcing the invariants in tests 2–12, plus the tiny `isUsable(byAppBuild:)` predicate.
+2. Add `Packages/CaptionCore/Sources/CaptionCore/LanguagePackVerifier.swift`: `LanguagePackVerifier.verify(_:at:fileManager:)`, reusing the sha256/size-walk algorithm from `scripts/fetch-asr-models.sh`'s `check()`, with chunked (1 MB) `CryptoKit` hashing and the `PackVerificationProblem`/`PackVerificationResult` types covering tests 13–20.
+3. Write `LanguagePackTests.swift` (tests 1–12).
+4. Write `LanguagePackVerifierTests.swift` (tests 13–20), building fixture folders under `FileManager.default.temporaryDirectory` per test.
+5. Run `swift test --package-path Packages/CaptionCore` and iterate until green; confirm no existing test changed behavior (fetch scripts, `Package.swift`, bundled-model tests untouched).
+6. Write the PR description noting the scope boundary explicitly (download/storage, Settings UI, routing, migration are separate follow-up PRs per the issue's own comment) and that this touches only `Packages/CaptionCore` — no UI, no look-proof screenshots needed, nothing bundled changes.
