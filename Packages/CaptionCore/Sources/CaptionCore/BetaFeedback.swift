@@ -172,6 +172,8 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
     /// What the latest stretch ran in: caption language, face to face, build (#288). Nil if saved by build 10 or
     /// earlier, which didn't record it.
     public private(set) var context: CaptioningContext?
+    /// Ear/translation pipeline delays (#268). Nil if the feature was off or not available.
+    public private(set) var ear: EarDelayRecorder?
 
     private var captioningSeconds = 0.0
     private var segmentStart: Date?
@@ -212,7 +214,7 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
         case maxThermal, launchToStartSeconds, startToFirstCaptionSeconds, launch
         case captioningSeconds, segmentStart, startPressedAt, lag, micLevel, changedWords, finalWords, relabels
         case speakers, batteryDrop, batteryMinutes, segmentBattery, engine, engineFallback, leftAt
-        case context = "captioningIn"
+        case context = "captioningIn", ear
     }
 
     public init(id: UUID) { self.id = id }
@@ -246,6 +248,31 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
     public mutating func engineUsed(_ name: String, fallback: String?) {
         if !name.isEmpty { engine = name }
         if let fallback { engineFallback = fallback }
+    }
+
+    // MARK: ear pipeline tracking
+
+    public mutating func earPhraseEnded(lineID: Int, wordStart: Date, at endDate: Date) {
+        if ear == nil { ear = EarDelayRecorder() }
+        ear?.phraseEnded(lineID: lineID, wordStart: wordStart, at: endDate)
+    }
+
+    public mutating func earTranslationReady(lineID: Int, wordStart: Date, at date: Date) {
+        if ear == nil { ear = EarDelayRecorder() }
+        ear?.translationReady(lineID: lineID, wordStart: wordStart, at: date)
+    }
+
+    public mutating func earVoiceStarted(lineID: Int, wordStart: Date, at date: Date) {
+        if ear == nil { ear = EarDelayRecorder() }
+        ear?.voiceStarted(lineID: lineID, wordStart: wordStart, at: date)
+    }
+
+    public mutating func earVoiceEnded(lineID: Int, wordStart: Date, at endDate: Date) {
+        ear?.voiceEnded(lineID: lineID, wordStart: wordStart, at: endDate)
+    }
+
+    public mutating func earLineFinished(_ text: String, at now: Date) {
+        ear?.lineFinished(text, at: now)
     }
 
     public mutating func captionUpdate(text: String, isFinal: Bool, speaker: Int?, lagSeconds: Double?, at date: Date) {
@@ -345,6 +372,33 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
         var seconds = captioningSeconds
         if let start = segmentStart { seconds += max(0, min(now, leftAt ?? now).timeIntervalSince(start)) }
         let minutes = seconds / 60
+
+        let earReport = ear.map { recorder -> ConversationReport.Ear in
+            let voiceDelay: ConversationReport.Ear.DelayStats? = recorder.voiceStartDelaySamples > 0
+                ? ConversationReport.Ear.DelayStats(
+                    p50Seconds: recorder.voiceStartDelayMedian.map { Self.round($0, 2) },
+                    p95Seconds: recorder.voiceStartDelayP95.map { Self.round($0, 2) },
+                    maxSeconds: Self.round(recorder.voiceStartDelayMaxSeconds, 2))
+                : nil
+            let translationDelay: ConversationReport.Ear.DelayStats? = recorder.translationReadyDelaySamples > 0
+                ? ConversationReport.Ear.DelayStats(
+                    p50Seconds: recorder.translationReadyDelayMedian.map { Self.round($0, 2) },
+                    p95Seconds: recorder.translationReadyDelayP95.map { Self.round($0, 2) },
+                    maxSeconds: Self.round(recorder.translationReadyDelayMaxSeconds, 2))
+                : nil
+            let behindDelay: ConversationReport.Ear.DelayStats? = recorder.behindBySamples > 0
+                ? ConversationReport.Ear.DelayStats(
+                    p50Seconds: recorder.behindByMedian.map { Self.round($0, 2) },
+                    p95Seconds: recorder.behindByP95.map { Self.round($0, 2) },
+                    maxSeconds: Self.round(recorder.behindByMaxSeconds, 2))
+                : nil
+            return ConversationReport.Ear(
+                voiceStartDelay: voiceDelay,
+                translationReadyDelay: translationDelay,
+                behindBy: behindDelay,
+                repeatCount: recorder.repeats)
+        }
+
         return ConversationReport(
             id: id.uuidString,
             startedAt: startedAt ?? now,
@@ -372,7 +426,8 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
             captionLanguage: context?.captionLanguage,
             captionLanguageChosen: context?.captionLanguageChosen,
             faceToFace: context?.faceToFace,
-            build: context?.build)
+            build: context?.build,
+            ear: earReport)
     }
 
     /// The report's conversations: every stored one, with the copy on screen (if it has started) in place of its
@@ -461,6 +516,30 @@ public struct ConversationReport: Codable, Equatable, Sendable {
         public var fullDance: Bool
         public var barShown: Bool
     }
+    public struct Ear: Codable, Equatable, Sendable {
+        public struct DelayStats: Codable, Equatable, Sendable {
+            public var p50Seconds: Double?
+            public var p95Seconds: Double?
+            public var maxSeconds: Double?
+
+            public init(p50Seconds: Double?, p95Seconds: Double?, maxSeconds: Double?) {
+                self.p50Seconds = p50Seconds
+                self.p95Seconds = p95Seconds
+                self.maxSeconds = maxSeconds
+            }
+        }
+        public var voiceStartDelay: DelayStats?
+        public var translationReadyDelay: DelayStats?
+        public var behindBy: DelayStats?
+        public var repeatCount: Int
+
+        public init(voiceStartDelay: DelayStats?, translationReadyDelay: DelayStats?, behindBy: DelayStats?, repeatCount: Int) {
+            self.voiceStartDelay = voiceStartDelay
+            self.translationReadyDelay = translationReadyDelay
+            self.behindBy = behindBy
+            self.repeatCount = repeatCount
+        }
+    }
 
     public var id: String
     public var startedAt: Date
@@ -484,11 +563,13 @@ public struct ConversationReport: Codable, Equatable, Sendable {
     public var faceToFace: FaceToFaceLanguages? = nil
     /// The build that recorded this conversation; `app.build` is the one that sent the report.
     public var build: String? = nil
+    /// Ear/translation pipeline delays (#268). Nil if the feature was off or not available.
+    public var ear: Ear?
 
     private enum CodingKeys: String, CodingKey {
         case id, startedAt, minutes, rating, ratingSkipped, note, lag, rewriteRate, speakers, launchToStartSeconds
         case startToFirstCaptionSeconds, ending, battery, micLevel, launch, engine, engineFallback
-        case captionLanguage, captionLanguageChosen, faceToFace, build
+        case captionLanguage, captionLanguageChosen, faceToFace, build, ear
     }
 
     /// Every schema key is written, `null` when unknown, so every report has the same shape for MARVIN to read.
@@ -515,6 +596,7 @@ public struct ConversationReport: Codable, Equatable, Sendable {
         try c.encode(captionLanguageChosen, forKey: .captionLanguageChosen)
         try c.encode(faceToFace, forKey: .faceToFace)
         try c.encode(build, forKey: .build)
+        try c.encode(ear, forKey: .ear)
     }
 }
 
@@ -552,6 +634,27 @@ extension ConversationReport.MicLevel {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(medianDBFS, forKey: .medianDBFS)
         try c.encode(quietFraction, forKey: .quietFraction)
+    }
+}
+
+extension ConversationReport.Ear.DelayStats {
+    private enum CodingKeys: String, CodingKey { case p50Seconds, p95Seconds, maxSeconds }
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(p50Seconds, forKey: .p50Seconds)
+        try c.encode(p95Seconds, forKey: .p95Seconds)
+        try c.encode(maxSeconds, forKey: .maxSeconds)
+    }
+}
+
+extension ConversationReport.Ear {
+    private enum CodingKeys: String, CodingKey { case voiceStartDelay, translationReadyDelay, behindBy, repeatCount }
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(voiceStartDelay, forKey: .voiceStartDelay)
+        try c.encode(translationReadyDelay, forKey: .translationReadyDelay)
+        try c.encode(behindBy, forKey: .behindBy)
+        try c.encode(repeatCount, forKey: .repeatCount)
     }
 }
 

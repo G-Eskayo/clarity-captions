@@ -37,7 +37,13 @@ the tester's own optional note.
       "captionLanguage": "en-US",
       "captionLanguageChosen": false,
       "faceToFace": { "owner": "en-US", "partner": "es-ES" },
-      "build": "11"
+      "build": "11",
+      "ear": {
+        "voiceStartDelay": { "p50Seconds": 0.8, "p95Seconds": 1.2, "maxSeconds": 1.8 },
+        "translationReadyDelay": null,
+        "behindBy": null,
+        "repeatCount": 2
+      }
     }
   ]
 }
@@ -62,6 +68,7 @@ the tester's own optional note.
 | `faceToFace` | Face to face: each half's picked language (`owner` is her half), `null` for a half not picked; the whole field is `null` when face to face was off. With one half picked, that half's language captions everything (#208). Build 11 (#288) | `FaceToFaceSplit.captions` |
 | `build` | The build that recorded this conversation. `app.build` is the build that sent the report, which can be later (#288) | `CFBundleVersion` at Start |
 | `device.language` | The phone's first preferred language (BCP-47), to set beside `captionLanguage`. Build 11 (#288) | `Locale.preferredLanguages` |
+| `ear` | Ear/translation pipeline delays: when translations arrive (`translationReadyDelay`), when voice starts (`voiceStartDelay`), and how far behind the backlog grows (`behindBy`). Each is `null` when untouched, with p50/p95 percentiles and exact `maxSeconds`. `repeatCount` tracks finalized lines that repeat within a recent window. `null` when the feature was off. Added for 1.1 build 12 (#268); additive, still schema 1 | `EarDelayRecorder` via `TranslationCenter` / `EarCenter` |
 
 Size: about 1 KB per conversation, with no cap until sent (ADR 0023), so even 1,000 unsent conversations make a
 report of about 1 MB, well within an iMessage attachment.

@@ -357,6 +357,11 @@ final class BetaFeedbackTests: XCTestCase {
         r.audioLevel(-40); r.thermal(.fair)
         r.captioningIn(.init(captionLanguage: "en-US", captionLanguageChosen: false,
                              faceToFace: .init(owner: "en-US", partner: "es-ES"), build: "11"))
+        // Add ear recording to match schema example
+        r.earPhraseEnded(lineID: 1, wordStart: at(0.5), at: at(0.6))
+        r.earVoiceStarted(lineID: 1, wordStart: at(0.5), at: at(1.4))
+        r.earVoiceEnded(lineID: 1, wordStart: at(0.5), at: at(1.9))
+        r.earLineFinished("hello there", at: at(2.0))
         r.rate(8, note: "Lost it when the waiter talked fast")
         r.captioningStopped(at: at(1400), battery: BatterySample(level: 0.74, charging: false), ending: .userStop)
         let data = try report([r.entry(now: at(1500))]).json(timeZone: TimeZone(identifier: "America/Denver")!)
@@ -374,9 +379,15 @@ final class BetaFeedbackTests: XCTestCase {
         let data = try report([r.entry(now: at(1))]).json()
         let ours = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
         let schema = try XCTUnwrap(JSONSerialization.jsonObject(with: Self.schemaExample()) as? [String: Any])
-        // `ending.reason` only exists for failures and `launch` may be null; everything else is always there.
+        // `ending.reason` only exists for failures; `launch` and `ear` may be null; `faceToFace` parts are optional.
+        // When `ear` is null, its nested keys don't appear in the JSON.
+        let earKeys: Set<String> = ["conversations[].ear.voiceStartDelay", "conversations[].ear.voiceStartDelay.p50Seconds", "conversations[].ear.voiceStartDelay.p95Seconds",
+                                     "conversations[].ear.voiceStartDelay.maxSeconds", "conversations[].ear.translationReadyDelay", "conversations[].ear.translationReadyDelay.p50Seconds",
+                                     "conversations[].ear.translationReadyDelay.p95Seconds", "conversations[].ear.translationReadyDelay.maxSeconds",
+                                     "conversations[].ear.behindBy", "conversations[].ear.behindBy.p50Seconds", "conversations[].ear.behindBy.p95Seconds", "conversations[].ear.behindBy.maxSeconds",
+                                     "conversations[].ear.repeatCount"]
         let expected = Self.keyPaths(schema).subtracting(["conversations[].launch.fullDance", "conversations[].launch.barShown",
-                                                          "conversations[].faceToFace.owner", "conversations[].faceToFace.partner"])
+                                                          "conversations[].faceToFace.owner", "conversations[].faceToFace.partner"]).subtracting(earKeys)
         XCTAssertEqual(Self.keyPaths(ours).subtracting(["conversations[].ending.kind"]), expected.subtracting(["conversations[].ending.kind"]))
         XCTAssertTrue(String(decoding: data, as: UTF8.self).contains("\"medianDBFS\" : null"))
     }
