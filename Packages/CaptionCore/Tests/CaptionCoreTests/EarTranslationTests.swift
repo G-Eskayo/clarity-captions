@@ -104,6 +104,21 @@ final class EarPhrasesTests: XCTestCase {
         stream = CaptionStream()
         XCTAssertEqual(say("Hola", final: true, at: 0).map(\.text), ["Hola"])
     }
+
+    func testFinishedPhrasesHaveReadyAtTime() {
+        let out = say("Gracias", final: true, at: 1.5)
+        XCTAssertEqual(out.count, 1)
+        XCTAssertEqual(out[0].readyAt, 1.5)
+    }
+
+    func testEarlyPhrasesHaveReadyAtTime() {
+        _ = say("la estación de", final: false, at: 0)
+        _ = say("la estación de tren", final: false, at: 0.3, from: 0)
+        let out = phrases.take(from: stream.lines, now: EarPhrases.defaultHold + 0.05)
+        XCTAssertEqual(out.count, 1)
+        XCTAssertTrue(out[0].early)
+        XCTAssertEqual(out[0].readyAt, EarPhrases.defaultHold + 0.05)
+    }
 }
 
 final class EarPaceTests: XCTestCase {

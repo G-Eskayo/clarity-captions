@@ -140,6 +140,9 @@ final class CaptionModel: ObservableObject {
             // After the caption is on screen: measurements never sit in front of it (ADR 0015).
             self.beta.captionUpdate(self.session, u)
         }
+        EarCenter.shared.onDelaySample = { [weak self] sample in
+            self?.beta.earDelay(self?.session, sample)
+        }
     }
 
     /// Once StoreKit has answered: a conversation a cold launch brought back may be due its rating card.

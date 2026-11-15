@@ -210,6 +210,28 @@ final class BetaFeedbackTests: XCTestCase {
         XCTAssertEqual(e.micLevel.quietFraction!, 0.4, accuracy: 0.001)
     }
 
+    func testEarDelayRecordsTranslationAndVoiceLatencies() {
+        var r = conversation()
+        for i in 1...10 {
+            r.earDelay(EarDelayTracker.Sample(translateDelay: 0.2 + Double(i) * 0.01,
+                                              voiceStartDelay: 0.1 + Double(i) * 0.01,
+                                              behindBy: Double(i) * 0.02))
+        }
+        let e = r.entry(now: at(5))
+        XCTAssertEqual(e.earDelay?.samples, 10)
+        XCTAssertNotNil(e.earDelay?.p50TranslateSeconds)
+        XCTAssertNotNil(e.earDelay?.p95TranslateSeconds)
+        XCTAssertNotNil(e.earDelay?.p50VoiceStartSeconds)
+        XCTAssertNotNil(e.earDelay?.p95VoiceStartSeconds)
+        XCTAssertNotNil(e.earDelay?.p50BehindBySeconds)
+        XCTAssertNotNil(e.earDelay?.p95BehindBySeconds)
+    }
+
+    func testNoEarDelayReturnsNil() {
+        let r = conversation()
+        XCTAssertNil(r.entry(now: at(5)).earDelay)
+    }
+
     func testRatingIsClampedAndNoteTrimmedAndEmptyNoteIsNone() {
         var r = conversation()
         r.rate(14, note: "   ")
@@ -355,6 +377,7 @@ final class BetaFeedbackTests: XCTestCase {
         var r = conversation()
         r.captionUpdate(text: "hello there", isFinal: true, speaker: 0, lagSeconds: 0.6, at: at(1.8))
         r.audioLevel(-40); r.thermal(.fair)
+        r.earDelay(.init(translateDelay: 0.24, voiceStartDelay: 0.15, behindBy: 0.05))
         r.captioningIn(.init(captionLanguage: "en-US", captionLanguageChosen: false,
                              faceToFace: .init(owner: "en-US", partner: "es-ES"), build: "11"))
         r.rate(8, note: "Lost it when the waiter talked fast")
@@ -374,10 +397,16 @@ final class BetaFeedbackTests: XCTestCase {
         let data = try report([r.entry(now: at(1))]).json()
         let ours = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
         let schema = try XCTUnwrap(JSONSerialization.jsonObject(with: Self.schemaExample()) as? [String: Any])
-        // `ending.reason` only exists for failures and `launch` may be null; everything else is always there.
-        let expected = Self.keyPaths(schema).subtracting(["conversations[].launch.fullDance", "conversations[].launch.barShown",
-                                                          "conversations[].faceToFace.owner", "conversations[].faceToFace.partner"])
-        XCTAssertEqual(Self.keyPaths(ours).subtracting(["conversations[].ending.kind"]), expected.subtracting(["conversations[].ending.kind"]))
+        // `ending.reason` only exists for failures; `launch`, `earDelay` may be null; everything else is always there.
+        let optionalNestedKeys = ["conversations[].launch.fullDance", "conversations[].launch.barShown",
+                                  "conversations[].faceToFace.owner", "conversations[].faceToFace.partner",
+                                  "conversations[].earDelay.p50TranslateSeconds", "conversations[].earDelay.p95TranslateSeconds",
+                                  "conversations[].earDelay.p50VoiceStartSeconds", "conversations[].earDelay.p95VoiceStartSeconds",
+                                  "conversations[].earDelay.p50BehindBySeconds", "conversations[].earDelay.p95BehindBySeconds",
+                                  "conversations[].earDelay.samples"]
+        let expected = Self.keyPaths(schema).subtracting(optionalNestedKeys)
+        XCTAssertEqual(Self.keyPaths(ours).subtracting(optionalNestedKeys + ["conversations[].ending.kind"]),
+                       expected.subtracting(["conversations[].ending.kind"]))
         XCTAssertTrue(String(decoding: data, as: UTF8.self).contains("\"medianDBFS\" : null"))
     }
 

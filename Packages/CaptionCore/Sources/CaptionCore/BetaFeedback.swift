@@ -181,6 +181,9 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
     private var startPressedAt: Date?
     private var lag = PercentileHistogram(lower: 0, upper: 10, binWidth: 0.05)
     private var micLevel = PercentileHistogram(lower: -60, upper: 0, binWidth: 1)
+    private var translateDelay = PercentileHistogram(lower: 0, upper: 10, binWidth: 0.05)
+    private var voiceStartDelay = PercentileHistogram(lower: 0, upper: 10, binWidth: 0.05)
+    private var behindBy = PercentileHistogram(lower: 0, upper: 30, binWidth: 0.1)
     private var shownWordCount = 0
     /// Per-word fingerprints of the utterance on screen, so a rewrite can be counted without keeping its words.
     private var shownWordHashes: [Int] = []
@@ -210,12 +213,94 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case id, startedAt, rating, ratingSkipped, note, asked, ending, leftWhileCaptioning, lowPowerModeSeen
         case maxThermal, launchToStartSeconds, startToFirstCaptionSeconds, launch
-        case captioningSeconds, segmentStart, startPressedAt, lag, micLevel, changedWords, finalWords, relabels
+        case captioningSeconds, segmentStart, startPressedAt, lag, micLevel, translateDelay, voiceStartDelay, behindBy
+        case changedWords, finalWords, relabels
         case speakers, batteryDrop, batteryMinutes, segmentBattery, engine, engineFallback, leftAt
         case context = "captioningIn"
     }
 
     public init(id: UUID) { self.id = id }
+
+    /// Decode, filling in missing histogram fields from older builds.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        startedAt = try c.decodeIfPresent(Date.self, forKey: .startedAt)
+        rating = try c.decodeIfPresent(Int.self, forKey: .rating)
+        ratingSkipped = try c.decode(Bool.self, forKey: .ratingSkipped)
+        note = try c.decodeIfPresent(String.self, forKey: .note)
+        asked = try c.decode(Bool.self, forKey: .asked)
+        ending = try c.decodeIfPresent(ConversationEnding.self, forKey: .ending)
+        leftWhileCaptioning = try c.decode(Bool.self, forKey: .leftWhileCaptioning)
+        lowPowerModeSeen = try c.decode(Bool.self, forKey: .lowPowerModeSeen)
+        maxThermal = try c.decodeIfPresent(ThermalLevel.self, forKey: .maxThermal)
+        launchToStartSeconds = try c.decodeIfPresent(Double.self, forKey: .launchToStartSeconds)
+        startToFirstCaptionSeconds = try c.decodeIfPresent(Double.self, forKey: .startToFirstCaptionSeconds)
+        launch = try c.decodeIfPresent(LaunchFacts.self, forKey: .launch)
+        engine = try c.decodeIfPresent(String.self, forKey: .engine)
+        engineFallback = try c.decodeIfPresent(String.self, forKey: .engineFallback)
+        context = try c.decodeIfPresent(CaptioningContext.self, forKey: .context)
+
+        captioningSeconds = try c.decode(Double.self, forKey: .captioningSeconds)
+        segmentStart = try c.decodeIfPresent(Date.self, forKey: .segmentStart)
+        startPressedAt = try c.decodeIfPresent(Date.self, forKey: .startPressedAt)
+        lag = try c.decode(PercentileHistogram.self, forKey: .lag)
+        micLevel = try c.decode(PercentileHistogram.self, forKey: .micLevel)
+        translateDelay = try c.decodeIfPresent(PercentileHistogram.self, forKey: .translateDelay) ?? PercentileHistogram(lower: 0, upper: 10, binWidth: 0.05)
+        voiceStartDelay = try c.decodeIfPresent(PercentileHistogram.self, forKey: .voiceStartDelay) ?? PercentileHistogram(lower: 0, upper: 10, binWidth: 0.05)
+        behindBy = try c.decodeIfPresent(PercentileHistogram.self, forKey: .behindBy) ?? PercentileHistogram(lower: 0, upper: 30, binWidth: 0.1)
+
+        changedWords = try c.decode(Int.self, forKey: .changedWords)
+        finalWords = try c.decode(Int.self, forKey: .finalWords)
+        relabels = try c.decode(Int.self, forKey: .relabels)
+        speakers = try c.decode(Set<Int>.self, forKey: .speakers)
+        batteryDrop = try c.decode(Double.self, forKey: .batteryDrop)
+        batteryMinutes = try c.decode(Double.self, forKey: .batteryMinutes)
+        segmentBattery = try c.decodeIfPresent(BatterySample.self, forKey: .segmentBattery)
+        leftAt = try c.decodeIfPresent(Date.self, forKey: .leftAt)
+
+        shownWordCount = 0
+        shownWordHashes = []
+        utteranceSpeaker = nil
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encodeIfPresent(startedAt, forKey: .startedAt)
+        try c.encodeIfPresent(rating, forKey: .rating)
+        try c.encode(ratingSkipped, forKey: .ratingSkipped)
+        try c.encodeIfPresent(note, forKey: .note)
+        try c.encode(asked, forKey: .asked)
+        try c.encodeIfPresent(ending, forKey: .ending)
+        try c.encode(leftWhileCaptioning, forKey: .leftWhileCaptioning)
+        try c.encode(lowPowerModeSeen, forKey: .lowPowerModeSeen)
+        try c.encodeIfPresent(maxThermal, forKey: .maxThermal)
+        try c.encodeIfPresent(launchToStartSeconds, forKey: .launchToStartSeconds)
+        try c.encodeIfPresent(startToFirstCaptionSeconds, forKey: .startToFirstCaptionSeconds)
+        try c.encodeIfPresent(launch, forKey: .launch)
+        try c.encodeIfPresent(engine, forKey: .engine)
+        try c.encodeIfPresent(engineFallback, forKey: .engineFallback)
+        try c.encodeIfPresent(context, forKey: .context)
+
+        try c.encode(captioningSeconds, forKey: .captioningSeconds)
+        try c.encodeIfPresent(segmentStart, forKey: .segmentStart)
+        try c.encodeIfPresent(startPressedAt, forKey: .startPressedAt)
+        try c.encode(lag, forKey: .lag)
+        try c.encode(micLevel, forKey: .micLevel)
+        try c.encode(translateDelay, forKey: .translateDelay)
+        try c.encode(voiceStartDelay, forKey: .voiceStartDelay)
+        try c.encode(behindBy, forKey: .behindBy)
+
+        try c.encode(changedWords, forKey: .changedWords)
+        try c.encode(finalWords, forKey: .finalWords)
+        try c.encode(relabels, forKey: .relabels)
+        try c.encode(speakers, forKey: .speakers)
+        try c.encode(batteryDrop, forKey: .batteryDrop)
+        try c.encode(batteryMinutes, forKey: .batteryMinutes)
+        try c.encodeIfPresent(segmentBattery, forKey: .segmentBattery)
+        try c.encodeIfPresent(leftAt, forKey: .leftAt)
+    }
 
     // MARK: events
 
@@ -275,6 +360,12 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
     }
 
     public mutating func audioLevel(_ dbfs: Double) { micLevel.add(dbfs) }
+
+    public mutating func earDelay(_ sample: EarDelayTracker.Sample) {
+        translateDelay.add(sample.translateDelay)
+        voiceStartDelay.add(sample.voiceStartDelay)
+        behindBy.add(sample.behindBy)
+    }
 
     public mutating func thermal(_ level: ThermalLevel) { maxThermal = max(maxThermal ?? level, level) }
 
@@ -345,6 +436,14 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
         var seconds = captioningSeconds
         if let start = segmentStart { seconds += max(0, min(now, leftAt ?? now).timeIntervalSince(start)) }
         let minutes = seconds / 60
+        let earDelayReport = translateDelay.count > 0 ? ConversationReport.EarDelay(
+            p50TranslateSeconds: translateDelay.value(at: 0.5).map { Self.round($0, 2) },
+            p95TranslateSeconds: translateDelay.value(at: 0.95).map { Self.round($0, 2) },
+            p50VoiceStartSeconds: voiceStartDelay.value(at: 0.5).map { Self.round($0, 2) },
+            p95VoiceStartSeconds: voiceStartDelay.value(at: 0.95).map { Self.round($0, 2) },
+            p50BehindBySeconds: behindBy.value(at: 0.5).map { Self.round($0, 2) },
+            p95BehindBySeconds: behindBy.value(at: 0.95).map { Self.round($0, 2) },
+            samples: translateDelay.count) : nil
         return ConversationReport(
             id: id.uuidString,
             startedAt: startedAt ?? now,
@@ -367,6 +466,7 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
             micLevel: .init(medianDBFS: micLevel.value(at: 0.5).map { Self.round($0, 1) },
                             quietFraction: micLevel.fraction(below: Self.quietThresholdDBFS).map { Self.round($0, 2) }),
             launch: launch.map { .init(fullDance: $0.fullDance, barShown: $0.barShown) },
+            earDelay: earDelayReport,
             engine: engine,
             engineFallback: engineFallback,
             captionLanguage: context?.captionLanguage,
@@ -461,6 +561,15 @@ public struct ConversationReport: Codable, Equatable, Sendable {
         public var fullDance: Bool
         public var barShown: Bool
     }
+    public struct EarDelay: Codable, Equatable, Sendable {
+        public var p50TranslateSeconds: Double?
+        public var p95TranslateSeconds: Double?
+        public var p50VoiceStartSeconds: Double?
+        public var p95VoiceStartSeconds: Double?
+        public var p50BehindBySeconds: Double?
+        public var p95BehindBySeconds: Double?
+        public var samples: Int
+    }
 
     public var id: String
     public var startedAt: Date
@@ -477,6 +586,7 @@ public struct ConversationReport: Codable, Equatable, Sendable {
     public var battery: Battery
     public var micLevel: MicLevel
     public var launch: Launch?
+    public var earDelay: EarDelay? = nil
     public var engine: String? = nil
     public var engineFallback: String? = nil
     public var captionLanguage: String? = nil
@@ -487,7 +597,7 @@ public struct ConversationReport: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case id, startedAt, minutes, rating, ratingSkipped, note, lag, rewriteRate, speakers, launchToStartSeconds
-        case startToFirstCaptionSeconds, ending, battery, micLevel, launch, engine, engineFallback
+        case startToFirstCaptionSeconds, ending, battery, micLevel, launch, earDelay, engine, engineFallback
         case captionLanguage, captionLanguageChosen, faceToFace, build
     }
 
@@ -509,6 +619,7 @@ public struct ConversationReport: Codable, Equatable, Sendable {
         try c.encode(battery, forKey: .battery)
         try c.encode(micLevel, forKey: .micLevel)
         try c.encode(launch, forKey: .launch)
+        try c.encode(earDelay, forKey: .earDelay)
         try c.encode(engine, forKey: .engine)
         try c.encode(engineFallback, forKey: .engineFallback)
         try c.encode(captionLanguage, forKey: .captionLanguage)
@@ -552,6 +663,20 @@ extension ConversationReport.MicLevel {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(medianDBFS, forKey: .medianDBFS)
         try c.encode(quietFraction, forKey: .quietFraction)
+    }
+}
+
+extension ConversationReport.EarDelay {
+    private enum CodingKeys: String, CodingKey { case p50TranslateSeconds, p95TranslateSeconds, p50VoiceStartSeconds, p95VoiceStartSeconds, p50BehindBySeconds, p95BehindBySeconds, samples }
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(p50TranslateSeconds, forKey: .p50TranslateSeconds)
+        try c.encode(p95TranslateSeconds, forKey: .p95TranslateSeconds)
+        try c.encode(p50VoiceStartSeconds, forKey: .p50VoiceStartSeconds)
+        try c.encode(p95VoiceStartSeconds, forKey: .p95VoiceStartSeconds)
+        try c.encode(p50BehindBySeconds, forKey: .p50BehindBySeconds)
+        try c.encode(p95BehindBySeconds, forKey: .p95BehindBySeconds)
+        try c.encode(samples, forKey: .samples)
     }
 }
 
@@ -684,6 +809,11 @@ public enum FeedbackPreview {
             if c.speakers.detected > 0 {
                 let steady = (c.speakers.relabelsPerMinute ?? 0) < 1.5
                 add(String(localized: "Speakers"), "\(c.speakers.detected) · " + (steady ? String(localized: "labels steady") : String(localized: "labels switched often")))
+            }
+            if let ear = c.earDelay, ear.samples > 0 {
+                let parts = [ear.p50TranslateSeconds.map { String(format: "translate %.2f s", $0) },
+                             ear.p50VoiceStartSeconds.map { String(format: "voice %.2f s", $0) }]
+                add(String(localized: "Ear delay"), parts.compactMap { $0 }.joined(separator: " → "))
             }
             add(String(localized: "Battery"), c.battery.dropPercentPer30Min.map { String(format: String(localized: "%.1f%% per 30 min"), $0) })
             if let thermal = c.battery.maxThermalState, thermal == "serious" || thermal == "critical" {

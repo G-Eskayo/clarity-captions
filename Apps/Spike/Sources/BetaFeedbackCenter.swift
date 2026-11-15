@@ -148,6 +148,11 @@ final class BetaFeedbackCenter: ObservableObject {
         update(session) { $0.audioLevel(dbfs) }
     }
 
+    func earDelay(_ session: ConversationSession?, _ sample: EarDelayTracker.Sample) {
+        guard let session else { return }
+        update(session) { $0.earDelay(sample) }
+    }
+
     /// About once a second while captioning.
     func tick(_ session: ConversationSession) {
         guard isOn else { return }

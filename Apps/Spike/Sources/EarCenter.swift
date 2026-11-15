@@ -40,17 +40,21 @@ final class EarCenter: NSObject, ObservableObject {
     /// Asked for when words are holding still and will be ready to speak early: the translator looks again then.
     var onCheck: (() -> Void)?
 
+    /// Called when a voice sample is recorded (for Ear delay metrics).
+    var onDelaySample: ((EarDelayTracker.Sample) -> Void)?
+
     private let defaults: UserDefaults
     private let synthesizer = AVSpeechSynthesizer()
     private let warmer = AVSpeechSynthesizer()
     private var phrases = EarPhrases()
     private var echo = EchoGuard()
+    private var delayTracker = EarDelayTracker()
     private struct Queued { let phrase: EarPhrases.Phrase; let text: String; let speaker: Int? }
     private let recorder: SpeakerVoiceRecorder
     private var chooser = EarVoiceChooser(voices: [], normalSyllablesPerSecond: nil, defaultVoiceID: nil)
     private var chooserSession = -1
     private var queue: [Queued] = []
-    private var current: (item: Queued, utterance: ObjectIdentifier, start: Double)?
+    private var current: (item: Queued, utterance: ObjectIdentifier, start: Double, voiceStartRecorded: Bool)?
     private var target: Locale?
     private var check: Task<Void, Never>?
     private var foreground = true
@@ -164,7 +168,7 @@ final class EarCenter: NSObject, ObservableObject {
     /// The phrases to translate and speak now. While it can't speak (off, no voice, no headphones, the split open,
     /// translation off), what's said is passed over, so turning it on later doesn't read out the past.
     func take(from lines: [CaptionLine], active: Bool) -> [EarPhrases.Phrase] {
-        if lines.isEmpty { phrases.reset(); spokenTranslations = [:]; resetChooser(); return [] }
+        if lines.isEmpty { phrases.reset(); spokenTranslations = [:]; resetChooser(); delayTracker.reset(); return [] }
         guard active, foreground, state.speaks else { phrases.skip(lines); scheduleCheck(nil); return [] }
         let now = Self.now
         let ready = phrases.take(from: lines, now: now).filter { phrase in
@@ -174,7 +178,10 @@ final class EarCenter: NSObject, ObservableObject {
             return !isEcho
         }
         scheduleCheck(phrases.nextCheck)
-        for phrase in ready { speakers[phrase.lineID] = lines.first { $0.id == phrase.lineID }?.speaker }
+        for phrase in ready {
+            speakers[phrase.lineID] = lines.first { $0.id == phrase.lineID }?.speaker
+            delayTracker.phraseReady(lineID: phrase.lineID, wordStart: phrase.words.lowerBound, at: phrase.readyAt)
+        }
         return ready
     }
 
@@ -186,6 +193,7 @@ final class EarCenter: NSObject, ObservableObject {
         let text = translation.trimmingCharacters(in: .whitespacesAndNewlines)
         guard state.speaks, foreground, !text.isEmpty else { return }
         spokenTranslations[phrase.lineID] = [spokenTranslations[phrase.lineID], text].compactMap { $0 }.joined(separator: " ")
+        delayTracker.translationReady(lineID: phrase.lineID, wordStart: phrase.words.lowerBound, at: Self.now)
         #if DEBUG
         if DemoMode.ear == "mark" { demoHold(phrase); return }
         #endif
@@ -211,7 +219,7 @@ final class EarCenter: NSObject, ObservableObject {
             utterance.rate = min(AVSpeechUtteranceMaximumSpeechRate, matched.rate(catchUp: catchUp))
         }
         let start = Self.now
-        current = (item, ObjectIdentifier(utterance), start)
+        current = (item, ObjectIdentifier(utterance), start, false)
         // Counted as said from now, with a generous end, so its echo is caught while it's still playing.
         echo.spoke(item.text, from: start, to: start + 0.6 * Double(item.text.split(separator: " ").count) + 1)
         speaking = Speaking(lineID: item.phrase.lineID, words: item.phrase.words, share: 0)
@@ -285,6 +293,12 @@ extension EarCenter: AVSpeechSynthesizerDelegate {
         Task { @MainActor in
             guard let current = self.current, current.utterance == id, self.speaking != nil else { return }
             self.speaking?.share = share
+            if !current.voiceStartRecorded {
+                if let sample = self.delayTracker.voiceStarted(lineID: current.item.phrase.lineID, wordStart: current.item.phrase.words.lowerBound, at: Self.now) {
+                    self.onDelaySample?(sample)
+                }
+                self.current = (current.item, current.utterance, current.start, true)
+            }
         }
     }
 

@@ -32,6 +32,7 @@ the tester's own optional note.
       "battery": { "dropPercentPer30Min": 6.5, "maxThermalState": "fair" },
       "micLevel": { "medianDBFS": -38.0, "quietFraction": 0.12 },
       "launch": { "fullDance": false, "barShown": false },
+      "earDelay": { "p50TranslateSeconds": 0.24, "p95TranslateSeconds": 0.58, "p50VoiceStartSeconds": 0.15, "p95VoiceStartSeconds": 0.42, "p50BehindBySeconds": 0.05, "p95BehindBySeconds": 0.18, "samples": 127 },
       "engine": "parakeet-ultra-pal6",
       "engineFallback": null,
       "captionLanguage": "en-US",
@@ -57,6 +58,7 @@ the tester's own optional note.
 | `ending.kind` | `userStop`, `quietStop`, `failure` (with `reason`, the plain-language text), `stuck`, `appClosed` | `CaptionSessionController`, `IdleStop`, `FailureReason` |
 | `battery` | Battery drop scaled to 30 minutes; highest `ProcessInfo.thermalState` | `UIDevice.batteryLevel`, `ProcessInfo` |
 | `micLevel` | Room loudness summary, never audio | `AudioLevel`, `ListeningActivityTracker` |
+| `earDelay` | Live Translation in your ear (#233): delay from phrase ready to translation received (`translateDelay`), then to voice started (`voiceStartDelay`), and how much translation work was queued ahead (`behindBy`). Additive, still schema 1; `null` if no ear translation samples recorded | `EarDelayTracker` / `EarPhrases.Phrase.readyAt` |
 | `engine`, `engineFallback` | Which recognizer captioned the conversation (`parakeet-ultra-pal6` or `apple-speechanalyzer`; the last one used, if it switched) and why it left Parakeet (`loadFailed`, `memoryWarning`, `thermalCritical`, `noWordsFromSpeech`, `lowMemory`, `locale`, `repeatedFallbacks`, `modelMissing`), else `null`. Added for 1.1 build 7 (ADR 0025); additive, still schema 1 | `TranscriptionEngine.engineName` / `fallbackReason` via `CaptionUpdate` |
 | `captionLanguage`, `captionLanguageChosen` | The caption language setting (BCP-47) the latest stretch ran with, and whether it was picked in Seal (Settings › Caption language or first run) rather than following the phone. Added for 1.1 build 11 (#288); additive, still schema 1; `null` for conversations recorded by build 10 or earlier | `CaptionLanguageCenter.current` / `followsDevice` |
 | `faceToFace` | Face to face: each half's picked language (`owner` is her half), `null` for a half not picked; the whole field is `null` when face to face was off. With one half picked, that half's language captions everything (#208). Build 11 (#288) | `FaceToFaceSplit.captions` |
