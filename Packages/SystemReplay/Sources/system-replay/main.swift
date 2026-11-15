@@ -223,6 +223,10 @@ func replay(audio: URL, options o: Options) async -> SessionLog {
         // startReplaying loads what it needs itself (1.0 makes its own analyzer there).
         captioning = ReplayingEngine(engine, url: audio)
     }
+    let seamsBox = Box<[SessionLog.Seam]>([])
+    engine.onSeam = { windowStart, audioEnd in
+        seamsBox.mutate { $0.append(.init(windowStart: windowStart, audioEnd: audioEnd)) }
+    }
 
     var stream = CaptionStream()
     let controller = CaptionSessionController(makeEngine: { captioning })
@@ -257,8 +261,9 @@ func replay(audio: URL, options o: Options) async -> SessionLog {
     controller.onUpdate = { u in
         apply(u, to: &stream)
         let e = engineOf(u)
+        let words = u.words.isEmpty ? nil : u.words.map { SessionLog.Word(text: $0.text, start: $0.range?.lowerBound, end: $0.range?.upperBound) }
         log.record(.init(at: at(), text: u.text, isFinal: u.isFinal, lag: u.lagSeconds, speaker: u.speaker,
-                         start: u.startSeconds, end: u.endSeconds, engine: e.name, fallback: e.fallback))
+                         start: u.startSeconds, end: u.endSeconds, engine: e.name, fallback: e.fallback, words: words))
     }
     source?.onEnd = { Task { @MainActor in finish() } }
 
@@ -288,7 +293,8 @@ func replay(audio: URL, options o: Options) async -> SessionLog {
     if let source { log.audioSeconds = source.fileSeconds }
     log.wallSeconds = uptime() - wallStart
     captureEngineState(&log, from: engine, fallbacks: fallbacks.get)
-    log.lines = stream.lines.map { .init(text: $0.text, speaker: $0.speaker, soundLabel: $0.soundLabel.map { "\($0)" }) }
+    log.lines = stream.lines.map { .init(text: $0.text, speaker: $0.speaker, soundLabel: $0.soundLabel.map { "\($0)" }, start: $0.startTime, end: $0.endTime) }
+    log.seams = seamsBox.get
     if let failed = log.states.first(where: { $0.state.hasPrefix("failed") }), log.error == nil { log.error = failed.state }
     if !sawListening, log.error == nil { log.error = "never reached listening" }
     return log

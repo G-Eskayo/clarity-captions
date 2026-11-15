@@ -20,8 +20,8 @@ public struct CaptionLine: Identifiable, Equatable, Sendable {
     var committed: [CaptionWord]
     var tail: String?
     var tailRange: ClosedRange<Double>?
-    var startTime: Double?
-    var endTime: Double?
+    public var startTime: Double?
+    public var endTime: Double?
 
     init(id: Int, speaker: Int? = nil, soundLabel: SoundLabelKind? = nil, lane: FaceToFaceHalf? = nil, committed: [CaptionWord],
          tail: String? = nil, tailRange: ClosedRange<Double>? = nil, startTime: Double? = nil, endTime: Double? = nil) {

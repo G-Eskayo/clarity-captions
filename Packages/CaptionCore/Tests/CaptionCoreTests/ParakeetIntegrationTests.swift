@@ -164,11 +164,46 @@ final class ParakeetIntegrationTests: XCTestCase {
                       "Apple captioned the rest in Spanish: \(after)")
     }
 
+    func testOnSeamCallbackFiresOnEachWindowBoundary() async throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["CAPTION_PARAKEET"] == "1", "opt-in")
+        let said = "The quick brown fox jumps over the lazy dog."
+        let audio = try speech(said, name: "seam-test")
+        let engine = TranscriptionEngine(
+            diarizerModelURL: repo.appendingPathComponent("Apps/Spike/Resources/Models/Sortformer_v2.1.mlmodelc"),
+            recognizer: .parakeet(modelURL: repo.appendingPathComponent("Apps/Spike/Resources/Models/ParakeetUltra")))
+        let counter = Counter()
+        let seams = Seams()
+        engine.onSeam = { windowStart, audioEnd in
+            counter.bump()
+            seams.add(start: windowStart, end: audioEnd)
+        }
+        for try await _ in try await engine.startReplaying(fileURL: audio) {}
+        XCTAssertGreaterThan(counter.value, 0, "onSeam callback should fire at least once")
+        XCTAssertEqual(seams.seamCount, counter.value, "each seam should record windowStart and audioEnd")
+        for (i, seam) in seams.all.enumerated() {
+            XCTAssertLessThanOrEqual(seam.start, seam.end, "seam \(i): windowStart should be <= audioEnd")
+            if i > 0 {
+                XCTAssertLessThanOrEqual(seams.all[i - 1].end, seam.start,
+                                        "seam \(i): should come after the previous seam")
+            }
+        }
+    }
+
     private final class Counter: @unchecked Sendable {
         private let lock = NSLock()
         private var n = 0
         func bump() { lock.withLock { n += 1 } }
         var value: Int { lock.withLock { n } }
+    }
+
+    private final class Seams: @unchecked Sendable {
+        private let lock = NSLock()
+        private var seams: [(start: Double, end: Double)] = []
+        func add(start: Double, end: Double) {
+            lock.withLock { seams.append((start, end)) }
+        }
+        var seamCount: Int { lock.withLock { seams.count } }
+        var all: [(start: Double, end: Double)] { lock.withLock { seams } }
     }
 
     private func editDistance(_ a: [String], _ b: [String]) -> Int {

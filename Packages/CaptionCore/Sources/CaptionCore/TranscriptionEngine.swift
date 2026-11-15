@@ -1,5 +1,6 @@
 import AVFoundation
 import CoreMedia
+import FluidAudio
 import Foundation
 import Speech
 
@@ -18,6 +19,8 @@ public struct CaptionUpdate: Sendable {
     public let diagnostics: String
     /// Emphasis level per word in the text (split on whitespace), empty if unavailable.
     public let wordEmphasis: [EmphasisLevel]
+    /// Per-word timing: words with their audio time ranges.
+    public let words: [RecognizedWord]
     /// The recognizer behind this caption, and why it left Parakeet if it did (beta report, ADR 0025).
     public var engine = ""
     public var engineFallback: FallbackReason?
@@ -156,6 +159,8 @@ public final class TranscriptionEngine {
     public private(set) var fallbackReason: FallbackReason?
     /// Called once when Parakeet falls back to Apple, so the app can count it toward the daily pin.
     public var onFallback: (@Sendable (FallbackReason) -> Void)?
+    /// Called for each Parakeet decode window boundary (windowStart, audioEnd).
+    public var onSeam: (@Sendable (Double, Double) -> Void)?
     private var fallbackCounted = false
 
     /// `diarizerModelURL` has no default on purpose: the app must say where its bundled speaker model
@@ -173,7 +178,7 @@ public final class TranscriptionEngine {
         self.faceToFace = faceToFace.map { FaceToFaceRouting(setup: $0) { setup, locale in
             switch setup {
             case .apple: return AppleSpeechBackend(locale: locale, model: speechModel)
-            case .parakeet(let url): return ParakeetBackend(modelURL: url)
+            case .parakeet(let url): return ParakeetBackend(modelURL: url, locale: locale)
             case .zipformer(let url): return ZipformerBackend(modelURL: url)
             }
         } }
@@ -209,10 +214,13 @@ public final class TranscriptionEngine {
         switch setup {
         case .apple: return AppleSpeechBackend(locale: locale, model: speechModel)
         case .parakeet(let url):
-            let backend = ParakeetBackend(modelURL: url)
+            let backend = ParakeetBackend(modelURL: url, locale: locale)
             backend.onDecode = { [weak self] seconds in
                 guard let self else { return }
                 self.decodeLock.withLock { self.lastDecodeSeconds = seconds; self.decodeTimes.add(seconds) }
+            }
+            backend.onSeam = { [weak self] windowStart, audioEnd in
+                self?.onSeam?(windowStart, audioEnd)
             }
             return backend
         case .zipformer(let url):
@@ -526,7 +534,7 @@ public final class TranscriptionEngine {
                             let lag = wallTime.elapsedSinceStart().flatMap { lagTracker.sample(elapsed: $0, audioEnds: piece.wordEnds) }
                             var update = CaptionUpdate(text: piece.text, isFinal: piece.isFinal, lagSeconds: lag, speaker: speaker,
                                                        startSeconds: piece.start, endSeconds: piece.end,
-                                                       diagnostics: self.diagnostics, wordEmphasis: self.wordEmphasis(piece.words))
+                                                       diagnostics: self.diagnostics, wordEmphasis: self.wordEmphasis(piece.words), words: piece.words)
                             update.engine = self.engineName
                             update.engineFallback = self.fallbackReason
                             continuation.yield(update)
@@ -570,7 +578,7 @@ public final class TranscriptionEngine {
                         let r = routing.receive(piece, from: half, segments: segments, elapsed: wallTime.elapsedSinceStart())
                         var update = CaptionUpdate(text: r.piece.text, isFinal: r.piece.isFinal, lagSeconds: r.lag, speaker: r.speaker,
                                                    startSeconds: r.piece.start, endSeconds: r.piece.end,
-                                                   diagnostics: self.diagnostics, wordEmphasis: self.wordEmphasis(r.piece.words))
+                                                   diagnostics: self.diagnostics, wordEmphasis: self.wordEmphasis(r.piece.words), words: r.piece.words)
                         update.engine = self.engineName
                         update.lane = half
                         update.languages = r.languages
@@ -619,6 +627,21 @@ public final class TranscriptionEngine {
         return WordEmphasis.levels(for: words, baseline: baseline, loudness: averageLoudness(for:), fallback: fallback)
     }
 
+    /// Maps a Locale's language code to a FluidAudio.Language for Parakeet decoding, if Parakeet supports it.
+    static func parakeetLanguage(for locale: Locale) -> Language? {
+        guard let code = locale.language.languageCode?.identifier else { return nil }
+        guard CaptionEngineRouting.parakeetLanguages.contains(code) else { return nil }
+        switch code {
+        case "en": return .english
+        case "es": return .spanish
+        case "fr": return .french
+        case "de": return .german
+        case "it": return .italian
+        case "pt": return .portuguese
+        default: return nil
+        }
+    }
+
     /// Flushes the live recognizer (its last words come out final) and closes the piece streams.
     private func finishRecognizer() async {
         let backend = routeLock.withLock { () -> SpeechRecognizerBackend? in
@@ -659,7 +682,7 @@ public final class TranscriptionEngine {
     /// Loads Parakeet once and discards it, so Core ML's first compile for this phone (35 s on a Mac) happens
     /// during first run instead of behind the first Start (design §1, risk "first load").
     public static func warmUp(parakeetModelURL: URL) async throws {
-        let backend = ParakeetBackend(modelURL: parakeetModelURL)
+        let backend = ParakeetBackend(modelURL: parakeetModelURL, locale: Locale(identifier: "en-US"))
         try await backend.prepare()
         await backend.cancel()
     }

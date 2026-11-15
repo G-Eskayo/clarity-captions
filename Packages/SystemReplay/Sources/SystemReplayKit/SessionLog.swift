@@ -42,6 +42,15 @@ public struct SessionLog: Codable, Sendable {
         public init(state: String, at: Double) { self.state = state; self.at = at }
     }
 
+    public struct Word: Codable, Sendable, Equatable {
+        public var text: String
+        public var start: Double?
+        public var end: Double?
+        public init(text: String, start: Double? = nil, end: Double? = nil) {
+            self.text = text; self.start = start; self.end = end
+        }
+    }
+
     public struct Update: Codable, Sendable {
         public var at: Double
         public var text: String
@@ -53,10 +62,12 @@ public struct SessionLog: Codable, Sendable {
         public var end: Double?
         public var engine: String
         public var fallback: String?
+        /// Per-word timing: text and start/end for each word in the caption.
+        public var words: [Word]?
         public init(at: Double, text: String, isFinal: Bool, lag: Double?, speaker: Int?, start: Double?, end: Double?,
-                    engine: String, fallback: String?) {
+                    engine: String, fallback: String?, words: [Word]? = nil) {
             self.at = at; self.text = text; self.isFinal = isFinal; self.lag = lag; self.speaker = speaker
-            self.start = start; self.end = end; self.engine = engine; self.fallback = fallback
+            self.start = start; self.end = end; self.engine = engine; self.fallback = fallback; self.words = words
         }
     }
 
@@ -64,8 +75,21 @@ public struct SessionLog: Codable, Sendable {
         public var text: String
         public var speaker: Int?
         public var soundLabel: String?
-        public init(text: String, speaker: Int?, soundLabel: String?) {
-            self.text = text; self.speaker = speaker; self.soundLabel = soundLabel
+        /// Audio time range for this line.
+        public var start: Double?
+        public var end: Double?
+        public init(text: String, speaker: Int?, soundLabel: String?, start: Double? = nil, end: Double? = nil) {
+            self.text = text; self.speaker = speaker; self.soundLabel = soundLabel; self.start = start; self.end = end
+        }
+    }
+
+    public struct Seam: Codable, Sendable {
+        /// Window start time (session audio seconds) when Parakeet took a hop.
+        public var windowStart: Double
+        /// Audio end time of this hop.
+        public var audioEnd: Double
+        public init(windowStart: Double, audioEnd: Double) {
+            self.windowStart = windowStart; self.audioEnd = audioEnd
         }
     }
 
@@ -97,6 +121,8 @@ public struct SessionLog: Codable, Sendable {
     public var updates: [Update] = []
     /// The caption lines as the app's CaptionStream built them, which is what she reads.
     public var lines: [Line] = []
+    /// Parakeet decode window boundaries: each hop's window start and audio end. Nil for older session logs.
+    public var seams: [Seam]?
     public var wallSeconds: Double = 0
     /// The session ended with a Stop tap at the end of the recording (replaying path), not by its stream ending.
     public var stoppedByTap = false

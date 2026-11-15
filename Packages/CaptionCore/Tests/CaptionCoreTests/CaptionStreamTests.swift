@@ -142,6 +142,33 @@ final class CaptionStreamTests: XCTestCase {
         XCTAssertNil(s.lines[0].startTime)
     }
 
+    func testEndTimeSetFromRangeUpperBound() {
+        var s = CaptionStream()
+        s.apply(text: "hello", isFinal: true, range: 1.5...2.5)
+        XCTAssertEqual(s.lines[0].endTime, 2.5)
+    }
+
+    func testEndTimeNilWhenNoRange() {
+        var s = CaptionStream()
+        s.apply(text: "hello", isFinal: true)
+        XCTAssertNil(s.lines[0].endTime)
+    }
+
+    func testStartAndEndTimePreservedAfterCommit() {
+        var s = CaptionStream()
+        s.apply(text: "hel", isFinal: false, range: 1.0...1.5)
+        s.apply(text: "hello", isFinal: true, range: 1.0...2.0)
+        XCTAssertEqual(s.lines[0].startTime, 1.0)
+        XCTAssertEqual(s.lines[0].endTime, 2.0)
+        XCTAssertTrue(s.lines[0].isFinal)
+    }
+
+    func testSoundLabelEndTimeNil() {
+        var s = CaptionStream()
+        s.insertSoundLabel(.laughter)
+        XCTAssertNil(s.lines[0].endTime)
+    }
+
     // MARK: - Emphasis
 
     func testCommittedWordsCarryEmphasis() {

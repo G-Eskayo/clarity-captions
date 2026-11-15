@@ -107,8 +107,11 @@ final class ParakeetBackend: SpeechRecognizerBackend, @unchecked Sendable {
     var onTrigger: (@Sendable (FallbackTrigger) -> Void)?
     /// Each decode's seconds, for the developer panel. Called on the decode task.
     var onDecode: (@Sendable (Double) -> Void)?
+    /// Each decode window's boundary. Called on the decode task with (windowStart, audioEnd).
+    var onSeam: (@Sendable (Double, Double) -> Void)?
 
     private let modelURL: URL
+    private let locale: Locale
     private let lock = NSLock()
     private var manager: AsrManager?
     private var window = SampleWindow()
@@ -121,8 +124,9 @@ final class ParakeetBackend: SpeechRecognizerBackend, @unchecked Sendable {
     private var watchdog = SilentEngineWatchdog()
     private var decodeTimes: [Double] = []
 
-    init(modelURL: URL) {
+    init(modelURL: URL, locale: Locale = Locale(identifier: "en-US")) {
         self.modelURL = modelURL
+        self.locale = locale
         ModelHub.offlineMode = true
     }
 
@@ -137,7 +141,8 @@ final class ParakeetBackend: SpeechRecognizerBackend, @unchecked Sendable {
         try await manager.loadModels(models)
         // One warm decode, so the first real one is not the slow one.
         var state = TdtDecoderState.make(decoderLayers: AsrModelVersion.ultra.decoderLayers)
-        _ = try await manager.transcribe([Float](repeating: 0, count: Int(SampleWindow.rate)), decoderState: &state)
+        let language = TranscriptionEngine.parakeetLanguage(for: locale)
+        _ = try await manager.transcribe([Float](repeating: 0, count: Int(SampleWindow.rate)), decoderState: &state, language: language)
         lock.withLock { self.manager = manager }
     }
 
@@ -191,8 +196,10 @@ final class ParakeetBackend: SpeechRecognizerBackend, @unchecked Sendable {
             var failed = false
             if shot.loudest < Self.silenceGateDBFS && committer.isSettled {
                 // Silence gate: a quiet table with nothing open costs no decode.
+                onSeam?(shot.start, shot.end)
                 _ = committer.ingest(decode: [], windowStart: shot.start, audioEnd: shot.end)
             } else if let words = await decode(shot.samples, start: shot.start, manager: manager) {
+                onSeam?(shot.start, shot.end)
                 let out = committer.ingest(decode: words.map { TimedWord(text: $0.text, start: $0.start - shot.start, end: $0.end - shot.start) },
                                            windowStart: shot.start, audioEnd: shot.end)
                 heard = out.final.count + out.volatile.count
@@ -218,7 +225,8 @@ final class ParakeetBackend: SpeechRecognizerBackend, @unchecked Sendable {
         let padded = samples.count >= minimum ? samples : samples + [Float](repeating: 0, count: minimum - samples.count)
         let began = ContinuousClock.now
         var state = TdtDecoderState.make(decoderLayers: AsrModelVersion.ultra.decoderLayers)
-        guard let result = try? await manager.transcribe(padded, decoderState: &state) else { return nil }
+        let language = TranscriptionEngine.parakeetLanguage(for: locale)
+        guard let result = try? await manager.transcribe(padded, decoderState: &state, language: language) else { return nil }
         let d = ContinuousClock.now - began
         let seconds = Double(d.components.seconds) + Double(d.components.attoseconds) / 1e18
         decodeTimes.append(seconds)
