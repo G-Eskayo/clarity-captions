@@ -80,7 +80,7 @@
       "command": [
         "bash",
         "-c",
-        "node --test scripts/build-site.test.mjs scripts/lang-offer.test.mjs scripts/required-checks.test.mjs && node scripts/build-site.mjs --check && node scripts/check-site.mjs && node --test scripts/check-evidence.test.mjs && node scripts/check-evidence.mjs"
+        "node --test scripts/build-site.test.mjs scripts/lang-offer.test.mjs scripts/required-checks.test.mjs && node scripts/build-site.mjs --check && node --test scripts/check-site.test.mjs && node scripts/check-site.mjs && node --test scripts/check-evidence.test.mjs && node scripts/check-evidence.mjs"
       ],
       "requires": [
         "node"

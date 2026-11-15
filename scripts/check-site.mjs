@@ -17,11 +17,28 @@ import { barFractions, winners, countFrame, SAMPLE_STEPS } from '../site/motion.
 import { FEATURES, OLD_TABS, featureFor, duoFrame, duoBlocks, duoChunks, DUO_TALK, DUO_CAPTIONS } from '../site/devices.js'
 import { languages, outPath, urlOf, alternatesFor } from './build-site.mjs'
 
+// GitHub reference validation: ensure refs point to main or a SHA, not branches/tags/etc.
+export const REF_LINK = /(?:github\.com\/G-Eskayo\/clarity-captions\/(blob|tree)\/([a-zA-Z0-9._\/-]+)|raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([a-zA-Z0-9._\/-]+))/g
+export const badRef = (ref) => {
+  // A ref is valid if it's exactly 'main' or exactly 40 lowercase hex digits (a git SHA).
+  // Self-test: 'main' is OK, 40-hex is OK, 'main-old' is bad, short SHA is bad
+  if (ref === 'main') return false
+  if (/^[a-f0-9]{40}$/.test(ref)) return false
+  return true
+}
+
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 // SITE_DIR checks a copy of site/ (used to prove the checks catch seeded faults).
 const SITE = process.env.SITE_DIR || path.join(ROOT, 'site')
 const failures = []
 const check = (ok, msg) => { if (!ok) failures.push(msg) }
+
+// Self-tests for ref validation
+check(!badRef('main'), 'badRef self-test: main is valid')
+check(!badRef('abc123def456abc123def456abc123def456abcd'), 'badRef self-test: 40-char SHA is valid')
+check(badRef('main-old'), 'badRef self-test: main-old is invalid')
+check(badRef('abcd123'), 'badRef self-test: short SHA is invalid')
+check(badRef('v1.0.0'), 'badRef self-test: tag is invalid')
 export const RELEASE_11_ONLY = ['ipad-full-screen', 'duo', 'parakeet', 'caption-languages', 'live-translation', 'face-to-face', 'in-your-ear']
 // New caption languages ship as a batch (owner, 2026-11-03), so an upcoming release names no single language: it says
 // "more caption languages". The measurements below the release cards may still name the language they measured.
@@ -45,11 +62,21 @@ for (const f of pages) {
   }
   for (const m of html.matchAll(/url\(\s*['"]?([^'")]+)/gi)) check(isLocal(m[1]), `${f}: CSS url() loads from off-site: ${m[1]}`)
   check(!/<script(?![^>]*\bsrc=)[^>]*>[^<]*(gtag|analytics|plausible|fbq)\b/i.test(html), `${f}: looks like analytics`)
+  // Check for bad GitHub refs in links
+  for (const m of html.matchAll(REF_LINK)) {
+    const ref = m[2] || m[5]
+    check(!badRef(ref), `${f}: bad GitHub ref "${ref}" (must be "main" or a 40-char SHA)`)
+  }
 }
 for (const js of ['demo.js', 'seal-data.js', 'motion.js', 'devices.js', 'lang.js']) {
   const src = read(js)
   check(!/\b(fetch|XMLHttpRequest|sendBeacon|WebSocket|import\s*\(\s*['"]https?:)/.test(src), `${js}: makes network requests`)
   for (const m of src.matchAll(/from\s+['"]([^'"]+)['"]/g)) check(m[1].startsWith('./'), `${js}: imports from off-site: ${m[1]}`)
+  // Check for bad GitHub refs in JavaScript files
+  for (const m of src.matchAll(REF_LINK)) {
+    const ref = m[2] || m[5]
+    check(!badRef(ref), `${js}: bad GitHub ref "${ref}" (must be "main" or a 40-char SHA)`)
+  }
 }
 
 // 2. honest claims, on the visible text of the marketing page and the demo script
