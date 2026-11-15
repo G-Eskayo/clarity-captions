@@ -29,8 +29,8 @@ export const SINGLE_LANGUAGE = /\b(Hebrew|Arabic|Spanish|French|German|Italian|P
 
 const LANGS = languages()
 const built = LANGS.flatMap((lang) => lang.pages.map((page) => ({ lang, page, file: outPath(lang.code, page) })))
-// Built pages in every language, plus any page made by hand (the gift page).
-const pages = [...new Set([...built.map((b) => b.file), ...readdirSync(SITE).filter((f) => f.endsWith('.html'))])]
+// Built pages in every language, plus any page made by hand (the gift page), plus nested unlisted pages.
+const pages = [...new Set([...built.map((b) => b.file), ...readdirSync(SITE, { recursive: true }).filter((f) => f.endsWith('.html'))])]
 const read = (f) => readFileSync(path.join(SITE, f), 'utf-8')
 const langOf = (f) => (f.includes('/') ? f.split('/')[0] : 'en')
 
@@ -50,6 +50,38 @@ for (const js of ['demo.js', 'seal-data.js', 'motion.js', 'devices.js', 'lang.js
   const src = read(js)
   check(!/\b(fetch|XMLHttpRequest|sendBeacon|WebSocket|import\s*\(\s*['"]https?:)/.test(src), `${js}: makes network requests`)
   for (const m of src.matchAll(/from\s+['"]([^'"]+)['"]/g)) check(m[1].startsWith('./'), `${js}: imports from off-site: ${m[1]}`)
+}
+
+// 1b. unlisted pages and redirects
+const builtSet = new Set(built.map((b) => b.file))
+const builtBase = new Set(LANGS.flatMap((l) => l.pages))
+for (const f of pages) {
+  if (builtSet.has(f)) continue
+  const html = read(f)
+  check(/<meta name="robots" content="noindex"/.test(html), `${f}: unlisted page must carry noindex`)
+}
+for (const f of pages.filter((p) => builtSet.has(p))) {
+  const html = read(f)
+  for (const m of html.matchAll(/\shref="([^"]+)"/g)) {
+    const u = m[1]
+    if (/^(https?:|mailto:|data:|#)/.test(u) || /^\//.test(u)) continue
+    const target = u.split('#')[0].replace(/^\.\.\//g, '')
+    if (!builtSet.has(target) && !builtBase.has(target)) {
+      check(false, `${f}: links to unlisted page ${u}`)
+    }
+  }
+}
+for (const f of pages.filter((p) => !builtSet.has(p))) {
+  const html = read(f)
+  const refresh = html.match(/<meta http-equiv="refresh" content="0;url=([^"]+)">/)
+  if (refresh) {
+    const target = refresh[1].split('#')[0]
+    if (!target.startsWith('http')) {
+      let resolved = target.startsWith('/') ? target.slice(1) : path.join(path.dirname(f), target).replace(/\\/g, '/')
+      if (resolved.endsWith('/')) resolved += 'index.html'
+      check(existsSync(path.join(SITE, resolved)), `${f}: redirect target ${target} does not exist`)
+    }
+  }
 }
 
 // 2. honest claims, on the visible text of the marketing page and the demo script

@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'fs'
 import path from 'path'
-import { relink, keysOf, alternatesFor, outPath, urlOf, buildAll, languages, strings, SITE, SRC } from './build-site.mjs'
+import { relink, keysOf, alternatesFor, outPath, urlOf, buildAll, languages, strings, SITE, SRC, DOMAIN, ORIGIN } from './build-site.mjs'
 
 const he = { code: 'he', dir: 'rtl', published: false, pages: ['index.html', 'privacy.html'] }
 const en = { code: 'en', dir: 'ltr', published: true, pages: ['index.html', 'privacy.html', 'versions.html'] }
@@ -59,6 +59,18 @@ test('every language builds with no missing words, and every English word is use
   const used = new Set(languages()[0].pages.flatMap((p) => keysOf(readFileSync(path.join(SRC, 'pages', p), 'utf-8'))))
   assert.deepEqual(Object.keys(strings('en')).filter((k) => !k.startsWith('_') && !used.has(k)), [])
   assert.ok(out.length >= 4)
+})
+
+test('DOMAIN is derived from ORIGIN', () => {
+  assert.equal(DOMAIN, new URL(ORIGIN).hostname)
+  assert.equal(DOMAIN, 'seal-speak.gileskayo.me')
+})
+
+test('buildAll includes a CNAME file with the domain', () => {
+  const { out } = buildAll()
+  const cname = out.find(([f]) => f === 'CNAME')
+  assert.ok(cname, 'CNAME file is in buildAll output')
+  assert.equal(cname[1], `${DOMAIN}\n`, 'CNAME contains the domain with a newline')
 })
 
 test('every built page says its language and direction', () => {

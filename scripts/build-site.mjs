@@ -16,6 +16,7 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 export const SITE = path.join(ROOT, 'site')
 export const SRC = path.join(ROOT, 'site-src')
 export const ORIGIN = 'https://seal-speak.gileskayo.me/'
+export const DOMAIN = new URL(ORIGIN).hostname
 const readJSON = (f) => JSON.parse(readFileSync(path.join(SRC, f), 'utf-8'))
 
 // SITE_PREVIEW_PUBLISH=he builds as if Hebrew were published, for a look before the owner publishes it; with
@@ -123,6 +124,7 @@ export function buildAll() {
       out.push([outPath(lang.code, page), html])
     }
   }
+  out.push(['CNAME', `${DOMAIN}\n`])
   return { out, problems }
 }
 
