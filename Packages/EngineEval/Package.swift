@@ -14,7 +14,7 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../CaptionCore"),
-        // Same FluidAudio as the app (CaptionCore pins 0.17.5).
+        // Same FluidAudio as the app (CaptionCore pins `exact: "0.17.5"`): engine accuracy tests measure the shipped code.
         .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.17.5"),
         .package(url: "https://github.com/argmaxinc/argmax-oss-swift.git", from: "1.1.1"),
     ],

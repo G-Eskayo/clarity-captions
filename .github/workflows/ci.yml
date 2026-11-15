@@ -94,6 +94,21 @@ jobs:
       - name: Generate the project and build (signing off; fetches the speaker model when the cache has none)
         run: .github/run-check.sh mac-app
 
+  fluidaudio-pin:
+    name: FluidAudio pin consistency check
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Does this change touch Packages?
+        id: affected
+        run: echo "run=$(.github/run-check.sh fluidaudio-pin --affected)" >> "$GITHUB_OUTPUT"
+      - name: Check FluidAudio pin consistency
+        if: steps.affected.outputs.run == 'true'
+        run: .github/run-check.sh fluidaudio-pin
+
   site:
     name: Website checks (site/)
     runs-on: ubuntu-latest

@@ -12,7 +12,7 @@ let package = Package(
         .library(name: "CaptionUI", targets: ["CaptionUI"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/FluidInference/FluidAudio.git", from: "0.17.5"),
+        .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.17.5"),
     ],
     targets: [
         .target(

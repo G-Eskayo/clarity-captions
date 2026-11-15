@@ -33,7 +33,7 @@
       "command": [
         "bash",
         "-c",
-        "D=$(mktemp -d \"${TMPDIR:-/tmp}/clarity-derived.XXXXXX\"); trap 'rm -rf \"$D\"' EXIT; xcodegen generate && xcodebuild -project CaptionSpike.xcodeproj -scheme CaptionSpike -destination 'generic/platform=iOS Simulator' -derivedDataPath \"$D\" CODE_SIGNING_ALLOWED=NO build"
+        "D=$(mktemp -d \"${TMPDIR:-/tmp}/clarity-derived.XXXXXX\"); trap 'rm -rf \"$D\"' EXIT; xcodegen generate && xcodebuild -project CaptionSpike.xcodeproj -scheme CaptionSpike -destination 'generic/platform=iOS Simulator' -derivedDataPath \"$D\" CODE_SIGNING_ALLOWED=NO build && bash ../../scripts/check-fluidaudio-pin.sh --app-resolved \"$(find \"$D\" -name workspace-state.json | head -1)\" --app-name spike"
       ],
       "parser": "xcodebuild",
       "requires": [
@@ -56,7 +56,7 @@
       "command": [
         "bash",
         "-c",
-        "D=$(mktemp -d \"${TMPDIR:-/tmp}/clarity-mac-derived.XXXXXX\"); trap 'rm -rf \"$D\"' EXIT; M=Resources/Models/Sortformer_v2.1.mlmodelc; if [ ! -d \"$M\" ]; then sh ../../scripts/fetch-diarizer-models.sh && mkdir -p Resources/Models && cp -cR ../Spike/Resources/Models/Sortformer_v2.1.mlmodelc Resources/Models/; fi; xcodegen generate && xcodebuild -project CaptionMac.xcodeproj -scheme CaptionMac -configuration Debug -destination 'platform=macOS' -derivedDataPath \"$D\" CODE_SIGNING_ALLOWED=NO build"
+        "D=$(mktemp -d \"${TMPDIR:-/tmp}/clarity-mac-derived.XXXXXX\"); trap 'rm -rf \"$D\"' EXIT; M=Resources/Models/Sortformer_v2.1.mlmodelc; if [ ! -d \"$M\" ]; then sh ../../scripts/fetch-diarizer-models.sh && mkdir -p Resources/Models && cp -cR ../Spike/Resources/Models/Sortformer_v2.1.mlmodelc Resources/Models/; fi; xcodegen generate && xcodebuild -project CaptionMac.xcodeproj -scheme CaptionMac -configuration Debug -destination 'platform=macOS' -derivedDataPath \"$D\" CODE_SIGNING_ALLOWED=NO build && bash ../../scripts/check-fluidaudio-pin.sh --app-resolved \"$(find \"$D\" -name workspace-state.json | head -1)\" --app-name mac"
       ],
       "parser": "xcodebuild",
       "requires": [
@@ -64,6 +64,20 @@
         "xcode"
       ],
       "timeout_s": 2400
+    },
+    {
+      "id": "fluidaudio-pin",
+      "name": "FluidAudio pin consistency check",
+      "cwd": ".",
+      "paths": [
+        "Packages/*"
+      ],
+      "command": [
+        "bash",
+        "scripts/check-fluidaudio-pin.sh"
+      ],
+      "requires": [],
+      "timeout_s": 30
     },
     {
       "id": "site",

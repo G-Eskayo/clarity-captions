@@ -59,6 +59,18 @@ final class ThirdPartyNoticeTests: XCTestCase {
         XCTAssertEqual(fluidAudio?.licenseURL.absoluteString, "https://www.apache.org/licenses/LICENSE-2.0")
     }
 
+    func testFluidAudioVersionIsPinned() throws {
+        let repo = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let notices = try String(contentsOf: repo.appendingPathComponent("NOTICE.md"), encoding: .utf8)
+        let fluidAudioStart = try XCTUnwrap(notices.range(of: "## FluidAudio\n"), "NOTICE.md has a FluidAudio section")
+        let rest = notices[fluidAudioStart.upperBound...]
+        let section = rest.range(of: "\n## ").map { rest[..<$0.lowerBound] } ?? rest
+        XCTAssertTrue(section.contains("pinned"), "FluidAudio section must mention pinning")
+        XCTAssertTrue(section.contains("0.17.5"), "FluidAudio version must be stated")
+        XCTAssertTrue(section.contains("check-fluidaudio-pin.sh"), "CI check must be referenced")
+    }
+
     func testBundledFontsAreCreditedUnderTheirOwnLicenses() {
         // Classic OpenDyslexic (2.020, the face the approved mock-ups use) ships under the Bitstream Vera license;
         // Atkinson Hyperlegible under the SIL Open Font License.
