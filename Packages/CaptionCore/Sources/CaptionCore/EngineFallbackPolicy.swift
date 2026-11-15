@@ -15,9 +15,9 @@ public enum CaptionEngineChoice: String, CaseIterable, Sendable {
     }
 }
 
-/// Seal's own model for a caption language (ADR 0025, #220): Parakeet Ultra wherever it won (CaptionEngineRouting), the
-/// ivrit.ai streaming zipformer for Hebrew (owner, 2026-10-30: Hebrew moves off Apple's engine, which made about four
-/// times the errors on conversation, #217). Every other language runs Apple's engine.
+/// Seal's own model for a caption language (ADR 0025, #220): Parakeet Ultra wherever it won (CaptionEngineRouting)
+/// with a cross-script language hint (#285), the ivrit.ai streaming zipformer for Hebrew (owner, 2026-10-30: Hebrew moves off
+/// Apple's engine, which made about four times the errors on conversation, #217). Every other language runs Apple's engine.
 public enum SealModel: String, Sendable, Equatable {
     case parakeetUltra
     case hebrewZipformer
@@ -30,10 +30,10 @@ public enum SealModel: String, Sendable, Equatable {
 
 /// Which caption languages run on Parakeet (ADR 0029 decision 2): every language where Parakeet Ultra matched or beat
 /// Apple's best locale on FLEURS (#158, #234; docs/perf/language-accuracy-comparison.md), and English (#145). Every
-/// other language runs Apple's engine in that language. Parakeet takes no language setting (it hears the language),
-/// so the table is by language, and every region of a won language goes to it. Each new win is one line here. Since #234
-/// that is every language both engines caption; Apple keeps Japanese, Korean, Chinese and Cantonese, which Parakeet
-/// doesn't cover.
+/// other language runs Apple's engine in that language. Parakeet hears the language automatically; the language hint
+/// (#285) is a cross-script guard only (Cyrillic/Latin/Greek confusion). The table is by language, and every region of
+/// a won language goes to it. Each new win is one line here. Since #234 that is every language both engines caption;
+/// Apple keeps Japanese, Korean, Chinese and Cantonese, which Parakeet doesn't cover.
 public enum CaptionEngineRouting {
     public static let parakeetLanguages: Set<String> = [
         "en",  // #145, EdAcc: 13.8% vs 17.2%

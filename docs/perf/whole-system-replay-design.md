@@ -93,6 +93,16 @@ consent for anyone recorded.
 
 Speaker labels (DER, split rate) are logged per update (`speaker`, audio times) but not scored yet.
 
+## Per-boundary error analysis (#285)
+
+Every Parakeet session now logs `decodeWindows: [Double]`, the start time of each successful decode (#285, design §6). Combined with final update times and pause analysis, this supports per-boundary error tagging in `replay.py`:
+
+- **Seams**: decode-window start times (where a new window's context begins; word-index distance configurable).
+- **Commits**: final update start times (where a forced commit or silence commit pins the transcript).
+- **Line breaks**: either ≥1.2 s pause between finals or a speaker change (matching `CaptionStream`'s 1.2 s pause rule).
+
+`replay.py`'s `boundary_positions` and `boundary_errors` functions classify each WER error by its distance to the nearest boundary, non-exclusively: an error near both a seam and a line break gets both tags. `boundary_errors` outputs a dict mapping `{"seam": [...], "commit": [...], "line_break": [...], "elsewhere": [...]}` with error indices for each category, stratified to sessions that stayed on Parakeet. This is the foundation for regression testing: it enables future accuracy improvements to demonstrate per-boundary gains without waiting for a full 40-conversation run.
+
 ## Running it
 
 ```sh

@@ -48,4 +48,23 @@ import Testing
         #expect(back.lines.first?.text == "hello")
         #expect(back.harness == SessionLog.harnessVersion)
     }
+
+    @Test func decodeWindowsDefaultsToEmpty() {
+        var l = log()
+        #expect(l.decodeWindows == [])
+    }
+
+    @Test func decodeWindowsRoundTripsThroughJSON() throws {
+        var l = log()
+        l.decodeWindows = [1.2, 2.5, 3.7]
+        let back = try JSONDecoder().decode(SessionLog.self, from: JSONEncoder().encode(l))
+        #expect(back.decodeWindows == [1.2, 2.5, 3.7])
+    }
+
+    @Test func emptyDecodeWindowsRoundTripsThroughJSON() throws {
+        var l = log()
+        l.decodeWindows = []
+        let back = try JSONDecoder().decode(SessionLog.self, from: JSONEncoder().encode(l))
+        #expect(back.decodeWindows == [])
+    }
 }

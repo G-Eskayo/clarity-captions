@@ -84,6 +84,10 @@ func captureEngineState(_ log: inout SessionLog, from engine: TranscriptionEngin
 func watchFallbacks(_ engine: TranscriptionEngine, into box: Box<[SessionLog.Fallback]>, clock: @escaping () -> Double) {
     engine.onFallback = { reason in box.mutate { $0.append(.init(reason: reason.rawValue, at: clock())) } }
 }
+
+func watchDecodeWindows(_ engine: TranscriptionEngine, into box: Box<[Double]>) {
+    engine.onDecodeWindow = { time in box.mutate { $0.append(time) } }
+}
 #endif
 
 /// The engine's own file replay (`startReplaying(fileURL:)`, in every build) behind the controller: the same

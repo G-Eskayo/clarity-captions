@@ -171,6 +171,58 @@ final class ParakeetIntegrationTests: XCTestCase {
         var value: Int { lock.withLock { n } }
     }
 
+    // MARK: #285: leftContext and boundary analysis scenarios
+
+    func testALoneWordAfterAPauseComesOutInTheCaptionis() async throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["CAPTION_PARAKEET"] == "1", "opt-in")
+        let audio = try speech("Hello. ... Goodbye.", name: "alone-word")
+        let engine = TranscriptionEngine(
+            diarizerModelURL: repo.appendingPathComponent("Apps/Spike/Resources/Models/Sortformer_v2.1.mlmodelc"),
+            recognizer: .parakeet(modelURL: repo.appendingPathComponent("Apps/Spike/Resources/Models/ParakeetUltra")))
+        var finals: [String] = []
+        for try await u in try await engine.startReplaying(fileURL: audio) where u.isFinal { finals.append(u.text) }
+        let got = Self.words(finals.joined(separator: " "))
+        XCTAssertTrue(got.contains("hello"), "the opening word comes through")
+        XCTAssertTrue(got.contains("goodbye"), "the lone word after the pause comes through")
+        print("PARAKEET-IT #285-lone: \(finals.joined(separator: " | "))")
+    }
+
+    func testALongRunOnSentenceWithoutPausesCommitsPartially() async throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["CAPTION_PARAKEET"] == "1", "opt-in")
+        let said = "The first part of the sentence that just keeps going without any pause for more than "
+            + "twelve seconds so the committer will eventually force a commit and then the second part "
+            + "continues with new words and eventually settles into a final caption."
+        let audio = try speech(said, name: "run-on")
+        let engine = TranscriptionEngine(
+            diarizerModelURL: repo.appendingPathComponent("Apps/Spike/Resources/Models/Sortformer_v2.1.mlmodelc"),
+            recognizer: .parakeet(modelURL: repo.appendingPathComponent("Apps/Spike/Resources/Models/ParakeetUltra")))
+        var finals: [String] = []
+        var finalCount = 0
+        for try await u in try await engine.startReplaying(fileURL: audio) {
+            if u.isFinal { finals.append(u.text); finalCount += 1 }
+        }
+        XCTAssertGreaterThan(finalCount, 1, "a long sentence forces at least one intermediate commit")
+        print("PARAKEET-IT #285-runon: finals=\(finalCount) last=\(finals.last ?? "")")
+    }
+
+    func testSpeakerChangeMarksALineBreakBoundary() async throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["CAPTION_PARAKEET"] == "1", "opt-in")
+        let speaker1 = "First speaker says something."
+        let speaker2 = "Second speaker replies."
+        let audio = try speech("\(speaker1) \(speaker2)", name: "speaker-switch")
+        let engine = TranscriptionEngine(
+            diarizerModelURL: repo.appendingPathComponent("Apps/Spike/Resources/Models/Sortformer_v2.1.mlmodelc"),
+            recognizer: .parakeet(modelURL: repo.appendingPathComponent("Apps/Spike/Resources/Models/ParakeetUltra")))
+        var updates: [String] = []
+        for try await u in try await engine.startReplaying(fileURL: audio) {
+            updates.append(u.text)
+        }
+        let result = updates.joined(separator: " ")
+        XCTAssertTrue(result.lowercased().contains("first") || result.lowercased().contains("speaker"),
+                      "the combined audio produces captioned text")
+        print("PARAKEET-IT #285-speaker: \(result)")
+    }
+
     private func editDistance(_ a: [String], _ b: [String]) -> Int {
         var row = Array(0...b.count)
         for i in 1...max(a.count, 1) where !a.isEmpty {

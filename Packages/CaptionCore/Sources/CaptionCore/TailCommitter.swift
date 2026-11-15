@@ -32,7 +32,8 @@ public enum ParakeetWords {
 public struct TailCommitter: Sendable {
     public struct Config: Sendable {
         /// Audio decoded before the commit point, so the first open word has acoustic context.
-        public var leftContext = 1.0
+        /// Raised to 2.5 s (#285) to provide more context after commits on long sentences.
+        public var leftContext = 2.5
         public var stabilityMargin = 0.6
         /// Uncommitted audio that forces a commit, under the encoder's 15 s input.
         public var maxUncommitted = 12.0

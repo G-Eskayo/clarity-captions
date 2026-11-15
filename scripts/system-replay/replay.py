@@ -259,6 +259,133 @@ def paired_gap(units: Mapping[str, tuple[tuple[int, int], tuple[int, int]]], n_b
     return {"a": a, "b": b, "gap": b - a, "lo": lo, "hi": hi, "a_ci": ci(was), "b_ci": ci(wbs), "units": k}
 
 
+def update_spans(updates: list[dict]) -> list[tuple[int, int, str]]:
+    """Per-final-update contiguous word-index ranges from the reference text after normalization.
+    Excludes sessions where per-update and whole-string normalization disagree (refuse, not guess).
+    Returns [(start_idx, end_idx, text), ...] where indices are into normalized-reference words."""
+    finals = [u for u in updates if u.get("isFinal")]
+    if not finals:
+        return []
+    texts = [u["text"] for u in finals]
+    full = " ".join(texts)
+    full_norm = normalize(full)
+    individual_norms = [normalize(t) for t in texts]
+    check = " ".join(individual_norms)
+    if full_norm != check:
+        raise ValueError(f"normalization mismatch: {full_norm!r} != {check!r}")
+    words = full_norm.split()
+    spans = []
+    w_idx = 0
+    for text in individual_norms:
+        text_words = text.split()
+        spans.append((w_idx, w_idx + len(text_words), text))
+        w_idx += len(text_words)
+    return spans
+
+
+def boundary_positions(log: dict, margin_line_break: int = 1, margin_seam: int = 3,
+                      margin_commit: int = 3) -> dict[int, set[str]]:
+    """Classify word indices by their distance to seams/commits/line-breaks.
+    Returns {word_idx: {"seam", "commit", "line_break", ...}} (non-exclusive tags, no "elsewhere" here).
+    Sessions that left Parakeet are excluded entirely."""
+    plan = log.get("plan") or {}
+    seen = [e["name"] for e in log.get("enginesSeen", [])]
+    if plan.get("engine") != "parakeet" or log.get("fallbacks") or any(not n.startswith("parakeet") for n in seen):
+        return {}
+    try:
+        spans = update_spans(log.get("updates", []))
+    except ValueError:
+        return {}
+    if not spans:
+        return {}
+    updates = [u for u in log.get("updates", []) if u.get("isFinal")]
+    decode_windows = log.get("decodeWindows", [])
+    words = normalize(log.get("text", "") or " ".join(u["text"] for u in updates)).split()
+    tagged: dict[int, set[str]] = {}
+    for idx in range(len(words)):
+        tagged[idx] = set()
+
+    # Build word-index → time-range mapping for nearest-neighbor lookup
+    word_times: dict[int, tuple[float, float]] = {}  # word_idx → (start, end)
+    word_idx = 0
+    for u in updates:
+        start = u.get("start")
+        end = u.get("end")
+        if start is None or end is None:
+            continue
+        text_words = normalize(u["text"]).split()
+        if not text_words:
+            continue
+        duration = end - start
+        per_word = duration / len(text_words) if text_words else 0
+        for i, _ in enumerate(text_words):
+            word_start = start + i * per_word
+            word_end = start + (i + 1) * per_word
+            word_times[word_idx] = (word_start, word_end)
+            word_idx += 1
+
+    # Helper: find nearest word to a time value
+    def nearest_word_to_time(t: float) -> int:
+        """Return word index closest to time t, or -1 if no words have times."""
+        if not word_times:
+            return -1
+        return min(word_times.keys(), key=lambda w: abs((word_times[w][0] + word_times[w][1]) / 2 - t))
+
+    # Tag decode windows (seams)
+    for dw in decode_windows:
+        nearest = nearest_word_to_time(dw)
+        if nearest >= 0:
+            for idx in range(len(words)):
+                if abs(idx - nearest) <= margin_seam:
+                    tagged[idx].add("seam")
+
+    # Tag commits
+    commit_times = [u["start"] for u in updates if u.get("start") is not None]
+    for ct in commit_times:
+        nearest = nearest_word_to_time(ct)
+        if nearest >= 0:
+            for idx in range(len(words)):
+                if abs(idx - nearest) <= margin_commit:
+                    tagged[idx].add("commit")
+
+    # Tag line breaks
+    line_times = []
+    last_end = None
+    last_speaker = None
+    for u in updates:
+        if u.get("end") is not None:
+            if last_end is not None and (u.get("end", 0) - last_end >= 1.2 or
+                                          (u.get("speaker") is not None and u.get("speaker") != last_speaker)):
+                line_times.append(last_end)
+            last_end = u.get("end")
+            last_speaker = u.get("speaker")
+    for lt in line_times:
+        nearest = nearest_word_to_time(lt)
+        if nearest >= 0:
+            for idx in range(len(words)):
+                if abs(idx - nearest) <= margin_line_break:
+                    tagged[idx].add("line_break")
+
+    return tagged
+
+
+def boundary_errors(align: dict, boundaries: dict[int, set[str]]) -> dict[str, list[int]]:
+    """Tag each error from align_counts by its distance to boundaries, plus an 'elsewhere' bucket.
+    Input: align_counts result (errors, reference_positions...). Non-exclusive: one error can have multiple tags.
+    Returns {tag: [error_indices...], "elsewhere": [untagged_errors]}."""
+    if not boundaries:
+        return {"elsewhere": list(range(len(align.get("errors", []))))}
+    errors_at = {e[1]: e for e in align.get("errors", [])}
+    tagged: dict[str, list[int]] = {"seam": [], "commit": [], "line_break": [], "elsewhere": []}
+    for e_idx, (err_type, ref_pos) in enumerate(align.get("errors", [])):
+        if ref_pos in boundaries and boundaries[ref_pos]:
+            for tag in boundaries[ref_pos]:
+                tagged[tag].append(e_idx)
+        else:
+            tagged["elsewhere"].append(e_idx)
+    return tagged
+
+
 def language_gate(english: Mapping, saved: Mapping[str, Mapping], max_gap: float, n_boot: int = 1000) -> dict:
     """#273's regression case: English speech with a non-English caption language saved in Seal. For each saved
     language, the paired WER gap against the same build with en-US, on the same conversations. It fails when the

@@ -201,11 +201,13 @@ func replay(audio: URL, options o: Options) async -> SessionLog {
         return zero.map { uptime() - $0 } ?? 0
     }
     let fallbacks = Box<[SessionLog.Fallback]>([])
+    let decodeWindows = Box<[Double]>([])
     let clockBox = Box<Double?>(nil)
     watchFallbacks(engine, into: fallbacks) {
         if let s = source?.startedAt { return uptime() - s }
         return clockBox.get.map { uptime() - $0 } ?? -1
     }
+    watchDecodeWindows(engine, into: decodeWindows)
     let wallStart = uptime()
 
     let captioning: CaptioningEngine
@@ -288,6 +290,7 @@ func replay(audio: URL, options o: Options) async -> SessionLog {
     if let source { log.audioSeconds = source.fileSeconds }
     log.wallSeconds = uptime() - wallStart
     captureEngineState(&log, from: engine, fallbacks: fallbacks.get)
+    log.decodeWindows = decodeWindows.get
     log.lines = stream.lines.map { .init(text: $0.text, speaker: $0.speaker, soundLabel: $0.soundLabel.map { "\($0)" }) }
     if let failed = log.states.first(where: { $0.state.hasPrefix("failed") }), log.error == nil { log.error = failed.state }
     if !sawListening, log.error == nil { log.error = "never reached listening" }

@@ -95,6 +95,8 @@ public struct SessionLog: Codable, Sendable {
     public var decodeP95: Double?
     public var states: [State] = []
     public var updates: [Update] = []
+    /// Parakeet decode-window start times (session clock, §6 #285), empty on Apple's engine.
+    public var decodeWindows: [Double] = []
     /// The caption lines as the app's CaptionStream built them, which is what she reads.
     public var lines: [Line] = []
     public var wallSeconds: Double = 0

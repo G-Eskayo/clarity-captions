@@ -414,3 +414,17 @@ What the build does differently from the text above, and why. Each is small and 
 **How the checks run:** on a real Release build installed on Gil's iPhone by cable, with Parakeet on and both
 engines in the build behind the developer flag. Both engines are measured on that same build, on the same day.
 There is no separate Apple baseline run beforehand (this replaces task 2's separate step).
+
+## Accuracy improvements (#285)
+
+### Language hint and leftContext tuning
+
+After launch, #285 improves Parakeet's accuracy on live paths (long sentences, speaker turns) through two focused changes:
+
+1. **Cross-script language hint (#285, design §2):** Parakeet hears the language automatically, but FluidAudio's token filter can disambiguate Cyrillic/Latin/Greek confusion. `ParakeetBackend.language(for:)` maps the 6 `CaptionEngineRouting.parakeetLanguages` codes (en, es, fr, de, it, pt) to FluidAudio's `Language` enum. The hint is passed into every real-path decode, never in warm-up. It is a guard only: the same-script confusion Parakeet hears is fixed elsewhere.
+
+2. **Raised `TailCommitter.Config.leftContext` from 1.0 s to 2.5 s (#285):** Parakeet re-decodes the recent audio every 0.5 s, keeping `leftContext` s of audio before the last committed word so the first open word has acoustic context. The old 1.0 s setting left only ~0.4 s of real context after a forced commit on long sentences. Raising to 2.5 s provides meaningful context for longer phrases while still leaving >10 s of headroom under the encoder's 14.5 s cap. The window-bounds fuzz test (`testRandomSessionsCommitExactlyTheTrueWordsInOrder`) proves commit mechanics are unchanged.
+
+### Boundary analysis for whole-system replay
+
+#285 also adds decode-window tracking to `SessionLog` and per-boundary error classification in `replay.py`, the foundation for per-boundary WER regression testing (#285, design §5). `ParakeetBackend.onWindow` fires on every successful decode with the audio start time; `TranscriptionEngine.onDecodeWindow` collects them into `SessionLog.decodeWindows`. Boundary functions in `replay.py` classify errors as near seams, commits, or line breaks (≥1.2 s pause or speaker change), or elsewhere, stratified by whether the session stayed on Parakeet. This is the "regression check added to how builds are scored" (criterion 4), fully testable with synthetic data, no real audio needed.

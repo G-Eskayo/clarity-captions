@@ -143,9 +143,21 @@ final class TailCommitterTests: XCTestCase {
         let open = [w("a", 3.0, 3.2), w("b", 4.9, 5.1)]
         _ = c.ingest(decode: open, windowStart: 0, audioEnd: 5)
         _ = c.ingest(decode: open, windowStart: 0, audioEnd: 5.5)
-        XCTAssertEqual(c.windowStart(audioEnd: 5.5), 2.2, accuracy: 1e-9)
+        XCTAssertEqual(c.windowStart(audioEnd: 5.5), 0.7, accuracy: 1e-9, "3.2 - 2.5 s leftContext")
         XCTAssertGreaterThanOrEqual(c.windowStart(audioEnd: 100), 100 - TailCommitter.Config().maxWindow,
                                     "never asks for more audio than the encoder takes")
+    }
+
+    func testForceCommitLeftContextAfterTwelveSecondsBoundary() {
+        var c = TailCommitter()
+        var words: [TimedWord] = []
+        for i in 0..<24 { words.append(w("w\(i)", Double(i) * 0.5, Double(i) * 0.5 + 0.3)) }
+        let first = c.ingest(decode: words.map { w($0.text + "a", $0.start, $0.end) }, windowStart: 0, audioEnd: 11.9)
+        let out = c.ingest(decode: words, windowStart: 0, audioEnd: 12.0)
+        XCTAssertTrue(out.final.allSatisfy { $0.end <= 9.5 }, "force commit keeps 2.5 s open (not the old 2.0 s)")
+        // Next window should start with 2.5 s of leftContext before the new commit point
+        let nextWindowStart = c.windowStart(audioEnd: 12.0)
+        XCTAssertLessThanOrEqual(12.0 - nextWindowStart, 2.5 + TailCommitter.Config().maxUncommitted)
     }
 
     // MARK: - Adversarial: 10,000 random sessions

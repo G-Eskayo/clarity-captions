@@ -284,3 +284,87 @@ def test_language_gate_fails_on_the_ci_not_the_mean():
 def test_language_gate_refuses_mismatched_conversations():
     with pytest.raises(ValueError):
         replay.language_gate(_arm({"a": (1, 10)}), {"es-ES": _arm({"b": (1, 10)})}, max_gap=0.02)
+
+
+# --- boundary analysis (design §6, #285) ---------------------------------------------------------------------------
+
+def test_update_spans_builds_contiguous_word_ranges():
+    updates = [
+        {"isFinal": False, "text": "ignored"},
+        {"isFinal": True, "text": "hello"},
+        {"isFinal": True, "text": "world"},
+    ]
+    spans = replay.update_spans(updates)
+    assert spans == [(0, 1, "hello"), (1, 2, "world")]
+
+
+def test_update_spans_refuses_normalization_mismatch():
+    updates = [
+        {"isFinal": True, "text": "hello  world"},   # double space
+        {"isFinal": True, "text": "test"},
+    ]
+    with pytest.raises(ValueError, match="normalization mismatch"):
+        replay.update_spans(updates)
+
+
+def test_boundary_positions_excludes_sessions_that_left_parakeet():
+    log_left = {
+        "plan": {"engine": "parakeet"},
+        "fallbacks": [{"reason": "loadFailed", "at": 5}],
+        "enginesSeen": [],
+        "updates": [{"isFinal": True, "text": "hello"}],
+        "decodeWindows": []
+    }
+    assert replay.boundary_positions(log_left) == {}
+
+
+def test_boundary_positions_marks_seams_near_decode_windows():
+    log = {
+        "plan": {"engine": "parakeet"},
+        "enginesSeen": [{"name": "parakeet-ultra-pal6", "firstAt": 0}],
+        "fallbacks": [],
+        "updates": [
+            {"isFinal": True, "text": "hello world test", "start": 0.5, "end": 1.5, "speaker": 0},
+        ],
+        "decodeWindows": [0.7, 1.3]  # near words at indices 1-2
+    }
+    boundaries = replay.boundary_positions(log, margin_seam=1)
+    assert 1 in boundaries and "seam" in boundaries[1]
+
+
+def test_boundary_positions_marks_line_breaks_on_pauses():
+    log = {
+        "plan": {"engine": "parakeet"},
+        "enginesSeen": [{"name": "parakeet-ultra-pal6", "firstAt": 0}],
+        "fallbacks": [],
+        "updates": [
+            {"isFinal": True, "text": "hello", "start": 0.0, "end": 0.5, "speaker": 0},
+            {"isFinal": True, "text": "world", "start": 2.0, "end": 2.5, "speaker": 0},  # 1.5 s pause
+        ],
+        "decodeWindows": []
+    }
+    boundaries = replay.boundary_positions(log, margin_line_break=1)
+    # word "world" is near the 1.5s pause, should be marked
+    assert 1 in boundaries and "line_break" in boundaries[1]
+
+
+def test_boundary_errors_tags_errors_and_puts_untagged_in_elsewhere():
+    align = {
+        "errors": [
+            ("substitution", 0),
+            ("deletion", 1),
+            ("insertion", 2),
+        ]
+    }
+    boundaries = {0: {"seam"}, 1: {"commit"}, 2: set()}
+    tags = replay.boundary_errors(align, boundaries)
+    assert 0 in tags["seam"]
+    assert 1 in tags["commit"]
+    assert 2 in tags["elsewhere"]
+
+
+def test_boundary_errors_is_empty_elsewhere_when_all_errors_are_tagged():
+    align = {"errors": [("substitution", 0), ("deletion", 1)]}
+    boundaries = {0: {"seam"}, 1: {"commit"}}
+    tags = replay.boundary_errors(align, boundaries)
+    assert tags["elsewhere"] == []
