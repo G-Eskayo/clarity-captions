@@ -56,6 +56,9 @@ enum DemoMode {
     static let asksLanguage = false
     static let translate: String? = nil
     static let fakeStore = false
+    /// #246 / #292: the iPhone's `-ClarityDemoSaidOpen` (a translated line starts opened); the Mac's mock-ups open theirs
+    /// through `SaidFold(opened:)` instead.
+    static let saidOpen = false
 }
 
 /// Beta feedback (ADR 0023) is iPhone-only for now, so Settings' "Test version" section never shows on the Mac.
