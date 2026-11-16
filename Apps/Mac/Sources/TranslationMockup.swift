@@ -69,7 +69,7 @@ struct TranslationMockup: View {
         var language = LanguageSettingsState(captions: spanish, followsDevice: false, translationOn: step == .settings,
                                              target: english, callCaptions: french)
         language.translationOwned = step == .settings
-        language.translationPrice = "$1.99"
+        language.translationPrice = DemoMode.mockupPrice
         return SettingsPage(style: .constant(style), idleStop: .constant(.default), store: nil,
                             onGear: {}, onOpen: { _ in }, language: language)
             .frame(width: 440, height: 520)
