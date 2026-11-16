@@ -250,7 +250,8 @@ struct SettingsPage: View {
         if language.translationOn {
             // From is the caption language: the same setting as "Caption language" below, opening the same list. Apple's
             // speech engine needs it named before it starts (it doesn't detect it), so it's chosen, right next to Into.
-            languagePairRow(String(localized: "From"), LanguageSettingsState.name(language.captions),
+            // #252: a pick that's downloading shows at once, with its progress, so it never looks like it didn't stick.
+            languagePairRow(String(localized: "From"), fromValue,
                             label: String(localized: "Translate from, ")) { onChooseCaptionLanguage?() }
             languagePairRow(String(localized: "Into"), language.target.map(LanguageSettingsState.name) ?? String(localized: "Choose a language"),
                             label: String(localized: "Translate into, ")) { onChooseTranslationTarget?() }
@@ -285,6 +286,12 @@ struct SettingsPage: View {
                     .font(scaled(13, .semibold)).foregroundStyle(muted)
             }
         }
+    }
+
+    private var fromValue: String {
+        let name = LanguageSettingsState.name(language.from.locale)
+        guard let p = language.from.downloading else { return name }
+        return String(format: String(localized: "%@ · downloading %lld%%"), name, Int(p * 100))
     }
 
     /// "From  Spanish (Spain)  ›" and "Into  English (US)  ›": the words line up so the pair reads as one sentence.

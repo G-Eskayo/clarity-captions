@@ -13,6 +13,8 @@ struct LanguageSettingsState: Equatable {
     var target: Locale?
     /// The caption language's own download (#37), while one runs or after one failed.
     var captionDownload: CaptionLanguageSwitch.Phase = .ready
+    /// What translation's From row names (#252): a pick downloading, with its progress, else the caption language.
+    var from: CaptionLanguageSwitch.Shown { .init(current: captions, phase: captionDownload) }
     /// #245: Into's own speech model, downloading or failed (it's set up here, never when a feature starts).
     var intoSpeech: CaptionLanguageSwitch.Phase = .ready
     /// #245: Face to face opened Settings because fewer than two languages are ready; the one line saying so.
@@ -60,6 +62,7 @@ struct LanguageSettingsState: Equatable {
         #if DEBUG
         if let id = DemoMode.language { state.followsDevice = id == preferred.first }
         if let p = DemoMode.translateProgress { state.downloadProgress = p }
+        if let (id, p) = DemoMode.captionDownload { state.captionDownload = .downloading(Locale(identifier: id), progress: p) }
         if let p = DemoMode.intoSpeechProgress, let target = state.target { state.intoSpeech = .downloading(target, progress: p) }
         #endif
         return state
