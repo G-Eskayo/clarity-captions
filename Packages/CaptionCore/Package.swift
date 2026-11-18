@@ -12,7 +12,10 @@ let package = Package(
         .library(name: "CaptionUI", targets: ["CaptionUI"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/FluidInference/FluidAudio.git", from: "0.17.5"),
+        // traits: [] excludes NemoTextProcessing (text-processing-rs) from this build (#32).
+        // This opt-out holds only if no other node in the dependency graph references FluidAudio directly;
+        // Package traits are unioned across the graph, so verify that app targets don't add FluidAudio as a direct dependency.
+        .package(url: "https://github.com/FluidInference/FluidAudio.git", from: "0.17.5", traits: []),
     ],
     targets: [
         .target(

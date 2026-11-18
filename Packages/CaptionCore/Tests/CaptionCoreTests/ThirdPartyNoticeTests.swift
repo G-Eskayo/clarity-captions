@@ -1,5 +1,6 @@
 import XCTest
 @testable import CaptionCore
+import FluidAudio
 
 final class ThirdPartyNoticeTests: XCTestCase {
     func testThirdPartyNoticesAreComplete() {
@@ -109,5 +110,46 @@ final class ThirdPartyNoticeTests: XCTestCase {
         let notices = try String(contentsOf: repo.appendingPathComponent("NOTICE.md"), encoding: .utf8)
         XCTAssertTrue(notices.contains("## Hebrew speech model (ivrit.ai zipformer)"))
         XCTAssertTrue(notices.contains("compressed to 4 bits"), "NOTICE.md notes the change")
+    }
+
+    func testFluidAudioDependencyOptsOutOfNemoTextProcessingTrait() throws {
+        // Verify Package.swift has traits: [] on FluidAudio to catch silent reversions (#32).
+        let repo = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let packageSource = try String(contentsOf: repo.appendingPathComponent("Packages/CaptionCore/Package.swift"), encoding: .utf8)
+        XCTAssertTrue(packageSource.contains("traits: []"), "FluidAudio dependency must include traits: [] to exclude NemoTextProcessing")
+        XCTAssertTrue(packageSource.contains(#".package(url: "https://github.com/FluidInference/FluidAudio.git"#), "FluidAudio must be the dependency being configured")
+    }
+
+    func testNemotextprocessingIsNotLinked() {
+        // Removed via FluidAudio's traits feature (#32): the text-processing-rs static library is no longer part of the build.
+        // This is the actual link-time truth: TextNormalizer.isNativeAvailable returns false when the text-processing-rs
+        // static library is excluded (via canImport(CNemoTextProcessing), a compile-time conditional).
+        // Using an instance, not accessing isNativeAvailable statically (it's a non-static let).
+        let normalizer = TextNormalizer()
+        XCTAssertFalse(normalizer.isNativeAvailable, "NemoTextProcessing binary must be excluded via traits: [] (#32)")
+    }
+
+    func testNemotextprocessingIsNotInCreditsEntry() {
+        // Removed via FluidAudio's traits feature (#32): no longer credits responsibility.
+        XCTAssertFalse(CreditsEntry.coveredByFullLicenseTexts.contains("nemotextprocessing"), "nemotextprocessing should not be in credits after excluding via trait")
+    }
+
+    func testFluidAudioStillIncludesBundledComponents() throws {
+        // The text-processing-rs engine is excluded via trait, but fastcluster and VBx remain bundled in FluidAudio.
+        let repo = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let notices = try String(contentsOf: repo.appendingPathComponent("NOTICE.md"), encoding: .utf8)
+        XCTAssertTrue(notices.contains("### fastcluster"), "fastcluster is still bundled in FluidAudio")
+        XCTAssertTrue(notices.contains("### VBx (Speaker Diarization)"), "VBx is still bundled in FluidAudio")
+        XCTAssertFalse(notices.contains("## NemoTextProcessing (statically linked through FluidAudio)"), "NemoTextProcessing section removed")
+    }
+
+    func testLuxTTSLexiconIsDocumented() throws {
+        // LuxTTS lexicon (~1 MB) is still shipped and documented, but not excludable via trait at this pinned FluidAudio revision.
+        let repo = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let notices = try String(contentsOf: repo.appendingPathComponent("NOTICE.md"), encoding: .utf8)
+        XCTAssertTrue(notices.contains("LuxTTS"), "LuxTTS lexicon documentation is present in NOTICE.md")
     }
 }

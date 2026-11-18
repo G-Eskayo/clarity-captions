@@ -93,3 +93,16 @@ Full numbers: [docs/perf/speaker-scoreboard.md § Step 2](../perf/speaker-scoreb
 **pal6** is the build to ship. Until it is in the app, fp16 stays. The swap needs the exact scored files distributed
 (k-means isn't repeatable, so a rebuild is a different, unscored build), a run on a real iPhone, and NOTICE.md
 describing the change, since a compressed build is a Derivative Model under the NVIDIA Open Model License.
+
+## Text-processing engine exclusion via SwiftPM trait (2026-11-14, #32)
+
+FluidAudio v0.17.5 bundles text-processing-rs (NeMo Text Processing + rustfst + flate2 for text normalization), which the app does not use (speaker diarization only, per the original decision). This session excludes it via SwiftPM traits:
+
+**Static library size (iOS arm64, pre-link-time dead-stripping):**
+- `libtext_processing_rs.a`: 29,432,088 bytes (~29.4 MB)
+
+**Trait opt-out:** Package.swift now specifies `traits: []` on the FluidAudio dependency, excluding the text-processing-rs binary target. This opt-out requires swift-tools-version ≥ 6.1 (this manifest uses 6.2). The exclusion holds only if no other node in the dependency graph references FluidAudio directly — package traits are unioned across the graph, so if the Xcode app target or another package adds FluidAudio as a direct dependency, the trait union will re-enable the text-processing-rs binary. App targets (Spike and Mac) currently do not reference FluidAudio directly.
+
+**LuxTTS lexicon:** The app still ships FluidAudio's bundled LuxTTS lexicon (~1 MB), which provides pronunciation rules and cannot be excluded at this pinned revision. The lexicon is generated using espeak-ng (via piper_phonemize), which is GPL-3.0. FluidAudio ships no license statement for the generated data itself; whether GPL terms carry to the harvested lexicon is an open question. Documentation is in NOTICE.md.
+
+**Testing note:** The unit test `testNemotextprocessingIsNotLinked()` verifies that `TextNormalizer.isNativeAvailable` returns false in the SwiftPM test context (where the trait opt-out takes effect). However, the real proof that text-processing-rs is excluded from the shipped app requires the pipeline's app-build step, which links the actual `.app` binary. The pre-link-time static library size above is the source-level reduction available; the actual `.app` binary size reduction depends on link-time dead code stripping and is measured by the pipeline's app-build step (documented separately after app builds verify the change).
