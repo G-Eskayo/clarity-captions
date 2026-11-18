@@ -1,0 +1,35 @@
+{
+  "runs": [
+    {
+      "device": "iPhone 17 (128GB, silver)",
+      "model": "iPhone17,4",
+      "build": 11,
+      "engine": "parakeet-ultra-pal6",
+      "startChargePercent": 85,
+      "endChargePercent": null,
+      "roomTemperatureCelsius": 22.5,
+      "screenLocked": false,
+      "idleStopSetting": "never",
+      "startedAt": "2026-11-14T10:30:00-06:00",
+      "endedAt": null,
+      "notes": "Speaker at 1m. No gaps in playback. Ran full 60 min.",
+      "xtraceOutputPath": "capture-parakeet-2026-11-14.ctrace",
+      "xtraceExportPath": "capture-parakeet-2026-11-14-export.csv"
+    }
+  ],
+  "description": "60-minute Energy Log + Core ML capture sessions. One manifest per date/run. Fields are validation inputs for tests 3/8 in the write-up.",
+  "testFields": [
+    "device (string, for notes)",
+    "model (string, BCP-47 device model code)",
+    "build (number, CFBundleVersion)",
+    "engine (string: 'parakeet-ultra-pal6' or 'apple-speechanalyzer')",
+    "startChargePercent (number, integer 0-100)",
+    "endChargePercent (number or null if not yet filled)",
+    "roomTemperatureCelsius (number, decimal)",
+    "screenLocked (boolean, screen-off = still running due to ADR 0020 background caption)",
+    "idleStopSetting (string: 'fiveMinutes' | 'fifteenMinutes' | 'thirtyMinutes' | 'never')",
+    "startedAt, endedAt (ISO-8601 string or null)",
+    "notes (free text)",
+    "xtraceOutputPath, xtraceExportPath (filenames relative to scripts/battery-run/)"
+  ]
+}
