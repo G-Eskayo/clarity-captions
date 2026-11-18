@@ -124,3 +124,22 @@ final class RealFaceTimeCallReplayTests: XCTestCase {
         XCTAssertFalse(CallSignal.isCallLive(snapshot("com.gileskayo.captions[in] com.apple.CoreSpeech[in]")))
     }
 }
+
+/// #178 second-call detection: confirming that the heuristics don't mistakenly report a non-call as a call.
+final class CallSignalSecondCallTests: XCTestCase {
+    private func p(_ id: String, input: Bool = false, output: Bool = false) -> CallAudioActivity {
+        CallAudioActivity(name: id, isRunningInput: input, isRunningOutput: output)
+    }
+
+    func testAContinuityCallAnsweredOnThePhoneNeverReachesTheMac() {
+        // An iPhone call (via Continuity) is answered on the iPhone itself, not handed to the Mac; the Mac sees no recording.
+        XCTAssertFalse(CallSignal.isCallLive([p("com.apple.FaceTime", output: true), p("com.gileskayo.captions", input: true)]))
+    }
+
+    func testMicHeldByDictationOrVoiceMemosIsNotACall() {
+        // Other system apps using the mic are not calls.
+        XCTAssertFalse(CallSignal.isCallLive([p("com.apple.CoreSpeech", input: true, output: true)]))
+        XCTAssertFalse(CallSignal.isCallLive([p("com.apple.VoiceMemos", input: true)]))
+        XCTAssertFalse(CallSignal.isCallLive([p("com.gileskayo.marvin-voice", input: true)]))
+    }
+}

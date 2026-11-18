@@ -102,3 +102,7 @@ domain understanding only.
   not a hardcoded identity. For this project's origin and first real installation, that's Gil's
   mother (deaf, already owns an iPhone 17), but nothing in the app's design should assume it's
   specifically her — see [[0007]]'s "built for everyone" decision.
+
+## Mac call handling
+
+- **Call handling on macOS** (#178): the Mac app captions incoming calls and offers to save their transcripts separately from the room conversation. When a call arrives while the room is captioned, the room is paused and the call is captioned instead; when the call ends, the room resumes. Handles stacking: multiple calls can arrive one after another, each with its own save prompt, and each pauses and then resumes its predecessor. The full behavior table (state × event matrix) is in [`docs/mac-calls-behavior.md`](docs/mac-calls-behavior.md).

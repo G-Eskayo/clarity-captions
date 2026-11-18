@@ -11,20 +11,40 @@ final class CallNotifier: NSObject, UNUserNotificationCenterDelegate {
     static let notNowAction = "seal.call.notnow"
     static let requestID = "seal.call.ringing"
 
+    static let secondCategory = "seal.call.second"
+    static let holdAndAcceptAction = "seal.call.hold"
+    static let endAndAcceptAction = "seal.call.end"
+    static let secondNotNowAction = "seal.call.second.notnow"
+    static let secondRequestID = "seal.call.second"
+
     var onCaption: () -> Void = {}
     var onNotNow: () -> Void = {}
+    var onHoldAndAccept: (String) -> Void = { _ in }
+    var onEndAndAccept: (String) -> Void = { _ in }
 
     private var center: UNUserNotificationCenter { .current() }
+    private var pendingSecondApp: String?
 
     /// Once, at start: the choices, and macOS's "allow notifications" question the first time.
     func setUp() {
         center.delegate = self
         let caption = UNNotificationAction(identifier: Self.captionAction, title: String(localized: "Caption call"), options: [.foreground])
         let notNow = UNNotificationAction(identifier: Self.notNowAction, title: String(localized: "Not now"), options: [])
-        center.setNotificationCategories([UNNotificationCategory(identifier: Self.category, actions: [caption, notNow], intentIdentifiers: [])])
+        center.setNotificationCategories([
+            UNNotificationCategory(identifier: Self.category, actions: [caption, notNow], intentIdentifiers: []),
+            UNNotificationCategory(identifier: Self.secondCategory, actions: secondCallActions(), intentIdentifiers: [])
+        ])
         center.requestAuthorization(options: [.alert, .sound]) { granted, error in
             NSLog("[calls] notifications %@%@", granted ? "allowed" : "not allowed", error.map { " (\($0))" } ?? "")
         }
+    }
+
+    private func secondCallActions() -> [UNNotificationAction] {
+        [
+            UNNotificationAction(identifier: Self.holdAndAcceptAction, title: String(localized: "Hold & Accept"), options: [.foreground]),
+            UNNotificationAction(identifier: Self.endAndAcceptAction, title: String(localized: "End & Accept"), options: [.foreground]),
+            UNNotificationAction(identifier: Self.secondNotNowAction, title: String(localized: "Not now"), options: [])
+        ]
     }
 
     /// Whether the window is where she'd see the banner: the app in front, not hidden, the window on screen.
@@ -44,9 +64,27 @@ final class CallNotifier: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
+    func showSecondCall(app: String) {
+        pendingSecondApp = app
+        let content = UNMutableNotificationContent()
+        content.title = String(localized: "Another call incoming")
+        content.body = String(localized: "You're on a call. \(app) is calling.")
+        content.categoryIdentifier = Self.secondCategory
+        content.sound = .default
+        center.add(UNNotificationRequest(identifier: Self.secondRequestID, content: content, trigger: nil)) { error in
+            NSLog("[calls] second-call notification %@", error.map { "failed: \($0)" } ?? "posted")
+        }
+    }
+
     func remove() {
         center.removePendingNotificationRequests(withIdentifiers: [Self.requestID])
         center.removeDeliveredNotifications(withIdentifiers: [Self.requestID])
+    }
+
+    func removeSecondCall() {
+        center.removePendingNotificationRequests(withIdentifiers: [Self.secondRequestID])
+        center.removeDeliveredNotifications(withIdentifiers: [Self.secondRequestID])
+        pendingSecondApp = nil
     }
 
     /// Brings the window forward, unhiding the app (⌘H) if need be, so the call's captions are in view.
@@ -71,6 +109,21 @@ final class CallNotifier: NSObject, UNUserNotificationCenterDelegate {
                 self.onCaption()
             case Self.notNowAction:
                 self.onNotNow()
+            case Self.holdAndAcceptAction:
+                Self.bringWindowForward()
+                if let app = self.pendingSecondApp {
+                    self.onHoldAndAccept(app)
+                    self.removeSecondCall()
+                }
+            case Self.endAndAcceptAction:
+                Self.bringWindowForward()
+                if let app = self.pendingSecondApp {
+                    self.onEndAndAccept(app)
+                    self.removeSecondCall()
+                }
+            case Self.secondNotNowAction:
+                // Second call declined; just clear the notification.
+                self.removeSecondCall()
             default:
                 // A click on the notification itself: show the window with the banner, choice still open.
                 Self.bringWindowForward()

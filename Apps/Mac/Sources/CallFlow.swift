@@ -24,6 +24,8 @@ final class CallFlow: ObservableObject {
     @Published private var pausedRoom: (stream: CaptionStream, names: SpeakerNames, session: ConversationSession)?
     /// A conversation with words was set aside for the call (an empty window has nothing to come back to).
     var hasPausedRoom: Bool { pausedRoom.map { ConversationSession.hasContent($0.stream.lines) } ?? false }
+    private var pausedCalls: [(stream: CaptionStream, names: SpeakerNames, session: ConversationSession, startedAt: Date)] = []
+    private var heldCallApp: String?  // The call app we're holding via hold&accept; nil after resuming or ending
     private var callStartedAt = Date()
     private var queue: Task<Void, Never>?
     init(model: CaptionMacModel) { self.model = model }
@@ -35,14 +37,54 @@ final class CallFlow: ObservableObject {
             model.listenOverride = .roomOnly
             notifier.onCaption = { [weak self] in self?.send(.captionCall) }
             notifier.onNotNow = { [weak self] in self?.send(.notNow) }
+            notifier.onHoldAndAccept = { [weak self] app in
+                guard let self else { return }
+                let heldApp = self.callApp
+                self.callApp = app  // Now captioning the second call
+                self.heldCallApp = heldApp  // Track what we're holding
+                self.send(.holdAndAccept(heldApp: heldApp ?? ""))
+            }
+            notifier.onEndAndAccept = { [weak self] app in
+                guard let self else { return }
+                self.callApp = app  // Will caption this call after save answer
+                self.send(.endAndAccept(heldApp: self.callApp ?? ""))
+            }
             notifier.setUp()
         }
         watcher.onChange = { [weak self] app in
             guard let self else { return }
             let wasLive = self.callApp != nil
-            self.callApp = app
-            guard Self.isEnabled, wasLive != (app != nil) else { return }
-            self.send(app != nil ? .callStarted : .callEnded)
+            let isNowLive = app != nil
+            if !wasLive, isNowLive {
+                // First call arrived
+                self.callApp = app
+                if Self.isEnabled {
+                    self.send(.callStarted)
+                }
+            } else if wasLive, !isNowLive {
+                // All calls ended (both active and any held calls)
+                self.callApp = nil
+                self.heldCallApp = nil
+                if Self.isEnabled {
+                    self.send(.callEnded)
+                }
+            } else if wasLive, isNowLive, app != self.callApp {
+                // Different app detected while call is active
+                if let heldApp = self.heldCallApp, app == heldApp {
+                    // We switched back to the call we were holding; the second call ended
+                    self.callApp = app
+                    self.heldCallApp = nil
+                    if Self.isEnabled {
+                        self.send(.secondCallEnded)
+                    }
+                } else {
+                    // A new different call app detected (could be third call or initial detection)
+                    self.callApp = app
+                    if Self.isEnabled {
+                        self.send(.secondCallStarted(app: app ?? ""))
+                    }
+                }
+            }
         }
         watcher.start()
         #if DEBUG
@@ -105,6 +147,7 @@ final class CallFlow: ObservableObject {
         case .stopCall:
             await model.stopAndWait()
             model.listenOverride = .roomOnly
+            heldCallApp = nil  // Clear held call tracking when stopping
         case .saveCall:
             let lines = model.stream.lines
             if SessionRetention.shouldSave(lines: lines) {
@@ -116,6 +159,28 @@ final class CallFlow: ObservableObject {
             model.start()
         case .restoreRoom:
             finishCall()
+        case .holdCall:
+            // Pause the current call, same as pausing the room. Save its state for later resume.
+            await model.stopAndWait()
+            pausedCalls.append((model.stream, model.speakerNames, model.session, callStartedAt))
+        case .announceSecondCall(let app):
+            // Show second-call notification (always, whether window is in front or not).
+            notifier.showSecondCall(app: app)
+        case .resumeHeldCall:
+            // Resume a held call by restoring its stream, speakers, session, and start time.
+            if case let (stream, names, session, startedAt)? = pausedCalls.last {
+                pausedCalls.removeLast()
+                withAnimation(Self.fade) {
+                    model.stream = stream
+                    model.speakerNames = names
+                    model.session = session
+                    conversationToken += 1
+                }
+                callStartedAt = startedAt
+                model.listenOverride = .both
+                NSLog("[calls] held call engine resuming")
+                model.start()
+            }
         }
     }
 
@@ -131,6 +196,12 @@ final class CallFlow: ObservableObject {
             conversationToken += 1
         }
         model.listenOverride = .roomOnly
+
+        // If a call arrived while we were in the save prompt, ring for it now
+        if Self.isEnabled, arrival.queuedCall, callApp != nil {
+            arrival.clearQueuedCall()
+            send(.callStarted)
+        }
     }
 }
 

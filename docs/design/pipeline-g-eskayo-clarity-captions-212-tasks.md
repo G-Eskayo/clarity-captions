@@ -1,0 +1,9 @@
+1. Write `docs/mac-calls-behavior.md` (every cell filled per the Decisions and the inconsistency resolution above); link from `CONTEXT.md`.
+2. Write tests 1–16 above in `CallArrivalTests.swift` / `CallSignalTests.swift` / new `CallWatcherTests.swift`; confirm the new ones fail against today's code.
+3. Generalize `CallArrival`: add `Frame`, `paused: [Frame]`, the new events/effects, with the empty-stack smell removed (invariant documented, not defended).
+4. Update `CallFlow`: generalize `pausedRoom` into `pausedFrames`; fix the `onChange` guard so second-call detection actually fires; wire `holdAndAccept`/`endAndAccept` with the correct (held, not incoming) app; restore `callStartedAt` on resume; drop the window-in-front gate per the "announce" decision with no banner reintroduced.
+5. Extend `CallNotifier` with the second-call notification category/actions, independent `requestID`.
+6. Extend `CallWatcher`/`CallSignal` to detect a second call from a growing recording-object set, not just an app-name change; document it as best-effort/unverified in code comments.
+7. Run `swift test --package-path Packages/CaptionCore`; fix until green, including all pre-existing tests (regression safety).
+8. Add the one new UI string from test 17 only if/once a mock-up is confirmed in scope; otherwise leave it out and flag it on the PR as the one remaining look-change gap.
+9. In the PR: state plainly (a) which behavior is untested without the owner's real-hardware pass — specifically acceptance criterion 4's screen recordings and whether a real second FaceTime call is even detectable by this mechanism (point 2), and (b) whether the Mac app build/screenshots were exercised by this pipeline run (point 5).
