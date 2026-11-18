@@ -1,0 +1,11 @@
+1. Add `scripts/engine-eval/scoreboard_eval/__init__.py`, `rows.py` (the `ScenarioRow` dataclass and `ScoreboardSourceMissing` exception), and `markdown_table.py` (header-indexed, duplicate-header-aware table parser) — with its own unit tests (cases 3, 4, 5, 6, 7, 8, 9 above, at the parser level).
+2. Add `extract_english.py` (`## Overall`, `## Low-bit builds (#203)`, `## Size options` from `engine-accuracy-comparison.md`) with tests (cases 1, 2, 8, 14).
+3. Add `extract_languages.py` (per-`## <Language>` tables from `language-accuracy-comparison.md`) with tests (cases 1, 2, 5).
+4. Add `extract_hebrew.py` (two dataset tables from `hebrew-accuracy-comparison.md`, build table from `hebrew-coreml-comparison.md`) with tests (cases 1, 2, 6, 8, 9).
+5. Add `extract_translation.py` (reshape `translation-languages-results.json`) with tests (cases 1, 2, 10).
+6. Add `build.py` (`build_scoreboard`: group, sort, collect gaps, de-duplicate engine identity per case 11) with tests (cases 11, 12).
+7. Add `render.py` (`render_markdown`, `render_json`, including the "Not covered yet" gaps section) with a snapshot-style test asserting stable, sorted output (case 12).
+8. Add `cli.py` (`build` subcommand wiring extractors → `build_scoreboard` → both renderers → writes `docs/perf/engine-scoreboard.md` + `.json`) with a test invoking it against the real committed `docs/perf/*` files in this repo and asserting it runs end-to-end without error (case 13 for the failure path, run from a wrong cwd).
+9. Run the CLI for real, generate and commit `docs/perf/engine-scoreboard.md` and `docs/perf/engine-scoreboard.json`.
+10. Run `pytest` across all of `scripts/engine-eval` (not just the new tests) to confirm nothing in the shared `tests/` workspace broke, and confirm `swift test --package-path Packages/CaptionCore` is unaffected (no Swift files touched).
+11. PR: name the ticket (`Part of #249`), state plainly that steps 2–5 are follow-up work (step 2 blocked on #221), and link the new `docs/perf/engine-scoreboard.md` for review — no screenshots needed (no UI/look change).
