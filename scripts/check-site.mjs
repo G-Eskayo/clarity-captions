@@ -149,6 +149,20 @@ check(MIXED_ENGLISH.test('For iPhone 12 or newer. האפליקציה') && !MIXED
 // The banned patterns must catch real claims and spare honest disclaimers.
 check(BANNED[0][0].test('Seal shows who is speaking') && !BANNED[0][0].test("It doesn't know who anyone is"), 'BANNED[0] self-test')
 check(BANNED[4][0].test('Free for everyone') && !BANNED[4][0].test('freedom'), 'BANNED[4] self-test')
+
+// ref links: only the main branch, never a floating HEAD, dev branch, or old release branch
+export const refOk = (ref) => /^(main|v\d+\.\d+\.\d+)$/.test(ref)
+export function badRefLinks(text) {
+  const bad = []
+  for (const m of text.matchAll(/(?:github\.com\/G-Eskayo\/clarity-captions\/(blob|tree)|raw\.githubusercontent\.com\/G-Eskayo\/clarity-captions)\/([^/\s"')]+)/g)) {
+    const ref = m[2]
+    if (!refOk(ref)) bad.push(`${m[0]} uses ref "${ref}"`)
+  }
+  return bad
+}
+check(refOk('main') && refOk('v1.0.0') && !refOk('HEAD') && !refOk('dev') && !refOk('v1.0'), 'refOk self-test')
+check(badRefLinks('https://github.com/G-Eskayo/clarity-captions/blob/main/file').length === 0 && badRefLinks('https://github.com/G-Eskayo/clarity-captions/blob/v1.0.0/file').length === 0, 'badRefLinks allows main and versions')
+check(badRefLinks('https://github.com/G-Eskayo/clarity-captions/tree/HEAD').length === 1 && badRefLinks('https://raw.githubusercontent.com/G-Eskayo/clarity-captions/dev/file').length === 1, 'badRefLinks catches bad refs')
 // Prices, on every page in every language (#228): only $4.99 and $1.99, and $1.99 only for the Mac.
 check(OTHER_PRICE.test('Only $2.99') && OTHER_PRICE.test('$4.999') && OTHER_PRICE.test('$1.999') && OTHER_PRICE.test('רק $2.99') && OTHER_PRICE.test('5 דולר'), 'OTHER_PRICE catches other prices')
 check(!OTHER_PRICE.test('$4.99 once') && !OTHER_PRICE.test('$1.99 on the Mac') && !OTHER_PRICE.test('$4.99 פעם אחת'), 'OTHER_PRICE allows the real prices')
@@ -458,6 +472,13 @@ for (const f of pages.filter((p) => p.endsWith('versions.html'))) {
   }
 }
 check(SINGLE_LANGUAGE.test('Hebrew captions') && !SINGLE_LANGUAGE.test('More caption languages'), 'SINGLE_LANGUAGE self-test')
+
+// ref links: all GitHub links in the built site and source files must use main or a release version, never HEAD or a dev branch
+for (const f of [...pages, 'seal-data.js', 'devices.js']) {
+  for (const hit of badRefLinks(read(f))) {
+    check(false, `${f}: ${hit}`)
+  }
+}
 
 if (failures.length) {
   console.error(`site check: ${failures.length} problem(s)\n- ${failures.join('\n- ')}`)
