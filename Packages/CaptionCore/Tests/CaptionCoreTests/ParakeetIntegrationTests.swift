@@ -164,6 +164,61 @@ final class ParakeetIntegrationTests: XCTestCase {
                       "Apple captioned the rest in Spanish: \(after)")
     }
 
+    func testMemoryWarningPausesDiarizerFeedWithoutSwitchingEngine() async throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["CAPTION_PARAKEET"] == "1", "opt-in")
+        let said = "The diarizer pauses but captions keep coming from Parakeet."
+        let audio = try speech(said, name: "diarizer-pause")
+        let engine = TranscriptionEngine(
+            diarizerModelURL: repo.appendingPathComponent("Apps/Spike/Resources/Models/Sortformer_v2.1.mlmodelc"),
+            recognizer: .parakeet(modelURL: repo.appendingPathComponent("Apps/Spike/Resources/Models/ParakeetUltra")))
+        let events = EventCollector()
+        engine.onMemoryPressureEvent = { [events] action in events.record(action) }
+        let started = Date()
+        var firedWarning = false
+        for try await u in try await engine.startReplaying(fileURL: audio) {
+            if !firedWarning, Date().timeIntervalSince(started) > 2 {
+                firedWarning = true
+                engine.handle(.memoryWarning)
+            }
+            _ = u.isFinal
+        }
+        XCTAssertEqual(engine.engineName, "parakeet-ultra-pal6", "first warning keeps Parakeet")
+        XCTAssertNil(engine.fallbackReason)
+        XCTAssertEqual(events.recorded, [.pauseSpeakerLabels], "first warning sheds labels only (ear voice off by default)")
+    }
+
+    func testSecondMemoryWarningSwitchesToAppleAndFiresTheShedCallback() async throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["CAPTION_PARAKEET"] == "1", "opt-in")
+        let said = "The second warning switches and fires the callback."
+        let audio = try speech(said, name: "callback-test")
+        let engine = TranscriptionEngine(
+            diarizerModelURL: repo.appendingPathComponent("Apps/Spike/Resources/Models/Sortformer_v2.1.mlmodelc"),
+            recognizer: .parakeet(modelURL: repo.appendingPathComponent("Apps/Spike/Resources/Models/ParakeetUltra")))
+        let events = EventCollector()
+        engine.onMemoryPressureEvent = { [events] action in events.record(action) }
+        let started = Date()
+        var warningCount = 0
+        for try await u in try await engine.startReplaying(fileURL: audio) {
+            if warningCount < 2, Date().timeIntervalSince(started) > Double(warningCount + 2) {
+                warningCount += 1
+                engine.handle(.memoryWarning)
+            }
+            _ = u.isFinal
+        }
+        XCTAssertEqual(engine.fallbackReason, .memoryWarning)
+        XCTAssertEqual(engine.engineName, "apple-speechanalyzer", "second warning switches")
+        XCTAssertEqual(events.recorded.count, 2, "both warnings fire events")
+        XCTAssertEqual(events.recorded[0], .pauseSpeakerLabels, "first event sheds labels")
+        XCTAssertEqual(events.recorded[1], .switchToApple, "second event switches")
+    }
+
+    private final class EventCollector: @unchecked Sendable {
+        private let lock = NSLock()
+        private var events: [FallbackAction] = []
+        func record(_ action: FallbackAction) { lock.withLock { events.append(action) } }
+        var recorded: [FallbackAction] { lock.withLock { events } }
+    }
+
     private final class Counter: @unchecked Sendable {
         private let lock = NSLock()
         private var n = 0

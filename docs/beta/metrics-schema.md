@@ -37,7 +37,11 @@ the tester's own optional note.
       "captionLanguage": "en-US",
       "captionLanguageChosen": false,
       "faceToFace": { "owner": "en-US", "partner": "es-ES" },
-      "build": "11"
+      "build": "11",
+      "memoryShedEvents": [
+        { "action": "pauseSpeakerLabels", "at": "2026-10-12T12:40:30-06:00" },
+        { "action": "switchToApple", "at": "2026-10-12T12:40:35-06:00" }
+      ]
     }
   ]
 }
@@ -62,8 +66,9 @@ the tester's own optional note.
 | `faceToFace` | Face to face: each half's picked language (`owner` is her half), `null` for a half not picked; the whole field is `null` when face to face was off. With one half picked, that half's language captions everything (#208). Build 11 (#288) | `FaceToFaceSplit.captions` |
 | `build` | The build that recorded this conversation. `app.build` is the build that sent the report, which can be later (#288) | `CFBundleVersion` at Start |
 | `device.language` | The phone's first preferred language (BCP-47), to set beside `captionLanguage`. Build 11 (#288) | `Locale.preferredLanguages` |
+| `memoryShedEvents` | Memory pressure events: each step taken in response to low memory, in order. Each has `action` (`pauseSpeakerLabels`, `pauseEarVoice`, or `switchToApple`) and `at` (timestamp). `null` if no memory pressure occurred. Added build 12 (#284); additive, still schema 1 | `ConversationRecorder.memoryPressureShed(_:at:)` |
 
-Size: about 1 KB per conversation, with no cap until sent (ADR 0023), so even 1,000 unsent conversations make a
+Size: about 1 KB per conversation (or about 1.1 KB if memory pressure events occurred), with no cap until sent (ADR 0023), so even 1,000 unsent conversations make a
 report of about 1 MB, well within an iMessage attachment.
 
 ## How MARVIN ingests reports

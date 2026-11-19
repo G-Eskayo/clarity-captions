@@ -148,6 +148,16 @@ public struct BatterySample: Codable, Equatable, Sendable {
     }
 }
 
+/// One action taken in response to a memory warning (design §5, #284).
+public struct MemoryShedEvent: Codable, Equatable, Sendable {
+    public var action: String
+    public var at: Date
+    public init(action: String, at: Date) {
+        self.action = action
+        self.at = at
+    }
+}
+
 /// Everything measured about one conversation, from its first Start until [ New ]. It sees caption text only to
 /// count rewritten words and holds none of it: no text survives an update.
 public struct ConversationRecorder: Codable, Equatable, Sendable {
@@ -172,6 +182,8 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
     /// What the latest stretch ran in: caption language, face to face, build (#288). Nil if saved by build 10 or
     /// earlier, which didn't record it.
     public private(set) var context: CaptioningContext?
+    /// Memory shed/switch events, in order. Nil if none occurred.
+    public private(set) var memoryShedEvents: [MemoryShedEvent]?
 
     private var captioningSeconds = 0.0
     private var segmentStart: Date?
@@ -212,7 +224,7 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
         case maxThermal, launchToStartSeconds, startToFirstCaptionSeconds, launch
         case captioningSeconds, segmentStart, startPressedAt, lag, micLevel, changedWords, finalWords, relabels
         case speakers, batteryDrop, batteryMinutes, segmentBattery, engine, engineFallback, leftAt
-        case context = "captioningIn"
+        case context = "captioningIn", memoryShedEvents
     }
 
     public init(id: UUID) { self.id = id }
@@ -279,6 +291,19 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
     public mutating func thermal(_ level: ThermalLevel) { maxThermal = max(maxThermal ?? level, level) }
 
     public mutating func lowPowerMode(_ on: Bool) { if on { lowPowerModeSeen = true } }
+
+    /// Record a memory shed or switch event.
+    public mutating func memoryPressureShed(_ action: FallbackAction, at date: Date) {
+        let actionName: String
+        switch action {
+        case .pauseSpeakerLabels: actionName = "pauseSpeakerLabels"
+        case .pauseEarVoice: actionName = "pauseEarVoice"
+        case .switchToApple: actionName = "switchToApple"
+        default: return
+        }
+        if memoryShedEvents == nil { memoryShedEvents = [] }
+        memoryShedEvents?.append(MemoryShedEvent(action: actionName, at: date))
+    }
 
     /// Captions stopped. A second stop for the same stretch changes nothing.
     public mutating func captioningStopped(at date: Date, battery: BatterySample?, ending newEnding: ConversationEnding) {
@@ -372,7 +397,8 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
             captionLanguage: context?.captionLanguage,
             captionLanguageChosen: context?.captionLanguageChosen,
             faceToFace: context?.faceToFace,
-            build: context?.build)
+            build: context?.build,
+            memoryShedEvents: memoryShedEvents)
     }
 
     /// The report's conversations: every stored one, with the copy on screen (if it has started) in place of its
@@ -484,11 +510,13 @@ public struct ConversationReport: Codable, Equatable, Sendable {
     public var faceToFace: FaceToFaceLanguages? = nil
     /// The build that recorded this conversation; `app.build` is the one that sent the report.
     public var build: String? = nil
+    /// Memory pressure shed/switch events, in order. Nil if none occurred.
+    public var memoryShedEvents: [MemoryShedEvent]? = nil
 
     private enum CodingKeys: String, CodingKey {
         case id, startedAt, minutes, rating, ratingSkipped, note, lag, rewriteRate, speakers, launchToStartSeconds
         case startToFirstCaptionSeconds, ending, battery, micLevel, launch, engine, engineFallback
-        case captionLanguage, captionLanguageChosen, faceToFace, build
+        case captionLanguage, captionLanguageChosen, faceToFace, build, memoryShedEvents
     }
 
     /// Every schema key is written, `null` when unknown, so every report has the same shape for MARVIN to read.
@@ -515,6 +543,7 @@ public struct ConversationReport: Codable, Equatable, Sendable {
         try c.encode(captionLanguageChosen, forKey: .captionLanguageChosen)
         try c.encode(faceToFace, forKey: .faceToFace)
         try c.encode(build, forKey: .build)
+        try c.encode(memoryShedEvents, forKey: .memoryShedEvents)
     }
 }
 

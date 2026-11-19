@@ -75,6 +75,8 @@ public enum FallbackAction: Sendable, Equatable {
     case normalHop
     case doubleHop
     case switchToApple
+    case pauseSpeakerLabels
+    case pauseEarVoice
 
     /// Switches count toward the two-in-a-day pin; hop changes don't.
     public var countsAsFallback: Bool { self == .switchToApple }
@@ -160,6 +162,30 @@ public struct SilentEngineWatchdog: Sendable {
         if speech { speechSeconds += seconds }
         if speechSeconds >= Self.limit - 1e-9 || failures >= Self.failuresInARow { done = true; return true }
         return false
+    }
+}
+
+/// Memory-pressure fallback ladder (design §5): on the first warning, sheds speaker labels (and ear voice if both are on).
+/// On the second warning, switches to Apple's engine. Later warnings stay on the switch. Per-session state;
+/// never persists across app launches.
+public struct MemoryPressureLadder: Sendable {
+    private var warningCount = 0
+
+    public init() {}
+
+    /// On the first warning, sheds what can be shed without leaving Parakeet. On the second, switches to Apple.
+    /// Returns the actions to apply in order: either shed-labels (and maybe shed-ear-voice), or switch-to-Apple.
+    public mutating func warn(labelsOn: Bool, earVoiceOn: Bool) -> [FallbackAction] {
+        warningCount += 1
+        if warningCount == 1 {
+            var actions: [FallbackAction] = []
+            if labelsOn { actions.append(.pauseSpeakerLabels) }
+            if earVoiceOn { actions.append(.pauseEarVoice) }
+            if actions.isEmpty { actions.append(.switchToApple) }
+            return actions
+        } else {
+            return [.switchToApple]
+        }
     }
 }
 

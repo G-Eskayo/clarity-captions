@@ -148,6 +148,19 @@ final class BetaFeedbackCenter: ObservableObject {
         update(session) { $0.audioLevel(dbfs) }
     }
 
+    func memoryPressureEvent(_ session: ConversationSession, _ action: FallbackAction) {
+        guard isOn else { return }
+        update(session) { $0.memoryPressureShed(action, at: Date()) }
+    }
+
+    /// Wire the engine's memory callbacks to record events in the beta feedback.
+    func wireMemoryCallbacks(_ engine: TranscriptionEngine, session: ConversationSession) {
+        guard isOn else { return }
+        engine.onMemoryPressureEvent = { [weak self] action in
+            self?.memoryPressureEvent(session, action)
+        }
+    }
+
     /// About once a second while captioning.
     func tick(_ session: ConversationSession) {
         guard isOn else { return }

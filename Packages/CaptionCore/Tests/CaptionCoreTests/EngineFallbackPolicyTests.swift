@@ -87,10 +87,10 @@ final class EngineFallbackPolicyTests: XCTestCase {
     // MARK: During a session
 
     func testEachTriggerOnParakeetTakesTheDocumentedAction() {
+        // Memory warnings are handled by MemoryPressureLadder, not this table; see MARK: Memory pressure ladder below.
         let cases: [(FallbackTrigger, FallbackAction)] = [
             (.loadFailed, .switchToApple),
             (.noWordsFromSpeech, .switchToApple),
-            (.memoryWarning, .switchToApple),
             (.thermal(.nominal), .normalHop),
             (.thermal(.fair), .normalHop),
             (.thermal(.serious), .doubleHop),
@@ -188,5 +188,56 @@ final class EngineFallbackPolicyTests: XCTestCase {
         XCTAssertEqual(choose(fallbacks: store.recent(now: now)).engine, .apple)
         store.clear()
         XCTAssertEqual(choose(fallbacks: store.recent(now: now)).engine, .parakeet)
+    }
+
+    // MARK: Memory pressure ladder
+
+    func testFirstMemoryWarningPausesSpeakerLabelsAndStaysOnParakeet() {
+        var ladder = MemoryPressureLadder()
+        XCTAssertEqual(ladder.warn(labelsOn: true, earVoiceOn: false), [.pauseSpeakerLabels])
+    }
+
+    func testFirstMemoryWarningShedsEarVoiceTooWhenBothAreOn() {
+        var ladder = MemoryPressureLadder()
+        XCTAssertEqual(ladder.warn(labelsOn: true, earVoiceOn: true), [.pauseSpeakerLabels, .pauseEarVoice])
+    }
+
+    func testFirstMemoryWarningShedsEarVoiceWhenLabelsAreAlreadyOff() {
+        var ladder = MemoryPressureLadder()
+        XCTAssertEqual(ladder.warn(labelsOn: false, earVoiceOn: true), [.pauseEarVoice])
+    }
+
+    func testFirstMemoryWarningSwitchesWhenNothingIsLeftToShed() {
+        var ladder = MemoryPressureLadder()
+        XCTAssertEqual(ladder.warn(labelsOn: false, earVoiceOn: false), [.switchToApple])
+    }
+
+    func testSecondMemoryWarningSwitchesRegardlessOfState() {
+        var ladder = MemoryPressureLadder()
+        _ = ladder.warn(labelsOn: true, earVoiceOn: true)
+        XCTAssertEqual(ladder.warn(labelsOn: true, earVoiceOn: true), [.switchToApple])
+
+        var ladder2 = MemoryPressureLadder()
+        _ = ladder2.warn(labelsOn: false, earVoiceOn: false)
+        XCTAssertEqual(ladder2.warn(labelsOn: false, earVoiceOn: false), [.switchToApple])
+    }
+
+    func testThirdAndLaterWarningsKeepSwitching() {
+        var ladder = MemoryPressureLadder()
+        _ = ladder.warn(labelsOn: true, earVoiceOn: true)
+        _ = ladder.warn(labelsOn: true, earVoiceOn: true)
+        XCTAssertEqual(ladder.warn(labelsOn: true, earVoiceOn: true), [.switchToApple])
+        XCTAssertEqual(ladder.warn(labelsOn: true, earVoiceOn: true), [.switchToApple])
+    }
+
+    func testLadderStateIsPerInstanceNotShared() {
+        var ladder1 = MemoryPressureLadder()
+        var ladder2 = MemoryPressureLadder()
+
+        XCTAssertEqual(ladder1.warn(labelsOn: true, earVoiceOn: false), [.pauseSpeakerLabels])
+        XCTAssertEqual(ladder1.warn(labelsOn: true, earVoiceOn: false), [.switchToApple], "ladder1 moves to second warning")
+
+        XCTAssertEqual(ladder2.warn(labelsOn: true, earVoiceOn: false), [.pauseSpeakerLabels], "ladder2 is independent, still on first warning")
+        XCTAssertEqual(ladder2.warn(labelsOn: true, earVoiceOn: false), [.switchToApple], "now ladder2 moves to second warning")
     }
 }

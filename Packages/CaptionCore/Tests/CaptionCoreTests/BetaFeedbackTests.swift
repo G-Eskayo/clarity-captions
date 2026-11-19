@@ -357,6 +357,8 @@ final class BetaFeedbackTests: XCTestCase {
         r.audioLevel(-40); r.thermal(.fair)
         r.captioningIn(.init(captionLanguage: "en-US", captionLanguageChosen: false,
                              faceToFace: .init(owner: "en-US", partner: "es-ES"), build: "11"))
+        r.memoryPressureShed(.pauseSpeakerLabels, at: at(100))
+        r.memoryPressureShed(.switchToApple, at: at(105))
         r.rate(8, note: "Lost it when the waiter talked fast")
         r.captioningStopped(at: at(1400), battery: BatterySample(level: 0.74, charging: false), ending: .userStop)
         let data = try report([r.entry(now: at(1500))]).json(timeZone: TimeZone(identifier: "America/Denver")!)
@@ -374,9 +376,10 @@ final class BetaFeedbackTests: XCTestCase {
         let data = try report([r.entry(now: at(1))]).json()
         let ours = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
         let schema = try XCTUnwrap(JSONSerialization.jsonObject(with: Self.schemaExample()) as? [String: Any])
-        // `ending.reason` only exists for failures and `launch` may be null; everything else is always there.
+        // `ending.reason` only exists for failures, `launch` and `memoryShedEvents` may be null; everything else is always there.
         let expected = Self.keyPaths(schema).subtracting(["conversations[].launch.fullDance", "conversations[].launch.barShown",
-                                                          "conversations[].faceToFace.owner", "conversations[].faceToFace.partner"])
+                                                          "conversations[].faceToFace.owner", "conversations[].faceToFace.partner",
+                                                          "conversations[].memoryShedEvents[].action", "conversations[].memoryShedEvents[].at"])
         XCTAssertEqual(Self.keyPaths(ours).subtracting(["conversations[].ending.kind"]), expected.subtracting(["conversations[].ending.kind"]))
         XCTAssertTrue(String(decoding: data, as: UTF8.self).contains("\"medianDBFS\" : null"))
     }
@@ -563,6 +566,78 @@ final class BetaFeedbackTests: XCTestCase {
             XCTAssertFalse(text.contains(sentinel), "caption text leaked into the \(what)")
             XCTAssertFalse(text.contains("Luigi"), "caption text leaked into the \(what)")
         }
+    }
+
+    // MARK: memory shed events
+
+    func testMemoryShedEventsAreRecordedInOrderWithTimestamps() {
+        var r = ConversationRecorder(id: UUID())
+        r.startPressed(at: at(0), sinceLaunch: nil, launch: nil)
+        r.captioningStarted(at: at(1), battery: nil)
+
+        r.memoryPressureShed(.pauseSpeakerLabels, at: at(10))
+        r.memoryPressureShed(.pauseEarVoice, at: at(11))
+        r.memoryPressureShed(.switchToApple, at: at(12))
+
+        let report = r.entry(now: at(60))
+        XCTAssertEqual(report.memoryShedEvents?.count, 3)
+        XCTAssertEqual(report.memoryShedEvents?[0].action, "pauseSpeakerLabels")
+        XCTAssertEqual(report.memoryShedEvents?[0].at, at(10))
+        XCTAssertEqual(report.memoryShedEvents?[1].action, "pauseEarVoice")
+        XCTAssertEqual(report.memoryShedEvents?[1].at, at(11))
+        XCTAssertEqual(report.memoryShedEvents?[2].action, "switchToApple")
+        XCTAssertEqual(report.memoryShedEvents?[2].at, at(12))
+    }
+
+    func testOldStoredConversationsWithNoMemoryEventsDecodeAsEmpty() {
+        let json = """
+        {
+            "id": "00000000-0000-0000-0000-000000000000",
+            "startedAt": "1970-01-01T00:00:00Z",
+            "minutes": 1.0,
+            "rating": null,
+            "ratingSkipped": false,
+            "note": null,
+            "lag": {"p50Seconds": null, "p95Seconds": null, "samples": 0},
+            "rewriteRate": null,
+            "speakers": {"detected": 0, "relabelsPerMinute": null},
+            "launchToStartSeconds": null,
+            "startToFirstCaptionSeconds": null,
+            "ending": null,
+            "battery": {"dropPercentPer30Min": null, "maxThermalState": null},
+            "micLevel": {"medianDBFS": null, "quietFraction": null},
+            "launch": null,
+            "engine": null,
+            "engineFallback": null,
+            "captionLanguage": null,
+            "captionLanguageChosen": null,
+            "faceToFace": null,
+            "build": null
+        }
+        """.data(using: .utf8)!
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let report = try? decoder.decode(ConversationReport.self, from: json)
+        XCTAssertNotNil(report, "old JSON without memoryShedEvents should decode successfully")
+        XCTAssertNil(report?.memoryShedEvents, "missing field should decode as nil")
+    }
+
+    func testEveryScheduleKeyIsAlwaysWrittenForTheNewField() {
+        var r = ConversationRecorder(id: UUID())
+        r.startPressed(at: at(0), sinceLaunch: nil, launch: nil)
+        r.captioningStarted(at: at(1), battery: nil)
+
+        let report = r.entry(now: at(60))
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let json = try? encoder.encode(report)
+        guard let json = json, let string = String(data: json, encoding: .utf8) else {
+            XCTFail("Could not encode report")
+            return
+        }
+
+        XCTAssertTrue(string.contains("memoryShedEvents"), "field must be present in encoded JSON")
     }
 
     // MARK: helpers

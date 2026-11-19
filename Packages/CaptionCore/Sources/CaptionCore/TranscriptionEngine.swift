@@ -158,6 +158,15 @@ public final class TranscriptionEngine {
     public var onFallback: (@Sendable (FallbackReason) -> Void)?
     private var fallbackCounted = false
 
+    /// Memory pressure ladder: tracks warnings and decides which features to shed.
+    private var memoryLadder = MemoryPressureLadder()
+    private var labelsShed = false
+    public var earVoiceOn = false
+    /// Called each time the memory ladder returns an action (shed labels, shed ear voice, switch to Apple).
+    public var onMemoryPressureEvent: (@Sendable (FallbackAction) -> Void)?
+    /// Called when the memory ladder decides to shed ear voice.
+    public var onShedEarVoice: (@Sendable () -> Void)?
+
     /// `diarizerModelURL` has no default on purpose: the app must say where its bundled speaker model
     /// lives, so there is no accidental network path (ADR 0014). The same goes for Parakeet's folder.
     public init(locale: Locale = Locale(identifier: "en-US"), micMode: MicMode = .standard, diarizerModelURL: URL,
@@ -355,10 +364,37 @@ public final class TranscriptionEngine {
 
     /// A trigger from the running backend or the app (design §5).
     public func handle(_ trigger: FallbackTrigger) {
-        let running = routeLock.withLock { route.backend?.choice ?? .apple }
-        guard EngineFallbackPolicy.action(for: trigger, running: running) == .switchToApple,
-              let reason = EngineFallbackPolicy.reason(for: trigger) else { return }
-        Task { await self.switchToApple(reason: reason) }
+        switch trigger {
+        case .memoryWarning:
+            let actions = routeLock.withLock {
+                let running = route.backend?.choice ?? .apple
+                guard running == .parakeet else { return [FallbackAction]() }
+                return memoryLadder.warn(labelsOn: !labelsShed, earVoiceOn: earVoiceOn)
+            }
+
+            for action in actions {
+                switch action {
+                case .pauseSpeakerLabels:
+                    routeLock.withLock { labelsShed = true }
+                    onMemoryPressureEvent?(action)
+                case .pauseEarVoice:
+                    earVoiceOn = false
+                    onShedEarVoice?()
+                    onMemoryPressureEvent?(action)
+                case .switchToApple:
+                    onMemoryPressureEvent?(action)
+                    Task { await self.switchToApple(reason: .memoryWarning) }
+                default:
+                    break
+                }
+            }
+
+        default:
+            let running = routeLock.withLock { route.backend?.choice ?? .apple }
+            guard EngineFallbackPolicy.action(for: trigger, running: running) == .switchToApple,
+                  let reason = EngineFallbackPolicy.reason(for: trigger) else { return }
+            Task { await self.switchToApple(reason: reason) }
+        }
     }
 
     /// Mid-session switch: the microphone, diarizer, sound labeler and clock stay up; only the recognizer changes.
@@ -474,7 +510,7 @@ public final class TranscriptionEngine {
            let dOut = convert(buffer, with: diarConverter(from: inFormat, to: diarFormat), to: diarFormat),
            let ch = dOut.floatChannelData {
             let samples = Array(UnsafeBufferPointer(start: ch[0], count: Int(dOut.frameLength)))
-            diarizer.feed(samples)
+            if !labelsShed { diarizer.feed(samples) }
             soundLabeler.feed(samples, atAudioTime: fed.seconds)
             let level = recordLoudness(samples: samples, atAudioTime: fed.seconds)
             if let faceToFace {
