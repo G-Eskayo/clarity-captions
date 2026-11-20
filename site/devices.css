@@ -392,3 +392,14 @@ html.motion .ear.in .ear-out { opacity: 1; transform: none; }
 .to-scale-why { margin: .5rem 0 0; max-width: 24rem; color: var(--muted); font-size: .95rem; }
 .to-scale-why b { display: block; color: var(--text); font-size: 1.05rem; }
 .to-scale-wrap .price-note { margin: 0; max-width: 24rem; }
+
+/* ── print (#265: the Hebrew page goes to family as a PDF): every feature part at once, no tab pills or language bar,
+   no motion, colours kept, and headings and figures not split from what follows ── */
+@media print {
+  html.tabs-on [data-feature][data-off] { display: block; }
+  [data-features], .lang-bar { display: none !important; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  h2, h3 { break-after: avoid; }
+  .card, figure, table, .works-on, .get, .tablet, .phone, .mac, .duo-stills, .devtable tr { break-inside: avoid; }
+}

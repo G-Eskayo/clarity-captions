@@ -35,6 +35,7 @@ export const alternatesFor = (langs, lang, page) =>
   langs.filter((l) => l.pages.includes(page) && (l.published || l.code === lang.code))
 
 const KEYS = /\{\{([^{}]+)\}\}/g
+export const PRICE_TOKEN = /\{price:(app|translationIOS|translationMac|macApp)\}/g
 export const keysOf = (template) => [...template.matchAll(KEYS)].map((m) => m[1]).filter((k) => !k.startsWith('@'))
 
 // Relative links from a page in site/<code>/: a page that exists in this language stays in it, anything else
@@ -101,6 +102,13 @@ export function buildPage(langs, lang, page, words = strings(lang.code), english
     if (typeof words[k] === 'string') return words[k]
     missing.push(k)
     return english[k] ?? m
+  })
+  // Prices are the storefront's own (owner, 2026-11-03): each language file has one _prices table, and strings say
+  // {price:app}, {price:translationIOS}, {price:translationMac} or {price:macApp}. A missing price fails the build.
+  html = html.replace(PRICE_TOKEN, (m, k) => {
+    const p = words._prices?.[k]
+    if (!p) throw new Error(`${lang.code}.json: no _prices.${k} for ${page}`)
+    return p
   })
   if (lang.code !== 'en') html = html.replace(/\sdata-app(?=[\s>])/g, ' data-app lang="en" dir="ltr"')
   html = html.replace(/^<!doctype html>\n/i, (d) => `${d}<!-- Built by scripts/build-site.mjs from site-src/pages/${page} and site-src/lang/${lang.code}.json: edit those, not this. -->\n`)
