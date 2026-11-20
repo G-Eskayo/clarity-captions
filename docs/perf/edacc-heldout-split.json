@@ -1,0 +1,50 @@
+{
+ "method": "Calibration = whole EdAcc validation conversations (both speakers) in sha256('272:conversation') order, no accent twice, never an accent's last scored speaker; test = every other clip. Speaker- and conversation-disjoint.",
+ "seed": 272,
+ "calibration": {
+  "speakers": [
+   "EDACC-C07-A",
+   "EDACC-C07-B",
+   "EDACC-C09-A",
+   "EDACC-C09-B",
+   "EDACC-C18-A",
+   "EDACC-C18-B",
+   "EDACC-C23-A",
+   "EDACC-C23-B",
+   "EDACC-C44-A",
+   "EDACC-C44-B",
+   "EDACC-C61-A",
+   "EDACC-C61-B"
+  ],
+  "clips": 1603,
+  "hours": 2.67,
+  "accents": 9,
+  "speaker_count": 12,
+  "clip_digest": "8abd7425378bf3bcaa6077b5db4279155509d921b78fe5e247fbfeb829bdaf00",
+  "accents_list": [
+   "Catalan",
+   "European",
+   "French",
+   "Indian English",
+   "Irish English",
+   "Italian",
+   "Mainstream US English",
+   "Southern British English",
+   "Spanish"
+  ]
+ },
+ "test": {
+  "speakers": 110,
+  "clips": 15926,
+  "hours": 28.879,
+  "accents": 32,
+  "clip_digest": "203a223be6b4eb0ff56087d76c56fb3b31f510e1e77a2b03091a05574987b2a3"
+ },
+ "edacc-test": {
+  "speakers": 60,
+  "clips": 8527,
+  "hours": 16.332,
+  "accents": 24,
+  "clip_digest": "1d91b0771ffdc72d057472e225d3d29248f67170eeb55433c7a8fb978f6b6139"
+ }
+}

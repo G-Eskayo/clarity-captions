@@ -101,6 +101,19 @@ def main(argv: list[str] | None = None) -> int:
     z.add_argument("--method", default="as published")
     z.add_argument("--license", default="CC BY 4.0")
 
+    hs = sub.add_parser("make-split", help="pick the held-out calibration speakers and write the split record (#272)")
+    hs.add_argument("--shards", type=Path, required=True, help="directory with index.json and shard-NNN/manifest.jsonl")
+    hs.add_argument("--out", type=Path, required=True)
+    hs.add_argument("--speakers", type=int, default=12)
+
+    hr2 = sub.add_parser("heldout-report", help="score builds on the held-out test split, paired against a reference")
+    hr2.add_argument("--shards", type=Path, required=True)
+    hr2.add_argument("--split", type=Path, required=True)
+    hr2.add_argument("--results", type=Path, nargs="+", required=True, help="directories of *.jsonl (top level only)")
+    hr2.add_argument("--ref", default="ultra-pal6")
+    hr2.add_argument("--models", default="", help="comma list (default: every model found)")
+    hr2.add_argument("--json-out", type=Path, required=True)
+
     a = p.parse_args(argv)
     if a.cmd == "build-shards":
         from .shards import build_shards
@@ -134,6 +147,28 @@ def main(argv: list[str] | None = None) -> int:
         from .report_hebrew import write_hebrew_report
         for name, s in write_hebrew_report(a.shards, a.results, a.out, a.json_out).items():
             print(f"{name}: {s.clips_compared}/{s.clips_total} clips compared, {len(s.cells)} engines")
+    elif a.cmd in ("make-split", "heldout-report"):
+        from . import heldout
+        from .shards import read_manifest
+        index = json.loads((a.shards / "index.json").read_text())
+        rows = [r for name in index["shards"] for r in read_manifest(a.shards / name)]
+        if a.cmd == "make-split":
+            rec = heldout.split_record(rows, heldout.choose_calibration_speakers(rows, n=a.speakers))
+            a.out.write_text(json.dumps(rec, indent=1) + "\n")
+            print(json.dumps({k: {x: v for x, v in rec[k].items() if x != "speakers"} for k in heldout.PARTS}, indent=1))
+        else:
+            from .results import load_results
+            rec = heldout.load_split(a.split, rows)
+            files = [f for d in a.results for f in sorted(d.glob("*.jsonl"))]
+            res, _ = load_results(files)
+            models = [m for m in a.models.split(",") if m] or None
+            got = heldout.heldout_scores(rows, res, rec, a.ref, models)
+            a.json_out.write_text(json.dumps(got, indent=1) + "\n")
+            for part in ("test", "edacc-test"):
+                for m, c in got[part].items():
+                    d = c["vs_ref"]
+                    print(f"{part:10s} {m:28s} {c['wer']*100:5.2f}% ({c['ci'][0]*100:.2f}-{c['ci'][1]*100:.2f})  "
+                          f"vs {a.ref}: {d[0]*100:+.2f} ({d[1]*100:+.2f} to {d[2]*100:+.2f})  {c['clips']} clips")
     elif a.cmd == "sherpa":
         from .sherpa_run import run_shard
         run_shard(a.shard_dir, a.results, a.model_dir, a.repeats, a.threads, a.status)
