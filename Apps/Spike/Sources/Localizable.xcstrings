@@ -496,6 +496,17 @@
         }
       }
     },
+    "Copy speech locales" : {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy speech locales"
+          }
+        }
+      }
+    },
     "Copy all text" : {
       "extractionState": "manual",
       "localizations": {

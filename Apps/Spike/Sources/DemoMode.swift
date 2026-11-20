@@ -53,6 +53,7 @@ import Foundation
 ///   -ClarityDemoFaceToFaceReady one   only one language is ready: Face to face opens Settings' setup (#245)
 ///   -ClarityDemoIntoSpeechProgress 0.4   Into's speech model mid-download in Settings (#245)
 ///   -ClarityDemoDeveloperPanel  opens the developer panel (mic mode, Engine picker, #150): simctl can't do the 1.5 s hold
+///   -ClarityDemoLocaleDumpCopied  #36: pre-shows the "Copied N locales" confirmation after the Copy button
 /// It feeds the same CaptionStream the real engine feeds, so what you see is the real caption view: speaker colours,
 /// names, line breaks and sound labels. No microphone, speech model or network is involved.
 enum DemoMode {
@@ -60,6 +61,8 @@ enum DemoMode {
     static var isStatic: Bool { flag("-ClarityDemoStatic") }
     static var opensSettings: Bool { flag("-ClarityDemoSettings") }
     static var opensDeveloperPanel: Bool { flag("-ClarityDemoDeveloperPanel") }
+    /// #36: pre-shows the locale dump confirmation for pipeline screenshots.
+    static var showsLocaleDumpCopied: Bool { flag("-ClarityDemoLocaleDumpCopied") }
     /// The section id to scroll Settings to, from `-ClarityDemoSettingsSection <id>`. Debug builds only.
     static var settingsSection: String? {
         #if DEBUG
