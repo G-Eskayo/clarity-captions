@@ -16,6 +16,7 @@ import { chunksOf, blocksFor, lip, transcriptOf, previewOf, savedTitle, autoplay
 import { barFractions, winners, countFrame, SAMPLE_STEPS } from '../site/motion.js'
 import { FEATURES, OLD_TABS, featureFor, duoFrame, duoBlocks, duoChunks, DUO_TALK, DUO_CAPTIONS } from '../site/devices.js'
 import { languages, outPath, urlOf, alternatesFor } from './build-site.mjs'
+import { appPriceProblems, IOS_FAKE_STORE_FILE, MAC_MOCKUP_FILE } from './app-prices.mjs'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 // SITE_DIR checks a copy of site/ (used to prove the checks catch seeded faults).
@@ -56,7 +57,7 @@ for (const js of ['demo.js', 'seal-data.js', 'motion.js', 'devices.js', 'lang.js
 const visible = (html) => html.replace(/<style[\s\S]*?<\/style>/g, ' ').replace(/<script[\s\S]*?<\/script>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ')
 // The real prices (owner, 2026-10-30, #228). The app is $4.99 once (ADR 0007). Live Translation is $4.99 on iPhone, iPad
 // and iPhone Duo, and $1.99 on the Mac, which is its own app (ADR 0028). Pages name no other price, and $1.99 only for
-// the Mac. The StoreKit file and the app's debug fake store use the iOS price (section 10).
+// the Mac. The StoreKit file and the app's debug fake store use the iOS price, the Mac mock-up the Mac's (section 10).
 export const PRICES = { app: '4.99', translationIOS: '4.99', translationMac: '1.99' }
 export const OTHER_PRICE = /\$\s?(?!(4|1)\.99\b)\d|\d+(\.\d+)? ?(usd|dollars|דולר|ש"ח|ש״ח|₪)/i
 // Each $1.99 must be said of the Mac: the devices named in its clause are all the Mac, or, when its clause names none,
@@ -415,21 +416,17 @@ for (const feat of RELEASE_11_ONLY) check(labels.some((t) => t.includes(`data-fe
 }
 
 // 10. The app's prices (#228): the StoreKit file sells Live Translation at the iOS price, not shared with family (the
-// owner, 2026-10-30: each person buys their own); the debug fake store shows the same price; no other Swift or string
-// file hard-codes a price, so the app shows StoreKit's.
+// owner, 2026-10-30: each person buys their own); no Swift or string file hard-codes a price, so the app shows
+// StoreKit's, except the iPhone's debug fake store and the Mac mock-up's one price constant (scripts/app-prices.mjs).
 {
   const storekit = JSON.parse(readFileSync(path.join(ROOT, 'Apps/Spike/StoreKit/SealSpeak.storekit'), 'utf-8'))
   const translation = storekit.products.find((p) => p.productID === 'com.gileskayo.captions.translation')
   check(translation?.displayPrice === PRICES.translationIOS, `SealSpeak.storekit: Live Translation is ${translation?.displayPrice}, not ${PRICES.translationIOS}`)
   check(translation?.familyShareable === false, 'SealSpeak.storekit: Live Translation must not be shared with family')
-  const fake = `price = "$${PRICES.translationIOS}"`
-  for (const f of readdirSync(path.join(ROOT, 'Apps'), { recursive: true }).filter((f) => /\.(swift|xcstrings|strings)$/.test(f))) {
-    const lines = readFileSync(path.join(ROOT, 'Apps', f), 'utf-8').split('\n')
-    if (f.endsWith('TranslationCenter.swift')) check(lines.some((l) => l.includes('DemoMode.fakeStore') && l.includes(fake)), `Apps/${f}: the fake store's price must be ${fake}`)
-    for (const [i, l] of lines.entries()) {
-      if (/"[^"]*(\$\s?\d+[.,]\d\d|\d[.,]\d\d\s?(\$|USD|€|£))[^"]*"/.test(l) && !(l.includes('DemoMode.fakeStore') && l.includes(fake))) check(false, `Apps/${f}:${i + 1} hard-codes a price; show StoreKit's displayPrice`)
-    }
-  }
+  const swift = readdirSync(path.join(ROOT, 'Apps'), { recursive: true }).filter((f) => /\.(swift|xcstrings|strings)$/.test(f))
+  const files = Object.fromEntries(swift.map((f) => [f.split(path.sep).join('/'), readFileSync(path.join(ROOT, 'Apps', f), 'utf-8')]))
+  for (const k of [IOS_FAKE_STORE_FILE, MAC_MOCKUP_FILE]) check(k in files, `Apps/${k} is missing (the price rule's sanctioned line lives there)`)
+  for (const msg of appPriceProblems(files, PRICES)) check(false, msg)
 }
 
 // 9. The CSS mirrors itself (#207): logical properties, so dir="rtl" flips a page. Physical left/right stays only where

@@ -56,6 +56,10 @@ enum DemoMode {
     static let asksLanguage = false
     static let translate: String? = nil
     static let fakeStore = false
+    /// The Mac's Live Translation price in the screenshot mock-ups (`-SealTranslateMockup`), until the Mac's own StoreKit
+    /// purchase is wired (#213) and shows its displayPrice. The only price in the Mac app's code: check-site.mjs (section
+    /// 10) checks it is the Mac's price (PRICES.translationMac) and fails on any other.
+    static let mockupPrice = "$1.99"
 }
 
 /// Beta feedback (ADR 0023) is iPhone-only for now, so Settings' "Test version" section never shows on the Mac.

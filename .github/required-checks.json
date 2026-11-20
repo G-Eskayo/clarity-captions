@@ -75,12 +75,14 @@
         "scripts/*",
         "docs/research/evidence/*",
         "Apps/Spike/StoreKit/*",
-        "Apps/Spike/Sources/TranslationCenter.swift"
+        "Apps/*.swift",
+        "Apps/*.xcstrings",
+        "Apps/*.strings"
       ],
       "command": [
         "bash",
         "-c",
-        "node --test scripts/build-site.test.mjs scripts/lang-offer.test.mjs scripts/required-checks.test.mjs && node scripts/build-site.mjs --check && node scripts/check-site.mjs && node --test scripts/check-evidence.test.mjs && node scripts/check-evidence.mjs"
+        "node --test scripts/build-site.test.mjs scripts/lang-offer.test.mjs scripts/required-checks.test.mjs scripts/app-prices.test.mjs && node scripts/build-site.mjs --check && node scripts/check-site.mjs && node --test scripts/check-evidence.test.mjs && node scripts/check-evidence.mjs"
       ],
       "requires": [
         "node"
