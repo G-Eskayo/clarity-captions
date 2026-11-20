@@ -124,3 +124,22 @@ final class RealFaceTimeCallReplayTests: XCTestCase {
         XCTAssertFalse(CallSignal.isCallLive(snapshot("com.gileskayo.captions[in] com.apple.CoreSpeech[in]")))
     }
 }
+
+/// Ticket #212: additional edge cases
+final class CallSignalAdvancedTests: XCTestCase {
+    private func p(_ id: String, input: Bool = false, output: Bool = false) -> CallAudioActivity {
+        CallAudioActivity(name: id, isRunningInput: input, isRunningOutput: output)
+    }
+
+    func testAContinuityCallAnsweredOnTheiPhone() {
+        // Test 13: a Continuity call answered on iPhone never uses Mac's mic, so isCallLive stays false.
+        XCTAssertFalse(CallSignal.isCallLive([p("com.apple.FaceTime", output: true)]), "iPhone call doesn't use Mac mic")
+    }
+
+    func testVoiceMemosDictationNotACall() {
+        // Test 14: extend existing testOtherAppsUsingTheMicAreNotACall — confirm Voice Memos, dictation not calls.
+        XCTAssertFalse(CallSignal.isCallLive([p("com.apple.VoiceMemos", input: true, output: true)]))
+        XCTAssertFalse(CallSignal.isCallLive([p("com.apple.CoreSpeech", input: true, output: true)]))
+        XCTAssertFalse(CallSignal.isCallLive([p("com.gileskayo.marvin-voice", input: true, output: true)]))
+    }
+}

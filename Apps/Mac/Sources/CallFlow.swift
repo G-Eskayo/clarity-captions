@@ -21,9 +21,10 @@ final class CallFlow: ObservableObject {
     private unowned let model: CaptionMacModel
     private let watcher = CallWatcher()
     private let notifier = CallNotifier()
-    @Published private var pausedRoom: (stream: CaptionStream, names: SpeakerNames, session: ConversationSession)?
+    private let secondCallNotifier = CallNotifier()
+    @Published private var pausedStack: [(stream: CaptionStream, names: SpeakerNames, session: ConversationSession)] = []
     /// A conversation with words was set aside for the call (an empty window has nothing to come back to).
-    var hasPausedRoom: Bool { pausedRoom.map { ConversationSession.hasContent($0.stream.lines) } ?? false }
+    var hasPausedRoom: Bool { pausedStack.last.map { ConversationSession.hasContent($0.stream.lines) } ?? false }
     private var callStartedAt = Date()
     private var queue: Task<Void, Never>?
     init(model: CaptionMacModel) { self.model = model }
@@ -36,6 +37,10 @@ final class CallFlow: ObservableObject {
             notifier.onCaption = { [weak self] in self?.send(.captionCall) }
             notifier.onNotNow = { [weak self] in self?.send(.notNow) }
             notifier.setUp()
+
+            secondCallNotifier.onCaption = { [weak self] in self?.send(.holdAndAccept) }
+            secondCallNotifier.onNotNow = { [weak self] in self?.send(.notNow) }
+            secondCallNotifier.setUp()
         }
         watcher.onChange = { [weak self] app in
             guard let self else { return }
@@ -54,10 +59,12 @@ final class CallFlow: ObservableObject {
         let captioning = model.state == .listening || model.state == .preparing
         let wasRinging = arrival.banner == .ringing
         let effects = arrival.handle(event, captioning: captioning)
-        // The notification: up when the call starts ringing and she isn't looking at the window, gone once it's answered
-        // either way or the call ends.
-        if arrival.banner == .ringing, !wasRinging, !CallNotifier.windowInFront { notifier.show(detail: ringingDetail) }
+
+        // First call notification: up when ringing, gone once answered or call ends (Notification Center only, per decision).
+        if arrival.banner == .ringing, !wasRinging { notifier.show(detail: ringingDetail) }
         if wasRinging, arrival.banner != .ringing { notifier.remove() }
+        secondCallNotifier.removeSecondCall()  // Clear any second call notification on state change
+
         NSLog("[calls] %@ while %@ -> %@ %@", "\(event)", captioning ? "captioning" : "not captioning", "\(arrival.step)", "\(effects)")
         guard !effects.isEmpty else { return }
         let previous = queue
@@ -90,7 +97,7 @@ final class CallFlow: ObservableObject {
         switch effect {
         case .pauseRoom:
             await model.stopAndWait()
-            pausedRoom = (model.stream, model.speakerNames, model.session)
+            pausedStack.append((model.stream, model.speakerNames, model.session))
         case .startCall:
             withAnimation(Self.fade) {
                 model.stream = CaptionStream()
@@ -108,7 +115,6 @@ final class CallFlow: ObservableObject {
         case .saveCall:
             let lines = model.stream.lines
             if SessionRetention.shouldSave(lines: lines) {
-                // Into the same saved list as every conversation (Saved, kept 30 days).
                 try? await model.store?.save(SavedConversation.from(sessionStart: callStartedAt, lines: lines, speakerNames: model.speakerNames))
             }
         case .resumeRoom:
@@ -116,25 +122,40 @@ final class CallFlow: ObservableObject {
             model.start()
         case .restoreRoom:
             finishCall()
+        case .holdCall:
+            await model.stopAndWait()
+        case .resumeHeldCall:
+            // Resume the held call or room from the stack.
+            if let paused = pausedStack.last {
+                withAnimation(Self.fade) {
+                    model.stream = paused.stream
+                    model.speakerNames = paused.names
+                    model.session = paused.session
+                    conversationToken += 1
+                }
+                NSLog("[calls] resuming from hold")
+                model.start()
+            }
+        case .announceSecondCall(let app):
+            secondCallNotifier.show(detail: "Second call from \(app)")
         }
     }
 
     /// Puts the room's conversation back (or an empty one, if the call interrupted nothing).
     private func finishCall() {
-        let room = pausedRoom
-        pausedRoom = nil
+        let paused = pausedStack.popLast()
         // The call view fades back to the conversation it interrupted (owner, 2026-10-28).
         withAnimation(Self.fade) {
-            model.stream = room?.stream ?? CaptionStream()
-            model.speakerNames = room?.names ?? SpeakerNames()
-            model.session = room?.session ?? ConversationSession()
+            model.stream = paused?.stream ?? CaptionStream()
+            model.speakerNames = paused?.names ?? SpeakerNames()
+            model.session = paused?.session ?? ConversationSession()
             conversationToken += 1
         }
         model.listenOverride = .roomOnly
     }
 }
 
-/// Under the pop-up: the banner while ringing or after the call, the paused note during it.
+/// Under the pop-up: the banner after the call ends (save prompt), and the paused note during a call.
 struct CallBannerSlot: View {
     @ObservedObject var calls: CallFlow
     let style: CaptionStyle
@@ -143,7 +164,8 @@ struct CallBannerSlot: View {
         Group {
             switch calls.arrival.banner {
             case .ringing:
-                CallBannerView(kind: .ringing, style: style, detailOverride: calls.ringingDetail, onPrimary: { calls.send(.captionCall) }, onSecondary: { calls.send(.notNow) })
+                // Ringing notifications are Notification Center only (per decision #212).
+                EmptyView()
             case .ended:
                 CallBannerView(kind: .ended, style: style, onPrimary: { calls.send(.saveTranscript) }, onSecondary: { calls.send(.returnToConversation) })
             case nil:

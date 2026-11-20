@@ -1,6 +1,6 @@
 import Foundation
 
-/// A call arriving while the Mac captions the room (#178). Pure: the Mac app feeds it what the call watcher saw and
+/// A call arriving while the Mac captions the room (#178, #212). Pure: the Mac app feeds it what the call watcher saw and
 /// what was tapped, and carries out the effects it hands back, in order.
 ///
 /// - Ringing while the room is captioned: a banner, nothing else changes. [ Not now ] or ignoring it: still nothing.
@@ -9,7 +9,16 @@ import Foundation
 ///   if it was being captioned when the call came.
 /// - Every call rings, captions on or off (owner, 2026-10-28 ~21:05 UTC: Seal Speak always offers to caption a call).
 ///   With captions off, the conversation on screen comes back after the call, and captions stay off.
+/// - Second call ringing while call 1 is active (#212): announced in Notification Center, call 1 stays active.
+///   Hold & Accept or End & Accept actions hold/end call 1 and start call 2, with save prompts at each step.
+///   No depth limit: call 3 can ring while call 2 is active, etc.
 public struct CallArrival: Equatable, Sendable {
+    /// A paused context: either the room (before any call) or a held call (while another call is active).
+    public enum Frame: Equatable, Sendable {
+        case room(captioning: Bool)
+        case heldCall(app: String)
+    }
+
     public enum Step: Equatable, Sendable {
         /// No call, or none we're involved in.
         case room
@@ -27,6 +36,9 @@ public struct CallArrival: Equatable, Sendable {
         case callStarted, callEnded
         case captionCall, notNow
         case saveTranscript, returnToConversation
+        case secondCallStarted(app: String), secondCallEnded
+        case holdAndAccept, endAndAccept
+        case callHeld, callResumedFromHold
     }
 
     public enum Effect: Equatable, Sendable {
@@ -41,13 +53,21 @@ public struct CallArrival: Equatable, Sendable {
         case resumeRoom
         /// Bring the conversation that was on screen back, captions still off (they were off when the call came).
         case restoreRoom
+        /// Hold the active call without stopping it.
+        case holdCall
+        /// Resume a held call or the room.
+        case resumeHeldCall
+        /// Announce a second call in Notification Center.
+        case announceSecondCall(app: String)
     }
 
     public enum Banner: Equatable, Sendable { case ringing, ended }
 
     public private(set) var step: Step = .room
-    /// Whether the room was being captioned when the call came, so it's resumed only then.
-    private var resumeRoomAfter = false
+    /// Stack of paused contexts: room (before any call) or held calls.
+    private var paused: [Frame] = []
+    /// Track which second call app has been announced to deduplicate signals.
+    private var announcedSecondCallApp: String? = nil
 
     public init() {}
 
@@ -65,27 +85,93 @@ public struct CallArrival: Equatable, Sendable {
         case (.room, .callStarted):
             step = .ringing
             return []
+
         case (.ringing, .captionCall):
             step = .call
-            resumeRoomAfter = captioning
+            paused.append(.room(captioning: captioning))
             return [.pauseRoom, .startCall]
+
         case (.ringing, .notNow):
             step = .declined
             return []
+
         case (.ringing, .callEnded), (.declined, .callEnded):
             step = .room
             return []
+
         case (.call, .callEnded):
             step = .ended
             return [.stopCall]
+
+        case (.call, .secondCallStarted(let app)):
+            // Announce the second call but keep call 1 active, deduplicating repeated signals.
+            if announcedSecondCallApp != app {
+                announcedSecondCallApp = app
+                return [.announceSecondCall(app: app)]
+            }
+            return []
+
+        case (.call, .secondCallEnded):
+            // Second call ended without being answered; clear the announcement.
+            announcedSecondCallApp = nil
+            return []
+
+        case (.call, .holdAndAccept):
+            // Hold call 1 and accept call 2 (which is about to start).
+            announcedSecondCallApp = nil
+            paused.append(.heldCall(app: "unknown"))
+            step = .call
+            return [.holdCall, .startCall]
+
+        case (.call, .endAndAccept):
+            // End call 1 (save prompt), then start call 2 after answer.
+            step = .ended
+            return [.stopCall]
+
+        case (.call, .callHeld):
+            // Hold the current call without accepting another.
+            paused.append(.heldCall(app: "unknown"))
+            return [.holdCall]
+
+        case (.call, .callResumedFromHold):
+            // Resume the held call (unresumed-after-hold, not a second call scenario).
+            if !paused.isEmpty, case .heldCall = paused.last {
+                paused.removeLast()
+            }
+            return [.resumeHeldCall]
+
         case (.ended, .saveTranscript), (.ended, .returnToConversation):
-            step = .room
             var effects: [Effect] = event == .saveTranscript ? [.saveCall] : []
-            effects.append(resumeRoomAfter ? .resumeRoom : .restoreRoom)
-            resumeRoomAfter = false
+
+            // Determine what to resume: a held call, or the room.
+            if !paused.isEmpty {
+                let last = paused.removeLast()
+                switch last {
+                case .room(let wasCapitioning):
+                    step = .room
+                    effects.append(wasCapitioning ? .resumeRoom : .restoreRoom)
+                case .heldCall:
+                    effects.append(.resumeHeldCall)
+                    // After resuming a held call, check if there's a room below it.
+                    // If so, skip the call and go back to room instead.
+                    if !paused.isEmpty, case .room(let wasCapitioning) = paused.last {
+                        paused.removeLast()
+                        step = .room
+                        effects.append(wasCapitioning ? .resumeRoom : .restoreRoom)
+                    } else {
+                        // No room below, resume the call normally.
+                        step = .call
+                    }
+                }
+            } else {
+                step = .room
+                effects.append(.resumeRoom)
+            }
+
             return effects
+
         default:
-            // Repeats (a call's sound reported twice) and stale taps (a banner button after the call ended) change nothing.
+            // Repeats and stale taps change nothing.
             return []
         }
     }

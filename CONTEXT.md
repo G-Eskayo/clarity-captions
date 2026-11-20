@@ -85,6 +85,13 @@ domain understanding only.
   minutes; 15, 30 or Never in Settings). A gentle pause, not a failure. The only behavior setting;
   every other setting is caption display. See [[0019]].
 
+- **Mac calls**: when a call arrives on the Mac while captioning the room, a notification announces it
+  with [ Caption call ] / [ Not now ] choices. Accepting pauses the room and captions the call; declining
+  or ignoring keeps captioning the room. When the call ends, a save-transcript prompt appears and either
+  answer resumes the room (if it was being captioned). Stacking: a second call ringing while the first
+  is active stays announced; answering it (via "Hold & Accept" or "End & Accept") holds or ends call 1
+  and starts call 2, with save prompts at each step. No depth limit. See `docs/mac-calls-behavior.md`.
+
 - **Saved conversation**: the transcript of one captioning session, saved automatically on the phone
   when captioning stops and deleted after 30 days. Never backed up or synced. Distinct from the live
   caption stream, which is what's on screen now. See [[0022]].
