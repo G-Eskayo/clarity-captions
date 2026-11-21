@@ -13,15 +13,15 @@ import Foundation
 enum CallAudioSelfTest {
     static let sentence = "She sells seashells by the seashore. The harbor is calm this morning."
 
-    static var isRequested: Bool { UserDefaults.standard.string(forKey: "CallAudioSelfTest") != nil }
+    static var isRequested: Bool { LaunchFlag.value(after: "-CallAudioSelfTest") != nil }
 
     static func runIfRequested() {
-        if UserDefaults.standard.bool(forKey: "MarvinRouteWatch") { Task.detached { await watchRoute() } ; return }
-        guard let mode = UserDefaults.standard.string(forKey: "CallAudioSelfTest") else { return }
+        if LaunchFlag.isSet("-MarvinRouteWatch") { Task.detached { await watchRoute() } ; return }
+        guard let mode = LaunchFlag.value(after: "-CallAudioSelfTest") else { return }
         Task.detached {
             let ok: Bool
             do { ok = try await run(mode: mode) } catch { log("FAILED: \(error)"); ok = false }
-            exit(ok ? 0 : 1)
+            ExitLogging.exit(reason: ok ? "transcript matched" : "transcript mismatch", code: ok ? 0 : 1)
         }
     }
 
@@ -96,7 +96,7 @@ enum CallAudioSelfTest {
         return times == 1 && (text.contains("seashells") || text.contains("sea shells"))
     }
 
-    /// `-MarvinRouteWatch YES`: runs the room mic until quit and prints every route change, the mic it chose and how loud
+    /// `-MarvinRouteWatch`: runs the room mic until quit and prints every route change, the mic it chose and how loud
     /// it is, so headphones can be connected and disconnected while it runs. Never touches the call.
     private static func watchRoute() async {
         let room = RoomMicSource()
@@ -104,7 +104,7 @@ enum CallAudioSelfTest {
         do {
             _ = try meter.open()
             try meter.start { _ in }
-        } catch { log("FAILED: \(error)"); exit(1) }
+        } catch { log("FAILED: \(error)"); ExitLogging.exit(reason: "failed to open microphone: \(error)", code: 1) }
         var last = ""
         for second in 0..<3600 {
             let route = RoomMicSource.describeRoute()
@@ -114,7 +114,7 @@ enum CallAudioSelfTest {
         }
         log("choices made: \(room.history)")
         meter.stop()
-        exit(0)
+        ExitLogging.exit(reason: "route watch completed", code: 0)
     }
 
     @discardableResult

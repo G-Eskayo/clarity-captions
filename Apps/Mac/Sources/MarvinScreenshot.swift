@@ -12,19 +12,19 @@ import SwiftUI
 /// running (proof of a real run, without Screen Recording).  the #172 pop-up mock-up (Paper when light, Harbor when dark)
 enum MarvinScreenshot {
     static func runIfRequested() {
-        let defaults = UserDefaults.standard
         // A `-MarvinScene` shot is of the live window (MarvinScene), not the mock-up.
-        guard let path = defaults.string(forKey: "MarvinScreenshot"), defaults.string(forKey: "MarvinScene") == nil else { return }
-        let dark = defaults.string(forKey: "MarvinAppearance") == "dark"
+        guard let path = LaunchFlag.value(after: "-MarvinScreenshot"), LaunchFlag.value(after: "-MarvinScene") == nil else { return }
+        let dark = LaunchFlag.value(after: "-MarvinAppearance") == "dark"
         var style = CaptionStyle.standard
         let preset = CaptionPreset.all.first { $0.id == (dark ? "harbor" : "paper") }!
         style.background = preset.background
         style.text = preset.text
 
-        let variant = CallPopupMockup.Variant(rawValue: defaults.string(forKey: "SealPopupMockup") ?? "auto") ?? .auto
+        let variant = CallPopupMockup.Variant(rawValue: LaunchFlag.value(after: "-SealPopupMockup") ?? "auto") ?? .auto
         let view = Group {
-            if let step = defaults.string(forKey: "SealCallMockup").flatMap(CallArrivalMockup.Step.init) {
-                CallArrivalMockup(step: step, style: style, phase: defaults.object(forKey: "SealCallPhase") == nil ? 0.18 : defaults.double(forKey: "SealCallPhase"))
+            if let step = LaunchFlag.value(after: "-SealCallMockup").flatMap(CallArrivalMockup.Step.init) {
+                let phase = LaunchFlag.double(after: "-SealCallPhase") ?? 0.18
+                CallArrivalMockup(step: step, style: style, phase: phase)
             } else {
                 CallPopupMockup(variant: variant, style: style)
             }
@@ -34,25 +34,24 @@ enum MarvinScreenshot {
 
         do {
             try render(view, to: URL(fileURLWithPath: path), dark: dark)
-            exit(0)
+            ExitLogging.exit(reason: "screenshot rendered successfully", code: 0)
         } catch {
             FileHandle.standardError.write("screenshot failed: \(error)\n".data(using: .utf8)!)
-            exit(1)
+            ExitLogging.exit(reason: "screenshot render failed: \(error)", code: 1)
         }
     }
 
     static func scheduleLiveSnapshotIfRequested() {
-        let defaults = UserDefaults.standard
-        guard let path = defaults.string(forKey: "MarvinLiveSnapshot") else { return }
+        guard let path = LaunchFlag.value(after: "-MarvinLiveSnapshot") else { return }
         #if DEBUG
         // Debug only: `com.gileskayo.captions.snapshot` (a distributed notification) snapshots the window now.
         DistributedNotificationCenter.default().addObserver(forName: .init("com.gileskayo.captions.snapshot"), object: nil, queue: .main) { _ in
             guard let view = NSApplication.shared.windows.first(where: { $0.title == CaptionMacApp.windowTitle })?.contentView else { return }
             try? write(view, to: URL(fileURLWithPath: path))
         }
-        guard defaults.object(forKey: "MarvinLiveSnapshotAfter") != nil else { return }
+        guard LaunchFlag.value(after: "-MarvinLiveSnapshotAfter") != nil else { return }
         #endif
-        let delay = defaults.double(forKey: "MarvinLiveSnapshotAfter")
+        let delay = LaunchFlag.double(after: "-MarvinLiveSnapshotAfter") ?? 0
         DispatchQueue.main.asyncAfter(deadline: .now() + max(delay, 1)) {
             guard let view = NSApplication.shared.windows.first(where: { $0.title == CaptionMacApp.windowTitle })?.contentView else { return }
             do { try write(view, to: URL(fileURLWithPath: path)) } catch {

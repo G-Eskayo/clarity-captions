@@ -1,0 +1,54 @@
+## North-star fit
+
+- **Reuses before adding:** `OneScreenSourceRulesTests.swift`'s `appSources()`/`code()`/`occurrences()` text-scanning pattern (`Packages/CaptionCore/Tests/CaptionCoreTests/OneScreenSourceRulesTests.swift:8-34`) for a new CaptionCore source-rule test over `Apps/Mac/Sources`. `DemoMode.flag(_:)` / `DemoMode.value(after:)` (`Apps/Spike/Sources/DemoMode.swift:212-228`) for the launch-argument-only parsing convention — same dash-prefixed flag names already documented in `MarvinScreenshot.swift`'s and `MarvinScene.swift`'s header comments. `Logger(subsystem: "com.gileskayo.captions", category: ...)` (`Apps/Mac/Sources/CallFlow.swift:167`, `Packages/CaptionCore/Sources/CaptionCore/RoomMicSource.swift:51`) for the exit/backtrace logger's subsystem. Injectable-dependency-with-a-default style already used throughout CaptionCore (`CaptionStyleStore.init(defaults: UserDefaults = .standard)` etc.) for `LaunchFlag`'s testable `arguments:` parameter.
+- **Simplest sufficient approach:** one small pure type (`LaunchFlag`) in CaptionCore replaces every `UserDefaults.standard` read in the four named files with a literal-argv check, closing the exact leftover-default mechanism the ticket describes. One small app-layer type (`ExitLogging`) gives every exit a named reason and installs one `atexit` hook. No new dependency, no new build config, no change to signing/entitlements/deployment target.
+- **Where it spends tokens:** a small amount of new code (two new Mac source files, one new CaptionCore source file, two new CaptionCore test files) in exchange for closing an unexplained-quit class of bug permanently, not just once.
+- **Leaves the user more capable:** this is entirely developer/diagnostic tooling — it doesn't touch the primary user's caption experience at all, except by making the next silent quit (if any) explainable instead of a dead end.
+- **Which machine:** no runtime choice here — this only affects the Mac app's own source and its CaptionCore dependency; nothing to place elsewhere.
+- **A north star argues against unscoped work:** the ticket's own "how we'll try to break it" bullet about the helper-process XPC drop is explicitly conditional ("if the quit shows up... fix it with a test") — I'm not pre-building a fix for a bug that hasn't reproduced since logging didn't exist to catch it. That step is deferred to the manual soak (acceptance criterion 4), which I can't run myself (no hardware audio/XPC access, can't run the app).
+
+One scope call I made rather than asking: the ticket's bullet 2 says "for example `MarvinScene`, `MarvinScreenshot`" — I'm reading "those test-only paths" as *the same four files already named in bullet 1* (`CallAudioSelfTest.swift`, `HideCheck.swift`, `MarvinScreenshot.swift`, `MarvinScene.swift`), since that's the enumerated, exit()-calling set the title ("harden the test-only **exit** paths") is about. `IPhoneViewShims.swift`'s `MarvinSettingsSection` key and `CallFlow.swift`'s `#if DEBUG`-only `SealFakeCall` family read the same way but never call `exit()` and aren't named — left untouched. `CallFlow.swift`'s `listenTo` key is a real persisted user preference ("set by hand… keeps #172's behavior exactly"), not a test flag — explicitly out of scope.
+
+A second call: the atexit backtrace gate ("Debug and TestFlight builds… never App Store") uses a synchronous `Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt"` check rather than ADR 0023's `AppTransaction` StoreKit-2 verification. ADR 0023 picked the stronger async/verified check because it gates a privacy-sensitive data-collection feature; here the gate only decides whether to add one local backtrace line to the unified log (no caption text ever reaches it), and synchronous detection also avoids a startup race where an exit in the first instant of launch — the one case this ticket is actually about — would land before an async StoreKit round-trip resolves.
+
+## Tests I will write first
+
+1. **`LaunchFlagTests.swift`** (new, `Packages/CaptionCore/Tests/CaptionCoreTests/`) — for the new pure `LaunchFlag` type:
+   - `isSet`/`value(after:)` true/false and present/absent on ordinary argv.
+   - Empty argv array (`isSet("-X", in: [])` → false; `value(after:)` → nil).
+   - Malformed input: the flag is the very last element (no following value) → `value(after:)` returns nil instead of crashing.
+   - Repeats: the flag appears twice → the first occurrence's value wins (documents current behavior, matches `DemoMode`'s precedent).
+   - A misuse case the ticket's category list implies but doesn't name: a flag name that's a prefix of another (`-MarvinScene` vs. `-MarvinSceneExtra`) must not cross-match — exact string equality only.
+   - `double(after:)` parses a number and returns nil on garbage (`"nope"`), never crashes.
+   - **The actual attack from the ticket's "how we'll try to break it" bullet 1:** set `UserDefaults.standard` key `"MarvinScene"` to a real value (simulating a value left behind by an earlier screenshot run, or one macOS's `NSArgumentDomain` still remembers), then assert `LaunchFlag.isSet("-MarvinScene")` (using the test process's *real* argv, which never contains `-MarvinScene`) is still `false` — proving the saved default does nothing. Cleans up the real `UserDefaults.standard` key in a `defer` (restoring whatever was there before, same care as other defaults-touching tests in this suite).
+2. **`MacExitPathSourceRulesTests.swift`** (new, same directory, mirroring `OneScreenSourceRulesTests`'s `Apps/Spike/Sources`-scanning helper but pointed at `Apps/Mac/Sources`):
+   - No bare `exit(` anywhere in `Apps/Mac/Sources` except through `Darwin.exit(` — i.e. every occurrence of the substring `"exit("` must also contain `"Darwin.exit("`. This is the regression gate: **a new bare `exit(` added anywhere in that directory fails this test**, satisfying acceptance criterion 1 literally.
+   - Exactly one `"Darwin.exit("` occurrence in the whole directory, and it's in `ExitLogging.swift` (proves there's exactly one real exit point and everything else goes through the named wrapper).
+   - The four named files (`CallAudioSelfTest.swift`, `HideCheck.swift`, `MarvinScreenshot.swift`, `MarvinScene.swift`) contain zero occurrences of `"UserDefaults"` — proves acceptance criterion 2 ("read from launch arguments only") as a standing structural check, not just a one-time fix.
+   - Each of those four files actually calls `LaunchFlag.` at least once — so the previous rule can't be satisfied by silently deleting the flag-reading code instead of migrating it.
+
+I can't write an automated test for the atexit/backtrace mechanism itself (acceptance criterion 3) or the "quit from inside a library" break-it scenario: there's no Apps/Mac test target, and verifying it needs a real running process whose exit is observed through the unified log — beyond what `swift test` or the app-build verify step can exercise. I say this plainly as untested behavior below rather than fabricate a check for it.
+
+## Decisions
+
+None — the scope calls above are implementation judgment calls I made and documented with reasoning, not product-facing choices for the owner.
+
+## Untested behavior (stated plainly)
+
+- The `atexit` backtrace handler's actual firing and log content (criterion 3), and the "exit from a background queue inside a library" break-it scenario, require running the real app and inspecting the unified log — not exercisable by `swift test` or the simulator app-build step. Verified only by the manual soak (criterion 4).
+- The Debug/TestFlight-vs-App-Store receipt gate can't be exercised by `swift test` either (no real app bundle/receipt exists in that context); `#if DEBUG` is trivially true for the Debug config the simulator build uses, which is the only half of the gate anything in this pipeline can touch.
+- The 10 pretend-call soak runs (criterion 4) must be run by the owner on real hardware with real audio devices and a real helper process (XPC) — I cannot run or tap the app.
+
+## Task List
+
+1. Add `LaunchFlag.swift` to `Packages/CaptionCore/Sources/CaptionCore/`: `isSet(_:in:)`, `value(after:in:)`, `double(after:in:)`, each defaulting `in:` to `ProcessInfo.processInfo.arguments`.
+2. Add `LaunchFlagTests.swift` to `Packages/CaptionCore/Tests/CaptionCoreTests/` with the test list above (tests first; `swift test --package-path Packages/CaptionCore` must show them failing against a stub, then passing once `LaunchFlag` is implemented).
+3. Add `MacExitPathSourceRulesTests.swift` to the same test directory with the source-rule tests above (will fail immediately against the current `UserDefaults`/bare-`exit(` code — that's expected before step 4-7).
+4. Add `ExitLogging.swift` to `Apps/Mac/Sources/`: `exit(_:code:) -> Never` (logs the reason via `Logger(subsystem: "com.gileskayo.captions", category: "exit")`, then `Darwin.exit(code)`), and `installBacktraceOnExit()` (gates on `#if DEBUG` or `appStoreReceiptURL == "sandboxReceipt"`, then registers one `atexit` closure logging `Thread.callStackSymbols`).
+5. Rewrite `CallAudioSelfTest.swift`: `isRequested`/`runIfRequested()`/`watchRoute()` read via `LaunchFlag` instead of `UserDefaults.standard`; all three `exit(` call sites (lines 24, 107, 117) become `ExitLogging.exit(reason:code:)` with a reason naming the mode/path taken. Drop the now-unneeded "YES" value from the `-MarvinRouteWatch` doc comment since presence-only matches the rest of the flag convention.
+6. Rewrite `HideCheck.swift`: add `import CaptionCore`; `runIfRequested()` reads via `LaunchFlag.isSet("-MarvinHideCheck")`; both `exit(` call sites (27, 39) become `ExitLogging.exit(...)`.
+7. Rewrite `MarvinScreenshot.swift`: every `UserDefaults.standard`/`defaults.*` read (`MarvinScreenshot`, `MarvinScene`, `MarvinAppearance`, `SealPopupMockup`, `SealCallMockup`, `SealCallPhase`, `MarvinLiveSnapshot`, `MarvinLiveSnapshotAfter`) becomes a `LaunchFlag` call, preserving the existing `#if DEBUG`-only early-return semantics in `scheduleLiveSnapshotIfRequested()` exactly; both `exit(` sites (37, 40) become `ExitLogging.exit(...)`.
+8. Rewrite `MarvinScene.swift`: `scene`/`run(_:)`'s `UserDefaults.standard` reads become `LaunchFlag` calls; the `exit(0)` at line 52 becomes `ExitLogging.exit(...)`.
+9. Update `CaptionMacApp.swift`'s `init()` to call `ExitLogging.installBacktraceOnExit()` first, before `BundledFonts.register()`.
+10. Run `swift test --package-path Packages/CaptionCore` to green, then the app-build verify step (`xcodebuild`) to confirm `Apps/Mac` still compiles with the new files and no stray `UserDefaults`/bare-`exit(` remains.
+11. Record on the ticket, for the owner to execute (not automatable here): the 10 pretend-call soak runs (criterion 4), and leave acceptance criterion 4's close-out (either "zero unexplained quits" or a found-and-fixed cause with its own regression test) to that follow-up.
