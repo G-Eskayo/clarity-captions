@@ -80,6 +80,25 @@ public enum FallbackAction: Sendable, Equatable {
     public var countsAsFallback: Bool { self == .switchToApple }
 }
 
+/// Speaker labels and ear voice state during a memory warning (Decision t284-shed-steps, option A).
+/// Shed speaker labels first, then ear voice, before switching to Apple's recognizer.
+public struct MemoryLoad: Sendable, Equatable {
+    public var speakerLabelsOn: Bool
+    public var earVoiceOn: Bool
+
+    public init(speakerLabelsOn: Bool, earVoiceOn: Bool) {
+        self.speakerLabelsOn = speakerLabelsOn
+        self.earVoiceOn = earVoiceOn
+    }
+}
+
+/// Action to take when memory pressure rises: shed features one by one before giving up.
+public enum MemoryWarningAction: String, Sendable, Equatable {
+    case shedSpeakerLabels
+    case shedEarVoice
+    case switchToApple
+}
+
 /// The design's fallback table (§5), pure.
 public enum EngineFallbackPolicy {
     /// Available memory below this before loading Parakeet: Apple for the session (start value, tuned by check C3).
@@ -104,6 +123,16 @@ public enum EngineFallbackPolicy {
         case .thermal(.serious): return .doubleHop
         case .thermal(.critical): return .switchToApple
         case .thermal: return .normalHop
+        }
+    }
+
+    /// What to shed next on a memory warning: speaker labels first, then ear voice, then switch to Apple.
+    /// Consecutive warnings escalate: first to shed labels, second to shed ear voice, third to switch.
+    public static func memoryWarningAction(priorWarnings: Int, load: MemoryLoad) -> MemoryWarningAction {
+        switch (priorWarnings, load.speakerLabelsOn, load.earVoiceOn) {
+        case (0, true, _): return .shedSpeakerLabels
+        case (1, _, true): return .shedEarVoice
+        default: return .switchToApple
         }
     }
 

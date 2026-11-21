@@ -104,4 +104,10 @@ public enum StatusWords {
         if let line = secondLine(for: state, activity: activity) { return "\(head). \(line)" }
         return head
     }
+
+    /// Engine status note for memory warnings: shown dimly near the status line.
+    public static func engineNote(fallback: FallbackReason?) -> String? {
+        guard fallback == .memoryWarning else { return nil }
+        return String(localized: "Memory pressure: some features paused")
+    }
 }

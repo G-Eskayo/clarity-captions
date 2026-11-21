@@ -165,6 +165,11 @@ final class BetaFeedbackCenter: ObservableObject {
         update(session, persist: true) { $0.leftMidConversation(at: Date()) }
     }
 
+    /// A memory event: shedding speaker labels, ear voice, or switching to Apple (#284).
+    func memoryEvent(_ session: ConversationSession, _ action: MemoryWarningAction) {
+        update(session) { $0.memoryEvent(action) }
+    }
+
     /// A cold launch brought back a conversation: if captions were running when the app closed, that counts as a
     /// pause without her.
     func restoredAfterColdLaunch(_ session: ConversationSession, hasConversation: Bool) {

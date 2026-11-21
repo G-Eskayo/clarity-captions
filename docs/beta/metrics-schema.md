@@ -37,7 +37,8 @@ the tester's own optional note.
       "captionLanguage": "en-US",
       "captionLanguageChosen": false,
       "faceToFace": { "owner": "en-US", "partner": "es-ES" },
-      "build": "11"
+      "build": "11",
+      "memoryEvents": ["shedSpeakerLabels", "shedEarVoice"]
     }
   ]
 }
@@ -62,6 +63,7 @@ the tester's own optional note.
 | `faceToFace` | Face to face: each half's picked language (`owner` is her half), `null` for a half not picked; the whole field is `null` when face to face was off. With one half picked, that half's language captions everything (#208). Build 11 (#288) | `FaceToFaceSplit.captions` |
 | `build` | The build that recorded this conversation. `app.build` is the build that sent the report, which can be later (#288) | `CFBundleVersion` at Start |
 | `device.language` | The phone's first preferred language (BCP-47), to set beside `captionLanguage`. Build 11 (#288) | `Locale.preferredLanguages` |
+| `memoryEvents` | Actions taken on memory warnings: `shedSpeakerLabels`, `shedEarVoice`, or `switchToApple` (Decision t284-shed-steps, option A); escalates one per warning, bounded list of newest kept. `null` if none. Additive, still schema 1 (#284) | `ConversationRecorder.memoryEvent(_:)` via `TranscriptionEngine.onMemoryEvent` |
 
 Size: about 1 KB per conversation, with no cap until sent (ADR 0023), so even 1,000 unsent conversations make a
 report of about 1 MB, well within an iMessage attachment.

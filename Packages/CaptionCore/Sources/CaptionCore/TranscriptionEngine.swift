@@ -90,6 +90,12 @@ public enum SpeechRecognizerSetup: Sendable, Equatable {
 /// `SpeechRecognizerBackend` (ADR 0001, ADR 0025), with the 16 kHz side path for the diarizer, the sound labeler and
 /// loudness.
 public final class TranscriptionEngine {
+    /// Session-scoped memory warning state: how many warnings have fired, and what was shed.
+    private struct MemoryWarningState: Sendable {
+        var warningCount = 0
+        var speakerLabelsShed = false
+    }
+
     /// Where the sound comes from (#172): the microphone unless the app passes another source (call audio on the Mac).
     private let source: AudioSource
     private let locale: Locale
@@ -119,6 +125,12 @@ public final class TranscriptionEngine {
     private var preparedLaps: [String] = []
     /// Set by `stop()`: a load still running then frees what it made instead of keeping it.
     private var stopped = false
+    private let memoryWarningLock = NSLock()
+    private var memoryWarningState = MemoryWarningState()
+    /// Whether ear translation is currently on (for memory warning decisions).
+    public var earVoiceOn: @Sendable () -> Bool = { false }
+    /// Called when a memory warning is handled: shed action taken, escalates to switchToApple.
+    public var onMemoryEvent: (@Sendable (MemoryWarningAction) -> Void)?
 
     /// The live recognizer and the converter that feeds it, swapped together on a mid-session fallback.
     private struct Route {
@@ -355,10 +367,31 @@ public final class TranscriptionEngine {
 
     /// A trigger from the running backend or the app (design §5).
     public func handle(_ trigger: FallbackTrigger) {
-        let running = routeLock.withLock { route.backend?.choice ?? .apple }
-        guard EngineFallbackPolicy.action(for: trigger, running: running) == .switchToApple,
-              let reason = EngineFallbackPolicy.reason(for: trigger) else { return }
-        Task { await self.switchToApple(reason: reason) }
+        switch trigger {
+        case .memoryWarning:
+            handleMemoryWarning()
+        default:
+            let running = routeLock.withLock { route.backend?.choice ?? .apple }
+            guard EngineFallbackPolicy.action(for: trigger, running: running) == .switchToApple,
+                  let reason = EngineFallbackPolicy.reason(for: trigger) else { return }
+            Task { await self.switchToApple(reason: reason) }
+        }
+    }
+
+    /// Memory warning handling: shed speaker labels, then ear voice, before switching to Apple.
+    /// Consecutive warnings escalate the action (Decision t284-shed-steps, option A).
+    private func handleMemoryWarning() {
+        let shouldSwitch = memoryWarningLock.withLock { () -> Bool in
+            let load = MemoryLoad(speakerLabelsOn: !memoryWarningState.speakerLabelsShed, earVoiceOn: earVoiceOn())
+            let action = EngineFallbackPolicy.memoryWarningAction(priorWarnings: memoryWarningState.warningCount, load: load)
+            memoryWarningState.warningCount += 1
+            if case .shedSpeakerLabels = action { memoryWarningState.speakerLabelsShed = true }
+            onMemoryEvent?(action)
+            return action == .switchToApple
+        }
+        if shouldSwitch {
+            Task { await self.switchToApple(reason: .memoryWarning) }
+        }
     }
 
     /// Mid-session switch: the microphone, diarizer, sound labeler and clock stay up; only the recognizer changes.
@@ -469,12 +502,13 @@ public final class TranscriptionEngine {
 
     private func processBuffer(_ buffer: AVAudioPCMBuffer, inFormat: AVAudioFormat, fed: FedAudioClock) {
         let (backend, converter, format) = routeLock.withLock { (route.backend, route.converter, route.format) }
+        let speakerLabelsShed = memoryWarningLock.withLock { memoryWarningState.speakerLabelsShed }
         // 16 kHz mono Float32 for the diarizer, the sound labeler, loudness, and Parakeet.
         if let diarFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000, channels: 1, interleaved: false),
            let dOut = convert(buffer, with: diarConverter(from: inFormat, to: diarFormat), to: diarFormat),
            let ch = dOut.floatChannelData {
             let samples = Array(UnsafeBufferPointer(start: ch[0], count: Int(dOut.frameLength)))
-            diarizer.feed(samples)
+            if !speakerLabelsShed { diarizer.feed(samples) }
             soundLabeler.feed(samples, atAudioTime: fed.seconds)
             let level = recordLoudness(samples: samples, atAudioTime: fed.seconds)
             if let faceToFace {
@@ -521,7 +555,8 @@ public final class TranscriptionEngine {
                     for await stream in pieces {
                         for try await piece in stream {
                             guard let self else { break }
-                            let speaker = (piece.start.flatMap { st in piece.end.map { (st, $0) } })
+                            let speakerLabelsShed = self.memoryWarningLock.withLock { self.memoryWarningState.speakerLabelsShed }
+                            let speaker: Int? = speakerLabelsShed ? nil : (piece.start.flatMap { st in piece.end.map { (st, $0) } })
                                 .flatMap { labels.label(start: $0.0, end: $0.1, segments: self.diarizer.segments, isFinal: piece.isFinal) }
                             let lag = wallTime.elapsedSinceStart().flatMap { lagTracker.sample(elapsed: $0, audioEnds: piece.wordEnds) }
                             var update = CaptionUpdate(text: piece.text, isFinal: piece.isFinal, lagSeconds: lag, speaker: speaker,

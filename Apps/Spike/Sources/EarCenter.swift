@@ -165,7 +165,7 @@ final class EarCenter: NSObject, ObservableObject {
     /// translation off), what's said is passed over, so turning it on later doesn't read out the past.
     func take(from lines: [CaptionLine], active: Bool) -> [EarPhrases.Phrase] {
         if lines.isEmpty { phrases.reset(); spokenTranslations = [:]; resetChooser(); return [] }
-        guard active, foreground, state.speaks else { phrases.skip(lines); scheduleCheck(nil); return [] }
+        guard active, foreground, state.speaks, !pausedForSessionOnly else { phrases.skip(lines); scheduleCheck(nil); return [] }
         let now = Self.now
         let ready = phrases.take(from: lines, now: now).filter { phrase in
             // The app's own voice, picked up by the mic and captioned (the spike's echo): never spoken again.
@@ -234,6 +234,19 @@ final class EarCenter: NSObject, ObservableObject {
         current = nil
         speaking = nil
         if synthesizer.isSpeaking { synthesizer.stopSpeaking(at: .immediate) }
+    }
+
+    /// Pause ear voice for this session only (memory pressure, #284): stops speaking but does not change Settings.
+    /// Resumes when a new conversation starts (via `captioningStarted` path).
+    private var pausedForSessionOnly = false
+    func pauseForSession() {
+        pausedForSessionOnly = true
+        stopAll()
+    }
+
+    /// Resume ear voice after a session pause: called when a new conversation starts, allowing it to speak again.
+    func resumeAfterSessionPause() {
+        pausedForSessionOnly = false
     }
 
     /// The app came on screen or left it. Leaving stops the voice (App Review 2.5.4: no background audio).

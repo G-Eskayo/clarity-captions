@@ -172,6 +172,9 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
     /// What the latest stretch ran in: caption language, face to face, build (#288). Nil if saved by build 10 or
     /// earlier, which didn't record it.
     public private(set) var context: CaptioningContext?
+    /// Memory warning actions during the session: shed speaker labels, shed ear voice, or switch to Apple (#284).
+    /// Bounded list, newest kept, oldest dropped if it exceeds 100 entries.
+    public private(set) var memoryEvents: [String] = []
 
     private var captioningSeconds = 0.0
     private var segmentStart: Date?
@@ -211,7 +214,7 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
         case id, startedAt, rating, ratingSkipped, note, asked, ending, leftWhileCaptioning, lowPowerModeSeen
         case maxThermal, launchToStartSeconds, startToFirstCaptionSeconds, launch
         case captioningSeconds, segmentStart, startPressedAt, lag, micLevel, changedWords, finalWords, relabels
-        case speakers, batteryDrop, batteryMinutes, segmentBattery, engine, engineFallback, leftAt
+        case speakers, batteryDrop, batteryMinutes, segmentBattery, engine, engineFallback, leftAt, memoryEvents
         case context = "captioningIn"
     }
 
@@ -279,6 +282,12 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
     public mutating func thermal(_ level: ThermalLevel) { maxThermal = max(maxThermal ?? level, level) }
 
     public mutating func lowPowerMode(_ on: Bool) { if on { lowPowerModeSeen = true } }
+
+    /// A memory event: shedding speaker labels, ear voice, or switching to Apple (#284).
+    public mutating func memoryEvent(_ action: MemoryWarningAction) {
+        memoryEvents.append(action.rawValue)
+        if memoryEvents.count > 100 { memoryEvents.removeFirst() }
+    }
 
     /// Captions stopped. A second stop for the same stretch changes nothing.
     public mutating func captioningStopped(at date: Date, battery: BatterySample?, ending newEnding: ConversationEnding) {
@@ -372,7 +381,8 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
             captionLanguage: context?.captionLanguage,
             captionLanguageChosen: context?.captionLanguageChosen,
             faceToFace: context?.faceToFace,
-            build: context?.build)
+            build: context?.build,
+            memoryEvents: memoryEvents.isEmpty ? nil : memoryEvents)
     }
 
     /// The report's conversations: every stored one, with the copy on screen (if it has started) in place of its
@@ -484,11 +494,13 @@ public struct ConversationReport: Codable, Equatable, Sendable {
     public var faceToFace: FaceToFaceLanguages? = nil
     /// The build that recorded this conversation; `app.build` is the one that sent the report.
     public var build: String? = nil
+    /// Memory warning actions: shedding speaker labels, ear voice, or switching to Apple (#284).
+    public var memoryEvents: [String]? = nil
 
     private enum CodingKeys: String, CodingKey {
         case id, startedAt, minutes, rating, ratingSkipped, note, lag, rewriteRate, speakers, launchToStartSeconds
         case startToFirstCaptionSeconds, ending, battery, micLevel, launch, engine, engineFallback
-        case captionLanguage, captionLanguageChosen, faceToFace, build
+        case captionLanguage, captionLanguageChosen, faceToFace, build, memoryEvents
     }
 
     /// Every schema key is written, `null` when unknown, so every report has the same shape for MARVIN to read.
@@ -515,6 +527,7 @@ public struct ConversationReport: Codable, Equatable, Sendable {
         try c.encode(captionLanguageChosen, forKey: .captionLanguageChosen)
         try c.encode(faceToFace, forKey: .faceToFace)
         try c.encode(build, forKey: .build)
+        try c.encode(memoryEvents, forKey: .memoryEvents)
     }
 }
 

@@ -33,6 +33,8 @@ final class CaptionModel: ObservableObject {
     @Published var speakerNames = SpeakerNames()
     @Published var activity: ListeningActivity?
     @Published var roomLevelDBFS: Double?
+    /// Current engine fallback reason, if any (shown in the status note, #284).
+    @Published var engineFallback: FallbackReason?
     /// Only used by the developer latency measurement below.
     private var task: Task<Void, Never>?
     private var activityTask: Task<Void, Never>?
@@ -89,18 +91,33 @@ final class CaptionModel: ObservableObject {
     init() {
         controller = CaptionSessionController(makeEngine: { [weak self] in
             guard let self else { throw CancellationError() }
+            var engine: TranscriptionEngine
             if self.faceToFace {
                 switch self.splitEngine {
                 case .one(_, let locale):
-                    return try CaptionEngineFactory.make(micMode: self.micMode, locale: locale, speechModel: .mustBeOnDevice)
+                    engine = try CaptionEngineFactory.make(micMode: self.micMode, locale: locale, speechModel: .mustBeOnDevice)
                 case .both(let owner, let partner):
-                    return try CaptionEngineFactory.makeFaceToFace(micMode: self.micMode, ownerLocale: owner, partnerLocale: partner)
+                    engine = try CaptionEngineFactory.makeFaceToFace(micMode: self.micMode, ownerLocale: owner, partnerLocale: partner)
                 case nil: throw CancellationError()
                 }
+            } else {
+                // Loaded during the launch (or after the last pause), so Start is instant (#119).
+                if let warm = EngineWarmupHost.shared.take(micMode: self.micMode) {
+                    engine = warm
+                } else {
+                    engine = try CaptionEngineFactory.make(micMode: self.micMode)
+                }
             }
-            // Loaded during the launch (or after the last pause), so Start is instant (#119).
-            if let warm = EngineWarmupHost.shared.take(micMode: self.micMode) { return warm }
-            return try CaptionEngineFactory.make(micMode: self.micMode)
+            engine.earVoiceOn = { EarCenter.shared.isOn && EarCenter.offered }
+            weak var weakSelf = self
+            engine.onMemoryEvent = { action in
+                Task { @MainActor in
+                    if case .shedEarVoice = action { EarCenter.shared.pauseForSession() }
+                    guard let self = weakSelf else { return }
+                    self.beta.memoryEvent(self.session, action)
+                }
+            }
+            return engine
         }, idleStopSetting: { [weak self] in self?.idleStop ?? .default })
 
         if let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
@@ -132,6 +149,7 @@ final class CaptionModel: ObservableObject {
             self.stream.apply(text: u.text, isFinal: u.isFinal, speaker: u.speaker, range: range, lane: u.lane)
             if let languages = u.languages { self.speakerLanguages = languages }
             if let l = u.lagSeconds { self.lag = l }
+            if let fallback = u.engineFallback { self.engineFallback = fallback }
             self.diag = u.diagnostics
             if !u.text.trimmingCharacters(in: .whitespaces).isEmpty {
                 self.tracker.recordSpeech(at: Date())
@@ -160,6 +178,7 @@ final class CaptionModel: ObservableObject {
             veil.captioningStarted()
             stream.breakLine()
         case .listening:
+            EarCenter.shared.resumeAfterSessionPause()
             startActivityLoop()
             beta.captioningStarted(session, captionLanguage: CaptionLanguageCenter.shared.current,
                                    chosen: !CaptionLanguageCenter.shared.followsDevice,
@@ -697,6 +716,11 @@ struct ContentView: View {
             }
             if DemoMode.seedsSaved { await seedDemoSaved() }
             model.runDemo()
+            if DemoMode.memoryNote {
+                try? await Task.sleep(for: .seconds(1))
+                model.engineFallback = .memoryWarning
+                model.handleCaptionStateChange(.idle)
+            }
             if DemoMode.faceToFace { Task { await model.runFaceToFaceFlow() } }
             if DemoMode.opensDeveloperPanel { developerTools = true }
             if DemoMode.opensSettings || DemoMode.settingsPush != nil || DemoMode.betaPreview {
@@ -885,6 +909,9 @@ struct ContentView: View {
             }
             if let detail = statusDetail {
                 Text(detail).font(.footnote).opacity(0.7).multilineTextAlignment(.center)
+            }
+            if let note = StatusWords.engineNote(fallback: model.engineFallback) {
+                Text(note).font(.caption2).opacity(0.6).multilineTextAlignment(.center)
             }
         }
         .onChange(of: model.activity) { _, newActivity in
@@ -1307,6 +1334,7 @@ struct ContentView: View {
             }
         case "failed": model.demoSetState(.failed(String(localized: "The microphone stopped. Tap Start captions to try again.")))
         case "quiet": model.demoSetState(.pausedQuiet(minutes: 5))
+        case "memorywarning": model.demoSetState(.listening); model.engineFallback = .memoryWarning
         case "savedfromcaptions":
             // The list icon at the top right (#137, option A): Saved opens straight from the captions.
             await wait(1); go { $0.openSavedFromCaptions() }
