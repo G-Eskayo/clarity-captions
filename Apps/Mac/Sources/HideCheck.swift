@@ -1,4 +1,5 @@
 import AppKit
+import CaptionCore
 import CoreGraphics
 
 /// ⌘H must hide the always-on-top pop-up (#172, owner 2026-10-28). Launched with `-MarvinHideCheck`, the app finds the
@@ -6,7 +7,7 @@ import CoreGraphics
 /// on screen, brings the app back (as the Dock does) and checks the window returned. Prints the result, exits 0 or 1.
 enum HideCheck {
     static func runIfRequested() {
-        guard UserDefaults.standard.bool(forKey: "MarvinHideCheck") else { return }
+        guard LaunchArguments().flag("MarvinHideCheck") else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + 4) { run() }
     }
 
@@ -24,7 +25,7 @@ enum HideCheck {
         let items = NSApp.mainMenu?.items.first?.submenu?.items ?? []
         guard let menu = NSApp.mainMenu?.items.first?.submenu,
               let index = items.firstIndex(where: { $0.keyEquivalent == "h" && $0.keyEquivalentModifierMask == .command }) else {
-            log("FAILED: no ⌘H item in the app menu: \(items.map(\.title))"); exit(1)
+            log("FAILED: no ⌘H item in the app menu: \(items.map(\.title))"); SealExit.now("MarvinHideCheck: no ⌘H item", status: 1)
         }
         let before = onScreen()
         log("app menu ⌘H item: \"\(items[index].title)\"; windows on screen before: \(before)")
@@ -36,7 +37,8 @@ enum HideCheck {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                 let back = onScreen()
                 log("after coming back: windows on screen \(back)")
-                exit(before > 0 && hidden == 0 && back == before ? 0 : 1)
+                let success = before > 0 && hidden == 0 && back == before
+                SealExit.now("MarvinHideCheck: \(success ? "pass" : "fail")", status: success ? 0 : 1)
             }
         }
     }

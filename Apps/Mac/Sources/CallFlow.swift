@@ -167,21 +167,21 @@ extension CallFlow {
     static let log = Logger(subsystem: "com.gileskayo.captions", category: "calls")
 
     func runFakeCallIfRequested() {
-        let defaults = UserDefaults.standard
-        guard let spec = defaults.string(forKey: "SealFakeCall") else { return }
+        let args = LaunchArguments()
+        guard let spec = args.value(after: "SealFakeCall") else { return }
         let times = spec.split(separator: ",").compactMap { Double($0) }
         guard times.count == 2 else { return }
-        let choice: CallArrival.Event = defaults.string(forKey: "SealFakeChoice") == "notnow" ? .notNow : .captionCall
-        let save: CallArrival.Event = defaults.string(forKey: "SealFakeSave") == "no" ? .returnToConversation : .saveTranscript
-        let shots = defaults.string(forKey: "SealFakeShots")
+        let choice: CallArrival.Event = args.value(after: "SealFakeChoice") == "notnow" ? .notNow : .captionCall
+        let save: CallArrival.Event = args.value(after: "SealFakeSave") == "no" ? .returnToConversation : .saveTranscript
+        let shots = args.value(after: "SealFakeShots")
         let at = { (seconds: Double, work: @escaping @MainActor () -> Void) in
             DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { MainActor.assumeIsolated { work() } }
         }
         let shot = { (name: String) in if let shots { Self.snapshotWindow(to: URL(fileURLWithPath: shots).appendingPathComponent("\(name).png")) } }
         // The app opens with captions off (#188): press Start, as the owner would, unless `-SealFakeStart no`.
-        if defaults.string(forKey: "SealFakeStart") != "no" { at(1) { self.model.start() } }
+        if args.value(after: "SealFakeStart") != "no" { at(1) { self.model.start() } }
         // `-SealFakeHide yes`: the app hidden (⌘H) when the call comes, so the offer comes as a notification.
-        if defaults.string(forKey: "SealFakeHide") == "yes" { at(times[0] - 0.5) { NSApp.hide(nil) } }
+        if args.value(after: "SealFakeHide") == "yes" { at(times[0] - 0.5) { NSApp.hide(nil) } }
         at(times[0] - 1) { shot("0-room") }
         at(times[0]) { self.callApp = "FaceTime"; self.send(.callStarted) }
         at(times[0] + 1.2) { shot("1-ringing") }

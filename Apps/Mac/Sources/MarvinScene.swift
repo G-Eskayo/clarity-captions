@@ -9,15 +9,16 @@ import SwiftUI
 /// With `settings`, `-MarvinSettingsSection <id>` (translation, language, about...) scrolls Settings to that section.
 @MainActor
 enum MarvinScene {
-    static var scene: String? { UserDefaults.standard.string(forKey: "MarvinScene") }
+    private static let args = LaunchArguments()
+    static var scene: String? { args.value(after: "MarvinScene") }
     static var isOn: Bool { scene != nil }
     static let storeDirectory: URL? = isOn
         ? FileManager.default.temporaryDirectory.appendingPathComponent("marvin-scene-\(ProcessInfo.processInfo.processIdentifier)")
         : nil
 
     static func run(_ model: CaptionMacModel) {
-        guard let scene, let path = UserDefaults.standard.string(forKey: "MarvinScreenshot") else { return }
-        let dark = UserDefaults.standard.string(forKey: "MarvinAppearance") == "dark"
+        guard let scene, let path = args.value(after: "MarvinScreenshot") else { return }
+        let dark = args.value(after: "MarvinAppearance") == "dark"
         let preset = CaptionPreset.all.first { $0.id == (dark ? "harbor" : "paper") }!
         model.style.background = preset.background
         model.style.text = preset.text
@@ -49,7 +50,7 @@ enum MarvinScene {
                 try? MarvinScreenshot.write(view, to: URL(fileURLWithPath: path))
             }
             if let dir = storeDirectory { try? FileManager.default.removeItem(at: dir) }
-            exit(0)
+            SealExit.now("MarvinScene completed: \(scene ?? "unknown")", status: 0)
         }
     }
 }

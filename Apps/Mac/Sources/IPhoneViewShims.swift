@@ -1,4 +1,5 @@
 import AppKit
+import CaptionCore
 import SwiftUI
 
 // The Mac shares the iPhone app's Settings, Saved and credits views instead of redrawing them (#172, owner ~10:10).
@@ -45,13 +46,14 @@ enum CaptionEngineFactory {
 
 /// The iPhone's debug demo flags (screenshots of set-up screens). None of them apply on the Mac.
 enum DemoMode {
+    private static let args = LaunchArguments()
     static let isOn = false
     static let flow: String? = nil
     static let select = false
     static let veilCleared = false
     static let settingsPush: String? = nil
     /// Screenshots only (#209): `-MarvinSettingsSection language` opens Settings scrolled to that section.
-    static var settingsSection: String? { UserDefaults.standard.string(forKey: "MarvinSettingsSection") }
+    static var settingsSection: String? { args.value(after: "MarvinSettingsSection") }
     static let opensSettings = false
     static let asksLanguage = false
     static let translate: String? = nil

@@ -9,11 +9,13 @@ struct CaptionMacApp: App {
     @StateObject private var model = CaptionMacModel()
 
     init() {
+        ProcessExitLog.install()
         BundledFonts.register()
         MarvinScreenshot.runIfRequested()
         CallAudioSelfTest.runIfRequested()
         MarvinScreenshot.scheduleLiveSnapshotIfRequested()
         HideCheck.runIfRequested()
+        ExitFaultSelfTest.runIfRequested()
     }
 
     var body: some Scene {
