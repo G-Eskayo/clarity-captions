@@ -1,5 +1,6 @@
 import AVFoundation
 import CoreMedia
+import Darwin
 import Foundation
 import Speech
 
@@ -24,6 +25,9 @@ public struct CaptionUpdate: Sendable {
     /// Face to face (#60): which half's language engine wrote this, and every voice's language after it. Nil one-way.
     public var lane: FaceToFaceHalf?
     public var languages: SpeakerLanguages?
+    /// Load shedding: were speaker labels or ear voice shed to free memory on a warning?
+    public var speakerLabelsShed = false
+    public var earVoiceShed = false
 }
 
 /// Audio seconds fed to the analyzer so far; written on the audio thread, read on the results task.
@@ -97,7 +101,8 @@ public final class TranscriptionEngine {
     private let setup: SpeechRecognizerSetup
     /// #245: the split's engines never download a speech model.
     private let speechModel: SpeechModelPolicy
-    private let diarizer: LiveDiarizer
+    private var diarizer: LiveDiarizer?
+    private let diarizerLock = NSLock()
     private let soundLabeler = SoundLabeler()
     private var soundLabelerStream: AsyncStream<SoundLabelKind>?
     private var audioLevelStreamValue: AsyncStream<Double>?
@@ -119,6 +124,13 @@ public final class TranscriptionEngine {
     private var preparedLaps: [String] = []
     /// Set by `stop()`: a load still running then frees what it made instead of keeping it.
     private var stopped = false
+    /// Load shedding state: which of diarizer features have been shed to manage memory.
+    private var loadShed = LoadShedState()
+    private let loadShedLock = NSLock()
+    /// Called when load is shed (speaker labels or ear voice paused) to free memory.
+    public var onLoadShed: (@Sendable (LoadShedAction) -> Void)?
+    /// Current available system memory; called on memory warning to decide what to shed.
+    public var availableMemory: (@Sendable () -> UInt64)? { didSet { } }
 
     /// The live recognizer and the converter that feeds it, swapped together on a mid-session fallback.
     private struct Route {
@@ -177,6 +189,11 @@ public final class TranscriptionEngine {
             case .zipformer(let url): return ZipformerBackend(modelURL: url)
             }
         } }
+        #if os(iOS) || os(tvOS) || os(watchOS)
+        availableMemory = { UInt64(os_proc_available_memory()) }
+        #else
+        availableMemory = { UInt64(ProcessInfo.processInfo.physicalMemory / 2) }
+        #endif
     }
 
     /// Starts live captioning. If anything fails part-way, everything already opened is released before the
@@ -257,7 +274,8 @@ public final class TranscriptionEngine {
         }
         // Ready before the first audio, so both clocks start at the same first sample.
         do {
-            try await diarizer.prepare()
+            let diarizer = diarizerLock.withLock { self.diarizer }
+            try await diarizer?.prepare()
             lap("speaker model"); onStep(2)
             try await soundLabelerAsync { try self.soundLabeler.prepare() }
             lap("sound classifier")
@@ -355,10 +373,46 @@ public final class TranscriptionEngine {
 
     /// A trigger from the running backend or the app (design §5).
     public func handle(_ trigger: FallbackTrigger) {
-        let running = routeLock.withLock { route.backend?.choice ?? .apple }
-        guard EngineFallbackPolicy.action(for: trigger, running: running) == .switchToApple,
-              let reason = EngineFallbackPolicy.reason(for: trigger) else { return }
-        Task { await self.switchToApple(reason: reason) }
+        switch trigger {
+        case .memoryWarning:
+            let running = routeLock.withLock { route.backend?.choice ?? .apple }
+            guard running == .parakeet else { return }
+            let memory = availableMemory?() ?? 400 * 1_048_576
+            let current = loadShedLock.withLock { loadShed }
+            let action = EngineFallbackPolicy.memoryWarningShed(current: current, availableMemory: memory)
+            switch action {
+            case .shedSpeakerLabels:
+                loadShedLock.withLock { loadShed.speakerLabelsShed = true }
+                diarizerLock.withLock {
+                    if let diarizer = self.diarizer {
+                        diarizer.finish()
+                        self.diarizer = nil
+                    }
+                }
+                onLoadShed?(.shedSpeakerLabels)
+            case .shedEarVoice:
+                loadShedLock.withLock { loadShed.earVoiceShed = true }
+                onLoadShed?(.shedEarVoice)
+            case .shedBoth:
+                loadShedLock.withLock { loadShed = LoadShedState(speakerLabelsShed: true, earVoiceShed: true) }
+                diarizerLock.withLock {
+                    if let diarizer = self.diarizer {
+                        diarizer.finish()
+                        self.diarizer = nil
+                    }
+                }
+                onLoadShed?(.shedBoth)
+            case .none:
+                // Everything's shed and memory is still low: switch to Apple (design §5, shed-then-switch ladder).
+                guard current.speakerLabelsShed && current.earVoiceShed else { return }
+                Task { await self.switchToApple(reason: .memoryWarning) }
+            }
+        default:
+            let running = routeLock.withLock { route.backend?.choice ?? .apple }
+            guard EngineFallbackPolicy.action(for: trigger, running: running) == .switchToApple,
+                  let reason = EngineFallbackPolicy.reason(for: trigger) else { return }
+            Task { await self.switchToApple(reason: reason) }
+        }
     }
 
     /// Mid-session switch: the microphone, diarizer, sound labeler and clock stay up; only the recognizer changes.
@@ -469,16 +523,17 @@ public final class TranscriptionEngine {
 
     private func processBuffer(_ buffer: AVAudioPCMBuffer, inFormat: AVAudioFormat, fed: FedAudioClock) {
         let (backend, converter, format) = routeLock.withLock { (route.backend, route.converter, route.format) }
+        let diarizer = diarizerLock.withLock { self.diarizer }
         // 16 kHz mono Float32 for the diarizer, the sound labeler, loudness, and Parakeet.
         if let diarFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000, channels: 1, interleaved: false),
            let dOut = convert(buffer, with: diarConverter(from: inFormat, to: diarFormat), to: diarFormat),
            let ch = dOut.floatChannelData {
             let samples = Array(UnsafeBufferPointer(start: ch[0], count: Int(dOut.frameLength)))
-            diarizer.feed(samples)
+            if let diarizer { diarizer.feed(samples) }
             soundLabeler.feed(samples, atAudioTime: fed.seconds)
             let level = recordLoudness(samples: samples, atAudioTime: fed.seconds)
             if let faceToFace {
-                faceToFace.feed(samples, at: fed.seconds, level: level, segments: diarizer.segments)
+                faceToFace.feed(samples, at: fed.seconds, level: level, segments: diarizer?.segments ?? [])
             } else {
                 voiceRecorder.feed(samples, at: fed.seconds)
                 if format == nil { backend?.feed(samples16k: samples, level: level) }
@@ -521,14 +576,18 @@ public final class TranscriptionEngine {
                     for await stream in pieces {
                         for try await piece in stream {
                             guard let self else { break }
+                            let diarizer = self.diarizerLock.withLock { self.diarizer }
                             let speaker = (piece.start.flatMap { st in piece.end.map { (st, $0) } })
-                                .flatMap { labels.label(start: $0.0, end: $0.1, segments: self.diarizer.segments, isFinal: piece.isFinal) }
+                                .flatMap { labels.label(start: $0.0, end: $0.1, segments: diarizer?.segments ?? [], isFinal: piece.isFinal) }
                             let lag = wallTime.elapsedSinceStart().flatMap { lagTracker.sample(elapsed: $0, audioEnds: piece.wordEnds) }
                             var update = CaptionUpdate(text: piece.text, isFinal: piece.isFinal, lagSeconds: lag, speaker: speaker,
                                                        startSeconds: piece.start, endSeconds: piece.end,
                                                        diagnostics: self.diagnostics, wordEmphasis: self.wordEmphasis(piece.words))
                             update.engine = self.engineName
                             update.engineFallback = self.fallbackReason
+                            let loadShed = self.loadShedLock.withLock { self.loadShed }
+                            update.speakerLabelsShed = loadShed.speakerLabelsShed
+                            update.earVoiceShed = loadShed.earVoiceShed
                             continuation.yield(update)
                             // After the caption is out, so profiling the speaker never holds it back. A final
                             // piece's label is the settled one (#91), so a voice follows a settled label only.
@@ -566,7 +625,8 @@ public final class TranscriptionEngine {
                 do {
                     for try await (half, piece) in merged {
                         guard let self else { break }
-                        let segments = self.diarizer.segments
+                        let diarizer = self.diarizerLock.withLock { self.diarizer }
+                        let segments = diarizer?.segments ?? []
                         let r = routing.receive(piece, from: half, segments: segments, elapsed: wallTime.elapsedSinceStart())
                         var update = CaptionUpdate(text: r.piece.text, isFinal: r.piece.isFinal, lagSeconds: r.lag, speaker: r.speaker,
                                                    startSeconds: r.piece.start, endSeconds: r.piece.end,
@@ -574,6 +634,9 @@ public final class TranscriptionEngine {
                         update.engine = self.engineName
                         update.lane = half
                         update.languages = r.languages
+                        let loadShed = self.loadShedLock.withLock { self.loadShed }
+                        update.speakerLabelsShed = loadShed.speakerLabelsShed
+                        update.earVoiceShed = loadShed.earVoiceShed
                         continuation.yield(update)
                     }
                     continuation.finish()
@@ -590,7 +653,8 @@ public final class TranscriptionEngine {
         if let faceToFace { parts.append(faceToFace.diagnostics) }
         if let fallbackReason { parts.append("fallback: \(fallbackReason.rawValue)" + (fallbackDetail.map { " (\($0))" } ?? "")) }
         if let last = decodeLock.withLock({ lastDecodeSeconds }) { parts.append(String(format: "decode %.2fs", last)) }
-        parts.append(diarizer.diagnostics)
+        let diarizer = diarizerLock.withLock { self.diarizer }
+        if let diarizer { parts.append(diarizer.diagnostics) }
         return parts.filter { !$0.isEmpty }.joined(separator: " · ")
     }
 
@@ -644,7 +708,8 @@ public final class TranscriptionEngine {
             await unstarted.cancel()   // loaded ahead but never started (#119)
         }
         await finishRecognizer()
-        diarizer.finish()
+        let diarizer = diarizerLock.withLock { self.diarizer }
+        if let diarizer { diarizer.finish() }
         soundLabeler.finish()
         audioLevelContinuation?.finish()   // left open, it kept the session waiting after Stop (#89)
         audioLevelContinuation = nil

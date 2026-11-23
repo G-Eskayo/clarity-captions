@@ -37,7 +37,9 @@ the tester's own optional note.
       "captionLanguage": "en-US",
       "captionLanguageChosen": false,
       "faceToFace": { "owner": "en-US", "partner": "es-ES" },
-      "build": "11"
+      "build": "11",
+      "speakerLabelsShed": false,
+      "earVoiceShed": false
     }
   ]
 }
@@ -58,6 +60,7 @@ the tester's own optional note.
 | `battery` | Battery drop scaled to 30 minutes; highest `ProcessInfo.thermalState` | `UIDevice.batteryLevel`, `ProcessInfo` |
 | `micLevel` | Room loudness summary, never audio | `AudioLevel`, `ListeningActivityTracker` |
 | `engine`, `engineFallback` | Which recognizer captioned the conversation (`parakeet-ultra-pal6` or `apple-speechanalyzer`; the last one used, if it switched) and why it left Parakeet (`loadFailed`, `memoryWarning`, `thermalCritical`, `noWordsFromSpeech`, `lowMemory`, `locale`, `repeatedFallbacks`, `modelMissing`), else `null`. Added for 1.1 build 7 (ADR 0025); additive, still schema 1 | `TranscriptionEngine.engineName` / `fallbackReason` via `CaptionUpdate` |
+| `speakerLabelsShed`, `earVoiceShed` | Load shedding: speaker labels (diarizer) or ear voice (voice recorder) paused to free memory on a `.memoryWarning` (#284); `false` by default | `EngineFallbackPolicy.memoryWarningShed()` via `handle(.memoryWarning)` |
 | `captionLanguage`, `captionLanguageChosen` | The caption language setting (BCP-47) the latest stretch ran with, and whether it was picked in Seal (Settings › Caption language or first run) rather than following the phone. Added for 1.1 build 11 (#288); additive, still schema 1; `null` for conversations recorded by build 10 or earlier | `CaptionLanguageCenter.current` / `followsDevice` |
 | `faceToFace` | Face to face: each half's picked language (`owner` is her half), `null` for a half not picked; the whole field is `null` when face to face was off. With one half picked, that half's language captions everything (#208). Build 11 (#288) | `FaceToFaceSplit.captions` |
 | `build` | The build that recorded this conversation. `app.build` is the build that sent the report, which can be later (#288) | `CFBundleVersion` at Start |

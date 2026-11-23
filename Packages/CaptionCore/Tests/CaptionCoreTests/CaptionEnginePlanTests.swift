@@ -54,8 +54,8 @@ final class CaptionEnginePlanTests: XCTestCase {
             XCTAssertEqual(plan(id, fallbacks: [now.addingTimeInterval(-60), now.addingTimeInterval(-30)]).selection.reason,
                            .repeatedFallbacks, id)
         }
-        // Mid-session, a memory warning or critical heat moves any Parakeet session to Apple, whatever the language.
-        XCTAssertEqual(EngineFallbackPolicy.action(for: .memoryWarning, running: .parakeet), .switchToApple)
+        // Mid-session, a memory warning sheds load; critical heat moves any Parakeet session to Apple.
+        XCTAssertEqual(EngineFallbackPolicy.action(for: .memoryWarning, running: .parakeet), .none)
         XCTAssertEqual(EngineFallbackPolicy.action(for: .thermal(.critical), running: .parakeet), .switchToApple)
     }
 

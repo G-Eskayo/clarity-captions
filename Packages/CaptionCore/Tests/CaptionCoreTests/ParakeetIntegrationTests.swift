@@ -96,8 +96,9 @@ final class ParakeetIntegrationTests: XCTestCase {
             }
             if !fired, Date().timeIntervalSince(started) > 6 {
                 fired = true
-                engine.handle(.memoryWarning)
-                engine.handle(.memoryWarning)   // a second warning during the switch changes nothing
+                engine.handle(.memoryWarning)   // first warning sheds speaker labels
+                engine.handle(.memoryWarning)   // second warning sheds ear voice (the shedding ladder)
+                engine.handle(.memoryWarning)   // third warning switches to Apple when both features are shed
             }
         }
         print("PARAKEET-IT switch: " + finals.map { "[\($0.engine)] \($0.text)" }.joined(separator: " "))
@@ -152,7 +153,12 @@ final class ParakeetIntegrationTests: XCTestCase {
         var fired = false
         for try await u in try await engine.startReplaying(fileURL: audio) {
             if u.isFinal { finals.append((u.engine, u.text)) }
-            if !fired, Date().timeIntervalSince(started) > 6 { fired = true; engine.handle(.memoryWarning) }
+            if !fired, Date().timeIntervalSince(started) > 6 {
+                fired = true
+                engine.handle(.memoryWarning)   // first: shed labels
+                engine.handle(.memoryWarning)   // second: shed ear voice
+                engine.handle(.memoryWarning)   // third: switch to Apple
+            }
         }
         print("PARAKEET-IT es switch: " + finals.map { "[\($0.engine)] \($0.text)" }.joined(separator: " "))
         XCTAssertEqual(engine.fallbackReason, .memoryWarning)

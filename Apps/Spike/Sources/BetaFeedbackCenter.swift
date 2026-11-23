@@ -139,6 +139,7 @@ final class BetaFeedbackCenter: ObservableObject {
         guard isOn else { return }
         update(session) {
             $0.engineUsed(u.engine, fallback: u.engineFallback?.rawValue)
+            $0.loadShed(labels: u.speakerLabelsShed, earVoice: u.earVoiceShed)
             $0.captionUpdate(text: u.text, isFinal: u.isFinal, speaker: u.speaker, lagSeconds: u.lagSeconds, at: Date())
         }
     }

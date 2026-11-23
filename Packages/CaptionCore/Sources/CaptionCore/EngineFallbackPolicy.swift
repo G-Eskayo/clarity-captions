@@ -80,6 +80,23 @@ public enum FallbackAction: Sendable, Equatable {
     public var countsAsFallback: Bool { self == .switchToApple }
 }
 
+public enum LoadShedAction: Sendable, Equatable {
+    case none
+    case shedSpeakerLabels
+    case shedEarVoice
+    case shedBoth
+}
+
+public struct LoadShedState: Sendable, Equatable {
+    public var speakerLabelsShed = false
+    public var earVoiceShed = false
+
+    public init(speakerLabelsShed: Bool = false, earVoiceShed: Bool = false) {
+        self.speakerLabelsShed = speakerLabelsShed
+        self.earVoiceShed = earVoiceShed
+    }
+}
+
 /// The design's fallback table (§5), pure.
 public enum EngineFallbackPolicy {
     /// Available memory below this before loading Parakeet: Apple for the session (start value, tuned by check C3).
@@ -100,11 +117,20 @@ public enum EngineFallbackPolicy {
     public static func action(for trigger: FallbackTrigger, running: CaptionEngineChoice) -> FallbackAction {
         guard running == .parakeet else { return .none }
         switch trigger {
-        case .loadFailed, .noWordsFromSpeech, .memoryWarning: return .switchToApple
+        case .loadFailed, .noWordsFromSpeech: return .switchToApple
+        case .memoryWarning: return .none
         case .thermal(.serious): return .doubleHop
         case .thermal(.critical): return .switchToApple
         case .thermal: return .normalHop
         }
+    }
+
+    public static func memoryWarningShed(current: LoadShedState, availableMemory: UInt64) -> LoadShedAction {
+        guard current.speakerLabelsShed || current.earVoiceShed else {
+            return availableMemory < memoryFloor / 2 ? .shedBoth : .shedSpeakerLabels
+        }
+        guard !current.earVoiceShed else { return .none }
+        return .shedEarVoice
     }
 
     public static func reason(for trigger: FallbackTrigger) -> FallbackReason? {

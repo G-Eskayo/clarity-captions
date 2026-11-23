@@ -192,6 +192,8 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
     private var batteryDrop = 0.0
     private var batteryMinutes = 0.0
     private var segmentBattery: BatterySample?
+    private var shedSpeakerLabels = false
+    private var shedEarVoice = false
 
     public struct LaunchFacts: Codable, Equatable, Sendable {
         public var fullDance: Bool
@@ -213,9 +215,48 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
         case captioningSeconds, segmentStart, startPressedAt, lag, micLevel, changedWords, finalWords, relabels
         case speakers, batteryDrop, batteryMinutes, segmentBattery, engine, engineFallback, leftAt
         case context = "captioningIn"
+        case shedSpeakerLabels, shedEarVoice
     }
 
     public init(id: UUID) { self.id = id }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        startedAt = try c.decodeIfPresent(Date.self, forKey: .startedAt)
+        rating = try c.decodeIfPresent(Int.self, forKey: .rating)
+        ratingSkipped = try c.decode(Bool.self, forKey: .ratingSkipped)
+        note = try c.decodeIfPresent(String.self, forKey: .note)
+        asked = try c.decode(Bool.self, forKey: .asked)
+        ending = try c.decodeIfPresent(ConversationEnding.self, forKey: .ending)
+        leftWhileCaptioning = try c.decode(Bool.self, forKey: .leftWhileCaptioning)
+        lowPowerModeSeen = try c.decode(Bool.self, forKey: .lowPowerModeSeen)
+        maxThermal = try c.decodeIfPresent(ThermalLevel.self, forKey: .maxThermal)
+        launchToStartSeconds = try c.decodeIfPresent(Double.self, forKey: .launchToStartSeconds)
+        startToFirstCaptionSeconds = try c.decodeIfPresent(Double.self, forKey: .startToFirstCaptionSeconds)
+        launch = try c.decodeIfPresent(LaunchFacts.self, forKey: .launch)
+        captioningSeconds = try c.decode(Double.self, forKey: .captioningSeconds)
+        segmentStart = try c.decodeIfPresent(Date.self, forKey: .segmentStart)
+        startPressedAt = try c.decodeIfPresent(Date.self, forKey: .startPressedAt)
+        lag = try c.decode(PercentileHistogram.self, forKey: .lag)
+        micLevel = try c.decode(PercentileHistogram.self, forKey: .micLevel)
+        changedWords = try c.decode(Int.self, forKey: .changedWords)
+        finalWords = try c.decode(Int.self, forKey: .finalWords)
+        relabels = try c.decode(Int.self, forKey: .relabels)
+        speakers = try c.decode(Set<Int>.self, forKey: .speakers)
+        batteryDrop = try c.decode(Double.self, forKey: .batteryDrop)
+        batteryMinutes = try c.decode(Double.self, forKey: .batteryMinutes)
+        segmentBattery = try c.decodeIfPresent(BatterySample.self, forKey: .segmentBattery)
+        engine = try c.decodeIfPresent(String.self, forKey: .engine)
+        engineFallback = try c.decodeIfPresent(String.self, forKey: .engineFallback)
+        leftAt = try c.decodeIfPresent(Date.self, forKey: .leftAt)
+        context = try c.decodeIfPresent(CaptioningContext.self, forKey: .context)
+        shedSpeakerLabels = try c.decodeIfPresent(Bool.self, forKey: .shedSpeakerLabels) ?? false
+        shedEarVoice = try c.decodeIfPresent(Bool.self, forKey: .shedEarVoice) ?? false
+        shownWordCount = 0
+        shownWordHashes = []
+        utteranceSpeaker = nil
+    }
 
     // MARK: events
 
@@ -246,6 +287,11 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
     public mutating func engineUsed(_ name: String, fallback: String?) {
         if !name.isEmpty { engine = name }
         if let fallback { engineFallback = fallback }
+    }
+
+    public mutating func loadShed(labels: Bool = false, earVoice: Bool = false) {
+        if labels { shedSpeakerLabels = true }
+        if earVoice { shedEarVoice = true }
     }
 
     public mutating func captionUpdate(text: String, isFinal: Bool, speaker: Int?, lagSeconds: Double?, at date: Date) {
@@ -372,7 +418,9 @@ public struct ConversationRecorder: Codable, Equatable, Sendable {
             captionLanguage: context?.captionLanguage,
             captionLanguageChosen: context?.captionLanguageChosen,
             faceToFace: context?.faceToFace,
-            build: context?.build)
+            build: context?.build,
+            speakerLabelsShed: shedSpeakerLabels,
+            earVoiceShed: shedEarVoice)
     }
 
     /// The report's conversations: every stored one, with the copy on screen (if it has started) in place of its
@@ -484,11 +532,14 @@ public struct ConversationReport: Codable, Equatable, Sendable {
     public var faceToFace: FaceToFaceLanguages? = nil
     /// The build that recorded this conversation; `app.build` is the one that sent the report.
     public var build: String? = nil
+    /// Load shedding: whether speaker labels or ear voice were shed to manage memory.
+    public var speakerLabelsShed: Bool = false
+    public var earVoiceShed: Bool = false
 
     private enum CodingKeys: String, CodingKey {
         case id, startedAt, minutes, rating, ratingSkipped, note, lag, rewriteRate, speakers, launchToStartSeconds
         case startToFirstCaptionSeconds, ending, battery, micLevel, launch, engine, engineFallback
-        case captionLanguage, captionLanguageChosen, faceToFace, build
+        case captionLanguage, captionLanguageChosen, faceToFace, build, speakerLabelsShed, earVoiceShed
     }
 
     /// Every schema key is written, `null` when unknown, so every report has the same shape for MARVIN to read.
@@ -515,6 +566,66 @@ public struct ConversationReport: Codable, Equatable, Sendable {
         try c.encode(captionLanguageChosen, forKey: .captionLanguageChosen)
         try c.encode(faceToFace, forKey: .faceToFace)
         try c.encode(build, forKey: .build)
+        try c.encode(speakerLabelsShed, forKey: .speakerLabelsShed)
+        try c.encode(earVoiceShed, forKey: .earVoiceShed)
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.startedAt = try c.decode(Date.self, forKey: .startedAt)
+        self.minutes = try c.decode(Double.self, forKey: .minutes)
+        self.rating = try c.decodeIfPresent(Int.self, forKey: .rating)
+        self.ratingSkipped = try c.decode(Bool.self, forKey: .ratingSkipped)
+        self.note = try c.decodeIfPresent(String.self, forKey: .note)
+        self.lag = try c.decode(Lag.self, forKey: .lag)
+        self.rewriteRate = try c.decodeIfPresent(Double.self, forKey: .rewriteRate)
+        self.speakers = try c.decode(Speakers.self, forKey: .speakers)
+        self.launchToStartSeconds = try c.decodeIfPresent(Double.self, forKey: .launchToStartSeconds)
+        self.startToFirstCaptionSeconds = try c.decodeIfPresent(Double.self, forKey: .startToFirstCaptionSeconds)
+        self.ending = try c.decodeIfPresent(ConversationEnding.self, forKey: .ending)
+        self.battery = try c.decode(Battery.self, forKey: .battery)
+        self.micLevel = try c.decode(MicLevel.self, forKey: .micLevel)
+        self.launch = try c.decodeIfPresent(Launch.self, forKey: .launch)
+        self.engine = try c.decodeIfPresent(String.self, forKey: .engine)
+        self.engineFallback = try c.decodeIfPresent(String.self, forKey: .engineFallback)
+        self.captionLanguage = try c.decodeIfPresent(String.self, forKey: .captionLanguage)
+        self.captionLanguageChosen = try c.decodeIfPresent(Bool.self, forKey: .captionLanguageChosen)
+        self.faceToFace = try c.decodeIfPresent(FaceToFaceLanguages.self, forKey: .faceToFace)
+        self.build = try c.decodeIfPresent(String.self, forKey: .build)
+        self.speakerLabelsShed = try c.decodeIfPresent(Bool.self, forKey: .speakerLabelsShed) ?? false
+        self.earVoiceShed = try c.decodeIfPresent(Bool.self, forKey: .earVoiceShed) ?? false
+    }
+
+    public init(id: String, startedAt: Date, minutes: Double, rating: Int?, ratingSkipped: Bool, note: String?,
+                lag: Lag, rewriteRate: Double?, speakers: Speakers, launchToStartSeconds: Double?,
+                startToFirstCaptionSeconds: Double?, ending: ConversationEnding?, battery: Battery,
+                micLevel: MicLevel, launch: Launch?, engine: String? = nil, engineFallback: String? = nil,
+                captionLanguage: String? = nil, captionLanguageChosen: Bool? = nil, faceToFace: FaceToFaceLanguages? = nil,
+                build: String? = nil, speakerLabelsShed: Bool = false, earVoiceShed: Bool = false) {
+        self.id = id
+        self.startedAt = startedAt
+        self.minutes = minutes
+        self.rating = rating
+        self.ratingSkipped = ratingSkipped
+        self.note = note
+        self.lag = lag
+        self.rewriteRate = rewriteRate
+        self.speakers = speakers
+        self.launchToStartSeconds = launchToStartSeconds
+        self.startToFirstCaptionSeconds = startToFirstCaptionSeconds
+        self.ending = ending
+        self.battery = battery
+        self.micLevel = micLevel
+        self.launch = launch
+        self.engine = engine
+        self.engineFallback = engineFallback
+        self.captionLanguage = captionLanguage
+        self.captionLanguageChosen = captionLanguageChosen
+        self.faceToFace = faceToFace
+        self.build = build
+        self.speakerLabelsShed = speakerLabelsShed
+        self.earVoiceShed = earVoiceShed
     }
 }
 

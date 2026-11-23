@@ -90,7 +90,7 @@ final class EngineFallbackPolicyTests: XCTestCase {
         let cases: [(FallbackTrigger, FallbackAction)] = [
             (.loadFailed, .switchToApple),
             (.noWordsFromSpeech, .switchToApple),
-            (.memoryWarning, .switchToApple),
+            (.memoryWarning, .none),
             (.thermal(.nominal), .normalHop),
             (.thermal(.fair), .normalHop),
             (.thermal(.serious), .doubleHop),
@@ -105,6 +105,44 @@ final class EngineFallbackPolicyTests: XCTestCase {
         for trigger: FallbackTrigger in [.loadFailed, .noWordsFromSpeech, .memoryWarning, .thermal(.critical), .thermal(.serious)] {
             XCTAssertEqual(EngineFallbackPolicy.action(for: trigger, running: .apple), .none, "\(trigger)")
         }
+    }
+
+    // MARK: Load shedding on memory warnings
+
+    func testMemoryWarningShedsFirstTheLabelsWhenNothingIsShedYet() {
+        let current = LoadShedState()
+        let action = EngineFallbackPolicy.memoryWarningShed(current: current, availableMemory: 500 * 1_048_576)
+        XCTAssertEqual(action, .shedSpeakerLabels)
+    }
+
+    func testMemoryWarningShedsBothWhenMemoryIsCritical() {
+        let current = LoadShedState()
+        let action = EngineFallbackPolicy.memoryWarningShed(current: current, availableMemory: 100 * 1_048_576)
+        XCTAssertEqual(action, .shedBoth)
+    }
+
+    func testMemoryWarningShedsEarVoiceOnceLabelsAreGone() {
+        let current = LoadShedState(speakerLabelsShed: true, earVoiceShed: false)
+        let action = EngineFallbackPolicy.memoryWarningShed(current: current, availableMemory: 50 * 1_048_576)
+        XCTAssertEqual(action, .shedEarVoice)
+    }
+
+    func testMemoryWarningShedsEarVoiceUnconditionallyOnceLabelsAreGone() {
+        let current = LoadShedState(speakerLabelsShed: true, earVoiceShed: false)
+        let action = EngineFallbackPolicy.memoryWarningShed(current: current, availableMemory: 500 * 1_048_576)
+        XCTAssertEqual(action, .shedEarVoice, "once labels are shed, ear voice is shed on the next warning regardless of memory level")
+    }
+
+    func testMemoryWarningDoesNothingWhenBothAreShed() {
+        let current = LoadShedState(speakerLabelsShed: true, earVoiceShed: true)
+        let action = EngineFallbackPolicy.memoryWarningShed(current: current, availableMemory: 50 * 1_048_576)
+        XCTAssertEqual(action, .none)
+    }
+
+    func testMemoryWarningDoesNothingOnlyWhenBothAreShed() {
+        let current = LoadShedState(speakerLabelsShed: true, earVoiceShed: true)
+        let action = EngineFallbackPolicy.memoryWarningShed(current: current, availableMemory: 200 * 1_048_576)
+        XCTAssertEqual(action, .none, "when both are already shed, do nothing (next warning will trigger switch)")
     }
 
     func testOnlySwitchesCountTowardTheDailyPin() {

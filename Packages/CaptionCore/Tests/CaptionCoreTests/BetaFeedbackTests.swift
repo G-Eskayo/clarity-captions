@@ -406,6 +406,31 @@ final class BetaFeedbackTests: XCTestCase {
         XCTAssertNil(old.entry(now: at(1)).engine)
     }
 
+    func testOldConversationReportWithoutLoadShedFieldsDecodes() throws {
+        // Older report JSON without speakerLabelsShed/earVoiceShed must decode with false defaults.
+        var r = conversation()
+        r.captioningStarted(at: at(0.5), battery: BatterySample(level: 0.80, charging: false))
+        r.captionUpdate(text: "hello", isFinal: true, speaker: 0, lagSeconds: 0.6, at: at(1.5))
+        r.captioningStopped(at: at(60.5), battery: BatterySample(level: 0.75, charging: false), ending: .userStop)
+        let rep = report([r.entry(now: at(100))])
+        var data = try rep.json()
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        var conversations = try XCTUnwrap(json["conversations"] as? [[String: Any]])
+        var conversation = conversations[0]
+        conversation.removeValue(forKey: "speakerLabelsShed")
+        conversation.removeValue(forKey: "earVoiceShed")
+        conversations[0] = conversation
+        json["conversations"] = conversations
+        data = try JSONSerialization.data(withJSONObject: json)
+
+        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+        let decodedRep = try decoder.decode(FeedbackReport.self, from: data)
+        XCTAssertEqual(decodedRep.conversations.count, 1)
+        let decoded = decodedRep.conversations[0]
+        XCTAssertFalse(decoded.speakerLabelsShed, "missing field defaults to false")
+        XCTAssertFalse(decoded.earVoiceShed, "missing field defaults to false")
+    }
+
     // MARK: which language, which mode, which build (#288)
 
     func testEachConversationSaysItsCaptionLanguageModeAndBuild() {
