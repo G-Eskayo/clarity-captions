@@ -13,15 +13,15 @@ import Foundation
 enum CallAudioSelfTest {
     static let sentence = "She sells seashells by the seashore. The harbor is calm this morning."
 
-    static var isRequested: Bool { UserDefaults.standard.string(forKey: "CallAudioSelfTest") != nil }
+    static var isRequested: Bool { LaunchArgs.value(after: "CallAudioSelfTest") != nil }
 
     static func runIfRequested() {
-        if UserDefaults.standard.bool(forKey: "MarvinRouteWatch") { Task.detached { await watchRoute() } ; return }
-        guard let mode = UserDefaults.standard.string(forKey: "CallAudioSelfTest") else { return }
+        if LaunchArgs.flag("MarvinRouteWatch") { Task.detached { await watchRoute() } ; return }
+        guard let mode = LaunchArgs.value(after: "CallAudioSelfTest") else { return }
         Task.detached {
             let ok: Bool
             do { ok = try await run(mode: mode) } catch { log("FAILED: \(error)"); ok = false }
-            exit(ok ? 0 : 1)
+            ExitLogging.quit(ok ? 0 : 1, because: "CallAudioSelfTest \(ok ? "passed" : "failed")")
         }
     }
 
@@ -104,7 +104,7 @@ enum CallAudioSelfTest {
         do {
             _ = try meter.open()
             try meter.start { _ in }
-        } catch { log("FAILED: \(error)"); exit(1) }
+        } catch { log("FAILED: \(error)"); ExitLogging.quit(1, because: "MarvinRouteWatch failed: \(error)") }
         var last = ""
         for second in 0..<3600 {
             let route = RoomMicSource.describeRoute()
@@ -114,7 +114,7 @@ enum CallAudioSelfTest {
         }
         log("choices made: \(room.history)")
         meter.stop()
-        exit(0)
+        ExitLogging.quit(0, because: "MarvinRouteWatch completed")
     }
 
     @discardableResult

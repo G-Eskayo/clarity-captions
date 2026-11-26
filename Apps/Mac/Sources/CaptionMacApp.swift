@@ -9,6 +9,10 @@ struct CaptionMacApp: App {
     @StateObject private var model = CaptionMacModel()
 
     init() {
+        ExitBacktrace.installIfEnabled()
+        #if DEBUG
+        ExitLogging.installExitFromBackgroundQueueHook()
+        #endif
         BundledFonts.register()
         MarvinScreenshot.runIfRequested()
         CallAudioSelfTest.runIfRequested()
